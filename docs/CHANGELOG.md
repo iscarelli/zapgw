@@ -4,6 +4,24 @@ Uma linha por versao entregue, no mesmo commit do bump. A entrada diz o **efeito
 
 ## Nao lancado
 
+- **T-213 — CAMADA 3, primeira metade: measure which Portuguese strings REACH the consumer** —
+  medido, nao traduzido, em `docs/INVENTARIO-STRINGS.md`. A busca so' por acento (o metodo que a
+  estimativa original de 207 provavelmente usou) achou 164 strings de codigo reais — mas a maior
+  fonte de strings deste projeto NAO usa acento (`"invalido"`, `"obrigatorio"`, `"corpo grande
+  demais"`), entao rastreei os ~226 call sites de `respondError`/`logRejection` em
+  `internal/outbound` mais o corpo inteiro de `message.go`, que sozinho tem **103 pontos de
+  `fmt.Errorf`/`errors.New` em portugues, nenhum acentuado** — confirmados AMBOS (mesmo texto no
+  log E na resposta) via 4 call sites diferentes que logam `err.Error()` cru antes de responde-lo
+  cru. **~44 padroes SAIDA-CONSUMIDOR + ~132 AMBOS = ~176 padroes de mensagem decidem o proximo
+  passo**, mais que os 207 originais em pontos de codigo totais (~394, CLI incluido) mas o numero
+  que importa (consumer-facing) e' esse. Achado que ninguem esperaria: dez strings vivem em corpo
+  de SUCESSO, nao de erro — o campo `NextStep` de `registration_handler.go` e nove `const`
+  `Warning*`/`Message*` de `templates_handler.go`, que escapam de uma varredura que so' olha
+  `respondError`. Achado a parte: 7 strings sao construidas por `fmt.Errorf` e nunca chegam a
+  lugar nenhum (nem log, nem resposta) — `auth.go`'s `ErrNoToken`/`ErrInvalidToken` e as 4 de
+  `external_probe.go`, cujo erro e' descartado por `record()`. Verify de sempre limpo, incluindo o
+  portao de telefone (o doc novo nao carrega nenhum). _Completed 2026-08-31 15:39._
+
 - **T-212 — CAMADA 1: file names and identifiers stop speaking Portuguese** —
   **86 arquivos `.go` renomeados** (`git mv`, historico preservado — mais que os 69 medidos na
   spec; a medicao original parece ter contado so' um subconjunto, e esta tarefa mediu de novo lendo

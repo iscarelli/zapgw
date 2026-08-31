@@ -121,27 +121,6 @@ fizeram no `processado_em` hoje de manha.
 ## Active
 
 > A fila do periodo privado esta em `iscarelli/zapgw-dev`, congelada. Tarefa nova nasce aqui.
-## [ ] T-213  CAMADA 3, primeira metade: measure which Portuguese strings REACH the consumer
-Why:    Ha **207 strings de producao em portugues** medidas. Parte e' log interno — grátis de trocar.
-        Parte viaja no corpo da resposta, dentro de `erro`, `motivo`, `explicacao_meta`, e **o
-        consumidor pode estar comparando com ela**.
-🔴      **Ninguem sabe hoje qual e' qual**, e trocar as 207 sem separar e' mudar contrato as cegas.
-Files:  docs/INVENTARIO-STRINGS.md (novo)
-
-Do:
-  🔴 **NAO traduza nada nesta tarefa. Ela MEDE.**
-  - Para cada string de producao em portugues: `arquivo:linha`, e a **classificacao**:
-    **SAIDA-CONSUMIDOR** (chega no corpo de uma resposta ou evento), **LOG** (só stderr/arquivo), ou
-    **AMBOS**.
-  - **Meça, nao deduza:** siga o caminho da string ate um `w.Write`/`json.Encode` ou ate um `log.`.
-    Se nao conseguir decidir, escreva `A MEDIR` e diga o que faltou.
-  - Diga quantas sao de cada tipo. **O numero de SAIDA-CONSUMIDOR e' o tamanho real do problema.**
-
-Verify:
-  - Amostra de 6 ponteiros conferida com `sed -n`.
-  - Total bate com as 207 (ou a diferenca explicada).
-  - Verify de sempre limpo.
-
 ## [ ] T-214  CAMADA 4: `ZAPGW_*` and the CLI accept both names, and count the old one
 After:  T-213
 Why:    **24 variaveis `ZAPGW_*`** e os verbos de CLI (`consumidor`, `estado`, `fumaca`, `instancia`).
