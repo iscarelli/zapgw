@@ -4,6 +4,24 @@ Uma linha por versao entregue, no mesmo commit do bump. A entrada diz o **efeito
 
 ## Nao lancado
 
+- **The migration table becomes a versioned document, with DIRECTION and what does NOT change**
+  (T-202) — `docs/MIGRACAO-CONTRATO-EN.md` (par `docs/MIGRACAO-CONTRATO-EN.pt-BR.md`) nasceram
+  juntos, montando 119 linhas de chave a partir de duas fontes ja existentes: 90 pares ja propostos
+  ao `consumer-b` no canal privado (Fonte A — medido, nao os 89 estimados na spec: sem duplicata,
+  contagem batida com `sed -n` linha a linha), mais 29 chaves medidas contra o codigo sem par
+  decidido (Fonte B, `docs/INVENTARIO-CHAVES.md`, inglês = `A DECIDIR`), sem sobreposicao entre as
+  duas. **Toda linha tem direcao** (`SAIDA-EVENTO`/`SAIDA-RESPOSTA`/`ENTRADA`, `A MEDIR` quando
+  medido e inconclusivo) — 21 chaves sao multi-direcao (14 na Tabela A, 7 na B), e 6 da Tabela A sao
+  `A MEDIR` porque a string proposta nao corresponde a nenhum campo real do contrato hoje (3 so
+  existem num vetor de teste interno, uma e' o envelope de paginacao da propria Meta, uma e' flag de
+  CLI, uma nao existe). Secao "O que NAO muda" trouxe as 23 linhas ja-em-ingles do item 4 do
+  inventario, com a regra de colisao do `consumer-b` creditada. Nenhum nome foi decidido pela
+  tarefa. Todos os 119 ponteiros `arquivo:linha` foram conferidos mecanicamente contra o codigo
+  (script Python de verificacao, nao so amostragem); um erro de arquivo achado nessa conferencia
+  (`conector` apontava para `estado.go` em vez de `entrada.go`) foi corrigido antes do commit.
+  Zero dado identificavel copiado do canal privado (so as linhas de tabela chave/valor). Verify:
+  `CGO_ENABLED=0 go build ./...`, `go test ./...` (os dois portoes de dado pessoal varreram `docs/`
+  e passaram), `go vet ./...`, `gofmt -l cmd internal` limpos. _Completed 2026-08-31 08:18._
 - **The pre-push gate looks inside merge commits too** (T-201) — `filesChangedInCommit`
   (`internal/config/prepush_test.go`) passou a decidir pelo numero de pais do commit: 0/1 pai
   mantem o diff de sempre (com `--root` para o genesis), 2+ pais (merge) muda para

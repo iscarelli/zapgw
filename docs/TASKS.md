@@ -96,55 +96,6 @@ telefone real e `wamid` de producao, e este repositorio e' publico.
 
 > A fila do periodo privado esta em `iscarelli/zapgw-dev`, congelada. Tarefa nova nasce aqui.
 
-## [ ] T-202  The migration table becomes a versioned document, with DIRECTION and what does NOT change
-After:  T-201
-Why:    A tabela de migracao do contrato existe **so' dentro do canal** com um consumidor. A doutrina
-        do canal diz o contrario: *o que vale para TODOS sai do canal para o documento duravel* — e
-        esta tabela vale para todo consumidor, inclusive o `consumer-a`, que ainda nem comecou.
-🔴      **E ela ja quebrou um consumidor por omissao:** listava `midia_id -> media_id` sem dizer em que
-        DIRECAO valia. O tradutor do consumidor renomeou a resposta do `POST /v1/media` — que ja estava
-        em ingles — e o upload de midia parou. *Tabela sem direcao mente por omissao em toda chave que
-        aparece nos dois sentidos.*
-        **E a ausencia tambem mente:** quem le uma tabela que so' lista renomeacoes conclui que o que
-        nao esta nela e' portugues. Ha pelo menos 25 chaves nossas de SAIDA **ja em ingles** hoje
-        (`docs/INVENTARIO-CHAVES.md`), e cada uma e' outro `media_id` esperando.
-Files:  docs/MIGRACAO-CONTRATO-EN.md  (novo)
-        docs/MIGRACAO-CONTRATO-EN.pt-BR.md  (novo, o par)
-
-Do:
-  🔴 **Esta tarefa NAO decide nome nenhum.** Ela MONTA o documento a partir de duas fontes que ja
-  existem. Onde o par em ingles ainda nao foi decidido, escreva literalmente `A DECIDIR` — o planner
-  preenche depois. **Inventar um nome aqui vira quebra em producao do lado do consumidor.**
-
-  1. **Fonte A — as 89 chaves ja decididas:** estao na secao de `2026-08-30 23:05` do arquivo
-     `C:/dev/<consumidor-b>/zapgw-STATUS.local.md` (resolva o diretorio com
-     `ls C:/dev/*/zapgw-STATUS.local.md` — o nome real nao entra neste arquivo, que e publico).
-     Procure a secao cujo titulo comeca com `# 🔤🔴` e a data `2026-08-30 23:05`. Copie os
-     pares **verbatim**. 🔴 Esse arquivo carrega telefone real e nome de cliente: **copie apenas as
-     linhas da tabela de chaves**, nada de prosa, nada de exemplo de payload.
-  2. **Fonte B — as 29 chaves medidas:** `docs/INVENTARIO-CHAVES.md`, com `arquivo:linha` e direcao.
-     Coluna de ingles = `A DECIDIR`.
-  3. **Coluna DIRECAO obrigatoria em toda linha** — `SAIDA-EVENTO`, `SAIDA-RESPOSTA`, `ENTRADA`, ou
-     mais de uma. Para as 89, se a direcao nao estiver na fonte, **meça no codigo**; se nao conseguir,
-     escreva `A MEDIR` — nunca chute.
-  4. **Secao propria e destacada: "O que NAO muda"**, com as chaves de saida que ja estao em ingles
-     (a lista do item 4 do inventario), cada uma com `arquivo:linha`. Com uma frase dizendo que a
-     ausencia de uma chave desta tabela **nao** significa que ela vira ingles.
-  5. **Traga a regra de colisao do consumidor, com credito:** *so' renomeia se o nome de destino ainda
-     nao existir naquele dicionario* — porque o nosso ingles para `texto` e' `text`, e `text` tambem e'
-     nome da Meta dentro de um objeto de mensagem; idem `category`.
-  6. **Cabecalho `Código:` no topo dos dois arquivos**, como toda doc de subsistema deste repo.
-  7. Os dois arquivos (EN e pt-BR) nascem **juntos**.
-
-Verify:
-  - Contagem: 89 + 29 = 118 linhas de chave (ou a diferenca explicada, chave por chave — pode haver
-    sobreposicao entre as fontes, e nesse caso a linha e' UMA, com as duas origens citadas).
-  - **Nenhuma linha sem direcao.** `grep` por linhas de tabela sem uma das tres palavras: zero.
-  - Amostra de 5 `arquivo:linha` conferida com `sed -n`.
-  - 🔴 `go test ./...` verde — os dois portoes varrem `docs/`, entao **se voce copiar qualquer coisa
-    identificavel do canal, eles reprovam**. Isso e' a rede, nao a permissao para copiar sem olhar.
-  - `gofmt -l cmd internal` sem saida.
-
 ## [ ] T-189  O contrato passa a falar ingles — leitor tolerante do lado deles, apelido so' na ENTRADA
 Why:    **decisao do dono, 2026-08-30:** *"o projeto precisa ser em ingles, ter feito em portugues foi
         errado. Se a chave chama nome, tem que passar a se chamar name."*
