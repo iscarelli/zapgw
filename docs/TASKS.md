@@ -23,9 +23,13 @@ num commit so.** Medido, nao afirmado:
 
 ✅ **FEITO (T-195): a CI recebe o segredo `ZAPGW_FORBIDDEN_NAMES` como `env:` de JOB e ganhou passo
 proprio do portao de nome** (`.github/workflows/verify.yml`), espelhando o portao de telefone.
-🔴 **Isso ainda NAO foi observado rodando:** o workflow nunca executou neste repositorio, e a cota
-de Actions da conta so' reseta em 2026-09-01. **A CI so' conta
-como mecanismo depois de uma execucao verde aqui** — ate la, o que existe e' arquivo, nao prova.
+✅ **E ela RODOU: verde as 00:54, com os quatro portoes passando** (run `33355320803`). Os **tres
+runs anteriores falharam** no portao de nome, por falta de agulha — entao a propria CI ja reprovou
+contra dado real antes de ser confiada, que e' o criterio desta casa.
+🔴 **E isso derrubou uma coisa que eu tinha acabado de escrever aqui:** *"a cota de Actions so' reseta
+em 2026-09-01"*. Os runs executaram em **08-31**. A data veio da explicacao do dono e virou estado
+sem ninguem re-medir. *Afirmacao sobre coisa que voce nao controla envelhece calada* — e esta e' a
+**terceira** vez que este mesmo paragrafo mente, agora registrado no `CLAUDE.md`.
 ⚠️ **Decisao que eu tomei e que voce pode querer rever:** num PR vindo de **fork**, o GitHub nao
 entrega segredo, entao o portao vai reprovar por "nao consegui verificar" — e eu escolhi manter
 assim, falhando fechado, em vez de virar skip. Skip seria a cegueira que o portao existe para nao ter.
@@ -72,6 +76,37 @@ Ninguem poda. Vale virar tarefa antes de virar problema de disco.
 ## Active
 
 > A fila do periodo privado esta em `iscarelli/zapgw-dev`, congelada. Tarefa nova nasce aqui.
+
+## [ ] T-196  The PT-BR pair of CLAUDE.md stops describing a repository that no longer exists
+Why:    `CLAUDE.pt-BR.md` e' o par em portugues do `CLAUDE.md`, e **doc que diverge do par e' doc que
+        mente** — com o agravante de que este e' o arquivo que descreve as regras duras.
+        **Ja apontado por um implementador em 2026-08-31** e confirmado por mim: ele ainda descreve o
+        portao de telefone varrendo uma lista fixa de diretorios (a T-191 trocou por "tudo que o git
+        ve"), ainda diz que portoes "existem em `zapgw-dev` e migram com o codigo" (o codigo ja
+        migrou), nao conhece o portao de nome (T-193) e nao conhece a CI que existe e roda (T-195).
+Files:  CLAUDE.pt-BR.md
+
+Do:
+  - **Sincronize com o `CLAUDE.md` atual**, secao por secao. O `CLAUDE.md` e' a fonte: onde os dois
+    discordarem, o ingles manda.
+  - 🔴 **Isto NAO e' traducao mecanica.** O `CLAUDE.md` mudou de estado varias vezes hoje; leia o que
+    ele diz **agora** e escreva o portugues equivalente. Traduzir frase a frase um texto que voce nao
+    conferiu contra o codigo reproduz o erro em outro idioma.
+  - **Confira cada afirmacao contra o codigo, nao contra o par antigo.** As que mais importam: o que
+    cada portao varre, o que faz cada um falhar, e onde mora a agulha do portao de nome.
+  - **Nao invente historia.** Os relatos de custo (as tres mentiras do paragrafo da CI, os controles
+    positivos que reprovaram) ja estao no `CLAUDE.md` com data; traga-os, nao os reescreva.
+  - Se achar afirmacao no `CLAUDE.md` que **voce** nao consegue confirmar no codigo, **nao traduza:
+    relate**. Doc errado e' bug, e o par nao e' lugar de propagar duvida.
+
+Verify:
+  - `diff <(grep -c '^#' CLAUDE.md) <(grep -c '^#' CLAUDE.pt-BR.md)` — mesma quantidade de secoes, ou
+    a diferenca explicada no relatorio.
+  - **Percorra a tabela de regras duras dos dois lado a lado** e confirme, linha por linha, que os
+    dois dizem a mesma coisa sobre: o que varre, o que falha, e o estado. Relate a tabela conferida.
+  - `go test ./...` verde (o portao de nome varre `CLAUDE.pt-BR.md` tambem — se voce escrever uma
+    agulha la, ele reprova).
+  - `gofmt -l cmd internal` sem saida.
 
 ## [ ] T-194  The deploy prunes its own pre-update snapshots
 Why:    **Decisao do dono, 2026-08-31:** manter os 3 ultimos e podar no proprio `deploy.sh`. Hoje um

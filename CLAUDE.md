@@ -78,52 +78,55 @@ that has to be on the record.**
 | TLS has no off switch, in either direction | a test that sweeps the whole tree for the option, with the needle assembled by concatenation so it does not flag itself | exists in `zapgw-dev` (`internal/inbound/deliver_test.go`) — **migrates with the code** |
 | A new route declares per-tenant isolation | an isolation table that reads the package's `mux.HandleFunc` calls and requires a declared literal | exists in `zapgw-dev` — **migrates with the code** |
 | A handler declares which instance types it accepts | a **mandatory positional** parameter: omitting it **does not compile**, and the zero value is the most restrictive one | exists in `zapgw-dev` — **migrates with the code** |
-| The verify runs before every merge | **CI** with the four commands in separate steps, `timeout-minutes: 10`, and no step piping into `grep` | ✅ **exists** (`.github/workflows/verify.yml`), born together with the first code — carries both irreversible gates, phone and name, each in its own step, with `ZAPGW_FORBIDDEN_NAMES` declared as an `env:` at the JOB level so both the name gate's own step and the whole-package `go test ./...` see it (T-195). The full account of why it went missing and came back is in *The three that have no mechanism anywhere*, below |
+| The verify runs before every merge | **CI** with the four commands in separate steps, `timeout-minutes: 10`, and no step piping into `grep` | ✅ **exists** (`.github/workflows/verify.yml`), born together with the first code — carries both irreversible gates, phone and name, each in its own step, with `ZAPGW_FORBIDDEN_NAMES` declared as an `env:` at the JOB level so both the name gate's own step and the whole-package `go test ./...` see it (T-195). 🔴 **And it has RUN here, measured on 2026-08-31:** four runs on the recreated repository — the first three **failed** on the name gate ("could not verify", no needle source) and the fourth passed with all four gates green (run `33355320803`). So the CI itself has now failed against real data before being trusted. ⚠️ **The story that the Actions quota was exhausted until 2026-09-01 is dead:** the runs executed on 08-31. That account had already been wrong twice; this is the third correction, and the lesson repeats — *a claim about capacity that nobody re-measured is a claim, not a state* |
 | A secret never in the repository | `.gitignore` since the initial commit; a per-project hook | partial — the `.gitignore` is here; the hook is not |
 | A subsystem doc starts with `Código:` | **nothing** | 🔴 **does not exist** |
 | The published state (version live, what is in flight) does not lie | **nothing** | 🔴 **does not exist** — the equivalent line in `zapgw-dev` lied **twice in sixteen hours**, the second time after the warning written just below it |
 
-### The three that have no mechanism anywhere
+### The three foundations — two of them now have a mechanism, and one still does not
 
-They are this repository's foundation work, and they come **before** the code arrives:
-
-1. **CI — written, proven, switched off by quota, and with a return date: 2026-09-01.**
-   It existed in `zapgw-dev` from 2026-08-21 to 2026-08-29: four separate steps, the Go version read
-   from `go.mod`, and the `gofmt` step turning non-empty output into an error — on its own it prints
-   and exits `0`. It went out because **the account's Actions minute allowance ran out**, consumed by
-   the CI of **another private project** of the owner's. The allowance resets on 09/01, but **it does
-   not go back to `zapgw-dev`**: the owner decided on 2026-08-30 that that repository is only the
-   base for this one and freezes after the migration. **This repository is the only place where the
-   CI comes back into existence**, and that makes T-181 over there the only path — there is no plan B
-   running in parallel.
-   ⚠️ **The accepted consequence, said by name:** the entire mechanical pass (renaming identifiers
-   across the whole tree) happens **with no CI at all**, with the verify running only on a Windows
-   machine. The defect class the CI caught — `CGO_ENABLED`, file permissions, paths — stays uncovered
-   until the first green run here.
-   **Here it is born together with the first code**, restoring the 47-line file from
-   `git show 709e915:.github/workflows/verify.yml` in `zapgw-dev`.
-   🔥 **This paragraph has already lied twice in a row, and the two lies are of different kinds —
-   which is why they stay on the record.** (1) It said *"done in `zapgw-dev` and migrates with the
-   code"* after the file had already been deleted there: **a statement about ANOTHER repository's
-   state, which goes stale without telling anyone**. (2) The next correction swapped that for *"a
-   private repo pays for Actions; owner's rule: CI only on a public project"* — **an invented cause
-   wearing the costume of a rule**, which propped up a recommendation to bring the public opening
-   forward in order to "get CI for free". The owner corrected it on 2026-08-30: it was a quota blown
-   by another project, with a reset date. *A failure with a deadline does not become doctrine; when
-   the cause is not measured, write the symptom and the date.*
-   *Worth recording why it almost did not happen:* an earlier Actions attempt on this account
-   (2026-08-06) died twice — job `cancelled`, empty `runner` field and **exactly 905 seconds** both
-   times. The two runs of 2026-08-21 finished in ~2 minutes. 🔴 **What unblocked it was never
-   discovered; it was only measured that it worked that day.**
-2. **The personal-data gates as part of the CI**, not just as local tests — because the cost here is
-   irreversible: published once, there is no unpublishing. Both the phone gate and the customer-name
-   gate (T-193) exist locally today; neither runs in CI yet, because CI itself does not exist yet
-   (item 1). The name gate additionally needs its needle list recreated as a CI secret
-   (`ZAPGW_FORBIDDEN_NAMES`) in whatever repository ends up running the pipeline — see the resumption
-   block at the top of `docs/TASKS.md`.
-3. **A state that proves itself.** Any line in this repository claiming "version X is live" either has
-   to be measured on the spot, or not be written. *A resumption block that lies is worse than no block:
-   it is the first text the next session reads.*
+1. **CI — it exists here, it runs here, and it has already failed against real data.**
+   Four runs on 2026-08-31, on the recreated repository: the first three **failed** on the name gate
+   (*"could not verify"* — no needle source reached the runner), and the fourth passed with all four
+   gates green (run `33355320803`, ~1m30s). That order matters more than the green: a gate that has
+   never rejected anything is indistinguishable from a gate that does not look, and the same is true
+   of the pipeline that carries it.
+   It first existed in `zapgw-dev` from 2026-08-21 to 2026-08-29 — four separate steps, the Go
+   version read from `go.mod`, and a `gofmt` step that turns non-empty output into an error, since on
+   its own `gofmt -l` prints and exits `0`. It came back here restored from
+   `git show 709e915:.github/workflows/verify.yml`, and grew the two gate steps.
+   🔥 **This paragraph has now lied three times, each in a different way, and that is why the record
+   stays.**
+   (1) It said *"done in `zapgw-dev` and migrates with the code"* after the file had already been
+   deleted there — **a statement about ANOTHER repository's state, which goes stale without telling
+   anyone**.
+   (2) The correction swapped that for *"a private repo pays for Actions; owner's rule: CI only on a
+   public project"* — **an invented cause wearing the costume of a rule**, which propped up a
+   recommendation to bring the public opening forward to "get CI for free". The owner corrected it on
+   2026-08-30: a quota blown by another project, with a reset date.
+   (3) And that reset date was written here as fact — *"comes back on 2026-09-01"* — and repeated into
+   `docs/TASKS.md` on 2026-08-31 as *"the quota only resets on 09-01"*. **The runs executed on
+   08-31.** Nobody re-measured the capacity; the date was carried forward from the owner's
+   explanation and hardened into a state.
+   ➡️ *The family is one: **a claim about something you do not control goes stale silently.** Another
+   repository's state, an invented cause, a quota window — none of them fail loudly when they stop
+   being true. Write the symptom, the date, and how it was measured.*
+   *Worth keeping, because it was never explained:* an earlier Actions attempt on this account
+   (2026-08-06) died twice — job `cancelled`, empty `runner` field, and **exactly 905 seconds** both
+   times. The runs of 2026-08-21 finished in ~2 minutes. 🔴 **What unblocked it was never discovered;
+   it was only measured that it worked that day.**
+2. **The personal-data gates run in CI**, not only as local tests — because the cost here is
+   irreversible: published once, there is no unpublishing. Both have their own step
+   (`portao de dado pessoal`, `portao de nome`), and the name gate's needles reach the runner as the
+   repository secret `ZAPGW_FORBIDDEN_NAMES`, declared as an `env:` at the **job** level so the
+   whole-package `go test ./...` sees it too.
+   ⚠️ **A PR from a fork gets no secret**, so the name gate fails there saying it could not verify.
+   That is deliberate, and the workflow says so in a comment: turning it into a skip would buy a
+   green tick with the exact blindness the gate exists to prevent.
+3. **A state that proves itself.** 🔴 **Still no mechanism.** Any line in this repository claiming
+   "version X is live" either has to be measured on the spot, or not be written. *A resumption block
+   that lies is worse than no block: it is the first text the next session reads.* The item above is
+   the argument for this one — three lies, all in text that looked settled.
 
 ### What is NOT a hard rule, and why saying so matters
 
