@@ -4,6 +4,8 @@ Uma linha por versao entregue, no mesmo commit do bump. A entrada diz o **efeito
 
 ## Nao lancado
 
+## v0.64.0 — 2026-08-31
+
 - **T-214 — CAMADA 4: `ZAPGW_*` and the CLI accept both names, and count the old one** — aditivo, sem
   remover nenhum nome velho. **16 variaveis `ZAPGW_*` ganharam par em ingles** (`BANCO`, `CHAVE_CIFRA`,
   `CONECTOR_READY`, `DIAGNOSTICO_SONDAR_FOLDER`, `ENDERECO`, `ENTRADA_VIA`, `LIDERANCA_ARQUIVO`,
