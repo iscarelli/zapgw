@@ -38,6 +38,7 @@ congela como historico.
 Requisitos: Go 1.22+ e um App da Meta com WhatsApp Business.
 
     git clone https://github.com/iscarelli/zapgw.git && cd zapgw
+    git config core.hooksPath .githooks # ativa o portao de dado pessoal no pre-push (T-199)
     CGO_ENABLED=0 go build ./cmd/zapgw
     cp .env.example /etc/zapgw/env      # preencha; NUNCA commite valores
 

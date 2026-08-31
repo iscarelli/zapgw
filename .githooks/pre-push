@@ -1,0 +1,89 @@
+#!/bin/sh
+# T-199's gate: blocks a push that INTRODUCES a real phone number or a real
+# customer name, even when a LATER commit in the same push deletes the file
+# again and the final tree is clean. Two things existed before this file:
+#
+#   1. Two tests (internal/config/telefones_allowlist_test.go,
+#      internal/config/nomes_allowlist_test.go) that scan the WORKING TREE —
+#      run by `go test ./...` and by CI, both AFTER a push already happened.
+#      In a public repository "reprova depois" does not undo anything:
+#      there is no despublicar.
+#   2. Nothing that looked at the INTERVAL being pushed instead of the final
+#      tree. A number added in commit A and removed in commit B leaves the
+#      tree clean at commit B, but commit A still ships the moment the
+#      branch reaches `origin`.
+#
+# This hook closes gap (2) by running internal/config/prepush_test.go's
+# TestPrePushGate once per ref being pushed — it materializes what EACH
+# commit in the pushed range actually introduces and runs the SAME two
+# sweeps the tree-scanning tests use (no second implementation of the scan;
+# see the comment at the top of prepush_test.go).
+#
+# ACTIVATION IS NOT AUTOMATIC. A file in .git/hooks/ is not versioned and
+# does not survive a clone; this hook only runs once someone points git at
+# this versioned directory:
+#
+#     git config core.hooksPath .githooks
+#
+# Confirm it is active with: git config --get core.hooksPath
+#
+# 🔴 `git push --no-verify` IS THE ONLY THING THAT DISABLES THIS GATE. Using
+# it means you are choosing to push without this check running at all — not
+# "skipping a slow test". If you ever type it against this repository, know
+# that is exactly what you are turning off.
+
+set -eu
+
+zero="0000000000000000000000000000000000000000"
+
+falha_fechada() {
+    echo "" >&2
+    echo "BLOQUEADO (.githooks/pre-push): $1" >&2
+    echo "" >&2
+    echo "Este hook existe para impedir que um telefone ou nome real saiam desta" >&2
+    echo "maquina — mesmo dentro de um commit que um commit POSTERIOR no mesmo" >&2
+    echo "push apaga de novo. A arvore final limpa nao basta: o repositorio e'" >&2
+    echo "publico e o historico nao e' reescrito." >&2
+    echo "" >&2
+    echo "'git push --no-verify' e' a UNICA coisa que desliga esta garantia." >&2
+    echo "Use-o sabendo que voce esta DESLIGANDO o portao, nao pulando um teste lento." >&2
+    exit 1
+}
+
+if ! command -v go >/dev/null 2>&1; then
+    falha_fechada "o binario 'go' nao esta no PATH — nao consegui verificar o intervalo sendo empurrado."
+fi
+
+# Resolve a raiz do repo para rodar 'go test' a partir dela, independente de
+# onde o hook foi invocado.
+repo_root=$(git rev-parse --show-toplevel) || falha_fechada "nao consegui localizar a raiz do repositorio."
+
+# Le do stdin do proprio hook: uma linha por ref sendo empurrada, no formato
+# "<ref-local> <sha-local> <ref-remota> <sha-remota>" (protocolo do git).
+while read -r local_ref local_sha remote_ref remote_sha; do
+    [ -z "${local_ref:-}" ] && continue
+
+    # Apagando uma ref remota (push --delete): nada esta sendo introduzido.
+    if [ "$local_sha" = "$zero" ]; then
+        continue
+    fi
+
+    # Primeiro push de uma ref nova (sha remoto = zeros): nao ha base segura
+    # para calcular o intervalo introduzido — nao adivinha um merge-base,
+    # bloqueia (T-199, caso explicito no Verify da tarefa).
+    if [ "$remote_sha" = "$zero" ]; then
+        falha_fechada "primeiro push de '$local_ref' (sha remoto = zeros) — nao ha base segura para calcular o intervalo introduzido por esta ref. Nao consegui verificar."
+    fi
+
+    export ZAPGW_PREPUSH_OLD_SHA="$remote_sha"
+    export ZAPGW_PREPUSH_NEW_SHA="$local_sha"
+
+    # stdin < /dev/null: 'go test' nao deveria ler stdin, mas herdar o mesmo
+    # stdin que o 'read' acima esta consumindo linha a linha e' o jeito
+    # classico de um comando dentro do loop roubar as linhas seguintes.
+    if ! (cd "$repo_root" && go test ./internal/config/ -run TestPrePushGate -v < /dev/null); then
+        falha_fechada "o intervalo $remote_sha..$local_sha (ref '$local_ref') introduz dado pessoal fora de algum portao — veja a saida do teste acima para o commit e o arquivo."
+    fi
+done
+
+exit 0
