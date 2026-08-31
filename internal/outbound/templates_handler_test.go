@@ -1356,24 +1356,59 @@ func TestRereadWaitCapIs17Seconds(t *testing.T) {
 // waitWithContext is the REAL function behind waitReread (the tests
 // above swap it for fakeWaits, which never sleeps). Here the target
 // is the PRIMITIVE itself: it has to respect the request's context, never
-// sleep blindly with time.Sleep. Small durations (tens of ms) on purpose —
-// this test really DOES sleep, but for a short enough time to not weigh down
-// the suite.
+// sleep blindly with time.Sleep.
+//
+// T-215: this test USED TO race a cancellation fired mid-wait (at 15ms)
+// against an elapsed-time assertion (<150ms, out of a 300ms target) — a
+// window that left only 135ms of headroom on a shared runner, tighter than
+// the T-211 flake's 200ms margin that broke under load by ~44ms.
+//
+// The replacement proves the MECHANISM (waitWithContext's select picks
+// ctx.Done() over the timer) by EFFECT instead of by clock: the context is
+// cancelled BEFORE waitWithContext is ever called, and d is a full 5
+// seconds. That turns the select inside waitWithContext into a
+// deterministic choice, not a race to time — ctx.Done() is already closed
+// the instant the select runs, so it is the only READY case; the 5-second
+// timer cannot have fired yet no matter how loaded the runner is. There is
+// exactly one branch that CAN win.
+//
+// The `case <-time.After(...)` below is NOT the assertion — it is a hang
+// detector for a genuinely broken implementation (one that ignores
+// ctx.Done() and sleeps out the timer). A correct implementation closes
+// `done` after nothing more than a channel receive and a channel close —
+// work on the order of microseconds — so 500ms of headroom against a
+// 5-second timer is a ~10x ratio with no real work in between, not a close
+// race like the one that flaked before.
 func TestWaitWithContextStopsEarlyIfTheContextIsCancelled(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Millisecond)
-	defer cancel()
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel() // cancelled BEFORE waitWithContext is ever called — no race to set up.
 
-	start := time.Now()
-	waitWithContext(ctx, 300*time.Millisecond)
-	elapsed := time.Since(start)
+	done := make(chan struct{})
+	go func() {
+		waitWithContext(ctx, 5*time.Second)
+		close(done)
+	}()
 
-	if elapsed >= 150*time.Millisecond {
-		t.Fatalf("esperou %v com o context cancelado aos 15ms — nao esta parando por causa do ctx.Done(); "+
-			"se o consumidor desistir da requisicao, o gateway NAO pode continuar dormindo ate o fim da pausa",
-			elapsed)
+	select {
+	case <-done:
+		// waitWithContext returned via ctx.Done() — the mechanism this test
+		// exists to prove.
+	case <-time.After(500 * time.Millisecond):
+		// The ONLY way to land here is if waitWithContext ignored the
+		// already-cancelled context and is asleep on the 5-second timer
+		// instead — the wrong branch of the select.
+		t.Fatal("waitWithContext nao retornou com o contexto JA cancelado antes da chamada " +
+			"e d=5s — parece estar dormindo pelo timer em vez de reagir a ctx.Done()")
 	}
 }
 
+// This one still measures wall-clock time (a lower bound only: `elapsed <
+// 20ms` fails, never `elapsed > X`) — reviewed for T-215 and left alone.
+// There is no cancellation and no race here: `context.Background()` never
+// fires, so the only way waitWithContext can return is the 20ms timer, and
+// a scheduler can only ever delay that further, never shorten it. A lower
+// bound on a monotonic clock cannot be flaky under load the way an upper
+// bound can.
 func TestWaitWithContextWaitsTheRequestedTimeWithoutCancellation(t *testing.T) {
 	start := time.Now()
 	waitWithContext(context.Background(), 20*time.Millisecond)

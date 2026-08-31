@@ -17,6 +17,23 @@ Uma linha por versao entregue, no mesmo commit do bump. A entrada diz o **efeito
   `TestStateRouteDoesNotHangWithTheExternalProbeStuck`
   (`internal/outbound/sonda_externa_test.go:368`, margem de 500ms). _Completed 2026-08-31 14:50._
 
+- **T-215 — The two sibling flakes** — os dois irmaos que a T-211 apontou e nao consertou agora
+  provam o MECANISMO, nao o relogio. `TestWaitWithContextStopsEarlyIfTheContextIsCancelled`
+  (`internal/outbound/templates_handler_test.go`) cancela o contexto ANTES de chamar
+  `waitWithContext` e passa `d=5s`: o `select` interno so tem UM caminho pronto (`ctx.Done()` ja
+  fechado; o timer de 5s nao pode ter disparado), entao a escolha e' deterministica pela semantica
+  do Go, nao uma corrida — o `time.After(500ms)` do teste e' um detector de trava, nao a asserção.
+  `TestStateRouteDoesNotHangWithTheExternalProbeStuck`
+  (`internal/outbound/sonda_externa_test.go`) trocou o teto `elapsed > 500ms` por uma contagem
+  atomica de conexoes aceitas pelo listener travado: como `ExternalProbe.Read` so le uma struct em
+  memoria (sem I/O algum), o contador tem de ficar em zero, e essa conferencia nao depende da
+  velocidade do runner. Verde 20/20 nos dois, `go test -count=1 ./...` limpo. Sobram tres
+  asserções de tempo de parede no pacote, revisadas e seguras porque nenhuma e teto apertado: um
+  limite so inferior (`TestWaitWithContextWaitsTheRequestedTimeWithoutCancellation`, um scheduler
+  so' pode atrasar, nunca encurtar), uma janela simetrica de 1 minuto
+  (`saude_handler_test.go:148`), e a janela de VALOR (nao duracao) que a propria T-211 deixou em
+  `handler_test.go`. _Completed 2026-08-31 14:57._
+
 ## v0.63.0 — 2026-08-31
 
 - **O contrato passa a falar ingles — leitor tolerante do lado deles, apelido so na ENTRADA** (T-189)

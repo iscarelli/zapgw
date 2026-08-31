@@ -121,37 +121,6 @@ fizeram no `processado_em` hoje de manha.
 ## Active
 
 > A fila do periodo privado esta em `iscarelli/zapgw-dev`, congelada. Tarefa nova nasce aqui.
-## [ ] T-215  The two sibling flakes — a flake fixed alone comes back through its brother
-Why:    A T-211 consertou um teste que corria contra o relogio e, como a doutrina manda, **procurou os
-        irmaos**. Achou **sete** lugares que medem tempo de parede e **dois com o mesmo risco**:
-        - `internal/outbound/templates_handler_test.go:1362`
-          (`TestWaitWithContextStopsEarlyIfTheContextIsCancelled`) — reprova se `elapsed >= 150ms`,
-          com cancelamento em 15ms e alvo de 300ms. **Margem: 135ms.** O flake da T-211 tinha margem
-          de 200ms e quebrou por ~44ms de folga sob carga; este e' mais apertado.
-        - `internal/outbound/sonda_externa_test.go:368`
-          (`TestStateRouteDoesNotHangWithTheExternalProbeStuck`) — reprova se `elapsed > 500ms`.
-          Margem maior, mas continua sendo teto absoluto de relogio num runner compartilhado.
-        Os outros cinco foram revisados e nao correm o risco (limite so' inferior, janela de 1
-        minuto, ou `t.Logf` sem assercao) — **isso esta medido, nao suposto.**
-Files:  internal/outbound/templates_handler_test.go, internal/outbound/sonda_externa_test.go
-
-Do:
-  - **Prove o MECANISMO, nao a duracao**, como a T-211 fez: ela trocou a medida de tempo por um
-    `http.RoundTripper` falso que captura o `Deadline()` do contexto — sem rede, sem `Sleep`, exato
-    independente da velocidade da maquina.
-  - Para o primeiro: o que ele quer provar e' que o cancelamento do contexto **interrompe a espera**.
-    Isso da' para provar pelo **efeito** (a funcao retornou por cancelamento, e nao por tempo
-    esgotado), sem cronometrar.
-  - Para o segundo: o que ele quer provar e' que a rota **nao faz I/O sincrono** com a sonda travada.
-    Isso e' uma afirmacao sobre o CAMINHO, nao sobre milissegundos.
-  - 🔴 **Nao conserte afrouxando o numero.** Aumentar a folga faz o teste parar de reprovar e tambem
-    parar de provar — foi a armadilha nomeada na T-211.
-
-Verify:
-  - `go test -count=20` em cada um dos dois, verde nas 20.
-  - `go test -count=1 ./...`, `CGO_ENABLED=0 go build ./...`, `go vet ./...`, `gofmt -l cmd internal`.
-  - **Diga se sobrou algum teste medindo tempo de parede com asserção**, e por que ele e' seguro.
-
 ## [ ] T-212  CAMADA 1: file names and identifiers stop speaking Portuguese
 Why:    **Decisao do dono, 2026-08-31: limpar o sistema de tudo em PT-BR.** Esta e' a camada que **nao
         toca contrato nenhum** e que o compilador confere: **69 arquivos `.go`** com nome em portugues

@@ -16,6 +16,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -51,24 +52,33 @@ func deadExternalAddress(t *testing.T) string {
 // prove that SOMEONE is making a real network call: a destination that
 // fails right away (deadExternalAddress) comes back too fast to
 // distinguish "didn't try" from "tried and failed fast".
-func hangingAddress(t *testing.T) string {
+//
+// It also returns `accepted`, a counter incremented the instant the
+// listener accepts a connection. T-215's
+// TestStateRouteDoesNotHangWithTheExternalProbeStuck reads it instead of
+// racing a wall-clock deadline: if the route ever dials this address, the
+// counter moves off zero — deterministically, with no dependence on how
+// fast or slow the runner is.
+func hangingAddress(t *testing.T) (string, *int64) {
 	t.Helper()
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatalf("net.Listen: %v", err)
 	}
 	t.Cleanup(func() { _ = ln.Close() })
+	var accepted int64
 	go func() {
 		for {
 			conn, err := ln.Accept()
 			if err != nil {
 				return
 			}
+			atomic.AddInt64(&accepted, 1)
 			// Accepts and NEVER writes nor closes — on purpose.
 			_ = conn
 		}
 	}()
-	return "http://" + ln.Addr().String() + "/status"
+	return "http://" + ln.Addr().String() + "/status", &accepted
 }
 
 // --- (a) URL comes from the environment, with the space trimmed -----------
@@ -361,27 +371,38 @@ func TestStateRoutePublishesTheObservedExternalReach(t *testing.T) {
 
 // 🔴 THE CENTRAL VERIFY OF T-121: the handler CANNOT DO NETWORK I/O. With
 // the external probe HANGING (accepts the connection and never responds),
-// GET /v1/estado has to respond within the normal deadline — proving the
-// request reads ONLY the cache. If the handler called the probe at request
-// time, the response would take at least externalProbeDeadline (5s), because
-// the hanging server never closes the connection nor responds.
+// GET /v1/estado has to respond WITHOUT ever dialing it — proving the
+// request reads ONLY the cache.
+//
+// T-215: this test USED TO assert `elapsed > 500ms`, a hard wall-clock
+// ceiling on a shared runner — generous, but still a race against the
+// clock instead of a proof about the code path. The claim underneath it
+// was never about milliseconds: it's that ExternalProbe.Read
+// (sonda_externa.go) only reads an in-memory, mutex-protected struct — no
+// network call, sync or async. So the mechanism to observe is not "how
+// long did it take" but "did anyone ever dial the hanging listener at
+// all". `hangingAddress` now hands back a counter of accepted connections;
+// a handler that DID contact the probe synchronously would have to
+// complete that dial (or die trying) before askState could return, so by
+// the time askState is back, the dial would already have happened if it
+// were ever going to. Checking the counter is zero is deterministic — it
+// does not depend on runner speed at all.
 func TestStateRouteDoesNotHangWithTheExternalProbeStuck(t *testing.T) {
-	externalProbe := NewExternalProbe(hangingAddress(t))
+	addr, accepted := hangingAddress(t)
+	externalProbe := NewExternalProbe(addr)
 	// No Measure, no Start: not EVEN one tick happened. If the handler had
 	// any path that talked to the probe at request time, this call would
 	// hang.
 	h, _ := stateRouteWithReach(t, externalProbe)
 
-	start := time.Now()
 	rec := askState(t, h, "token-do-a", "lojinha")
-	elapsed := time.Since(start)
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, quero 200; corpo = %s", rec.Code, rec.Body.String())
 	}
-	if elapsed > 500*time.Millisecond {
-		t.Fatalf("GET /v1/estado levou %v com a sonda externa PENDURADA — o handler esta fazendo "+
-			"I/O de rede na hora do request (proibido pela T-121)", elapsed)
+	if got := atomic.LoadInt64(accepted); got != 0 {
+		t.Fatalf("a sonda externa travada recebeu %d conexao(oes) — o handler fez I/O de rede na "+
+			"hora do request (proibido pela T-121)", got)
 	}
 	e := readExternalReach(t, rec)
 	if e.State != ReachStateCouldNotVerify {
