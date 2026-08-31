@@ -4,6 +4,31 @@ Uma linha por versao entregue, no mesmo commit do bump. A entrada diz o **efeito
 
 ## v0.63.0 — 2026-08-31
 
+- **T-210 — The output sweep is BLIND to the webhook event — fix it before v0.63.0 ships** — root
+  cause found: `TestOutputContractHasNoPortugueseKeyOrValue` checks `forbiddenOutputTokens` with a
+  flat substring search over the whole marshaled blob, which has no notion of WHERE a key sits; to
+  avoid a false positive on `AccountAlert.Type` (legitimately tagged `tipo,omitempty`, left alone
+  by T-209 on purpose), the word `"tipo"` was excluded from the list ENTIRELY — which also waived
+  `Event.Type`'s own top-level key, the field the table actually renamed (`kind`, row 81). Fix:
+  `walkForbiddenKeys` parses each instance's JSON and walks it with a full parent path, so `"tipo"`
+  is now checked structurally against `forbiddenKeyExceptions` (a single path-scoped waiver at
+  `account_alert.tipo`) instead of being banned everywhere or nowhere.
+  **Verify — four mutations, each reproved and reverted:** (a) `internal/meta/types.go:413`
+  `Event.Type` `json:"kind"` -> `json:"tipo"` (the exact positive control that found the bug) now
+  fails with `a chave "tipo" aparece em tipo — regressao do Event.Type…`, once per event type
+  (6 failures); (b) `NumberQuality.State` (nested inside `Event.number_quality`) `state` ->
+  `estado` fails with the pre-existing flat check; (c) `EventTypeStatus` value `"status"` ->
+  `"estado"` fails the same way; (d) `healthResponse.DisplayNumber` (an HTTP response key, no
+  event involved) `display_number` -> `numero_exibido` still fails, proving the fix didn't regress
+  response-body coverage. `go test -count=1 ./...` green with the tree fully restored.
+  Not a new finding, but independently reconfirmed by probing the marshaled output: the Portuguese
+  leftovers T-209's own changelog entry (above) already flagged and left untouched on purpose
+  (`AccountAlert.tipo/severidade/id_da_entidade/descricao`, `Billing.cobravel`,
+  `status_do_recurso`, `saude_handler.go`'s `verificado_em`, …) really do appear in the marshaled
+  JSON, exactly as that entry says — they remain OUT of scope for this task (instrument, not
+  contract) and are the planner's call, not re-litigated here.
+  _Completed 2026-08-31 14:09._
+
 🔴 **THE CONTRACT'S OUTPUT CHANGES: `zapgw` now speaks English on every SAIDA-EVENTO key/value it
 delivers to a consumer's `callback_url`, and on every SAIDA-RESPOSTA key/value it returns from an
 HTTP route.** Input keeps accepting BOTH languages, unchanged since T-203/T-207/T-208 — this is

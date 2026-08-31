@@ -103,44 +103,6 @@ telefone real e `wamid` de producao, e este repositorio e' publico.
 
 > A fila do periodo privado esta em `iscarelli/zapgw-dev`, congelada. Tarefa nova nasce aqui.
 
-## [ ] T-210  The output sweep is BLIND to the webhook event — fix it before v0.63.0 ships
-Why:    🔴 **Medido pelo planner em 2026-08-31, com controle positivo:** troquei
-        `internal/meta/types.go:413` de `json:"kind"` para `json:"tipo"` — a chave **mais importante
-        do contrato de webhook**, o `Event.Type` — e:
-        - `TestEventTypeKeyIsKindNotTipoAtTheTopLevel` **reprovou** (o contrato esta protegido AQUI);
-        - `TestOutputContractHasNoPortugueseKeyOrValue` — a varredura, que a T-209 apresentou como
-          *"a prova, nao uma amostra"* — **PASSOU**.
-        **A varredura nao cobre o evento**, que e' metade do contrato de saida. Ela cobre o que
-        cobre, e a conclusao tirada dela foi maior que a medicao — a mesma familia do `media_id` e do
-        ponto cego do contador, terceira vez em 24 h.
-⚠️      **A `v0.63.0` NAO foi implantada por causa disto.** O commit existe, a virada esta feita, e o
-        que falta e' a prova ser real antes de o contrato mudar em producao.
-        *E um detalhe do metodo que quase me enganou: a primeira rodada do meu controle veio
-        `(cached)` e eu quase li "sem falha" como "portao integro". `go test -count=1` foi o que
-        separou "nao verifiquei" de "esta limpo".*
-Files:  internal/outbound/contrato_ingles_test.go
-
-Do:
-  1. **Descubra POR QUE a varredura nao ve o `meta.Event`** e diga a causa no relatorio — nao conserte
-     por tentativa. Hipoteses a conferir, sem se limitar a elas: ela enumera so' tipos do pacote
-     `outbound` e o evento vem de `internal/meta`; ou ela monta a "instancia maximal" por reflexao e
-     o campo fica zerado, saindo do JSON por `omitempty`; ou a lista de agulhas nao contem o termo.
-  2. **Faca a varredura cobrir o evento inteiro**, incluindo os objetos aninhados dentro dele.
-  3. 🔴 **Prove a cobertura por MUTACAO, uma por uma, e cole cada saida:** quebre e restaure
-     **(a)** `internal/meta/types.go:413` `Event.Type`; **(b)** uma chave de um objeto ANINHADO no
-     evento; **(c)** um VALOR de vocabulario de saida do evento; **(d)** uma chave de resposta HTTP,
-     que ja funcionava. **As quatro tem de reprovar.** Se alguma nao reprovar, a varredura ainda e'
-     amostra — relate em vez de declarar pronto.
-  4. **Use `-count=1` em todo controle.** Resultado `(cached)` nao e' resultado.
-  5. **Nao mexa no que a T-209 virou.** Esta tarefa conserta o INSTRUMENTO, nao o contrato. Se voce
-     achar que a T-209 esqueceu alguma chave, **relate** — nao vire por conta propria.
-
-Verify:
-  - As quatro mutacoes do item 3, cada uma com a saida da reprovacao colada.
-  - `go test -count=1 ./...` verde com a arvore restaurada, mais `CGO_ENABLED=0 go build ./...`,
-    `go vet ./...`, `gofmt -l cmd internal`.
-  - `git status --short` limpo — nenhuma mutacao de controle sobrando.
-
 ## [ ] T-189  O contrato passa a falar ingles — leitor tolerante do lado deles, apelido so' na ENTRADA
 Why:    **decisao do dono, 2026-08-30:** *"o projeto precisa ser em ingles, ter feito em portugues foi
         errado. Se a chave chama nome, tem que passar a se chamar name."*

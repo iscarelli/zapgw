@@ -139,19 +139,40 @@ var forbiddenOutputTokens = []string{
 	"voz",
 }
 
-// "tipo" is DELIBERATELY not in the list above, and that omission is itself
-// part of the gate, not a gap in it. `Event.Type` was `tipo` and this task
-// renamed it to `kind` (row 81 of the migration table) — but `AccountAlert`
-// (a field NESTED inside an account-alert Event) has its OWN `Type` field,
-// tagged `tipo,omitempty`, that the table does NOT cover and this task left
-// untouched on purpose (docs/MIGRACAO-CONTRATO-EN.md never lists it; see the
-// T-209 report for the full list of look-alike fields left alone for the
-// same reason). A blanket `"tipo"` check cannot tell the two apart — it
-// would fail on every run, on a field the table says to leave in Portuguese.
-// `Event.Type`'s rename is proven precisely instead, by
-// internal/meta/parse_test.go (TestParseWebhookDoesNotRegressTheCurrent16Fields,
-// TestParseWebhookTheFourAccountEventsDoNotMix), which check the TOP-LEVEL
-// `"kind"` key exactly, never the nested one.
+// "tipo" is NOT in the list above, on purpose — but unlike before T-210,
+// that is no longer because the general sweep can't see it: it's because
+// "tipo" gets its OWN path-scoped check (forbiddenKeyExceptions, below),
+// which is strictly stronger than a flat word ban.
+//
+// The reason a plain entry in forbiddenOutputTokens can't do this job:
+// `Event.Type` was `tipo` and T-209 renamed it to `kind` (row 81 of the
+// migration table) — but `AccountAlert` (a field NESTED inside an
+// account-alert Event) has its OWN `Type` field, tagged `tipo,omitempty`,
+// that the table does NOT cover and T-209 left untouched on purpose
+// (docs/MIGRACAO-CONTRATO-EN.md never lists it). forbiddenOutputTokens is
+// checked with a flat substring search over the WHOLE marshaled blob, with
+// no notion of WHERE a key sits — so a plain `"tipo"` entry there cannot
+// tell "Event's own top-level key regressed" apart from "AccountAlert's
+// legitimate nested field", and T-210 measured what that forces: either the
+// word is excluded entirely (T-209's choice — the exclusion silently also
+// waives the top-level key, which is the bug T-210 exists to fix) or it is
+// included and fails on every single run, on a field the table says to
+// leave alone.
+//
+// walkForbiddenKeys (below) fixes this by walking each instance's PARSED
+// structure instead of its flat text, so it always knows the exact parent
+// path of every key it visits. That lets the exception be as narrow as the
+// real one: "tipo" is allowed ONLY at path account_alert.tipo — anywhere
+// else, including Event's own top-level key, it fails. Proven by mutation
+// in the T-210 report: reverting internal/meta/types.go:413 from
+// `json:"kind"` back to `json:"tipo"` now fails
+// TestOutputContractHasNoPortugueseKeyOrValue directly, not just the
+// narrower regression test below.
+//
+// TestEventTypeKeyIsKindNotTipoAtTheTopLevel stays as a second, independent
+// check of the same fact — cheap, and it fails with a much more specific
+// message ("the event still has a top-level tipo key") than the general
+// sweep's generic one.
 func TestEventTypeKeyIsKindNotTipoAtTheTopLevel(t *testing.T) {
 	var ev meta.Event
 	ev.Type = meta.EventTypeMessage
@@ -232,13 +253,86 @@ func fillSample(v reflect.Value) {
 	}
 }
 
+// keyException is a single, EXACT, path-scoped waiver for a key that would
+// otherwise be forbidden — see walkForbiddenKeys.
+type keyException struct {
+	path []string // parent object keys, root to the key's immediate parent
+	key  string
+}
+
+// forbiddenKeyExceptions is deliberately short: every entry here is a key
+// T-209 left in Portuguese ON PURPOSE, at an EXACT nesting path, because
+// something ELSE at a different path (or a different key entirely) already
+// carries the English name the table renamed. Adding an entry here waives
+// that one path only — it does not waive the key name everywhere, which is
+// the mistake that made the general sweep blind to Event.Type (T-210).
+var forbiddenKeyExceptions = []keyException{
+	// AccountAlert.Type (internal/meta/types.go, tagged `tipo,omitempty`)
+	// is a DIFFERENT field from Event.Type (tagged `kind`, row 81 of the
+	// migration table) — docs/MIGRACAO-CONTRATO-EN.md never lists it, and
+	// T-209 left it untouched. Scoped to this exact path so a "tipo" key
+	// appearing anywhere ELSE — in particular Event's own top-level key —
+	// is still forbidden.
+	{path: []string{"account_alert"}, key: "tipo"},
+}
+
+// walkForbiddenKeys parses one instance's marshaled JSON and visits every
+// object key with its full parent path, failing on "tipo" unless the exact
+// path+key pair is listed in forbiddenKeyExceptions. This is what makes the
+// sweep able to tell "Event's own top-level key regressed to tipo" apart
+// from "AccountAlert's legitimate nested tipo field" — a flat substring
+// search over the whole blob (forbiddenOutputTokens, below) cannot make
+// that distinction, so "tipo" is checked here instead of there.
+//
+// Only "tipo" is checked this way today because it's the only forbidden
+// word with a real, deliberate exception; every other word in
+// forbiddenOutputTokens has none, so a flat search is exact for them and
+// doesn't need path-awareness.
+func walkForbiddenKeys(t *testing.T, label string, v any, path []string) {
+	switch val := v.(type) {
+	case map[string]any:
+		for k, child := range val {
+			if k == "tipo" {
+				exempt := false
+				for _, ex := range forbiddenKeyExceptions {
+					if ex.key == k && len(ex.path) == len(path) {
+						same := true
+						for i := range ex.path {
+							if ex.path[i] != path[i] {
+								same = false
+								break
+							}
+						}
+						if same {
+							exempt = true
+							break
+						}
+					}
+				}
+				if !exempt {
+					t.Errorf("%s: a chave \"tipo\" aparece em %s — regressao do Event.Type (deveria ser \"kind\") ou de outro campo que a T-209 deveria ter renomeado",
+						label, strings.Join(append(append([]string{}, path...), k), "."))
+				}
+			}
+			walkForbiddenKeys(t, label, child, append(append([]string{}, path...), k))
+		}
+	case []any:
+		for _, item := range val {
+			walkForbiddenKeys(t, label, item, path)
+		}
+	}
+}
+
 // TestOutputContractHasNoPortugueseKeyOrValue is the T-209 GATE, and it's a
 // SWEEP, never a sample: it serializes one MAXIMAL instance of every
 // SAIDA-EVENTO event type and every SAIDA-RESPOSTA body this gateway writes
 // to the wire, then fails if any of the 119 Portuguese-side words the
 // migration table (docs/MIGRACAO-CONTRATO-EN.md) renamed away from still
 // shows up — as a KEY or as a VALUE, since both are checked by the same
-// quoted-token search.
+// quoted-token search — PLUS a path-scoped structural check for "tipo"
+// (walkForbiddenKeys), the one word a flat search can't safely include
+// (see the comment on TestEventTypeKeyIsKindNotTipoAtTheTopLevel and the
+// T-210 report for why).
 //
 // "I renamed them all" is an impression; this is the number that replaces it.
 func TestOutputContractHasNoPortugueseKeyOrValue(t *testing.T) {
@@ -251,6 +345,12 @@ func TestOutputContractHasNoPortugueseKeyOrValue(t *testing.T) {
 		}
 		out.Write(b)
 		out.WriteByte('\n')
+
+		var parsed any
+		if err := json.Unmarshal(b, &parsed); err != nil {
+			t.Fatalf("%s: Unmarshal (structural check): %v", label, err)
+		}
+		walkForbiddenKeys(t, label, parsed, nil)
 	}
 
 	// SAIDA-EVENTO: one filled Event per EventType, so every type-specific
