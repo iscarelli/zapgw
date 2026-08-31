@@ -121,6 +121,35 @@ fizeram no `processado_em` hoje de manha.
 ## Active
 
 > A fila do periodo privado esta em `iscarelli/zapgw-dev`, congelada. Tarefa nova nasce aqui.
+## [ ] T-216  The obsolete-name warning never reaches the operator — surface it on a SUCCESSFUL deploy
+Why:    A T-214 fez o gateway avisar, no arranque, quando uma variavel de ambiente com nome velho foi
+        usada — porque o arranque e' o unico lugar onde o operador olha, e sem esse aviso o
+        `/etc/zapgw/env` de producao nunca migra e o contador nunca chega a zero.
+🔴      **Medido depois de implantar a `v0.64.0`: o aviso nao chega nele.** O `implanta/deploy.sh`
+        so' mostra o journal **quando o `/v1/health` FALHA** (`deploy.sh:384-385`). Num deploy
+        bem-sucedido — o caso normal, e o unico em que o operador nao vai cavar — nada aparece.
+        **O aviso existe, esta correto, e e' invisivel.** *E' a mesma familia do monitor cego: um
+        mecanismo que responde certo para ninguem.* E a consequencia e' concreta: a migracao do
+        `/etc/zapgw/env` depende de alguem descobrir sozinho que precisa acontecer.
+Files:  implanta/deploy.sh
+
+Do:
+  - **No caminho de SUCESSO**, depois do `VERSAO CONFERE`, leia o journal do arranque e **mostre as
+    linhas de aviso de nome obsoleto**, se houver.
+  - 🔴 **Nao despeje o journal inteiro.** Filtre pelas linhas do aviso. Despejo vira ruido, e ruido
+    treina a ignorar a saida do deploy — que e' onde mora a prova da versao.
+  - **Se nao houver nenhuma, diga isso em uma linha** (`nenhuma variavel com nome obsoleto em uso`).
+    🔴 *Silencio nao pode ser indistinguivel de "nao consegui olhar"* — se a leitura do journal
+    falhar, diga que falhou, nao que estava limpo.
+  - **Nao mude o comportamento do caminho de FALHA**, que ja mostra o journal inteiro de proposito.
+
+Verify:
+  - Um deploy de verdade, com o `/etc/zapgw/env` como esta hoje: cole a linha que o deploy passou a
+    imprimir — seja a lista de avisos, seja o "nenhuma".
+  - **Prove os dois lados:** force uma leitura de journal que falha (comando inexistente, por
+    exemplo) e confirme que a saida diz **que nao conseguiu ler**, e nao "nenhuma".
+  - `bash -n implanta/deploy.sh` sem erro.
+
 
 (vazia)
 
