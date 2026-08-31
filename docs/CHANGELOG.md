@@ -4,6 +4,16 @@ Uma linha por versao entregue, no mesmo commit do bump. A entrada diz o **efeito
 
 ## Nao lancado
 
+- **Inventory every contract key the consumer reads, with its direction and file:line** (T-198) —
+  `docs/INVENTARIO-CHAVES.md` criado: 47 pontos de emissao medidos para as 29 chaves pedidas (18
+  chaves repetem por aparecerem em mais de uma direcao/rota), zero ausentes do codigo, zero ja em
+  ingles entre as 29. A varredura inversa (item 4) achou 20+ chaves de SAIDA ja em ingles
+  (`media_id`, `wa_id`, `id`, `status`, `ok`, os campos de `meta.Profile`/`ProfilePatch` etc.),
+  incluindo a localizacao exata e corrigida do exemplo do `Why` — a resposta de `POST /v1/media`
+  emite `media_id` em `internal/outbound/media_handler.go:260` (nao em `mensagem.go:179,626`, que
+  sao usos de ENTRADA do mesmo nome). Nao decide nome nenhum, nao edita tabela de contrato. Verify:
+  `go test ./...`, `go vet ./...`, `CGO_ENABLED=0 go build ./...`, `gofmt -l cmd internal` limpos;
+  amostra de 7 `arquivo:linha` conferida com `sed -n`. _Completed 2026-08-31 06:02._
 - **Settle whether the instance-type gate exists, and make the row say what is true** (T-197) — o
   mecanismo EXISTE: `internal/outbound/tipos.go` (`AcceptedTypes`, T-111), parametro posicional
   obrigatorio no ultimo lugar de todo construtor `outbound.New*Handler`. Provado removendo
