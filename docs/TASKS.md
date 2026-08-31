@@ -20,12 +20,13 @@ num commit so.** Medido, nao afirmado:
   estrelas (eram zero). Nada funcional apontava para o GitHub — varri `implanta/` e `.github/`: so' um
   `Documentation=` na unit do systemd, e a URL nao mudou.
 
-🔴 **A CI nasce VERMELHA ate a T-195.** O `go test ./...` do workflow roda o portao de nome, e la nao
-existe nem a variavel nem o arquivo de agulhas — entao ele falha dizendo que **nao conseguiu
-verificar**, que e' o comportamento certo e nao um defeito. A T-195 entrega o segredo ao workflow.
+✅ **FEITO (T-195): a CI recebe o segredo `ZAPGW_FORBIDDEN_NAMES` como `env:` de JOB e ganhou passo
+proprio do portao de nome** (`.github/workflows/verify.yml`), espelhando o portao de telefone. A CI
+deixa de nascer vermelha.
 ⚠️ **Decisao que eu tomei e que voce pode querer rever:** num PR vindo de **fork**, o GitHub nao
 entrega segredo, entao o portao vai reprovar por "nao consegui verificar" — e eu escolhi manter
 assim, falhando fechado, em vez de virar skip. Skip seria a cegueira que o portao existe para nao ter.
+Documentado em comentario no proprio workflow.
 
 ⏳ **ESPERANDO O CONSUMIDOR: a medicao de DEPOIS da migracao.**
 🔴 **Ela foi pedida as 23:52 NO ARQUIVO ERRADO** — a seção foi escrita em
@@ -68,43 +69,6 @@ Ninguem poda. Vale virar tarefa antes de virar problema de disco.
 ## Active
 
 > A fila do periodo privado esta em `iscarelli/zapgw-dev`, congelada. Tarefa nova nasce aqui.
-
-## [ ] T-195  CI carries the name gate, and says so when it cannot verify
-Why:    O portao de nome (T-193) le as agulhas de `ZAPGW_FORBIDDEN_NAMES` ou de
-        `~/.zapgw/forbidden-names.txt`. **Na CI nao existe nenhum dos dois hoje**, entao o
-        `go test ./...` do workflow vai falhar com "NAO CONSEGUI VERIFICAR". O segredo
-        `ZAPGW_FORBIDDEN_NAMES` **ja foi criado** no repositorio; falta o workflow entrega-lo.
-        Sem isto a CI nasce vermelha no repositorio recriado.
-Files:  .github/workflows/verify.yml
-        CLAUDE.md  (a linha da CI na tabela de regras duras)
-
-Do:
-  1. **Entregar o segredo ao teste** com `env:` no nivel do JOB (nao so' de um passo), para que tanto
-     o `go test ./...` quanto o passo proprio do portao enxerguem:
-     `ZAPGW_FORBIDDEN_NAMES: ${{ secrets.ZAPGW_FORBIDDEN_NAMES }}`
-  2. **Passo proprio para o portao de nome**, espelhando o que ja existe para o portao de telefone
-     (`-run TestNoCustomerNameOutsideTheGateInTheRepo -v`), pelo mesmo motivo escrito no comentario
-     daquele passo. **Nenhum passo canaliza saida para `grep`.**
-  3. 🔴 **Escreva no proprio workflow, em comentario, a consequencia que eu decidi e que o dono
-     precisa poder rever:** num PR vindo de **fork**, o GitHub nao entrega segredo, entao o portao vai
-     falhar dizendo que **nao conseguiu verificar**. Isso e **correto e proposital** — a CI realmente
-     nao consegue verificar ali, e falhar fechado e' a regra desta casa. O comentario tem de dizer
-     isso, senao o proximo a ver vermelho vai "consertar" transformando em skip, que e' exatamente a
-     cegueira que o portao existe para nao ter.
-  4. **CLAUDE.md:** a linha da CI na tabela de regras duras diz que ela "does not exist anywhere
-     today, and comes back on 2026-09-01" — **isso ja e falso**, o workflow existe. Corrija a linha
-     para o estado real, incluindo que ela carrega os dois portoes em passos proprios.
-     Nao toque em `docs/CHANGELOG.md` alem da entrada de aposentadoria.
-
-Verify:
-  - `yq` ou leitura direta: confirme que o `env:` esta no nivel do job e que o passo novo existe.
-  - **Rode localmente o que a CI vai rodar, com a agulha vindo SO' da variavel** (renomeie
-    `~/.zapgw/forbidden-names.txt` temporariamente, exporte `ZAPGW_FORBIDDEN_NAMES` com o conteudo
-    dele, rode o portao) e confirme **verde**. Devolva o arquivo ao lugar depois e confirme que ele
-    voltou (contagem de linhas).
-  - **Controle:** com o arquivo escondido **e** a variavel ausente, o portao tem de **falhar dizendo
-    que nao conseguiu verificar** — cole a mensagem.
-  - `CGO_ENABLED=0 go build ./...`, `go test ./...`, `go vet ./...`, `gofmt -l cmd internal` limpos.
 
 ## [ ] T-194  The deploy prunes its own pre-update snapshots
 Why:    **Decisao do dono, 2026-08-31:** manter os 3 ultimos e podar no proprio `deploy.sh`. Hoje um

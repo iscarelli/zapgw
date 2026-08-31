@@ -15,6 +15,19 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    # No nivel do JOB, nao de um passo so': tanto o `go test ./...` (que roda o
+    # pacote inteiro, portao de nome incluso) quanto o passo proprio do portao
+    # abaixo precisam enxergar a mesma variavel (T-195).
+    #
+    # 🔴 Decisao do dono a rever se um dia incomodar: em PR vindo de FORK, o
+    # GitHub NAO entrega secrets ao workflow — entao aqui a variavel chega
+    # vazia, o portao de nome nao acha nenhuma agulha carregavel e FALHA
+    # dizendo "NAO CONSEGUI VERIFICAR". Isso e' correto e proposital: a CI
+    # realmente nao consegue verificar naquele contexto, e falhar fechado e' a
+    # regra desta casa (ver CLAUDE.md). NAO troque por skip — skip e' exatamente
+    # a cegueira que este portao existe para nao ter.
+    env:
+      ZAPGW_FORBIDDEN_NAMES: ${{ secrets.ZAPGW_FORBIDDEN_NAMES }}
     steps:
       - name: checkout
         uses: actions/checkout@v4
@@ -57,3 +70,10 @@ jobs:
         # Mesmo motivo: TLS nao tem modo desligado, e o teste que garante isso
         # merece nome proprio no painel.
         run: go test ./internal/inbound/ -run TLS -v
+
+      - name: portao de nome
+        # Mesmo motivo do portao de dado pessoal acima: a agulha vem do
+        # secret ZAPGW_FORBIDDEN_NAMES (ver env: no nivel do job), NUNCA de
+        # um valor escrito neste arquivo — escrever a lista de nomes aqui
+        # publicaria exatamente o que o portao existe para manter fora.
+        run: go test ./internal/config/ -run TestNoCustomerNameOutsideTheGateInTheRepo -v

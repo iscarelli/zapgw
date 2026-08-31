@@ -4,6 +4,12 @@ Uma linha por versao entregue, no mesmo commit do bump. A entrada diz o **efeito
 
 ## Nao lancado
 
+- **CI carries the name gate, and says so when it cannot verify** (T-195) — `ZAPGW_FORBIDDEN_NAMES`
+  entregue como `env:` no nivel do JOB em `.github/workflows/verify.yml`, alcancando tanto o
+  `go test ./...` quanto um passo proprio novo (`-run TestNoCustomerNameOutsideTheGateInTheRepo`),
+  espelhando o portao de telefone. Comentario no workflow documenta que PR de fork falha fechado
+  ("nao consegui verificar") de proposito. `CLAUDE.md` corrigido: a CI ja existe, nao "volta em
+  2026-09-01". _Completed 2026-08-31 00:50._
 - **A gate for customer names, and the tree it cleans** (T-193) — novo portao
   (`internal/config/nomes_allowlist_test.go`) sem allowlist e sem isencao por arquivo: qualquer
   agulha e reprovacao. A lista mora fora do repositorio (`ZAPGW_FORBIDDEN_NAMES` ou
