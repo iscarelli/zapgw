@@ -1,0 +1,43 @@
+# zapgw — chaves do contrato que JA estao em ingles e NAO mudam no passo 4.
+#
+# FORMATO ESTAVEL, POR CONTRATO COM OS CONSUMIDORES: uma chave por linha, sem
+# ordem significativa, sem colunas. Linha vazia e linha comecando com '#' sao
+# comentario. Este arquivo existe para ser lido por TESTE, nao por humano — a
+# versao explicada, com arquivo:linha, struct e rota, esta em
+# docs/INVENTARIO-CHAVES.md (secao "Item 4") e em docs/MIGRACAO-CONTRATO-EN.md.
+#
+# POR QUE ELE EXISTE: uma tabela de renomeacao que so lista renomeacoes deixa o
+# leitor inferir o resto — "o que nao esta aqui e' portugues" — e essa frase
+# nunca foi escrita por ninguem. Foi assim que o `media_id` entrou no mapa de um
+# consumidor e o upload de midia parou. A tabela e' fonte de RENOMEACAO, nao de
+# IDIOMA (frase do consumer-b, 2026-08-31).
+#
+# COMO USAR: se alguma destas chaves aparecer no seu mapa de traducao, o seu
+# teste deve REPROVAR. Elas ja estao no idioma final.
+#
+# ESTABILIDADE: este arquivo nao e' reformatado. Chave sai daqui apenas se
+# deixar de existir no contrato, e isso e' quebra de contrato — anunciada, nunca
+# silenciosa.
+
+media_id
+latitude
+longitude
+id
+phone_number_id
+waba_id
+timestamp
+wa_message_id
+status
+template
+ig_id
+wa_id
+templates
+ok
+about
+address
+description
+email
+profile_picture_url
+websites
+vertical
+profile_picture_handle
