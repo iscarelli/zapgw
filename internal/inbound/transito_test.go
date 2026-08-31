@@ -132,7 +132,7 @@ func TestTransitStoresNoContent(t *testing.T) {
 	// reintroduced HMAC would sail right over the rest of the test without
 	// flagging anything.
 	var counterpart, wamid string
-	if err := db.QueryRow(`SELECT contraparte, wamid FROM transito WHERE slug = 'lojinha' AND tipo = 'mensagem'`).
+	if err := db.QueryRow(`SELECT contraparte, wamid FROM transito WHERE slug = 'lojinha' AND tipo = 'message'`).
 		Scan(&counterpart, &wamid); err != nil {
 		t.Fatalf("ler contraparte/wamid da linha de mensagem: %v", err)
 	}

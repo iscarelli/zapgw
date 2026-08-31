@@ -67,9 +67,9 @@ var ErrPauseNoInstance = errors.New("campo `instancia` e obrigatorio")
 
 // PauseResponse is the body of the 200.
 type PauseResponse struct {
-	Instance string `json:"instancia"`
-	State    string `json:"estado"`
-	Paused   bool   `json:"pausada"`
+	Instance string `json:"instance"`
+	State    string `json:"state"`
+	Paused   bool   `json:"paused"`
 }
 
 func (h *PauseHandler) pause(w http.ResponseWriter, r *http.Request) {
@@ -80,7 +80,7 @@ func (h *PauseHandler) pause(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		log.Printf("zapgw: erro de store ao autenticar em %s: %v", pauseRoute, err)
-		respondError(w, http.StatusServiceUnavailable, "retentavel", "indisponivel", 0)
+		respondError(w, http.StatusServiceUnavailable, "retryable", "indisponivel", 0)
 		return
 	}
 
@@ -88,11 +88,11 @@ func (h *PauseHandler) pause(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		if errors.Is(err, httpx.ErrBodyTooLarge) {
 			logRejection(h.throttleLog, pauseRoute, "", consumer.Name, "corpo grande demais")
-			respondError(w, http.StatusRequestEntityTooLarge, "permanente", "corpo grande demais", 0)
+			respondError(w, http.StatusRequestEntityTooLarge, "permanent", "corpo grande demais", 0)
 			return
 		}
 		logRejection(h.throttleLog, pauseRoute, "", consumer.Name, "corpo nao foi lido por inteiro")
-		respondError(w, http.StatusBadRequest, "retentavel", "corpo nao foi lido por inteiro", 0)
+		respondError(w, http.StatusBadRequest, "retryable", "corpo nao foi lido por inteiro", 0)
 		return
 	}
 
@@ -107,13 +107,13 @@ func (h *PauseHandler) pause(w http.ResponseWriter, r *http.Request) {
 	var p PauseRequest
 	if err := json.Unmarshal(translated, &p); err != nil {
 		logRejection(h.throttleLog, pauseRoute, "", consumer.Name, "corpo nao e JSON valido")
-		respondError(w, http.StatusBadRequest, "permanente", "corpo nao e JSON valido", 0)
+		respondError(w, http.StatusBadRequest, "permanent", "corpo nao e JSON valido", 0)
 		return
 	}
 	p.Instance = strings.TrimSpace(p.Instance)
 	if p.Instance == "" {
 		logRejection(h.throttleLog, pauseRoute, "", consumer.Name, ErrPauseNoInstance.Error())
-		respondError(w, http.StatusBadRequest, "permanente", ErrPauseNoInstance.Error(), 0)
+		respondError(w, http.StatusBadRequest, "permanent", ErrPauseNoInstance.Error(), 0)
 		return
 	}
 	// T-205 (the counter T-203 left unwired on this route): see the same
@@ -139,7 +139,7 @@ func (h *PauseHandler) pause(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		log.Printf("zapgw: erro de store ao pausar a instancia %q: %v", p.Instance, err)
-		respondError(w, http.StatusServiceUnavailable, "retentavel", "indisponivel", 0)
+		respondError(w, http.StatusServiceUnavailable, "retryable", "indisponivel", 0)
 		return
 	}
 

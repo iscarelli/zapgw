@@ -412,7 +412,7 @@ func TestBlockTransportFailureGives502TellingToRetry(t *testing.T) {
 		t.Fatalf("status = %d, quero 502; corpo = %s", rec.Code, rec.Body.String())
 	}
 	errBody := decodeErrorOrFail(t, rec)
-	if errBody.Error.Class != "desconhecido" {
+	if errBody.Error.Class != "unknown" {
 		t.Errorf("classe = %q, quero desconhecido", errBody.Error.Class)
 	}
 	if !strings.Contains(errBody.Error.Message, "repetir e seguro") {

@@ -81,7 +81,7 @@ func NewHealthHandler(store *config.Store, auth *Authenticator, client *meta.Cli
 // age is written into it.
 type healthResponse struct {
 	OK            bool   `json:"ok"`
-	DisplayNumber string `json:"numero_exibido,omitempty"`
+	DisplayNumber string `json:"display_number,omitempty"`
 	VerifiedAt    string `json:"verificado_em"`
 	// Verdict only appears (omitempty) when the instance's TYPE has no
 	// endpoint on Meta equivalent to GET /{phone_number_id} that confirms
@@ -91,7 +91,7 @@ type healthResponse struct {
 	// problem because it DIDN'T ASK — never "asked and everything's fine". A
 	// consumer that only reads `ok` (every consumer today) sees no
 	// difference at all on the path that already worked (WhatsApp).
-	Verdict string `json:"veredito,omitempty"`
+	Verdict string `json:"verdict,omitempty"`
 }
 
 func (h *HealthHandler) health(w http.ResponseWriter, r *http.Request) {
@@ -104,7 +104,7 @@ func (h *HealthHandler) health(w http.ResponseWriter, r *http.Request) {
 		// The only log in this file: database down isn't probe noise, and
 		// without this line the gateway would go silent about its own failure.
 		log.Printf("zapgw: erro de store ao autenticar no probe de saude: %v", err)
-		respondError(w, http.StatusServiceUnavailable, "retentavel", "indisponivel", 0)
+		respondError(w, http.StatusServiceUnavailable, "retryable", "indisponivel", 0)
 		return
 	}
 
@@ -125,7 +125,7 @@ func (h *HealthHandler) health(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		log.Printf("zapgw: erro de store ao buscar instancia %q no probe de saude: %v", slug, err)
-		respondError(w, http.StatusServiceUnavailable, "retentavel", "indisponivel", 0)
+		respondError(w, http.StatusServiceUnavailable, "retryable", "indisponivel", 0)
 		return
 	}
 	if !inst.Active {
@@ -134,7 +134,7 @@ func (h *HealthHandler) health(w http.ResponseWriter, r *http.Request) {
 		// valid" would be answering a different question. And we don't spend
 		// a call to Meta for a channel that can't send anyway. HOLDS FOR
 		// BOTH TYPES: pause is operational state, independent of type.
-		respondError(w, http.StatusServiceUnavailable, "retentavel", "instancia pausada", 0)
+		respondError(w, http.StatusServiceUnavailable, "retryable", "instancia pausada", 0)
 		return
 	}
 
@@ -202,7 +202,7 @@ func respondUnhealthy(w http.ResponseWriter, err error) {
 	class := meta.ClassUnknown
 	// Default: the call didn't end in a response from Meta (transport,
 	// deadline exceeded, reading). We don't know whether the token is
-	// valid — and saying "retentavel" would assert that we know.
+	// valid — and saying "retryable" would assert that we know.
 	message := "nao foi possivel falar com a Meta; a saude deste canal nao pode ser confirmada agora"
 	code := 0
 

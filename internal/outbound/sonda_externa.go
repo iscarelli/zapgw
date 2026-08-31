@@ -112,7 +112,7 @@ const (
 	// consumer treating this response as the SAME thing as
 	// `token_meta.veredito` or `entrada.conector.estado`, when the
 	// question they're automating on top of it is a different one.
-	ReachStateCouldNotVerify = "nao_consegui_verificar"
+	ReachStateCouldNotVerify = "could_not_verify"
 )
 
 // SourceExternalProbe is the literal published in `alcance_externo.fonte` when
@@ -142,24 +142,24 @@ const SourceExternalProbe = "sonda_externa"
 // question (and this project already paid for that: `token_instagram` in
 // v0.37.x).
 type ExternalReachInState struct {
-	State string `json:"estado"`
+	State string `json:"state"`
 	// Verdict is the literal the external probe answered (today, "up" or
 	// "down" — see docs/CONTRATO-CONSUMIDOR.md) — WITHOUT TRANSLATION, for
 	// the same reason as NumberAtMeta.MessageLimit: translating would
 	// hide a new word the probe might use tomorrow, returning something
 	// plausible for a value nobody checked. `null` whenever `estado` !=
 	// observado.
-	Verdict *string `json:"veredito"`
+	Verdict *string `json:"verdict"`
 	// MeasuredAt is the last time the external probe actually RESPONDED —
 	// not the last ATTEMPT. It keeps pointing to that last real response
 	// even after the state degrades to nao_consegui_verificar: it's what
 	// says how long the gateway hasn't heard from the probe, information
 	// that zeroing it would destroy. Same rule as MetaToken.MeasuredAt and
 	// ConnectorInState.MeasuredAt.
-	MeasuredAt *string `json:"medido_em"`
+	MeasuredAt *string `json:"measured_at"`
 	// Source is SourceExternalProbe when `estado == observado`, `null` in the
 	// other two states — see the comment on SourceExternalProbe.
-	Source *string `json:"fonte"`
+	Source *string `json:"source"`
 }
 
 // externalProbeInterval is how often the configured URL is asked.

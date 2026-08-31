@@ -136,10 +136,10 @@ func TestInstagramHandlerAcceptsValidSignatureAndDelivers(t *testing.T) {
 	// The proof that the event arrived typed, with the counterpart as an
 	// IGSID — never "canonicalized" as a phone number (the INPUT half of
 	// test (e)).
-	if !strings.Contains(string(bodyAtConsumer), `"de_canonico":"IGSID_SINTETICO_1"`) {
-		t.Errorf("corpo entregue nao traz de_canonico=IGSID_SINTETICO_1 intacto: %s", bodyAtConsumer)
+	if !strings.Contains(string(bodyAtConsumer), `"from_canonical":"IGSID_SINTETICO_1"`) {
+		t.Errorf("corpo entregue nao traz from_canonical=IGSID_SINTETICO_1 intacto: %s", bodyAtConsumer)
 	}
-	if !strings.Contains(string(bodyAtConsumer), `"texto":"oi"`) {
+	if !strings.Contains(string(bodyAtConsumer), `"text":"oi"`) {
 		t.Errorf("corpo entregue nao traz o texto da mensagem: %s", bodyAtConsumer)
 	}
 }

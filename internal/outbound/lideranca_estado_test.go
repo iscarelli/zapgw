@@ -99,7 +99,7 @@ func TestLeadershipInStateSerializesWithTheContractNames(t *testing.T) {
 	if err := json.Unmarshal(raw, &m); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	for _, field := range []string{"armada", "estado", "titular", "motivo"} {
+	for _, field := range []string{"armada", "state", "titular", "reason"} {
 		if _, has := m[field]; !has {
 			t.Errorf("o campo %q sumiu do JSON — campo AUSENTE obriga o consumidor a adivinhar; nulo ele consegue ler", field)
 		}

@@ -368,16 +368,16 @@ func createTemplate(t *testing.T, h http.Handler, token, body string) *httptest.
 }
 
 type testTemplatesResponse struct {
-	Instance  string `json:"instancia"`
+	Instance  string `json:"instance"`
 	Total     int    `json:"total"`
 	Templates []struct {
 		ID         string          `json:"id"`
-		Name       string          `json:"nome"`
+		Name       string          `json:"name"`
 		Status     string          `json:"status"`
-		Category   string          `json:"categoria"`
-		Language   string          `json:"idioma"`
-		Components json.RawMessage `json:"componentes"`
-		Reason     string          `json:"motivo"`
+		Category   string          `json:"category"`
+		Language   string          `json:"language"`
+		Components json.RawMessage `json:"components"`
+		Reason     string          `json:"reason"`
 	} `json:"templates"`
 }
 
@@ -869,7 +869,7 @@ func TestCreateTemplateAmbiguousREREADSTheCatalogAndConfirmsTheCreation(t *testi
 	var resp struct {
 		ID          string `json:"id"`
 		Status      string `json:"status"`
-		Category    string `json:"categoria"`
+		Category    string `json:"category"`
 		Warning     string `json:"aviso"`
 		Rereads     int    `json:"releituras"`
 		WaitSeconds int    `json:"espera_segundos"`
@@ -932,11 +932,11 @@ func TestCreateTemplateAmbiguousNotFoundInTheCatalogIsINCONCLUSIVE(t *testing.T)
 	}
 	var errBody struct {
 		Error struct {
-			Class       string `json:"classe"`
-			Message     string `json:"mensagem"`
+			Class       string `json:"class"`
+			Message     string `json:"message"`
 			Rereads     int    `json:"releituras"`
 			WaitSeconds int    `json:"espera_segundos"`
-		} `json:"erro"`
+		} `json:"error"`
 	}
 	if err := json.Unmarshal(rec.Body.Bytes(), &errBody); err != nil {
 		t.Fatalf("corpo de erro nao desserializa: %v (%q)", err, rec.Body.String())
@@ -1389,8 +1389,8 @@ func TestWaitWithContextWaitsTheRequestedTimeWithoutCancellation(t *testing.T) {
 type testTemplateCreatedResponse struct {
 	ID                string `json:"id"`
 	Status            string `json:"status"`
-	Category          string `json:"categoria"`
-	RequestedCategory string `json:"categoria_pedida"`
+	Category          string `json:"category"`
+	RequestedCategory string `json:"requested_category"`
 	Warning           string `json:"aviso"`
 }
 
@@ -1591,13 +1591,13 @@ func TestCreateTemplateWithAllowCategoryChangePassesItThroughVerbatim(t *testing
 // test that reused templateDeletedResponse would rename them along with the
 // code and never notice.
 type testDeletionResponse struct {
-	Instance string `json:"instancia"`
-	Name     string `json:"nome"`
-	Outcome  string `json:"desfecho"`
+	Instance string `json:"instance"`
+	Name     string `json:"name"`
+	Outcome  string `json:"outcome"`
 	Entries  []struct {
 		ID       string `json:"id"`
-		Language string `json:"idioma"`
-		Category string `json:"categoria"`
+		Language string `json:"language"`
+		Category string `json:"category"`
 		Status   string `json:"status"`
 	} `json:"entradas"`
 	Warning     string `json:"aviso"`

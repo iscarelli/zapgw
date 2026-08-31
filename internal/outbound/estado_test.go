@@ -80,10 +80,10 @@ func TestStateRowsMeasureTheDistanceAgainstThePrintNowNotAgainstGeneratedAt(t *t
 	// Every OBSERVATION timestamp comes out in the past, with the distance
 	// counted from the printing.
 	for _, c := range []struct{ label, want string }{
-		{"gerado_em", "(ha 5s)"},
-		{"medido_em", "(ha 4s)"},
-		{"conferido_em", "(ha 3s)"},
-		{"observado_em", "(ha 2s)"},
+		{"generated_at", "(ha 5s)"},
+		{"measured_at", "(ha 4s)"},
+		{"checked_at", "(ha 3s)"},
+		{"observed_at", "(ha 2s)"},
 	} {
 		v := rowValue(t, rows, c.label)
 		if strings.Contains(v, "daqui a") {
@@ -98,7 +98,7 @@ func TestStateRowsMeasureTheDistanceAgainstThePrintNowNotAgainstGeneratedAt(t *t
 	// And the counter-test, which is what prevents the wrong fix ("if it
 	// comes out future, print 0s ago"): a genuinely future timestamp KEEPS
 	// coming out as future.
-	if v := rowValue(t, rows, "expira_em"); !strings.HasSuffix(v, "(daqui a 54d)") {
+	if v := rowValue(t, rows, "expires_at"); !strings.HasSuffix(v, "(daqui a 54d)") {
 		t.Errorf("expira_em = %q, quero terminando em \"(daqui a 54d)\" — o certificado vence mesmo no futuro", v)
 	}
 }
@@ -122,7 +122,7 @@ func TestSeries7DaysBringsDayAndDayUTCWithTheSameValue(t *testing.T) {
 	body := rec.Body.String()
 
 	today := time.Now().UTC().Format("2006-01-02")
-	for _, key := range []string{`"dia":"` + today + `"`, `"dia_utc":"` + today + `"`} {
+	for _, key := range []string{`"day":"` + today + `"`, `"day_utc":"` + today + `"`} {
 		if !strings.Contains(body, key) {
 			t.Errorf("a resposta nao traz %s. corpo:\n%s", key, body)
 		}
@@ -133,9 +133,9 @@ func TestSeries7DaysBringsDayAndDayUTCWithTheSameValue(t *testing.T) {
 	// lose the other six with no error at all.
 	var r struct {
 		Series []struct {
-			Day    string `json:"dia"`
-			DayUTC string `json:"dia_utc"`
-		} `json:"serie_7_dias"`
+			Day    string `json:"day"`
+			DayUTC string `json:"day_utc"`
+		} `json:"last_7_days_series"`
 	}
 	if err := json.Unmarshal(rec.Body.Bytes(), &r); err != nil {
 		t.Fatalf("corpo nao desserializa: %v", err)
@@ -174,7 +174,7 @@ func TestStatePublishesStampsSinceAsARealDate(t *testing.T) {
 	if _, err := time.Parse(time.RFC3339, r.StampsSince); err != nil {
 		t.Errorf("carimbos_desde = %q, que nao e RFC3339: %v", r.StampsSince, err)
 	}
-	if !strings.Contains(rec.Body.String(), `"carimbos_desde":"`+r.StampsSince+`"`) {
+	if !strings.Contains(rec.Body.String(), `"stamps_since":"`+r.StampsSince+`"`) {
 		t.Errorf("o campo nao saiu com o nome `carimbos_desde` nos BYTES. corpo:\n%s", rec.Body.String())
 	}
 }

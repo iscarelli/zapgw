@@ -116,11 +116,11 @@ func (p *SmokeRequest) validate() error {
 
 // SmokeResponse is the body of the 200.
 type SmokeResponse struct {
-	Instance string `json:"instancia"`
+	Instance string `json:"instance"`
 	// State and Paused are the SAME fact, via the SAME functions as GET
 	// /v1/estado and POST /v1/cadastro (config.StateOf).
-	State  string `json:"estado"`
-	Paused bool   `json:"pausada"`
+	State  string `json:"state"`
+	Paused bool   `json:"paused"`
 	// AlreadyActive: no message was sent on THIS call — the instance had
 	// already been activated before. Without this field, an automated
 	// consumer would have no way to distinguish "I just proved the channel"
@@ -144,7 +144,7 @@ func (h *SmokeHandler) smoke(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		log.Printf("zapgw: erro de store ao autenticar em %s: %v", smokeRoute, err)
-		respondError(w, http.StatusServiceUnavailable, "retentavel", "indisponivel", 0)
+		respondError(w, http.StatusServiceUnavailable, "retryable", "indisponivel", 0)
 		return
 	}
 
@@ -152,11 +152,11 @@ func (h *SmokeHandler) smoke(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		if errors.Is(err, httpx.ErrBodyTooLarge) {
 			logRejection(h.throttleLog, smokeRoute, "", consumer.Name, "corpo grande demais")
-			respondError(w, http.StatusRequestEntityTooLarge, "permanente", "corpo grande demais", 0)
+			respondError(w, http.StatusRequestEntityTooLarge, "permanent", "corpo grande demais", 0)
 			return
 		}
 		logRejection(h.throttleLog, smokeRoute, "", consumer.Name, "corpo nao foi lido por inteiro")
-		respondError(w, http.StatusBadRequest, "retentavel", "corpo nao foi lido por inteiro", 0)
+		respondError(w, http.StatusBadRequest, "retryable", "corpo nao foi lido por inteiro", 0)
 		return
 	}
 
@@ -172,12 +172,12 @@ func (h *SmokeHandler) smoke(w http.ResponseWriter, r *http.Request) {
 	var p SmokeRequest
 	if err := json.Unmarshal(translated, &p); err != nil {
 		logRejection(h.throttleLog, smokeRoute, "", consumer.Name, "corpo nao e JSON valido")
-		respondError(w, http.StatusBadRequest, "permanente", "corpo nao e JSON valido", 0)
+		respondError(w, http.StatusBadRequest, "permanent", "corpo nao e JSON valido", 0)
 		return
 	}
 	if err := p.validate(); err != nil {
 		logRejection(h.throttleLog, smokeRoute, p.Instance, consumer.Name, err.Error())
-		respondError(w, http.StatusBadRequest, "permanente", err.Error(), 0)
+		respondError(w, http.StatusBadRequest, "permanent", err.Error(), 0)
 		return
 	}
 	if len(oldNames) > 0 {
@@ -258,7 +258,7 @@ func (h *SmokeHandler) respondSmokeError(w http.ResponseWriter, slug, consumer s
 	if errors.Is(err, ErrSmokeActivationFailed) {
 		// NEEDS A HUMAN: the test message WAS DELIVERED but the instance
 		// stays PAUSED. Retrying would send ANOTHER real message — that's
-		// why this is NOT the "retentavel" class.
+		// why this is NOT the "retryable" class.
 		log.Printf("ALARME zapgw: fumaca da instancia %q enviou a mensagem de teste mas falhou ao ativar: %v", slug, err)
 		respondError(w, http.StatusBadGateway, "config",
 			"a mensagem de teste foi enviada e aceita pela Meta, mas o gateway falhou ao marcar a instancia como ativa;"+
@@ -271,7 +271,7 @@ func (h *SmokeHandler) respondSmokeError(w http.ResponseWriter, slug, consumer s
 		// and text are always filled in by SmokeWithInstagramBase(): the
 		// `destino` had no digit left after canonicalization.
 		logRejection(h.throttleLog, smokeRoute, slug, consumer, err.Error())
-		respondError(w, http.StatusBadRequest, "permanente", err.Error(), 0)
+		respondError(w, http.StatusBadRequest, "permanent", err.Error(), 0)
 		return
 	}
 

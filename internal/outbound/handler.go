@@ -274,9 +274,9 @@ func sendErrorClass(err error) string {
 
 type errorResponse struct {
 	Error struct {
-		Class    string `json:"classe"`
-		MetaCode int    `json:"codigo_meta,omitempty"`
-		Message  string `json:"mensagem"`
+		Class    string `json:"class"`
+		MetaCode int    `json:"meta_code,omitempty"`
+		Message  string `json:"message"`
 		// MetaDetail is T-141: RAW passthrough of Meta's error.error_data.details
 		// (see meta.MetaError.Detail) — a field SEPARATE from Message,
 		// NEVER concatenated into it: whoever today matches on `mensagem` must
@@ -284,22 +284,22 @@ type errorResponse struct {
 		// things separately. `omitempty` so the error body stays IDENTICAL,
 		// byte for byte, to how it was before this task on every path that
 		// has no detail (non-regression).
-		MetaDetail string `json:"detalhe_meta,omitempty"`
+		MetaDetail string `json:"meta_detail,omitempty"`
 		// The three fields below are T-153, and SEPARATE from each other and from
 		// Message for the SAME reason as MetaDetail: none goes concatenated,
 		// and all have `omitempty` so the body stays IDENTICAL when Meta does
 		// not send the source fields. See meta.MetaError for what each one is
 		// and where it comes from.
-		MetaSubcode int `json:"subcodigo_meta,omitempty"`
+		MetaSubcode int `json:"meta_subcode,omitempty"`
 		// MetaExplanation is meta.MetaError.Explanation: text that Meta WROTE TO BE
 		// SHOWN — it is NOT stable across versions of their API (see
 		// docs/CONTRATO-CONSUMIDOR.md).
-		MetaExplanation string `json:"explicacao_meta,omitempty"`
+		MetaExplanation string `json:"meta_explanation,omitempty"`
 		// MetaTrace is meta.MetaError.Trace (the fbtrace_id) — the ONLY
 		// identifier Meta support accepts, and it does NOT come back after
 		// this call. It is NOT a secret.
-		MetaTrace string `json:"rastro_meta,omitempty"`
-	} `json:"erro"`
+		MetaTrace string `json:"meta_trace,omitempty"`
+	} `json:"error"`
 }
 
 // respondError is a FUNCTION, not a method: the health probe
@@ -366,7 +366,7 @@ func (h *Handler) send(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		log.Printf("zapgw: erro de store ao autenticar: %v", err)
-		respondError(w, http.StatusServiceUnavailable, "retentavel", "indisponivel", 0)
+		respondError(w, http.StatusServiceUnavailable, "retryable", "indisponivel", 0)
 		return
 	}
 
@@ -377,7 +377,7 @@ func (h *Handler) send(w http.ResponseWriter, r *http.Request) {
 		// explaining the duplicate.
 		logRejection(h.throttleLog, "POST /v1/messages", "", consumer.Name,
 			"header Idempotency-Key e obrigatorio")
-		respondError(w, http.StatusBadRequest, "permanente", "header Idempotency-Key e obrigatorio", 0)
+		respondError(w, http.StatusBadRequest, "permanent", "header Idempotency-Key e obrigatorio", 0)
 		return
 	}
 
@@ -385,7 +385,7 @@ func (h *Handler) send(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		if errors.Is(err, httpx.ErrBodyTooLarge) {
 			logRejection(h.throttleLog, "POST /v1/messages", "", consumer.Name, "corpo grande demais")
-			respondError(w, http.StatusRequestEntityTooLarge, "permanente", "corpo grande demais", 0)
+			respondError(w, http.StatusRequestEntityTooLarge, "permanent", "corpo grande demais", 0)
 			return
 		}
 		// Any other error from ReadRaw is NOT "body too large" — it is the
@@ -395,7 +395,7 @@ func (h *Handler) send(w http.ResponseWriter, r *http.Request) {
 		// repeating fixes it — saying "permanent" here would send the consumer
 		// to give up on something a new POST would fix.
 		logRejection(h.throttleLog, "POST /v1/messages", "", consumer.Name, "corpo nao foi lido por inteiro")
-		respondError(w, http.StatusBadRequest, "retentavel", "corpo nao foi lido por inteiro", 0)
+		respondError(w, http.StatusBadRequest, "retryable", "corpo nao foi lido por inteiro", 0)
 		return
 	}
 
@@ -410,14 +410,14 @@ func (h *Handler) send(w http.ResponseWriter, r *http.Request) {
 	translated, oldNames, err := translateRequestBody(raw)
 	if err != nil {
 		logRejection(h.throttleLog, "POST /v1/messages", "", consumer.Name, err.Error())
-		respondError(w, http.StatusBadRequest, "permanente", err.Error(), 0)
+		respondError(w, http.StatusBadRequest, "permanent", err.Error(), 0)
 		return
 	}
 
 	var p Request
 	if err := json.Unmarshal(translated, &p); err != nil {
 		logRejection(h.throttleLog, "POST /v1/messages", "", consumer.Name, "corpo nao e JSON valido")
-		respondError(w, http.StatusBadRequest, "permanente", "corpo nao e JSON valido", 0)
+		respondError(w, http.StatusBadRequest, "permanent", "corpo nao e JSON valido", 0)
 		return
 	}
 	// T-097: captured BEFORE p.Validate() mutates p.To. For an Instagram
@@ -437,7 +437,7 @@ func (h *Handler) send(w http.ResponseWriter, r *http.Request) {
 		// response body to the CONSUMER still uses the raw err.Error(): whoever
 		// sent the wrong value already knows it, only the log must not repeat it.
 		logRejection(h.throttleLog, "POST /v1/messages", p.Instance, consumer.Name, safeRejectionMessage(err))
-		respondError(w, http.StatusBadRequest, "permanente", err.Error(), 0)
+		respondError(w, http.StatusBadRequest, "permanent", err.Error(), 0)
 		return
 	}
 	// AFTER Validate, never before: Validate trims the fields, and a hash over the
@@ -472,12 +472,12 @@ func (h *Handler) send(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		log.Printf("zapgw: erro de store ao buscar instancia %q: %v", p.Instance, err)
-		respondError(w, http.StatusServiceUnavailable, "retentavel", "indisponivel", 0)
+		respondError(w, http.StatusServiceUnavailable, "retryable", "indisponivel", 0)
 		return
 	}
 	if !inst.Active {
 		log.Printf("zapgw: instancia %q esta pausada e recebeu pedido de envio", inst.Slug)
-		respondError(w, http.StatusServiceUnavailable, "retentavel", "instancia pausada", 0)
+		respondError(w, http.StatusServiceUnavailable, "retryable", "instancia pausada", 0)
 		return
 	}
 	// T-097: first Instagram slice — ONLY tipo:"texto". No template (Instagram
@@ -491,7 +491,7 @@ func (h *Handler) send(w http.ResponseWriter, r *http.Request) {
 	if inst.Type == config.TypeInstagram && p.Type != "texto" {
 		logRejection(h.throttleLog, "POST /v1/messages", inst.Slug, consumer.Name,
 			"instancia Instagram so aceita tipo texto nesta fase")
-		respondError(w, http.StatusBadRequest, "permanente",
+		respondError(w, http.StatusBadRequest, "permanent",
 			"esta instancia e Instagram; nesta fase o gateway so envia tipo \"texto\" — "+
 				"sem template, midia, botao, reacao ou localizacao", 0)
 		return
@@ -514,12 +514,12 @@ func (h *Handler) send(w http.ResponseWriter, r *http.Request) {
 			// as the key, and the same entity sends several messages (reminder,
 			// billing, apology): without this 422, the second one gets the
 			// FIRST one's id and never goes out — a silent and costly failure.
-			respondError(w, http.StatusUnprocessableEntity, "permanente",
+			respondError(w, http.StatusUnprocessableEntity, "permanent",
 				"esta chave de idempotencia ja foi usada para outro pedido", 0)
 			return
 		}
 		log.Printf("zapgw: erro de store na idempotencia: %v", err)
-		respondError(w, http.StatusServiceUnavailable, "retentavel", "indisponivel", 0)
+		respondError(w, http.StatusServiceUnavailable, "retryable", "indisponivel", 0)
 		return
 	}
 	if alreadySent != "" {
@@ -532,7 +532,7 @@ func (h *Handler) send(w http.ResponseWriter, r *http.Request) {
 	if !reserved {
 		// Another send with this key is in progress. 409 is the honest response:
 		// we did not send, and there is no id to return yet.
-		respondError(w, http.StatusConflict, "retentavel", "envio com esta chave em andamento", 0)
+		respondError(w, http.StatusConflict, "retryable", "envio com esta chave em andamento", 0)
 		return
 	}
 

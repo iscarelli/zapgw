@@ -437,22 +437,22 @@ func TestReadsTranslatesTheMetaErrorIntoTheContractStatus(t *testing.T) {
 		{
 			// PERMANENT error: invalid wamid, or older than the 30 days Meta
 			// accepts. Retrying repeats the error.
-			name: "permanente", metaStatus: http.StatusBadRequest,
+			name: "permanent", metaStatus: http.StatusBadRequest,
 			metaBody:   `{"error":{"message":"Parameter value is not valid","code":131009}}`,
-			wantStatus: http.StatusBadRequest, wantClass: "permanente", wantCode: 131009,
+			wantStatus: http.StatusBadRequest, wantClass: "permanent", wantCode: 131009,
 		},
 		{
 			// RETRYABLE error: Meta went down. Re-queue.
 			name: "retentavel (5xx da Meta)", metaStatus: http.StatusBadGateway,
 			metaBody:   `{"error":{"message":"Service temporarily unavailable","code":2}}`,
-			wantStatus: http.StatusServiceUnavailable, wantClass: "retentavel", wantCode: 2,
+			wantStatus: http.StatusServiceUnavailable, wantClass: "retryable", wantCode: 2,
 		},
 		{
 			// Rate limit is also retryable — and it's the case T-075 asked to
 			// measure whether thirteen markings in a row would hit it.
 			name: "retentavel (limite de taxa)", metaStatus: http.StatusTooManyRequests,
 			metaBody:   `{"error":{"message":"Too many requests","code":130429}}`,
-			wantStatus: http.StatusServiceUnavailable, wantClass: "retentavel", wantCode: 130429,
+			wantStatus: http.StatusServiceUnavailable, wantClass: "retryable", wantCode: 130429,
 		},
 		{
 			// Credential: not the consumer's token, it's the one the GATEWAY
@@ -512,7 +512,7 @@ func TestReadsTransportFailureGives502TellingToRetry(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
 		t.Fatalf("corpo nao desserializa: %v", err)
 	}
-	if resp.Error.Class != "desconhecido" {
+	if resp.Error.Class != "unknown" {
 		t.Errorf("classe = %q, quero desconhecido", resp.Error.Class)
 	}
 	if !strings.Contains(resp.Error.Message, "repetir e seguro") {

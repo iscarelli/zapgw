@@ -42,10 +42,10 @@ import (
 
 // Envelope is the body of the POST to the consumer.
 type Envelope struct {
-	Instance   string       `json:"instancia"`
-	ReceivedAt string       `json:"recebido_em"`
-	Raw        string       `json:"cru"` // base64 of the EXACT bytes from Meta
-	Events     []meta.Event `json:"eventos"`
+	Instance   string       `json:"instance"`
+	ReceivedAt string       `json:"received_at"`
+	Raw        string       `json:"raw"` // base64 of the EXACT bytes from Meta
+	Events     []meta.Event `json:"events"`
 	ParseError string       `json:"parse_error"`
 }
 

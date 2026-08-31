@@ -2,6 +2,58 @@
 
 Uma linha por versao entregue, no mesmo commit do bump. A entrada diz o **efeito**, nao o diff.
 
+## v0.63.0 — 2026-08-31
+
+🔴 **THE CONTRACT'S OUTPUT CHANGES: `zapgw` now speaks English on every SAIDA-EVENTO key/value it
+delivers to a consumer's `callback_url`, and on every SAIDA-RESPOSTA key/value it returns from an
+HTTP route.** Input keeps accepting BOTH languages, unchanged since T-203/T-207/T-208 — this is
+step 4 of T-189, and step 5 (removing the input alias) is NOT part of this task and stays a
+future, dono-authorized decision.
+
+- **THE FLIP: the gateway's output speaks English — keys and values, in one commit** (T-209) —
+  renamed every SAIDA-EVENTO/SAIDA-RESPOSTA key and value the migration table
+  (`docs/MIGRACAO-CONTRATO-EN.md`, sections 6–8) lists, and only those: `meta.Event` and its
+  nested types (`Reaction`, `Location`, `StatusError`, `TemplateStatus`, `TemplateCategory`,
+  `NumberQuality`, `AccountAlert`, `Billing`), `meta.Template`, and every response struct in
+  `internal/outbound` (`State` and its whole tree, `RegistrationResponse`, `blockOperationResponse`/
+  `blockListResponse`, `templatesResponse`/`templateCreatedResponse`/`templateDeletedResponse`,
+  `healthResponse`, `SmokeResponse`, `profileResponse`/`profileWriteResponse`, `PauseResponse`,
+  the shared `errorResponse`). Values: the `meta.EventType`/`meta.ErrorClass` constants, the
+  observation-state vocabulary (`CertNeverObserved`/`CertObserved`/`NotApplicable`/
+  `ConnectorNotConfigured`/`ReachStateCouldNotVerify`), the three `veredito` vocabularies
+  (`VerdictRefused`, `VerdictIGTokenWaiting`/`Failing`/`Expired`), the ~50 `respondError` call
+  sites that passed `"retentavel"`/`"permanente"` as literals, and `config.CounterOldNameUsed`
+  (`nome_antigo_usado` -> `old_name_used`).
+  🔴 **The table is the only source: what it does not list did not change.** Confirmed by hand
+  against `docs/contrato-chaves-que-nao-mudam.txt` (the 23 keys already in English) and flagged,
+  never touched, for every Portuguese-looking field the table is silent on — `AccountAlert`'s
+  `tipo`/`severidade`/`id_da_entidade`/`descricao`, `Billing.cobravel`,
+  `TemplateStatus.status_do_recurso`, `FieldInRegistration`'s `campo`/`cadastrado`,
+  `WindowInRegistration`'s `primeira_insercao_em`/`fecha_em`, `RegistrationResponse.proximo_passo`,
+  `blockItemResponse`/`blockFailureResponse.telefone`, `blockOperationResponse.operacao`,
+  `blockListResponse`'s `cursor_antes`/`cursor_depois`, `SmokeResponse`'s `ja_estava_ativa`/
+  `ativa_desde`, `saude_handler.go`'s `verificado_em`, `State`'s `lideranca`/`hoje`/`definido_em`,
+  `templateDeletedResponse`'s `entradas`/`aviso`/`releituras`/`espera_segundos`,
+  `LeadershipInState`'s `armada`/`titular`, `entrada.go`'s `ViaTunnel`/`ViaPortForwarding` values
+  (`tunel`/`encaminhamento_de_porta`), `leituras_handler.go`'s `wamid`/`digitando`, and every
+  counter name besides `old_name_used` (`recebidas`, `entregues`, `enviadas`, the whole
+  `cobranca_*` family, …) — none of these appear in the migration table, so none of them moved.
+  🔴 **`cru`/`raw` and the byte-exact content are two different things, and only the KEY moved:**
+  `cru` -> `raw` per the table's own row (SAIDA-EVENTO), but the base64 VALUE it carries is still
+  the untouched exact bytes from Meta — `TestDeliverSendsTheRawAndTheEventsTogether` proves this
+  byte-for-byte via `received.Raw` (a Go field, blind to the JSON tag) and needed no edit.
+  **Verify (the gate, not a sample):** `TestOutputContractHasNoPortugueseKeyOrValue`
+  (`internal/outbound/contrato_ingles_test.go`) reflectively fills one maximal instance of every
+  SAIDA-EVENTO event type and every SAIDA-RESPOSTA body, marshals them, and fails on any of the
+  108 Portuguese tokens this task retired — proven against real data by breaking `State.State`'s
+  tag back to `estado` and watching it fail, then reverting.
+  `TestFrozenKeysStayIdenticalInSource` sweeps `internal/meta`/`internal/outbound` for every key
+  in `docs/contrato-chaves-que-nao-mudam.txt` and fails if one goes missing — proven the same way,
+  against `profile_picture_handle`. The 36 `TestEntrada*` tests (T-203/T-207/T-208) passed
+  UNCHANGED, zero edits to `entrada_apelidos.go`'s dictionaries or `entrada_apelidos_test.go`.
+  `entrada_test.go` (T-120's ingress-health block, a same-named but unrelated file) DID change —
+  its SAIDA-RESPOSTA mirror structs, not the entrada mechanism.
+
 ## v0.62.1 — 2026-08-31
 
 - **Teach the counter to see the thirteen keys it was blind to** (T-208) — `nome_antigo_usado`

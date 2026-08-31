@@ -133,7 +133,7 @@ const (
 	// the old contract in on the INPUT side, and "probably nobody" is an
 	// impression, not a number. This counter is what turns that impression
 	// into "zero, measured, on this date".
-	CounterOldNameUsed = "nome_antigo_usado"
+	CounterOldNameUsed = "old_name_used"
 
 	// --- BILLING (T-063, 2026-07-28) ---
 	//

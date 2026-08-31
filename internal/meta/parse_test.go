@@ -1185,17 +1185,17 @@ func TestParseWebhookDoesNotRegressTheCurrent16Fields(t *testing.T) {
 	}
 
 	want := map[string]any{
-		"tipo":            "mensagem",
+		"kind":            "message",
 		"id":              "msg:wamid.TESTE001",
 		"phone_number_id": "PNID_TESTE",
 		"waba_id":         "WABA_TESTE",
 		"timestamp":       float64(1769000000),
 		"wa_message_id":   "wamid.TESTE001",
-		"sub_tipo":        "text",
-		"de_cru":          "551199990000",
-		"de_canonico":     "5511999990000",
-		"nome_contato":    "Fulana de Teste",
-		"texto":           "Teste",
+		"sub_kind":        "text",
+		"from_raw":        "551199990000",
+		"from_canonical":  "5511999990000",
+		"contact_name":    "Fulana de Teste",
+		"text":            "Teste",
 	}
 	for k, v := range want {
 		if got[k] != v {
@@ -1206,9 +1206,9 @@ func TestParseWebhookDoesNotRegressTheCurrent16Fields(t *testing.T) {
 	// No omitted field (new or old) can leak when it doesn't apply — this
 	// is what proves omitempty stays airtight.
 	mustNotAppear := []string{
-		"reacao", "voz", "legenda", "nome_arquivo", "localizacao",
-		"botao_payload", "botao_texto", "midia_id", "midia_mime_payload",
-		"status", "para_cru", "para_canonico", "erro", "responder_a",
+		"reaction", "voice", "caption", "file_name", "location",
+		"button_payload", "button_text", "media_id", "media_mime_payload",
+		"status", "to_raw", "to_canonical", "error", "reply_to",
 	}
 	for _, field := range mustNotAppear {
 		if _, exists := got[field]; exists {
@@ -2765,13 +2765,13 @@ func TestParseWebhookTheFourAccountEventsDoNotMix(t *testing.T) {
 		block   string // a chave JSON que TEM de aparecer
 	}{
 		{"template_status", templateStatusPayload("1769000020", "APPROVED"), `"template":`},
-		{"template_categoria", templateCategoryPayload("1769000070", "UTILITY", "MARKETING"), `"template_categoria":`},
+		{"template_categoria", templateCategoryPayload("1769000070", "UTILITY", "MARKETING"), `"template_category":`},
 		{"qualidade", accountPayloadWithValue(fieldNumberQuality,
-			`{"event":"FLAGGED","current_limit":"TIER_50"}`, "1769000080"), `"qualidade_do_numero":`},
+			`{"event":"FLAGGED","current_limit":"TIER_50"}`, "1769000080"), `"number_quality":`},
 		{"alerta", accountPayloadWithValue(fieldAccountAlert,
-			`{"alert_type":"OBA_APPROVED","alert_severity":"CRITICAL"}`, "1769000084"), `"alerta_de_conta":`},
+			`{"alert_type":"OBA_APPROVED","alert_severity":"CRITICAL"}`, "1769000084"), `"account_alert":`},
 	}
-	blocks := []string{`"template":`, `"template_categoria":`, `"qualidade_do_numero":`, `"alerta_de_conta":`}
+	blocks := []string{`"template":`, `"template_category":`, `"number_quality":`, `"account_alert":`}
 
 	for _, c := range cases {
 		evs, err := ParseWebhook(c.payload)
@@ -2927,16 +2927,16 @@ func TestParseWebhookTemplateStatusLeaksNoMessageFieldNorTheOtherWayAround(t *te
 		t.Fatalf("Unmarshal: %v", err)
 	}
 	want := map[string]any{
-		"tipo":      "template_status",
+		"kind":      "template_status",
 		"id":        "template_status:1384121316897444:APPROVED:1769000020",
 		"waba_id":   "WABA1",
 		"timestamp": float64(1769000020),
 		"template": map[string]any{
-			"nome":      "aguardando_peca_v2",
-			"idioma":    "pt_BR",
-			"categoria": "UTILITY",
-			"estado":    "APPROVED",
-			"motivo":    "NONE",
+			"name":     "aguardando_peca_v2",
+			"language": "pt_BR",
+			"category": "UTILITY",
+			"state":    "APPROVED",
+			"reason":   "NONE",
 		},
 	}
 	if len(got) != len(want) {

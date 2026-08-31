@@ -145,7 +145,7 @@ func (h *MediaHandler) instanceAuthorized(w http.ResponseWriter, r *http.Request
 			return config.Consumer{}, config.Instance{}, false, false
 		}
 		log.Printf("zapgw: erro de store ao autenticar em midia: %v", err)
-		respondError(w, http.StatusServiceUnavailable, "retentavel", "indisponivel", 0)
+		respondError(w, http.StatusServiceUnavailable, "retryable", "indisponivel", 0)
 		return config.Consumer{}, config.Instance{}, false, false
 	}
 
@@ -170,11 +170,11 @@ func (h *MediaHandler) instanceAuthorized(w http.ResponseWriter, r *http.Request
 			return config.Consumer{}, config.Instance{}, false, false
 		}
 		log.Printf("zapgw: erro de store ao buscar instancia %q em midia: %v", slug, err)
-		respondError(w, http.StatusServiceUnavailable, "retentavel", "indisponivel", 0)
+		respondError(w, http.StatusServiceUnavailable, "retryable", "indisponivel", 0)
 		return config.Consumer{}, config.Instance{}, false, false
 	}
 	if !inst.Active {
-		respondError(w, http.StatusServiceUnavailable, "retentavel", "instancia pausada", 0)
+		respondError(w, http.StatusServiceUnavailable, "retryable", "instancia pausada", 0)
 		return config.Consumer{}, config.Instance{}, false, false
 	}
 	// T-111: AFTER the bond check (403) and existence (404) — NEVER before,
@@ -201,7 +201,7 @@ func (h *MediaHandler) upload(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		logRejection(h.throttleLog, "POST /v1/media", inst.Slug, consumer.Name,
 			"o corpo precisa ser multipart/form-data com uma parte chamada "+partName+" (ou "+partNameEnglish+")")
-		respondError(w, http.StatusBadRequest, "permanente",
+		respondError(w, http.StatusBadRequest, "permanent",
 			"o corpo precisa ser multipart/form-data com uma parte chamada "+partName+" (ou "+partNameEnglish+")", 0)
 		return
 	}
@@ -210,7 +210,7 @@ func (h *MediaHandler) upload(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		logRejection(h.throttleLog, "POST /v1/media", inst.Slug, consumer.Name,
 			"nao veio a parte "+partName+" (ou "+partNameEnglish+") com os bytes")
-		respondError(w, http.StatusBadRequest, "permanente",
+		respondError(w, http.StatusBadRequest, "permanent",
 			"nao veio a parte "+partName+" (ou "+partNameEnglish+") com os bytes", 0)
 		return
 	}
@@ -239,7 +239,7 @@ func (h *MediaHandler) upload(w http.ResponseWriter, r *http.Request) {
 		// from the consumer, and the package only names the known
 		// category, never the rejected value (T-037).
 		logRejection(h.throttleLog, "POST /v1/media", inst.Slug, consumer.Name, "mime nao aceito pelo gateway")
-		respondError(w, http.StatusUnsupportedMediaType, "permanente",
+		respondError(w, http.StatusUnsupportedMediaType, "permanent",
 			"mime nao aceito pelo gateway (declare o Content-Type da parte "+partName+
 				"; a lista e do gateway, nao da Meta)", 0)
 		return
@@ -328,7 +328,7 @@ func filePart(parts *multipart.Reader) (part *multipart.Part, oldName bool, err 
 }
 
 func respondCapError(w http.ResponseWriter, category meta.Category, ceiling int64) {
-	respondError(w, http.StatusRequestEntityTooLarge, "permanente",
+	respondError(w, http.StatusRequestEntityTooLarge, "permanent",
 		"acima do teto do gateway para a categoria "+string(category)+
 			" ("+bytesAsText(ceiling)+"); o teto e NOSSO, nao da Meta", 0)
 }
@@ -344,7 +344,7 @@ func (h *MediaHandler) download(w http.ResponseWriter, r *http.Request) {
 	// "goes up exactly as it arrived" guarantee just below.
 	payloadMime, oldMimeParam := queryAliasRaw(r.URL.Query(), "payload_mime", "mime_do_payload")
 	if payloadMime != "" && !wellFormedMime(payloadMime) {
-		respondError(w, http.StatusBadRequest, "permanente",
+		respondError(w, http.StatusBadRequest, "permanent",
 			"mime_do_payload nao e um mime valido; mande o valor de midia_mime_payload "+
 				"exatamente como veio no evento", 0)
 		return

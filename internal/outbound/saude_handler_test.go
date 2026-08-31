@@ -108,7 +108,7 @@ func askHealth(t *testing.T, h http.Handler, token, slug string) *httptest.Respo
 
 type testHealthResponse struct {
 	OK            bool   `json:"ok"`
-	DisplayNumber string `json:"numero_exibido"`
+	DisplayNumber string `json:"display_number"`
 	VerifiedAt    string `json:"verificado_em"`
 }
 

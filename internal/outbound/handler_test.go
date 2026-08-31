@@ -186,8 +186,8 @@ func TestHandlerTranslatesTheErrorClassIntoAStatus(t *testing.T) {
 		wantStatus     int
 		wantClass      string
 	}{
-		{http.StatusServiceUnavailable, http.StatusServiceUnavailable, "retentavel"},
-		{http.StatusBadRequest, http.StatusBadRequest, "permanente"},
+		{http.StatusServiceUnavailable, http.StatusServiceUnavailable, "retryable"},
+		{http.StatusBadRequest, http.StatusBadRequest, "permanent"},
 		{http.StatusUnauthorized, http.StatusBadGateway, "config"},
 	}
 
@@ -206,8 +206,8 @@ func TestHandlerTranslatesTheErrorClassIntoAStatus(t *testing.T) {
 		}
 		var resp struct {
 			Error struct {
-				Class string `json:"classe"`
-			} `json:"erro"`
+				Class string `json:"class"`
+			} `json:"error"`
 		}
 		_ = json.Unmarshal(rec.Body.Bytes(), &resp)
 		if resp.Error.Class != c.wantClass {
@@ -310,8 +310,8 @@ func TestHandlerDoesNotReleaseTheKeyWhenTransportFails(t *testing.T) {
 	}
 	var resp errorResponse
 	_ = json.Unmarshal(rec.Body.Bytes(), &resp)
-	if resp.Error.Class != "desconhecido" {
-		t.Fatalf("classe = %q, quero desconhecido", resp.Error.Class)
+	if resp.Error.Class != "unknown" {
+		t.Fatalf("classe = %q, quero unknown", resp.Error.Class)
 	}
 
 	_, reserved, err := store.ReserveIdempotency("sistema-a", "k-transporte", textBodyHash)
@@ -338,8 +338,8 @@ func TestHandlerDoesNotReleaseTheKeyWhenTheAnswerHasNoID(t *testing.T) {
 	}
 	var resp errorResponse
 	_ = json.Unmarshal(rec.Body.Bytes(), &resp)
-	if resp.Error.Class != "desconhecido" {
-		t.Fatalf("classe = %q, quero desconhecido", resp.Error.Class)
+	if resp.Error.Class != "unknown" {
+		t.Fatalf("classe = %q, quero unknown", resp.Error.Class)
 	}
 
 	_, reserved, err := store.ReserveIdempotency("sistema-a", "k-sem-id", textBodyHash)
@@ -434,7 +434,7 @@ func TestHandlerWithoutErrorDataKeepsTodaysErrorBody(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
 		t.Fatalf("corpo nao e JSON valido: %v", err)
 	}
-	if resp.Error.Class != "permanente" || resp.Error.MetaCode != 100 || resp.Error.Message != "parametro invalido" {
+	if resp.Error.Class != "permanent" || resp.Error.MetaCode != 100 || resp.Error.Message != "parametro invalido" {
 		t.Fatalf("corpo mudou sem error_data: %+v", resp.Error)
 	}
 }
@@ -467,8 +467,8 @@ func TestHandlerMetaDetailDoesNotLeakIntoTheTransitLog(t *testing.T) {
 	if strings.Contains(outcome, "segredo do payload") {
 		t.Fatalf("desfecho do log de transito = %q — detalhe_meta vazou para o log persistente", outcome)
 	}
-	if outcome != "permanente" {
-		t.Errorf("desfecho = %q, quero a CLASSE do erro (permanente), nao o detalhe", outcome)
+	if outcome != "permanent" {
+		t.Errorf("desfecho = %q, quero a CLASSE do erro (permanent), nao o detalhe", outcome)
 	}
 }
 
@@ -725,7 +725,7 @@ func (l *failingReader) Read(p []byte) (int, error) {
 }
 
 // A-3: a body I/O error is NOT "body too large". Saying that would send the
-// consumer to shrink a body that was perfectly fine, and "permanente" would tell it
+// consumer to shrink a body that was perfectly fine, and "permanent" would tell it
 // NOT to try again — when trying again is exactly right.
 func TestHandlerRefusesAReadErrorAsRetryableAndNot413(t *testing.T) {
 	srv := acceptingMeta("wamid.X")
@@ -745,8 +745,8 @@ func TestHandlerRefusesAReadErrorAsRetryableAndNot413(t *testing.T) {
 	}
 	var resp errorResponse
 	_ = json.Unmarshal(rec.Body.Bytes(), &resp)
-	if resp.Error.Class != "retentavel" {
-		t.Fatalf("classe = %q, quero retentavel — repetir resolve, o corpo nao estourou teto nenhum", resp.Error.Class)
+	if resp.Error.Class != "retryable" {
+		t.Fatalf("classe = %q, quero retryable — repetir resolve, o corpo nao estourou teto nenhum", resp.Error.Class)
 	}
 }
 
@@ -765,8 +765,8 @@ func TestHandlerRefusesLargeBodyWith413Permanent(t *testing.T) {
 	}
 	var resp errorResponse
 	_ = json.Unmarshal(rec.Body.Bytes(), &resp)
-	if resp.Error.Class != "permanente" {
-		t.Fatalf("classe = %q, quero permanente", resp.Error.Class)
+	if resp.Error.Class != "permanent" {
+		t.Fatalf("classe = %q, quero permanent", resp.Error.Class)
 	}
 }
 
@@ -801,8 +801,8 @@ func TestHandlerRefusesASecondRequestWithTheSameKey(t *testing.T) {
 	}
 	var resp errorResponse
 	_ = json.Unmarshal(second.Body.Bytes(), &resp)
-	if resp.Error.Class != "permanente" {
-		t.Fatalf("classe = %q, quero permanente — repetir com esta chave NUNCA vai funcionar", resp.Error.Class)
+	if resp.Error.Class != "permanent" {
+		t.Fatalf("classe = %q, quero permanent — repetir com esta chave NUNCA vai funcionar", resp.Error.Class)
 	}
 
 	mu.Lock()

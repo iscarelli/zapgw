@@ -194,23 +194,23 @@ func TestNumberAtMetaNeverObservedHasANAMEDState(t *testing.T) {
 	// this red instead of the consumer finding out in production.
 	var body struct {
 		NumberAtMeta struct {
-			Quality      map[string]any `json:"qualidade"`
-			MessageLimit map[string]any `json:"limite_de_mensagens"`
-			CheckedAt    *string        `json:"conferido_em"`
-		} `json:"numero_na_meta"`
+			Quality      map[string]any `json:"quality"`
+			MessageLimit map[string]any `json:"message_limit"`
+			CheckedAt    *string        `json:"checked_at"`
+		} `json:"number_at_meta"`
 	}
 	if err := json.Unmarshal(raw, &body); err != nil {
 		t.Fatalf("ler o corpo: %v\n%s", err, raw)
 	}
 	n := body.NumberAtMeta
 	for name, block := range map[string]map[string]any{
-		"qualidade": n.Quality, "limite_de_mensagens": n.MessageLimit,
+		"quality": n.Quality, "message_limit": n.MessageLimit,
 	} {
-		if block["estado"] != CertNeverObserved {
+		if block["state"] != CertNeverObserved {
 			t.Errorf("%s.estado = %v, quero %q — estado NOMEADO, nunca so `null`",
-				name, block["estado"], CertNeverObserved)
+				name, block["state"], CertNeverObserved)
 		}
-		for _, field := range []string{"valor", "observado_em", "fonte"} {
+		for _, field := range []string{"value", "observed_at", "source"} {
 			v, exists := block[field]
 			if !exists {
 				t.Errorf("%s.%s SUMIU do JSON — a chave existe SEMPRE, para o painel nao ter de "+
@@ -243,7 +243,7 @@ func TestNumberAtMetaAppearsOnBOTHSurfacesWithoutAnyoneEnumerating(t *testing.T)
 	// 1. THE ROUTE, which serializes the State to JSON without naming a
 	// single field.
 	onRoute := askState(t, h, "token-do-a", "lojinha").Body.String()
-	for _, chunk := range []string{`"numero_na_meta"`, `"limite_de_mensagens"`, `"TIER_1K"`, `"YELLOW"`} {
+	for _, chunk := range []string{`"number_at_meta"`, `"message_limit"`, `"TIER_1K"`, `"YELLOW"`} {
 		if !strings.Contains(onRoute, chunk) {
 			t.Errorf("a rota nao trouxe %s:\n%s", chunk, onRoute)
 		}
@@ -258,7 +258,7 @@ func TestNumberAtMetaAppearsOnBOTHSurfacesWithoutAnyoneEnumerating(t *testing.T)
 	for _, l := range StateRows(e) {
 		screen.WriteString(l.Label + " " + l.Value + "\n")
 	}
-	for _, chunk := range []string{"numero_na_meta", "limite_de_mensagens", "TIER_1K", "YELLOW", config.SourceMeasurement} {
+	for _, chunk := range []string{"number_at_meta", "message_limit", "TIER_1K", "YELLOW", config.SourceMeasurement} {
 		if !strings.Contains(screen.String(), chunk) {
 			t.Errorf("a tela do CLI nao trouxe %q — campo novo tem de aparecer nas DUAS "+
 				"superficies sem ninguem editar nenhuma:\n%s", chunk, screen.String())

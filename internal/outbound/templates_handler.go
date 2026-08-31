@@ -343,7 +343,7 @@ func NewTemplatesHandler(
 }
 
 type templatesResponse struct {
-	Instance  string          `json:"instancia"`
+	Instance  string          `json:"instance"`
 	Total     int             `json:"total"`
 	Templates []meta.Template `json:"templates"`
 }
@@ -387,7 +387,7 @@ type CreateTemplateRequest struct {
 type templateCreatedResponse struct {
 	ID       string `json:"id,omitempty"`
 	Status   string `json:"status,omitempty"`
-	Category string `json:"categoria,omitempty"`
+	Category string `json:"category,omitempty"`
 	// RequestedCategory is the echo of the REQUEST's `categoria` field —
 	// WITHOUT omitempty, unlike the fields above. `categoria` is a MANDATORY
 	// field of the request (Validate rejects a request without it, lines
@@ -396,7 +396,7 @@ type templateCreatedResponse struct {
 	// consumer's parser learns about on a bad day (T-108). It exists for the
 	// consumer to compare against `categoria` (what Meta RECORDED) without
 	// depending on free text — see WarningCategoryChangedFormat.
-	RequestedCategory string `json:"categoria_pedida"`
+	RequestedCategory string `json:"requested_category"`
 	Warning           string `json:"aviso"`
 	// Rereads and WaitSeconds are only born != 0 on the T-101 path —
 	// normal creation (no ambiguous outcome) never re-read the catalog, and
@@ -419,7 +419,7 @@ func (h *TemplatesHandler) list(w http.ResponseWriter, r *http.Request) {
 	if slug == "" {
 		logRejection(h.throttleLog, "GET /v1/templates", "", consumer.Name,
 			"parametro instancia e obrigatorio")
-		respondError(w, http.StatusBadRequest, "permanente",
+		respondError(w, http.StatusBadRequest, "permanent",
 			"parametro instancia e obrigatorio", 0)
 		return
 	}
@@ -469,7 +469,7 @@ func (h *TemplatesHandler) create(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		if errors.Is(err, httpx.ErrBodyTooLarge) {
 			logRejection(h.throttleLog, "POST /v1/templates", "", consumer.Name, "corpo grande demais")
-			respondError(w, http.StatusRequestEntityTooLarge, "permanente", "corpo grande demais", 0)
+			respondError(w, http.StatusRequestEntityTooLarge, "permanent", "corpo grande demais", 0)
 			return
 		}
 		// Same reasoning as sending: it's not "body too large," it's the
@@ -477,7 +477,7 @@ func (h *TemplatesHandler) create(w http.ResponseWriter, r *http.Request) {
 		// arrived incomplete was the REQUEST, and retryable because retrying
 		// resolves it.
 		logRejection(h.throttleLog, "POST /v1/templates", "", consumer.Name, "corpo nao foi lido por inteiro")
-		respondError(w, http.StatusBadRequest, "retentavel", "corpo nao foi lido por inteiro", 0)
+		respondError(w, http.StatusBadRequest, "retryable", "corpo nao foi lido por inteiro", 0)
 		return
 	}
 
@@ -493,7 +493,7 @@ func (h *TemplatesHandler) create(w http.ResponseWriter, r *http.Request) {
 	var p CreateTemplateRequest
 	if err := json.Unmarshal(translated, &p); err != nil {
 		logRejection(h.throttleLog, "POST /v1/templates", "", consumer.Name, "corpo nao e JSON valido")
-		respondError(w, http.StatusBadRequest, "permanente", "corpo nao e JSON valido", 0)
+		respondError(w, http.StatusBadRequest, "permanent", "corpo nao e JSON valido", 0)
 		return
 	}
 	// Validate BEFORE talking to Meta: sending a request already known to be
@@ -505,7 +505,7 @@ func (h *TemplatesHandler) create(w http.ResponseWriter, r *http.Request) {
 		// sending (handler.go), and the same one that makes it safe to log
 		// `err.Error()` (T-037).
 		logRejection(h.throttleLog, "POST /v1/templates", p.Instance, consumer.Name, err.Error())
-		respondError(w, http.StatusBadRequest, "permanente", err.Error(), 0)
+		respondError(w, http.StatusBadRequest, "permanent", err.Error(), 0)
 		return
 	}
 	if len(oldNames) > 0 {
@@ -557,19 +557,19 @@ func (h *TemplatesHandler) create(w http.ResponseWriter, r *http.Request) {
 // LANGUAGES, so a name it thought was one template can be four.
 type templateEntry struct {
 	ID       string `json:"id,omitempty"`
-	Language string `json:"idioma"`
-	Category string `json:"categoria,omitempty"`
+	Language string `json:"language"`
+	Category string `json:"category,omitempty"`
 	Status   string `json:"status,omitempty"`
 }
 
 // templateDeletedResponse is the `200` of the deletion, in BOTH successful
 // outcomes.
 type templateDeletedResponse struct {
-	Instance string `json:"instancia"`
-	Name     string `json:"nome"`
+	Instance string `json:"instance"`
+	Name     string `json:"name"`
 	// Outcome is OutcomeDeleted or OutcomeDidNotExist — see the comment
 	// on those constants for why the two cannot collapse into one `200 {}`.
-	Outcome string `json:"desfecho"`
+	Outcome string `json:"outcome"`
 	// Entries is `[]`, never `null`, for the same reason as the catalog
 	// list: a `null` forces every consumer to handle two different empties,
 	// and `ja_nao_existia` is precisely the outcome where it is empty.
@@ -606,7 +606,7 @@ func (h *TemplatesHandler) deleteTemplate(w http.ResponseWriter, r *http.Request
 	if slug == "" {
 		logRejection(h.throttleLog, "DELETE /v1/templates", "", consumer.Name,
 			"parametro instancia e obrigatorio")
-		respondError(w, http.StatusBadRequest, "permanente",
+		respondError(w, http.StatusBadRequest, "permanent",
 			"parametro instancia e obrigatorio", 0)
 		return
 	}
@@ -614,7 +614,7 @@ func (h *TemplatesHandler) deleteTemplate(w http.ResponseWriter, r *http.Request
 	if name == "" {
 		logRejection(h.throttleLog, "DELETE /v1/templates", slug, consumer.Name,
 			"parametro nome e obrigatorio")
-		respondError(w, http.StatusBadRequest, "permanente",
+		respondError(w, http.StatusBadRequest, "permanent",
 			"parametro nome e obrigatorio", 0)
 		return
 	}
@@ -625,7 +625,7 @@ func (h *TemplatesHandler) deleteTemplate(w http.ResponseWriter, r *http.Request
 		// not a nicety.
 		logRejection(h.throttleLog, "DELETE /v1/templates", slug, consumer.Name,
 			"parametro nome invalido")
-		respondError(w, http.StatusBadRequest, "permanente",
+		respondError(w, http.StatusBadRequest, "permanent",
 			"parametro nome so aceita letras minusculas, digitos e _ (ate 512 caracteres); "+
 				"curinga e caractere especial sao recusados aqui, antes de qualquer chamada a Meta, "+
 				"porque a exclusao e por nome e nao tem desfazer", 0)
@@ -949,7 +949,7 @@ func (h *TemplatesHandler) authenticate(w http.ResponseWriter, r *http.Request) 
 		return config.Consumer{}, false
 	}
 	log.Printf("zapgw: erro de store ao autenticar em /v1/templates: %v", err)
-	respondError(w, http.StatusServiceUnavailable, "retentavel", "indisponivel", 0)
+	respondError(w, http.StatusServiceUnavailable, "retryable", "indisponivel", 0)
 	return config.Consumer{}, false
 }
 
@@ -984,13 +984,13 @@ func (h *TemplatesHandler) instanceActive(
 			return config.Instance{}, false
 		}
 		log.Printf("zapgw: erro de store ao buscar instancia %q em /v1/templates: %v", slug, err)
-		respondError(w, http.StatusServiceUnavailable, "retentavel", "indisponivel", 0)
+		respondError(w, http.StatusServiceUnavailable, "retryable", "indisponivel", 0)
 		return config.Instance{}, false
 	}
 	if !inst.Active {
 		// 503 like the rest of the gateway, and without spending a call to
 		// Meta on a channel that cannot send anyway.
-		respondError(w, http.StatusServiceUnavailable, "retentavel", "instancia pausada", 0)
+		respondError(w, http.StatusServiceUnavailable, "retryable", "instancia pausada", 0)
 		return config.Instance{}, false
 	}
 	// T-111: AFTER the binding check (403) and the existence check (404) —
@@ -1224,12 +1224,12 @@ func respondErrorWithWait(w http.ResponseWriter, status int, class, message stri
 // would be noise, not information.
 type errorResponseWithReread struct {
 	Error struct {
-		Class       string `json:"classe"`
-		MetaCode    int    `json:"codigo_meta,omitempty"`
-		Message     string `json:"mensagem"`
+		Class       string `json:"class"`
+		MetaCode    int    `json:"meta_code,omitempty"`
+		Message     string `json:"message"`
 		Rereads     int    `json:"releituras"`
 		WaitSeconds int    `json:"espera_segundos"`
-	} `json:"erro"`
+	} `json:"error"`
 }
 
 // spacedRereads tries catalogReread MORE THAN ONCE, spaced out by

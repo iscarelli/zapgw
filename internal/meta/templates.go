@@ -92,11 +92,11 @@ const (
 // internal/outbound/templates_handler.go).
 type Template struct {
 	ID         string          `json:"id,omitempty"`
-	Name       string          `json:"nome"`
+	Name       string          `json:"name"`
 	Status     string          `json:"status"`
-	Category   string          `json:"categoria"`
-	Language   string          `json:"idioma"`
-	Components json.RawMessage `json:"componentes,omitempty"`
+	Category   string          `json:"category"`
+	Language   string          `json:"language"`
+	Components json.RawMessage `json:"components,omitempty"`
 
 	// Reason is Meta's `rejected_reason`, PASSED THROUGH AS IT CAME — the
 	// SAME word and the SAME doctrine as TemplateStatus.Reason
@@ -111,7 +111,7 @@ type Template struct {
 	// verified against the source that EVERY catalog item carries
 	// `rejected_reason`, and taking down the whole read for an
 	// unconfirmed accessory field would trade a useful catalog for none.
-	Reason string `json:"motivo,omitempty"`
+	Reason string `json:"reason,omitempty"`
 }
 
 // TemplateRequest is the creation, in this gateway's names.

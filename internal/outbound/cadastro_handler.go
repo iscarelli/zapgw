@@ -129,7 +129,7 @@ type FieldInRegistration struct {
 // RELATIVE DEADLINE DOES NOT GO IN ("3h left"): it ages inside the response and
 // lies to any panel that stores it. Whoever reads it subtracts from their own clock.
 type WindowInRegistration struct {
-	Open bool `json:"aberta"`
+	Open bool `json:"open"`
 	// FirstInsertAt is what started the clock — the two halves of the
 	// rule come from it: it is not the instance's creation date, and it does NOT
 	// change when the consumer registers again.
@@ -148,14 +148,14 @@ type WindowInRegistration struct {
 //
 // The format ONLY GROWS, like the one for /v1/health and GET /v1/estado.
 type RegistrationResponse struct {
-	Instance string `json:"instancia"`
+	Instance string `json:"instance"`
 	// State and Paused are the SAME fact, from the SAME functions as GET /v1/estado
 	// (config.StateOf). They are here because the consumer's next
 	// question is always "so, does it work now?" — and the answer is no.
-	State              string                `json:"estado"`
-	Paused             bool                  `json:"pausada"`
-	RegistrationWindow WindowInRegistration  `json:"janela_de_cadastro"`
-	Encrypted          []FieldInRegistration `json:"cifrados"`
+	State              string                `json:"state"`
+	Paused             bool                  `json:"paused"`
+	RegistrationWindow WindowInRegistration  `json:"registration_window"`
+	Encrypted          []FieldInRegistration `json:"encrypted"`
 	// NextStep is the support this gateway has: with no channel to ask, the
 	// right response has to say what to do next.
 	NextStep string `json:"proximo_passo"`
@@ -174,7 +174,7 @@ func (h *RegistrationHandler) register(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		log.Printf("zapgw: erro de store ao autenticar em %s: %v", registrationRoute, err)
-		respondError(w, http.StatusServiceUnavailable, "retentavel", "indisponivel", 0)
+		respondError(w, http.StatusServiceUnavailable, "retryable", "indisponivel", 0)
 		return
 	}
 
@@ -182,11 +182,11 @@ func (h *RegistrationHandler) register(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		if errors.Is(err, httpx.ErrBodyTooLarge) {
 			logRejection(h.throttleLog, registrationRoute, "", consumer.Name, "corpo grande demais")
-			respondError(w, http.StatusRequestEntityTooLarge, "permanente", "corpo grande demais", 0)
+			respondError(w, http.StatusRequestEntityTooLarge, "permanent", "corpo grande demais", 0)
 			return
 		}
 		logRejection(h.throttleLog, registrationRoute, "", consumer.Name, "corpo nao foi lido por inteiro")
-		respondError(w, http.StatusBadRequest, "retentavel", "corpo nao foi lido por inteiro", 0)
+		respondError(w, http.StatusBadRequest, "retryable", "corpo nao foi lido por inteiro", 0)
 		return
 	}
 
@@ -208,12 +208,12 @@ func (h *RegistrationHandler) register(w http.ResponseWriter, r *http.Request) {
 		// THE json ERROR DOES NOT GO into the response or the log: it quotes the piece of
 		// the body that didn't match, and this body carries app_secret and token_envio.
 		logRejection(h.throttleLog, registrationRoute, "", consumer.Name, "corpo nao e JSON valido")
-		respondError(w, http.StatusBadRequest, "permanente", "corpo nao e JSON valido", 0)
+		respondError(w, http.StatusBadRequest, "permanent", "corpo nao e JSON valido", 0)
 		return
 	}
 	if p.Instance == "" {
 		logRejection(h.throttleLog, registrationRoute, "", consumer.Name, ErrRegistrationNoInstance.Error())
-		respondError(w, http.StatusBadRequest, "permanente", ErrRegistrationNoInstance.Error(), 0)
+		respondError(w, http.StatusBadRequest, "permanent", ErrRegistrationNoInstance.Error(), 0)
 		return
 	}
 	// T-205 (the counter T-203 left unwired on this route): a request that
@@ -250,7 +250,7 @@ func (h *RegistrationHandler) register(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		log.Printf("zapgw: erro de store ao buscar instancia %q em %s: %v", p.Instance, registrationRoute, err)
-		respondError(w, http.StatusServiceUnavailable, "retentavel", "indisponivel", 0)
+		respondError(w, http.StatusServiceUnavailable, "retryable", "indisponivel", 0)
 		return
 	}
 	if !checkType(w, h.types, inst, "instancia de Instagram e configurada por quem opera o gateway") {
@@ -278,7 +278,7 @@ func (h *RegistrationHandler) register(w http.ResponseWriter, r *http.Request) {
 	summary, err := h.store.SummarizeInstance(p.Instance)
 	if err != nil {
 		log.Printf("zapgw: cadastro da instancia %q GRAVOU e a leitura do resumo falhou: %v", p.Instance, err)
-		respondError(w, http.StatusServiceUnavailable, "retentavel",
+		respondError(w, http.StatusServiceUnavailable, "retryable",
 			"o cadastro foi gravado, mas o gateway nao conseguiu ler o estado dela para te responder;"+
 				" repetir o cadastro e seguro (ele substitui pelo mesmo valor)", 0)
 		return
@@ -361,9 +361,9 @@ func (h *RegistrationHandler) respondRegistrationError(w http.ResponseWriter, sl
 		// why it can go whole into the response and the log. See
 		// config.ValidateMetaRegistration.
 		logRejection(h.throttleLog, registrationRoute, slug, consumer, err.Error())
-		respondError(w, http.StatusBadRequest, "permanente", err.Error(), 0)
+		respondError(w, http.StatusBadRequest, "permanent", err.Error(), 0)
 	default:
 		log.Printf("zapgw: erro de store ao cadastrar a instancia %q: %v", slug, err)
-		respondError(w, http.StatusServiceUnavailable, "retentavel", "indisponivel", 0)
+		respondError(w, http.StatusServiceUnavailable, "retryable", "indisponivel", 0)
 	}
 }

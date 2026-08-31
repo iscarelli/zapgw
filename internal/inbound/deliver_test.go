@@ -449,12 +449,12 @@ func TestDeliverCarriesParseErrorWithoutFailingToSendTheRaw(t *testing.T) {
 func TestEnvelopeWithNoEventGoesOutAsEmptyArrayOnTheWireNeverNull(t *testing.T) {
 	captured := captureDelivery(t, []byte(`{"object":"whatsapp_business_account"}`), nil)
 
-	if bytes.Contains(captured.body, []byte(`"eventos":null`)) {
-		t.Errorf("o fio manda `\"eventos\":null`, que estoura `for ev in envelope[\"eventos\"]`"+
-			" em Python e nunca casa com `eventos == []`; corpo: %s", captured.body)
+	if bytes.Contains(captured.body, []byte(`"events":null`)) {
+		t.Errorf("o fio manda `\"events\":null`, que estoura `for ev in envelope[\"events\"]`"+
+			" em Python e nunca casa com `events == []`; corpo: %s", captured.body)
 	}
-	if !bytes.Contains(captured.body, []byte(`"eventos":[]`)) {
-		t.Errorf("o fio nao traz `\"eventos\":[]`; corpo: %s", captured.body)
+	if !bytes.Contains(captured.body, []byte(`"events":[]`)) {
+		t.Errorf("o fio nao traz `\"events\":[]`; corpo: %s", captured.body)
 	}
 
 	// `parse_error` in the SAME envelope, and it's CORRECT as it is: with

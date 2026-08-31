@@ -26,9 +26,9 @@ type ErrorClass string
 
 const (
 	// ClassRetryable: retrying later might work.
-	ClassRetryable ErrorClass = "retentavel"
+	ClassRetryable ErrorClass = "retryable"
 	// ClassPermanent: retrying repeats the same error. Give up.
-	ClassPermanent ErrorClass = "permanente"
+	ClassPermanent ErrorClass = "permanent"
 	// ClassConfig: credential or permission. Only a person fixes it.
 	ClassConfig ErrorClass = "config"
 	// ClassUnknown: the gateway doesn't know whether Meta created the
@@ -43,7 +43,7 @@ const (
 	// transport, timeout, reading the response, a 2xx without an id. If
 	// you're looking for this class's branch in classOfStatus and not
 	// finding it: that's why — no branch is missing.
-	ClassUnknown ErrorClass = "desconhecido"
+	ClassUnknown ErrorClass = "unknown"
 )
 
 // MetaError is what the consumer receives when Meta refuses.

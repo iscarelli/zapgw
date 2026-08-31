@@ -151,7 +151,7 @@ func (h *ReadsHandler) mark(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		log.Printf("zapgw: erro de store ao autenticar em %s: %v", readsRoute, err)
-		respondError(w, http.StatusServiceUnavailable, "retentavel", "indisponivel", 0)
+		respondError(w, http.StatusServiceUnavailable, "retryable", "indisponivel", 0)
 		return
 	}
 
@@ -159,14 +159,14 @@ func (h *ReadsHandler) mark(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		if errors.Is(err, httpx.ErrBodyTooLarge) {
 			logRejection(h.throttleLog, readsRoute, "", consumer.Name, "corpo grande demais")
-			respondError(w, http.StatusRequestEntityTooLarge, "permanente", "corpo grande demais", 0)
+			respondError(w, http.StatusRequestEntityTooLarge, "permanent", "corpo grande demais", 0)
 			return
 		}
 		// Same reading as the send: the consumer's connection dropped midway. 400
 		// because what arrived incomplete was the REQUEST, and `retentavel` because
 		// retrying resolves it.
 		logRejection(h.throttleLog, readsRoute, "", consumer.Name, "corpo nao foi lido por inteiro")
-		respondError(w, http.StatusBadRequest, "retentavel", "corpo nao foi lido por inteiro", 0)
+		respondError(w, http.StatusBadRequest, "retryable", "corpo nao foi lido por inteiro", 0)
 		return
 	}
 
@@ -182,7 +182,7 @@ func (h *ReadsHandler) mark(w http.ResponseWriter, r *http.Request) {
 	var p ReadRequest
 	if err := json.Unmarshal(translated, &p); err != nil {
 		logRejection(h.throttleLog, readsRoute, "", consumer.Name, "corpo nao e JSON valido")
-		respondError(w, http.StatusBadRequest, "permanente", "corpo nao e JSON valido", 0)
+		respondError(w, http.StatusBadRequest, "permanent", "corpo nao e JSON valido", 0)
 		return
 	}
 	if err := p.Validate(); err != nil {
@@ -191,7 +191,7 @@ func (h *ReadsHandler) mark(w http.ResponseWriter, r *http.Request) {
 		// inside it, so logging the refused value would leak personal data
 		// into the journal (docs/ARMADILHAS.md).
 		logRejection(h.throttleLog, readsRoute, p.Instance, consumer.Name, err.Error())
-		respondError(w, http.StatusBadRequest, "permanente", err.Error(), 0)
+		respondError(w, http.StatusBadRequest, "permanent", err.Error(), 0)
 		return
 	}
 	if len(oldNames) > 0 {
@@ -213,11 +213,11 @@ func (h *ReadsHandler) mark(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		log.Printf("zapgw: erro de store ao buscar instancia %q em %s: %v", p.Instance, readsRoute, err)
-		respondError(w, http.StatusServiceUnavailable, "retentavel", "indisponivel", 0)
+		respondError(w, http.StatusServiceUnavailable, "retryable", "indisponivel", 0)
 		return
 	}
 	if !inst.Active {
-		respondError(w, http.StatusServiceUnavailable, "retentavel", "instancia pausada", 0)
+		respondError(w, http.StatusServiceUnavailable, "retryable", "instancia pausada", 0)
 		return
 	}
 	// T-111: AFTER the link (403) and existence (404) — NEVER before,

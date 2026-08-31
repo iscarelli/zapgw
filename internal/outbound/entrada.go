@@ -167,7 +167,7 @@ const (
 	// which came to always be present precisely because of this). Besides,
 	// "not configured" is a different answer from "couldn't measure", and
 	// the two send someone to look in different places.
-	ConnectorNotConfigured = "nao_configurado"
+	ConnectorNotConfigured = "not_configured"
 )
 
 // ConnectorInState is the `entrada.conector` block.
@@ -176,7 +176,7 @@ const (
 // already applies in MetaToken and CounterInState: an explicit `null` says
 // "there isn't one", and the key ALWAYS exists.
 type ConnectorInState struct {
-	State string `json:"estado"`
+	State string `json:"state"`
 	// ReadyConnections is the `readyConnections` of the cloudflared `/ready`.
 	//
 	// `null` WHEN `desconhecido`, ALWAYS — and this is the field the T-120
@@ -185,20 +185,20 @@ type ConnectorInState struct {
 	// measure" into "measured and it's bad" on whoever reads it — and the
 	// two send the person looking in opposite places (the network up to the
 	// connector, or the connector itself).
-	ReadyConnections *int `json:"conexoes_prontas"`
+	ReadyConnections *int `json:"ready_connections"`
 	// MeasuredAt is the last time the connector ANSWERED — not the last
 	// attempt. It keeps pointing at the last real response even after the
 	// state degrades to `desconhecido`: it is what says how long the gateway
 	// has not heard from the connector, information that zeroing it would
 	// destroy. Same rule as MetaToken.MeasuredAt.
-	MeasuredAt *string `json:"medido_em"`
+	MeasuredAt *string `json:"measured_at"`
 	// FailingSince is the FIRST attempt of the CURRENT sequence of
 	// failures — `null` when the last attempt answered, or when there was
 	// never an attempt. Only the sequence's first failure writes: the
 	// following ones cannot push the date forward, otherwise it would say
 	// "failing for a minute" after an hour of failing (the defect
 	// Watchdog.record already avoids).
-	FailingSince *string `json:"falhando_desde"`
+	FailingSince *string `json:"failing_since"`
 }
 
 // IngressInState is the published `entrada` block.
@@ -210,7 +210,7 @@ type ConnectorInState struct {
 // of this file.
 type IngressInState struct {
 	Via       string           `json:"via"`
-	Connector ConnectorInState `json:"conector"`
+	Connector ConnectorInState `json:"connector"`
 	// LastWebhookAt is the SAME timestamp as
 	// `contadores.recebidas.ultimo_em`, not a second clock (T-120 was
 	// explicit: reuse, don't create).
@@ -222,7 +222,7 @@ type IngressInState struct {
 	// These are two fields with the SAME value, for the same reason (and
 	// with the same care) as `dia`/`dia_utc`: they come from the SAME
 	// reading, so there is no path by which they diverge.
-	LastWebhookAt *string `json:"ultimo_webhook_em"`
+	LastWebhookAt *string `json:"last_webhook_at"`
 }
 
 // IngressSource is what BuildState needs to publish the `entrada` block.

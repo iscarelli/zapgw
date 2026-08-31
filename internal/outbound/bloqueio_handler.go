@@ -152,9 +152,9 @@ type blockItemResponse struct {
 type blockFailureResponse struct {
 	Phone      string `json:"telefone"`
 	WaID       string `json:"wa_id,omitempty"`
-	MetaCode   int    `json:"codigo_meta,omitempty"`
-	Message    string `json:"mensagem"`
-	MetaDetail string `json:"detalhe_meta,omitempty"`
+	MetaCode   int    `json:"meta_code,omitempty"`
+	Message    string `json:"message"`
+	MetaDetail string `json:"meta_detail,omitempty"`
 }
 
 // blockOperationResponse is the `200` of POST/DELETE /v1/bloqueios —
@@ -162,10 +162,10 @@ type blockFailureResponse struct {
 // consumer never has to guess which call generated this response just from
 // the format.
 type blockOperationResponse struct {
-	Instance  string                 `json:"instancia"`
+	Instance  string                 `json:"instance"`
 	Operation string                 `json:"operacao"`
-	Processed []blockItemResponse    `json:"processados"`
-	Failures  []blockFailureResponse `json:"falhas"`
+	Processed []blockItemResponse    `json:"processed"`
+	Failures  []blockFailureResponse `json:"failures"`
 }
 
 // blockListItem is ONE number in the block list (GET) — only the
@@ -177,9 +177,9 @@ type blockListItem struct {
 
 // blockListResponse is the `200` of GET /v1/bloqueios.
 type blockListResponse struct {
-	Instance     string          `json:"instancia"`
+	Instance     string          `json:"instance"`
 	Total        int             `json:"total"`
-	Blocked      []blockListItem `json:"bloqueados"`
+	Blocked      []blockListItem `json:"blocked"`
 	CursorBefore string          `json:"cursor_antes,omitempty"`
 	CursorAfter  string          `json:"cursor_depois,omitempty"`
 }
@@ -211,7 +211,7 @@ func (h *BlockHandler) process(
 			return
 		}
 		log.Printf("zapgw: erro de store ao autenticar em %s: %v", route, err)
-		respondError(w, http.StatusServiceUnavailable, "retentavel", "indisponivel", 0)
+		respondError(w, http.StatusServiceUnavailable, "retryable", "indisponivel", 0)
 		return
 	}
 
@@ -219,13 +219,13 @@ func (h *BlockHandler) process(
 	if err != nil {
 		if errors.Is(err, httpx.ErrBodyTooLarge) {
 			logRejection(h.throttleLog, route, "", consumer.Name, "corpo grande demais")
-			respondError(w, http.StatusRequestEntityTooLarge, "permanente", "corpo grande demais", 0)
+			respondError(w, http.StatusRequestEntityTooLarge, "permanent", "corpo grande demais", 0)
 			return
 		}
 		// Same reading as the other routes: what arrived incomplete was the
 		// REQUEST, and it's retryable because repeating resolves it.
 		logRejection(h.throttleLog, route, "", consumer.Name, "corpo nao foi lido por inteiro")
-		respondError(w, http.StatusBadRequest, "retentavel", "corpo nao foi lido por inteiro", 0)
+		respondError(w, http.StatusBadRequest, "retryable", "corpo nao foi lido por inteiro", 0)
 		return
 	}
 
@@ -242,12 +242,12 @@ func (h *BlockHandler) process(
 	var p BlockRequest
 	if err := json.Unmarshal(translated, &p); err != nil {
 		logRejection(h.throttleLog, route, "", consumer.Name, "corpo nao e JSON valido")
-		respondError(w, http.StatusBadRequest, "permanente", "corpo nao e JSON valido", 0)
+		respondError(w, http.StatusBadRequest, "permanent", "corpo nao e JSON valido", 0)
 		return
 	}
 	if err := p.Validate(); err != nil {
 		logRejection(h.throttleLog, route, p.Instance, consumer.Name, err.Error())
-		respondError(w, http.StatusBadRequest, "permanente", err.Error(), 0)
+		respondError(w, http.StatusBadRequest, "permanent", err.Error(), 0)
 		return
 	}
 	// T-205 (the counter T-203 left unwired on this route): see the same
@@ -274,11 +274,11 @@ func (h *BlockHandler) process(
 			return
 		}
 		log.Printf("zapgw: erro de store ao buscar instancia %q em %s: %v", p.Instance, route, err)
-		respondError(w, http.StatusServiceUnavailable, "retentavel", "indisponivel", 0)
+		respondError(w, http.StatusServiceUnavailable, "retryable", "indisponivel", 0)
 		return
 	}
 	if !inst.Active {
-		respondError(w, http.StatusServiceUnavailable, "retentavel", "instancia pausada", 0)
+		respondError(w, http.StatusServiceUnavailable, "retryable", "instancia pausada", 0)
 		return
 	}
 	// T-111: AFTER the link (403) and the existence (404) — NEVER before,
@@ -370,7 +370,7 @@ func (h *BlockHandler) list(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		log.Printf("zapgw: erro de store ao autenticar em %s: %v", listBlocksRoute, err)
-		respondError(w, http.StatusServiceUnavailable, "retentavel", "indisponivel", 0)
+		respondError(w, http.StatusServiceUnavailable, "retryable", "indisponivel", 0)
 		return
 	}
 
@@ -380,7 +380,7 @@ func (h *BlockHandler) list(w http.ResponseWriter, r *http.Request) {
 	slug, oldInstanceParam := queryAlias(r.URL.Query(), "instance", "instancia")
 	if slug == "" {
 		logRejection(h.throttleLog, listBlocksRoute, "", consumer.Name, "parametro instancia e obrigatorio")
-		respondError(w, http.StatusBadRequest, "permanente", "parametro instancia e obrigatorio", 0)
+		respondError(w, http.StatusBadRequest, "permanent", "parametro instancia e obrigatorio", 0)
 		return
 	}
 
@@ -399,11 +399,11 @@ func (h *BlockHandler) list(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		log.Printf("zapgw: erro de store ao buscar instancia %q em %s: %v", slug, listBlocksRoute, err)
-		respondError(w, http.StatusServiceUnavailable, "retentavel", "indisponivel", 0)
+		respondError(w, http.StatusServiceUnavailable, "retryable", "indisponivel", 0)
 		return
 	}
 	if !inst.Active {
-		respondError(w, http.StatusServiceUnavailable, "retentavel", "instancia pausada", 0)
+		respondError(w, http.StatusServiceUnavailable, "retryable", "instancia pausada", 0)
 		return
 	}
 	if !checkType(w, h.types, inst, "") {
@@ -421,7 +421,7 @@ func (h *BlockHandler) list(w http.ResponseWriter, r *http.Request) {
 		n, errConv := strconv.Atoi(v)
 		if errConv != nil || n <= 0 {
 			logRejection(h.throttleLog, listBlocksRoute, slug, consumer.Name, "parametro limit invalido")
-			respondError(w, http.StatusBadRequest, "permanente", "parametro limit tem de ser um inteiro positivo", 0)
+			respondError(w, http.StatusBadRequest, "permanent", "parametro limit tem de ser um inteiro positivo", 0)
 			return
 		}
 		limit = n

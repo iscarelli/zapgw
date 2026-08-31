@@ -97,46 +97,46 @@ func askStateWithWindow(t *testing.T, h http.Handler, token, slug, seriesDays st
 // second type here would keep the test green on the day only one of them
 // changed.
 type testDay struct {
-	Day string `json:"dia"` // OBSOLETE since T-070, see DayInState
+	Day string `json:"day"` // OBSOLETE since T-070, see DayInState
 	// DayUTC is the name that states the timezone, and that is why it
 	// survives being copied outside the contract.
-	DayUTC   string         `json:"dia_utc"`
-	Counters map[string]int `json:"contadores"`
+	DayUTC   string         `json:"day_utc"`
+	Counters map[string]int `json:"counters"`
 }
 
 // testStateResponse is a DELIBERATE copy of the format, written from the
 // consumer's point of view — if someone renames a field in respostaEstado,
 // this test turns red instead of the consumer finding out in production.
 type testStateResponse struct {
-	Instance    string `json:"instancia"`
-	State       string `json:"estado"`
-	Paused      bool   `json:"pausada"`
-	Version     string `json:"versao"`
-	GeneratedAt string `json:"gerado_em"`
-	// StampsSince: the age of the INSTRUMENT, without which `ultimo_em: null`
+	Instance    string `json:"instance"`
+	State       string `json:"state"`
+	Paused      bool   `json:"paused"`
+	Version     string `json:"version"`
+	GeneratedAt string `json:"generated_at"`
+	// StampsSince: the age of the INSTRUMENT, without which `last_at: null`
 	// remains ambiguous (T-070).
-	StampsSince string `json:"carimbos_desde"`
+	StampsSince string `json:"stamps_since"`
 	Counters    map[string]struct {
 		Today     int     `json:"hoje"`
-		Last7Days int     `json:"ultimos_7_dias"`
-		LastAt    *string `json:"ultimo_em"`
-	} `json:"contadores"`
-	Series7Days []testDay `json:"serie_7_dias"`
+		Last7Days int     `json:"last_7_days"`
+		LastAt    *string `json:"last_at"`
+	} `json:"counters"`
+	Series7Days []testDay `json:"last_7_days_series"`
 	// DailySeries is the REQUESTED window (T-081). It is a separate field, not
 	// the one above grown, because `serie_7_dias` is a live contract for two
 	// consumers.
-	DailySeries []testDay `json:"serie_diaria"`
+	DailySeries []testDay `json:"daily_series"`
 	MetaToken   struct {
-		Verdict           string  `json:"veredito"`
-		MeasuredAt        *string `json:"medido_em"`
-		CheckedAt         *string `json:"conferido_em"`
-		CheckFailingSince *string `json:"checagem_falhando_desde"`
-	} `json:"token_meta"`
+		Verdict           string  `json:"verdict"`
+		MeasuredAt        *string `json:"measured_at"`
+		CheckedAt         *string `json:"checked_at"`
+		CheckFailingSince *string `json:"check_failing_since"`
+	} `json:"meta_token"`
 	CallbackCertificate struct {
-		State      string  `json:"estado"`
-		ExpiresAt  *string `json:"expira_em"`
-		ObservedAt *string `json:"observado_em"`
-	} `json:"certificado_do_callback"`
+		State      string  `json:"state"`
+		ExpiresAt  *string `json:"expires_at"`
+		ObservedAt *string `json:"observed_at"`
+	} `json:"callback_certificate"`
 }
 
 func readState(t *testing.T, rec *httptest.ResponseRecorder) testStateResponse {
@@ -561,8 +561,8 @@ func TestStateRefusesWindowLargerThanRetentionSayingTheTermInForce(t *testing.T)
 		if err := json.Unmarshal(rec.Body.Bytes(), &e); err != nil {
 			t.Fatalf("corpo de erro nao desserializa: %v (corpo = %q)", err, rec.Body.String())
 		}
-		if e.Error.Class != "permanente" {
-			t.Errorf("classe = %q, quero \"permanente\" — repetir o mesmo pedido nao vai funcionar", e.Error.Class)
+		if e.Error.Class != "permanent" {
+			t.Errorf("classe = %q, quero \"permanent\" — repetir o mesmo pedido nao vai funcionar", e.Error.Class)
 		}
 		if !strings.Contains(e.Error.Message, strconv.Itoa(c.retention)) {
 			t.Errorf("a mensagem nao diz o prazo em vigor (%d dias): %q — sem o numero, quem le nao sabe o que pedir",

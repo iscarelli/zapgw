@@ -326,12 +326,12 @@ func TestConnectorProbeSupportsConcurrentReadAndWrite(t *testing.T) {
 type testIngress struct {
 	Via       string `json:"via"`
 	Connector struct {
-		State            string  `json:"estado"`
-		ReadyConnections *int    `json:"conexoes_prontas"`
-		MeasuredAt       *string `json:"medido_em"`
-		FailingSince     *string `json:"falhando_desde"`
-	} `json:"conector"`
-	LastWebhookAt *string `json:"ultimo_webhook_em"`
+		State            string  `json:"state"`
+		ReadyConnections *int    `json:"ready_connections"`
+		MeasuredAt       *string `json:"measured_at"`
+		FailingSince     *string `json:"failing_since"`
+	} `json:"connector"`
+	LastWebhookAt *string `json:"last_webhook_at"`
 }
 
 func readIngress(t *testing.T, rec *httptest.ResponseRecorder) testIngress {
@@ -340,7 +340,7 @@ func readIngress(t *testing.T, rec *httptest.ResponseRecorder) testIngress {
 		t.Fatalf("status = %d, quero 200; corpo = %s", rec.Code, rec.Body.String())
 	}
 	var r struct {
-		Ingress testIngress `json:"entrada"`
+		Ingress testIngress `json:"ingress"`
 	}
 	if err := json.Unmarshal(rec.Body.Bytes(), &r); err != nil {
 		t.Fatalf("corpo nao desserializa: %v (corpo = %q)", err, rec.Body.String())
@@ -396,7 +396,7 @@ func TestStateRouteNeverOMITSTheConnectorBlockWhenNoAddressIsConfigured(t *testi
 	if err := json.Unmarshal(rec.Body.Bytes(), &raw); err != nil {
 		t.Fatalf("corpo nao desserializa: %v", err)
 	}
-	rawIngress, has := raw["entrada"]
+	rawIngress, has := raw["ingress"]
 	if !has {
 		t.Fatalf("a chave `entrada` NAO esta no JSON: %s", rec.Body.String())
 	}
@@ -404,7 +404,7 @@ func TestStateRouteNeverOMITSTheConnectorBlockWhenNoAddressIsConfigured(t *testi
 	if err := json.Unmarshal(rawIngress, &blocks); err != nil {
 		t.Fatalf("`entrada` nao desserializa: %v", err)
 	}
-	for _, key := range []string{"via", "conector", "ultimo_webhook_em"} {
+	for _, key := range []string{"via", "connector", "last_webhook_at"} {
 		if _, has := blocks[key]; !has {
 			t.Errorf("a chave `entrada.%s` NAO esta no JSON: %s", key, rawIngress)
 		}
@@ -489,7 +489,7 @@ func TestTheIngressBlockAppearsOnTheCLIScreen(t *testing.T) {
 	if v := rowValue(t, rows, "via"); v != ViaTunnel {
 		t.Errorf("linha `via` = %q, quero %q", v, ViaTunnel)
 	}
-	if v := rowValue(t, rows, "conexoes_prontas"); v != "4" {
-		t.Errorf("linha `conexoes_prontas` = %q, quero \"4\"", v)
+	if v := rowValue(t, rows, "ready_connections"); v != "4" {
+		t.Errorf("linha `ready_connections` = %q, quero \"4\"", v)
 	}
 }

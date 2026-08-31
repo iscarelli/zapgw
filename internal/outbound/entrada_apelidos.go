@@ -523,7 +523,7 @@ func translateEntradaOrReject(
 	translated, oldNames, err := translateTopLevel(raw, dict)
 	if err != nil {
 		logRejection(throttle, route, "", consumerName, err.Error())
-		respondError(w, http.StatusBadRequest, "permanente", err.Error(), 0)
+		respondError(w, http.StatusBadRequest, "permanent", err.Error(), 0)
 		return nil, nil, false
 	}
 	return translated, oldNames, true

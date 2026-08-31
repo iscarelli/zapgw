@@ -280,10 +280,10 @@ func TestExternalProbeSupportsConcurrentReadAndWrite(t *testing.T) {
 // --- the block on the route ---------------------------------------------------------
 
 type testExternalReach struct {
-	State      string  `json:"estado"`
-	Verdict    *string `json:"veredito"`
-	MeasuredAt *string `json:"medido_em"`
-	Source     *string `json:"fonte"`
+	State      string  `json:"state"`
+	Verdict    *string `json:"verdict"`
+	MeasuredAt *string `json:"measured_at"`
+	Source     *string `json:"source"`
 }
 
 func readExternalReach(t *testing.T, rec *httptest.ResponseRecorder) testExternalReach {
@@ -292,7 +292,7 @@ func readExternalReach(t *testing.T, rec *httptest.ResponseRecorder) testExterna
 		t.Fatalf("status = %d, quero 200; corpo = %s", rec.Code, rec.Body.String())
 	}
 	var r struct {
-		ExternalReach testExternalReach `json:"alcance_externo"`
+		ExternalReach testExternalReach `json:"external_reach"`
 	}
 	if err := json.Unmarshal(rec.Body.Bytes(), &r); err != nil {
 		t.Fatalf("corpo nao desserializa: %v (corpo = %q)", err, rec.Body.String())
@@ -323,7 +323,7 @@ func TestStateRouteNeverOmitsTheExternalReachBlockWithoutAConfiguredURL(t *testi
 	if err := json.Unmarshal(rec.Body.Bytes(), &raw); err != nil {
 		t.Fatalf("corpo nao desserializa: %v", err)
 	}
-	rawReach, has := raw["alcance_externo"]
+	rawReach, has := raw["external_reach"]
 	if !has {
 		t.Fatalf("a chave `alcance_externo` NAO esta no JSON: %s", rec.Body.String())
 	}
@@ -331,7 +331,7 @@ func TestStateRouteNeverOmitsTheExternalReachBlockWithoutAConfiguredURL(t *testi
 	if err := json.Unmarshal(rawReach, &blocks); err != nil {
 		t.Fatalf("`alcance_externo` nao desserializa: %v", err)
 	}
-	for _, key := range []string{"estado", "veredito", "medido_em", "fonte"} {
+	for _, key := range []string{"state", "verdict", "measured_at", "source"} {
 		if _, has := blocks[key]; !has {
 			t.Errorf("a chave `alcance_externo.%s` NAO esta no JSON: %s", key, rawReach)
 		}

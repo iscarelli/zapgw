@@ -100,7 +100,7 @@ func NewProfileHandler(store *config.Store, auth *Authenticator, client *meta.Cl
 // field list that would diverge from the first (this project's mother
 // trap).
 type profileResponse struct {
-	Instance string `json:"instancia"`
+	Instance string `json:"instance"`
 	meta.Profile
 }
 
@@ -119,7 +119,7 @@ type ProfileRequest struct {
 // immediate re-read would cost a second call with no documented
 // read-after-write guarantee for this endpoint.
 type profileWriteResponse struct {
-	Instance string            `json:"instancia"`
+	Instance string            `json:"instance"`
 	Saved    meta.ProfilePatch `json:"gravado"`
 }
 
@@ -133,7 +133,7 @@ func (h *ProfileHandler) read(w http.ResponseWriter, r *http.Request) {
 	slug, oldInstanceParam := queryAlias(r.URL.Query(), "instance", "instancia")
 	if slug == "" {
 		logRejection(h.throttleLog, "GET /v1/perfil", "", consumer.Name, "parametro instancia e obrigatorio")
-		respondError(w, http.StatusBadRequest, "permanente", "parametro instancia e obrigatorio", 0)
+		respondError(w, http.StatusBadRequest, "permanent", "parametro instancia e obrigatorio", 0)
 		return
 	}
 	inst, ok := h.instanceActive(w, consumer, slug, "GET /v1/perfil")
@@ -171,24 +171,24 @@ func (h *ProfileHandler) write(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		if errors.Is(err, httpx.ErrBodyTooLarge) {
 			logRejection(h.throttleLog, "POST /v1/perfil", "", consumer.Name, "corpo grande demais")
-			respondError(w, http.StatusRequestEntityTooLarge, "permanente", "corpo grande demais", 0)
+			respondError(w, http.StatusRequestEntityTooLarge, "permanent", "corpo grande demais", 0)
 			return
 		}
 		logRejection(h.throttleLog, "POST /v1/perfil", "", consumer.Name, "corpo nao foi lido por inteiro")
-		respondError(w, http.StatusBadRequest, "retentavel", "corpo nao foi lido por inteiro", 0)
+		respondError(w, http.StatusBadRequest, "retryable", "corpo nao foi lido por inteiro", 0)
 		return
 	}
 
 	var p ProfileRequest
 	if err := json.Unmarshal(raw, &p); err != nil {
 		logRejection(h.throttleLog, "POST /v1/perfil", "", consumer.Name, "corpo nao e JSON valido")
-		respondError(w, http.StatusBadRequest, "permanente", "corpo nao e JSON valido", 0)
+		respondError(w, http.StatusBadRequest, "permanent", "corpo nao e JSON valido", 0)
 		return
 	}
 	p.Instance = strings.TrimSpace(p.Instance)
 	if p.Instance == "" {
 		logRejection(h.throttleLog, "POST /v1/perfil", "", consumer.Name, "campo instancia e obrigatorio")
-		respondError(w, http.StatusBadRequest, "permanente", "campo instancia e obrigatorio", 0)
+		respondError(w, http.StatusBadRequest, "permanent", "campo instancia e obrigatorio", 0)
 		return
 	}
 
@@ -226,7 +226,7 @@ func (h *ProfileHandler) authenticate(w http.ResponseWriter, r *http.Request) (c
 		return config.Consumer{}, false
 	}
 	log.Printf("zapgw: erro de store ao autenticar em /v1/perfil: %v", err)
-	respondError(w, http.StatusServiceUnavailable, "retentavel", "indisponivel", 0)
+	respondError(w, http.StatusServiceUnavailable, "retryable", "indisponivel", 0)
 	return config.Consumer{}, false
 }
 
@@ -257,11 +257,11 @@ func (h *ProfileHandler) instanceActive(
 			return config.Instance{}, false
 		}
 		log.Printf("zapgw: erro de store ao buscar instancia %q em %s: %v", slug, route, err)
-		respondError(w, http.StatusServiceUnavailable, "retentavel", "indisponivel", 0)
+		respondError(w, http.StatusServiceUnavailable, "retryable", "indisponivel", 0)
 		return config.Instance{}, false
 	}
 	if !inst.Active {
-		respondError(w, http.StatusServiceUnavailable, "retentavel", "instancia pausada", 0)
+		respondError(w, http.StatusServiceUnavailable, "retryable", "instancia pausada", 0)
 		return config.Instance{}, false
 	}
 	// T-111: AFTER the bond (403) and the existence (404) — NEVER before,

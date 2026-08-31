@@ -63,7 +63,7 @@ const (
 	// whoever reads it is the same in both: Meta responded rejecting it
 	// (401/403, or a permanent 4xx), or the registered phone_number_id is
 	// invalid and the call never left here.
-	VerdictRefused = "recusado"
+	VerdictRefused = "refused"
 	// VerdictUnknown: there is no valid measurement right now —
 	// either there never was one, or the last one aged out (see
 	// verdictValidity).
@@ -139,10 +139,10 @@ type measurement struct {
 // our volume or our internals: `veredito` different from `ok`, or
 // `conferido_em` gone stale.
 type MetaToken struct {
-	Verdict           string  `json:"veredito"`
-	MeasuredAt        *string `json:"medido_em"`
-	CheckedAt         *string `json:"conferido_em"`
-	CheckFailingSince *string `json:"checagem_falhando_desde"`
+	Verdict           string  `json:"verdict"`
+	MeasuredAt        *string `json:"measured_at"`
+	CheckedAt         *string `json:"checked_at"`
+	CheckFailingSince *string `json:"check_failing_since"`
 }
 
 // Watchdog measures the token verdict of each active instance, at its own pace.

@@ -129,27 +129,27 @@ func TestStateCommandShowsTheFourBlocksOnlyTheConsumerSaw(t *testing.T) {
 	}
 	text := out.String()
 
-	if want, has := "ativa", valueFromState(t, text, "", "estado"); has != want {
+	if want, has := "ativa", valueFromState(t, text, "", "state"); has != want {
 		t.Errorf("estado = %q, quero %q. saida:\n%s", has, want, text)
 	}
-	if want, has := "nao", valueFromState(t, text, "", "pausada"); has != want {
+	if want, has := "nao", valueFromState(t, text, "", "paused"); has != want {
 		t.Errorf("pausada = %q, quero %q. saida:\n%s", has, want, text)
 	}
-	if want, has := version, valueFromState(t, text, "", "versao"); has != want {
+	if want, has := version, valueFromState(t, text, "", "version"); has != want {
 		t.Errorf("versao = %q, quero %q — sem ela, 'que binario estava no ar?' vira arqueologia de deploy", has, want)
 	}
 	// The verdict and BOTH timestamps: they are what answer "does Meta
 	// still accept this token?", which is the question of whoever is in
 	// the middle of the incident.
-	if want, has := outbound.VerdictOK, valueFromState(t, text, "token_meta", "veredito"); has != want {
+	if want, has := outbound.VerdictOK, valueFromState(t, text, "meta_token", "verdict"); has != want {
 		t.Errorf("token_meta.veredito = %q, quero %q. saida:\n%s", has, want, text)
 	}
-	for _, label := range []string{"medido_em", "conferido_em"} {
-		if v := valueFromState(t, text, "token_meta", label); v == "—" {
+	for _, label := range []string{"measured_at", "checked_at"} {
+		if v := valueFromState(t, text, "meta_token", label); v == "—" {
 			t.Errorf("token_meta.%s veio vazio depois de uma medicao bem-sucedida. saida:\n%s", label, text)
 		}
 	}
-	if want, has := outbound.CertNeverObserved, valueFromState(t, text, "certificado_do_callback", "estado"); has != want {
+	if want, has := outbound.CertNeverObserved, valueFromState(t, text, "callback_certificate", "state"); has != want {
 		t.Errorf("certificado_do_callback.estado = %q, quero %q — instancia que nunca entregou nao tem certificado observado",
 			has, want)
 	}
@@ -196,7 +196,7 @@ func TestStateCommandShowsStampInUTCWithTheDistanceBeside(t *testing.T) {
 	// gerado_em is also a timestamp, and it proves the rule holds for
 	// EVERY time field in the state — the formatting asks the PARSE, not
 	// the field's name.
-	if v := valueFromState(t, text, "", "gerado_em"); !strings.HasSuffix(v, "(ha 0s)") {
+	if v := valueFromState(t, text, "", "generated_at"); !strings.HasSuffix(v, "(ha 0s)") {
 		t.Errorf("gerado_em = %q, quero terminando em \"(ha 0s)\"", v)
 	}
 }
@@ -231,8 +231,8 @@ func TestStateCommandDoesNotAnnounceAsFutureAMeasurementThatALREADYHAPPENED(t *t
 	}
 	text := out.String()
 
-	for _, label := range []string{"medido_em", "conferido_em"} {
-		v := valueFromState(t, text, "token_meta", label)
+	for _, label := range []string{"measured_at", "checked_at"} {
+		v := valueFromState(t, text, "meta_token", label)
 		if strings.Contains(v, "daqui a") {
 			t.Errorf("token_meta.%s = %q — a tela anuncia como FUTURO uma medicao que ja aconteceu.\nsaida:\n%s",
 				label, v, text)
@@ -264,7 +264,7 @@ func TestStateCommandShowsStampsSinceWithoutFieldListInTheCLI(t *testing.T) {
 	}
 	text := out.String()
 
-	v := valueFromState(t, text, "", "carimbos_desde")
+	v := valueFromState(t, text, "", "stamps_since")
 	if v == outbound.NoValue {
 		t.Fatalf("carimbos_desde = %q na tela — instancia recem-criada carimba desde que nasceu.\nsaida:\n%s", v, text)
 	}
@@ -298,7 +298,7 @@ func TestStateCommandDoesNotSpendACallOnMetaForAPausedInstance(t *testing.T) {
 		t.Errorf("o comando bateu %d vez(es) na Graph API por uma instancia PAUSADA", n)
 	}
 	text := out.String()
-	if want, has := outbound.VerdictUnknown, valueFromState(t, text, "token_meta", "veredito"); has != want {
+	if want, has := outbound.VerdictUnknown, valueFromState(t, text, "meta_token", "verdict"); has != want {
 		t.Errorf("token_meta.veredito = %q, quero %q para instancia pausada. saida:\n%s", has, want, text)
 	}
 }
@@ -472,19 +472,19 @@ func TestStateRouteReturnsTheSameNumbersAsTheStateCommand(t *testing.T) {
 	}
 
 	var resp struct {
-		State    string `json:"estado"`
-		Paused   bool   `json:"pausada"`
-		Version  string `json:"versao"`
+		State    string `json:"state"`
+		Paused   bool   `json:"paused"`
+		Version  string `json:"version"`
 		Counters map[string]struct {
 			Today     int `json:"hoje"`
-			Last7Days int `json:"ultimos_7_dias"`
-		} `json:"contadores"`
+			Last7Days int `json:"last_7_days"`
+		} `json:"counters"`
 		MetaToken struct {
-			Verdict string `json:"veredito"`
-		} `json:"token_meta"`
+			Verdict string `json:"verdict"`
+		} `json:"meta_token"`
 		CallbackCertificate struct {
-			State string `json:"estado"`
-		} `json:"certificado_do_callback"`
+			State string `json:"state"`
+		} `json:"callback_certificate"`
 	}
 	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
 		t.Fatalf("corpo nao desserializa: %v (corpo = %q)", err, rec.Body.String())
@@ -512,11 +512,11 @@ func TestStateRouteReturnsTheSameNumbersAsTheStateCommand(t *testing.T) {
 	blocks := []struct {
 		block, label, fromRoute string
 	}{
-		{"", "estado", resp.State},
-		{"", "pausada", pausedInCLI},
-		{"", "versao", resp.Version},
-		{"token_meta", "veredito", resp.MetaToken.Verdict},
-		{"certificado_do_callback", "estado", resp.CallbackCertificate.State},
+		{"", "state", resp.State},
+		{"", "paused", pausedInCLI},
+		{"", "version", resp.Version},
+		{"meta_token", "verdict", resp.MetaToken.Verdict},
+		{"callback_certificate", "state", resp.CallbackCertificate.State},
 	}
 	for _, c := range blocks {
 		if fromCLI := valueFromState(t, text, c.block, c.label); fromCLI != c.fromRoute {
@@ -689,7 +689,7 @@ func TestStateCommandShowsTheInboundBlock(t *testing.T) {
 	}
 	text := out.String()
 
-	if want, has := outbound.ViaTunnel, valueFromState(t, text, "entrada", "via"); has != want {
+	if want, has := outbound.ViaTunnel, valueFromState(t, text, "ingress", "via"); has != want {
 		t.Errorf("entrada.via = %q, quero %q. saida:\n%s", has, want, text)
 	}
 	// Without ZAPGW_CONECTOR_READY the block stays on screen, saying no

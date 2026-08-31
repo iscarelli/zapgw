@@ -217,20 +217,20 @@ func TestGETStateInstagramExposesInstagramTokenInTheJSON(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
 		t.Fatalf("JSON invalido: %v\n%s", err, rec.Body.String())
 	}
-	ti, ok := body["token_instagram"].(map[string]any)
+	ti, ok := body["instagram_token"].(map[string]any)
 	if !ok {
-		t.Fatalf("token_instagram ausente ou de outro tipo no JSON: %v", body["token_instagram"])
+		t.Fatalf("token_instagram ausente ou de outro tipo no JSON: %v", body["instagram_token"])
 	}
-	if ti["veredito"] != VerdictIGTokenWaiting {
-		t.Errorf("veredito = %v, quero %q", ti["veredito"], VerdictIGTokenWaiting)
+	if ti["verdict"] != VerdictIGTokenWaiting {
+		t.Errorf("veredito = %v, quero %q", ti["verdict"], VerdictIGTokenWaiting)
 	}
 	if ti["definido_em"] == nil {
 		t.Error("definido_em ausente — a instancia insta-loja tem token desde a criacao")
 	}
-	if ti["expira_em"] == nil {
+	if ti["expires_at"] == nil {
 		t.Error("expira_em ausente")
 	}
-	if _, has := ti["dias_restantes"]; !has {
+	if _, has := ti["days_left"]; !has {
 		t.Error("dias_restantes ausente")
 	}
 }
@@ -252,13 +252,13 @@ func TestGETStateWhatsappInstagramTokenIsNotApplicableInTheJSON(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
 		t.Fatalf("JSON invalido: %v\n%s", err, rec.Body.String())
 	}
-	ti, ok := body["token_instagram"].(map[string]any)
+	ti, ok := body["instagram_token"].(map[string]any)
 	if !ok {
-		t.Fatalf("token_instagram ausente ou de outro tipo no JSON: %v", body["token_instagram"])
+		t.Fatalf("token_instagram ausente ou de outro tipo no JSON: %v", body["instagram_token"])
 	}
-	if ti["veredito"] != VerdictIGTokenNotApplicable {
+	if ti["verdict"] != VerdictIGTokenNotApplicable {
 		t.Errorf("veredito = %v, quero %q — token_instagram NAO PODE sumir nem vir zerado numa instancia whatsapp",
-			ti["veredito"], VerdictIGTokenNotApplicable)
+			ti["verdict"], VerdictIGTokenNotApplicable)
 	}
 }
 
@@ -347,22 +347,22 @@ func TestGETStateInstagramNumberAtMetaAndMetaTokenAreNotApplicableInTheJSON(t *t
 	}
 	var body struct {
 		NumberAtMeta struct {
-			Quality      map[string]any `json:"qualidade"`
-			MessageLimit map[string]any `json:"limite_de_mensagens"`
-			CheckedAt    *string        `json:"conferido_em"`
-		} `json:"numero_na_meta"`
+			Quality      map[string]any `json:"quality"`
+			MessageLimit map[string]any `json:"message_limit"`
+			CheckedAt    *string        `json:"checked_at"`
+		} `json:"number_at_meta"`
 		MetaToken struct {
-			Verdict string `json:"veredito"`
-		} `json:"token_meta"`
+			Verdict string `json:"verdict"`
+		} `json:"meta_token"`
 	}
 	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
 		t.Fatalf("JSON invalido: %v\n%s", err, rec.Body.String())
 	}
 	for name, block := range map[string]map[string]any{
-		"qualidade": body.NumberAtMeta.Quality, "limite_de_mensagens": body.NumberAtMeta.MessageLimit,
+		"quality": body.NumberAtMeta.Quality, "message_limit": body.NumberAtMeta.MessageLimit,
 	} {
-		if block["estado"] != NotApplicable {
-			t.Errorf("%s.estado = %v, quero %q", name, block["estado"], NotApplicable)
+		if block["state"] != NotApplicable {
+			t.Errorf("%s.estado = %v, quero %q", name, block["state"], NotApplicable)
 		}
 	}
 	if body.NumberAtMeta.CheckedAt != nil {
@@ -423,8 +423,8 @@ func TestGETStateInstagramExposesTypeAndIgIDInTheJSON(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
 		t.Fatalf("JSON invalido: %v\n%s", err, rec.Body.String())
 	}
-	if body["tipo"] != config.TypeInstagram {
-		t.Errorf("tipo = %v, quero %q", body["tipo"], config.TypeInstagram)
+	if body["kind"] != config.TypeInstagram {
+		t.Errorf("tipo = %v, quero %q", body["kind"], config.TypeInstagram)
 	}
 	if body["ig_id"] != "IGID1" {
 		t.Errorf("ig_id = %v, quero %q", body["ig_id"], "IGID1")
@@ -446,8 +446,8 @@ func TestGETStateWhatsappExposesTypeAndIgIDAsNotApplicableInTheJSON(t *testing.T
 	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
 		t.Fatalf("JSON invalido: %v\n%s", err, rec.Body.String())
 	}
-	if body["tipo"] != config.TypeWhatsApp {
-		t.Errorf("tipo = %v, quero %q", body["tipo"], config.TypeWhatsApp)
+	if body["kind"] != config.TypeWhatsApp {
+		t.Errorf("tipo = %v, quero %q", body["kind"], config.TypeWhatsApp)
 	}
 	if body["ig_id"] != NotApplicable {
 		t.Errorf("ig_id = %v, quero %q — o campo tem de vir SEMPRE, nunca ausente nem string vazia",

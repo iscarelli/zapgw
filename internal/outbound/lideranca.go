@@ -217,7 +217,7 @@ type LeadershipInState struct {
 	// there a valid measurement right now?" (CertObserved / NotApplicable).
 	// New vocabulary would force the consumer to learn a second table for
 	// the same idea.
-	State string `json:"estado"`
+	State string `json:"state"`
 	// Holder is `null` when the guard is disarmed — NEVER `true`, and never
 	// an absent field. `true` would make a single node look like it won an
 	// election that never happened; absent would make the consumer have to
@@ -228,7 +228,7 @@ type LeadershipInState struct {
 	// that's why they don't change `titular`), but only the second means the
 	// machine is BLIND, and whoever operates it needs to know which of the
 	// two it is.
-	Reason *string `json:"motivo"`
+	Reason *string `json:"reason"`
 }
 
 // inState builds the block. A nil receiver is a DISARMED guard — a caller
@@ -249,7 +249,7 @@ func (l *Leadership) inState() LeadershipInState {
 
 // Require wraps a handler and refuses when this machine is not the titular.
 //
-// 503 + "retentavel" is the right pair, and it's not an aesthetic choice: the
+// 503 + "retryable" is the right pair, and it's not an aesthetic choice: the
 // consumer already retries on this class by contract, and by the time it
 // retries the VIP will already have migrated to whoever actually holds the
 // lease. A 4xx would make it GIVE UP on a message that just needed a
@@ -261,7 +261,7 @@ func (l *Leadership) Require(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if ok, reason := l.Holder(); !ok {
 			l.logLeadershipRefusal(reason)
-			respondError(w, http.StatusServiceUnavailable, "retentavel",
+			respondError(w, http.StatusServiceUnavailable, "retryable",
 				"esta instancia do gateway nao detem a lideranca do par e por isso nao envia; "+
 					"repita — quem detem a concessao atende", 0)
 			return

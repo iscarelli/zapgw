@@ -41,14 +41,14 @@ import (
 // THE FORMAT ONLY GROWS, like /v1/health's does: a consumer reading
 // `contadores.recebidas.hoje` today must not break when a new field arrives.
 type State struct {
-	Instance string `json:"instancia"`
+	Instance string `json:"instance"`
 	// Type is config.TypeWhatsApp or config.TypeInstagram (T-097/T-098), always
 	// present (T-107). Until now this route had the SAME blindness that T-103
 	// fixed in `zapgw instancia mostrar`/`listar`: without this field the
 	// consumer would have to DEDUCE the type from the absence of other blocks
 	// (token_instagram nao_se_aplica, numero_na_meta nao_se_aplica...), which is
 	// guessing, never reading.
-	Type string `json:"tipo"`
+	Type string `json:"kind"`
 	// IgID is the Instagram-scoped Business Account ID (T-102) — it ONLY has a
 	// value when Type == config.TypeInstagram. On a WhatsApp instance it holds
 	// NotApplicable, NEVER an absent field nor an empty string (T-107): an
@@ -63,7 +63,7 @@ type State struct {
 	// State is the SAME word from `zapgw instancia listar` ("ativa"/"pausada"),
 	// via the SAME function (config.StateOf): two words for the same state
 	// would force whoever operates it to translate between their screen and ours.
-	State string `json:"estado"`
+	State string `json:"state"`
 	// Paused is the SAME fact as `State`, in the form that an alarm rule
 	// consumes without comparing strings. Both come out of the SAME boolean, in
 	// the SAME literal — there is no path by which they could diverge.
@@ -74,16 +74,16 @@ type State struct {
 	// consumer's alarm says "no delivery in 200 minutes" when the cause is
 	// "it's paused". It's the same disease the timestamp cures, one level up:
 	// the symptom doesn't point to the cause.
-	Paused bool `json:"pausada"`
+	Paused bool `json:"paused"`
 	// Version is the binary that answered — the SAME value from /v1/health. It
 	// keeps "which version was live when this happened?" from turning into
 	// deploy archaeology when the consumer keeps this response alongside their
 	// incident.
-	Version string `json:"versao"`
+	Version string `json:"version"`
 	// GeneratedAt is the instant THIS state was built — not the age of any
 	// measurement (that age lives in the timestamps). It travels so that a
 	// dashboard or proxy that saves this response cannot present it as fresh.
-	GeneratedAt string `json:"gerado_em"`
+	GeneratedAt string `json:"generated_at"`
 	// StampsSince is the instant from which THIS instance records counter
 	// timestamps — the age of the INSTRUMENT, not of the data (T-070, requested
 	// by `consumer-a`).
@@ -102,13 +102,13 @@ type State struct {
 	// per instance (config.InstanceSummary.StampsSince); which value a
 	// pre-existing instance receives, and why, is in the
 	// "instancia.carimbos_desde" migration (internal/config/store.go).
-	StampsSince string `json:"carimbos_desde"`
+	StampsSince string `json:"stamps_since"`
 	// The `cli:"tabela"` tag says the CLI shows this field in the counters
 	// TABLE, not in the label/value list — see StateRows. It lives here, in
 	// the declaration, and not in an exceptions list inside the CLI, for exactly
 	// this task's reason: an exceptions list on one surface is the seed of the
 	// next divergence.
-	Counters map[string]CounterInState `json:"contadores" cli:"tabela"`
+	Counters map[string]CounterInState `json:"counters" cli:"tabela"`
 	// Series7Days is the day-by-day of the SAME window that `ultimos_7_dias`
 	// summarizes: ALWAYS 7 entries, oldest to newest, with days that had no
 	// traffic present and zeroed. The total alone doesn't distinguish "four
@@ -126,7 +126,7 @@ type State struct {
 	// come from the same read, see config.CounterSummary). The name carries
 	// a number and so it cannot grow: `serie_7_dias` with 30 entries would be a
 	// field lying about itself in the `console.log` of whoever is debugging.
-	Series7Days []DayInState `json:"serie_7_dias" cli:"tabela"`
+	Series7Days []DayInState `json:"last_7_days_series" cli:"tabela"`
 	// DailySeries is the SAME series over the window the consumer ASKED FOR
 	// (`?serie_dias=`, default ShortSeriesDays) — the new field from T-081.
 	//
@@ -149,7 +149,7 @@ type State struct {
 	// sometimes appears forces the consumer to distinguish "absent" from "empty"
 	// to answer the same question, and this file has already refused that twice
 	// (see LastAt and CertificateInState).
-	DailySeries []DayInState `json:"serie_diaria" cli:"tabela"`
+	DailySeries []DayInState `json:"daily_series" cli:"tabela"`
 	// MetaToken is the watchdog's live check (vigia.go) — "does Meta still accept
 	// this instance's token?".
 	//
@@ -166,12 +166,12 @@ type State struct {
 	// filter by type), but what it measures MAKES NO SENSE there. That's why
 	// metaTokenInState, below, publishes NotApplicable instead of what the watchdog
 	// read, for the SAME reason as NumberAtMeta.
-	MetaToken MetaToken `json:"token_meta"`
+	MetaToken MetaToken `json:"meta_token"`
 	// CallbackCertificate is the validity of the CONSUMER's certificate,
 	// alongside token_meta and for the same reason: both answer "will this
 	// credential still work tomorrow?", one for Meta's side and the other for
 	// theirs.
-	CallbackCertificate CertificateInState `json:"certificado_do_callback"`
+	CallbackCertificate CertificateInState `json:"callback_certificate"`
 	// NumberAtMeta is the number's quality and message limit (T-080), next to
 	// the two blocks above because it answers the SAME family of question:
 	// "will this channel keep working?" — now from the QUOTA side instead of
@@ -184,12 +184,12 @@ type State struct {
 	// answers (measured in production, tenant-two-ig, v0.36.0, 2026-07-30 — the
 	// block came out `nunca_observado`, which says "wait", when the correct
 	// answer is "will never exist here, don't look").
-	NumberAtMeta NumberAtMeta `json:"numero_na_meta"`
+	NumberAtMeta NumberAtMeta `json:"number_at_meta"`
 	// InstagramToken is the validity of Instagram's long-lived token (T-098),
 	// next to the three blocks above for the SAME family of question — "will
 	// this channel keep working?", now from the token side that ONLY Instagram
 	// has a fixed expiry with no automatic re-authentication possible.
-	InstagramToken InstagramTokenInState `json:"token_instagram"`
+	InstagramToken InstagramTokenInState `json:"instagram_token"`
 	// Ingress is WHERE this gateway's ingress is published, and whether the
 	// connector that publishes it is up (T-120, owner's request).
 	//
@@ -204,7 +204,7 @@ type State struct {
 	// instance). It travels here, and not in a new route, because the question
 	// it answers — "is anything still coming in, and through where?" — is asked
 	// together with the counters, never alone.
-	Ingress IngressInState `json:"entrada"`
+	Ingress IngressInState `json:"ingress"`
 	// ExternalReach is the verdict of the probe that measures ingress FROM
 	// OUTSIDE our network (T-121) — brought into this same response at the
 	// owner's request, so the consumer only ever needs to talk to the gateway.
@@ -213,7 +213,7 @@ type State struct {
 	// (docs/CONTRATO-CONSUMIDOR.md): in the case where it matters most — a
 	// SILENT GATEWAY — asking here returns nothing. The whole reason is in
 	// sonda_externa.go's header.
-	ExternalReach ExternalReachInState `json:"alcance_externo"`
+	ExternalReach ExternalReachInState `json:"external_reach"`
 	// Leadership says whether the send singleton guard exists in this
 	// installation and whether THIS machine holds it — see LeadershipInState
 	// (lideranca.go).
@@ -234,11 +234,11 @@ type State struct {
 // doesn't know the other side's traffic.
 type CounterInState struct {
 	Today     int `json:"hoje"`
-	Last7Days int `json:"ultimos_7_dias"`
+	Last7Days int `json:"last_7_days"`
 	// LastAt is `null` when that key was never counted within the counters'
 	// retention. Pointer without omitempty: the key ALWAYS exists, so the
 	// dashboard doesn't have to distinguish "absent" from "null".
-	LastAt *string `json:"ultimo_em"`
+	LastAt *string `json:"last_at"`
 }
 
 // DayInState is one day of the series. The date is in UTC, the SAME
@@ -269,11 +269,11 @@ type CounterInState struct {
 // field is a RECUSA (refusal) named in mensagem.go — not a working field.
 type DayInState struct {
 	// Day is OBSOLETE: same value as DayUTC, kept for whoever already reads it.
-	Day string `json:"dia"`
+	Day string `json:"day"`
 	// DayUTC is the right name — it states the timezone, and that's why it
 	// survives being copied outside this document.
-	DayUTC   string         `json:"dia_utc"`
-	Counters map[string]int `json:"contadores"`
+	DayUTC   string         `json:"day_utc"`
+	Counters map[string]int `json:"counters"`
 }
 
 // dayInState builds the pair from ONE date. It's what keeps `dia` and
@@ -290,9 +290,9 @@ const (
 	// CertNeverObserved: no delivery from this instance has ever completed
 	// a handshake — a newly-created instance, or a consumer that never
 	// received anything.
-	CertNeverObserved = "nunca_observado"
+	CertNeverObserved = "never_observed"
 	// CertObserved: there is a date, and there is the instant it was seen.
-	CertObserved = "observado"
+	CertObserved = "observed"
 )
 
 // NotApplicable is the ONLY literal in this file for "this instance doesn't
@@ -313,7 +313,7 @@ const (
 // CertNeverObserved does not. Two constants with the SAME text would
 // diverge on the day someone edited only one — that's why there is a single
 // one, and the blocks that need it read this one.
-const NotApplicable = "nao_se_aplica"
+const NotApplicable = "not_applicable"
 
 // CertificateInState is the `certificado_do_callback` block (T-064).
 //
@@ -353,14 +353,14 @@ const NotApplicable = "nao_se_aplica"
 // screen of someone who already has both timestamps in front of them — not
 // a published judgment.)
 type CertificateInState struct {
-	State string `json:"estado"`
+	State string `json:"state"`
 	// ExpiresAt is the NotAfter of the callback's LEAF certificate, in
 	// UTC/RFC3339. `null` ONLY in the nunca_observado state, never a made-up
 	// date.
-	ExpiresAt *string `json:"expira_em"`
+	ExpiresAt *string `json:"expires_at"`
 	// ObservedAt is when the gateway saw that certificate — the instant of
 	// delivery, not of now.
-	ObservedAt *string `json:"observado_em"`
+	ObservedAt *string `json:"observed_at"`
 }
 
 // NumberAtMeta is the `numero_na_meta` block (T-080): what Meta says about
@@ -390,7 +390,7 @@ type NumberAtMeta struct {
 	// Quality is Meta's `quality_rating`, LITERAL ("GREEN", "YELLOW"...).
 	// It only ever comes from a measurement — the quality webhook doesn't
 	// carry any rating (see config.NumberAtMeta).
-	Quality ObservedValue `json:"qualidade"`
+	Quality ObservedValue `json:"quality"`
 	// MessageLimit is the tier, LITERAL ("TIER_250", "TIER_1K"...) —
 	// NEVER 250 nor 1000. Translating it would hide whatever tier Meta
 	// invents tomorrow, returning a plausible number for a value nobody
@@ -399,7 +399,7 @@ type NumberAtMeta struct {
 	// IT HAS TWO SOURCES and the `fonte` field says which one won — the
 	// tie-break rule (the most recent observation wins, not the "preferred"
 	// source) lives in config.UpdateNumberAtMeta, in one single place.
-	MessageLimit ObservedValue `json:"limite_de_mensagens"`
+	MessageLimit ObservedValue `json:"message_limit"`
 	// CheckedAt is the last time the gateway TRIED to measure — not the
 	// last time it learned something. The divergence between it and the
 	// `observado_em` above is the signal, exactly as with token_meta: it
@@ -409,7 +409,7 @@ type NumberAtMeta struct {
 	// `null` means there was never an attempt — a PAUSED instance is never
 	// measured (the watchdog skips it on purpose), so that `null` is the right
 	// answer, not a failure.
-	CheckedAt *string `json:"conferido_em"`
+	CheckedAt *string `json:"checked_at"`
 }
 
 // ObservedValue is ONE value from Meta with provenance: what, when, and
@@ -427,20 +427,20 @@ type NumberAtMeta struct {
 // the limit is observed and the quality is not. A single state would have
 // to lie about one of the two.
 type ObservedValue struct {
-	State string `json:"estado"`
+	State string `json:"state"`
 	// Value is Meta's literal, untranslated. `null` ONLY in nunca_observado.
-	Value *string `json:"valor"`
+	Value *string `json:"value"`
 	// ObservedAt is when the GATEWAY learned this value — not Meta's
 	// timestamp. The why (two clocks nobody synchronized) is in
 	// config/numero.go.
-	ObservedAt *string `json:"observado_em"`
+	ObservedAt *string `json:"observed_at"`
 	// Source is `measurement` or `webhook` — config.SourceMeasurement/SourceWebhook.
 	//
 	// IT TRAVELS ALL THE WAY TO THE CONSUMER ON PURPOSE: without it, two
 	// reads with different values don't say whether the gateway measured or
 	// Meta notified, and that's the first question of whoever is looking at
 	// a number that changed.
-	Source *string `json:"fonte"`
+	Source *string `json:"source"`
 }
 
 // VerdictReader is what BuildState needs from the token's watchdog.
@@ -475,7 +475,7 @@ const (
 	// VerdictIGTokenWaiting: valid token, not yet time to try renewing
 	// (age < DaysToRenewIGToken days). Normal state — not a problem, and
 	// the `instrucao` field stays absent so it doesn't look like one.
-	VerdictIGTokenWaiting = "aguardando"
+	VerdictIGTokenWaiting = "pending"
 	// VerdictIGTokenOK: the automatic loop has ALREADY renewed this token
 	// successfully at least once (RenewedAt != nil) and the most recent
 	// attempt isn't failing. It's the answer to "did it manage to validate?"
@@ -489,10 +489,10 @@ const (
 	// honest SINCE the first failure — this project does not escalate to an
 	// ALARM on its own (owner's decision, 2026-07-30): whoever has a channel
 	// with the person who fixes it is the CONSUMER, not the gateway.
-	VerdictIGTokenFailing = "falhando"
+	VerdictIGTokenFailing = "failing"
 	// VerdictIGTokenExpired: past InstagramTokenValidity without renewing.
 	// No automatic renewal is possible — only a manual login on Meta.
-	VerdictIGTokenExpired = "expirado"
+	VerdictIGTokenExpired = "expired"
 )
 
 // InstagramTokenInState is the `token_instagram` block (T-098): when the
@@ -510,20 +510,20 @@ const (
 // "se o consumidor não pode contornar, o gateway tem de resolver ou
 // reportar com precisão").
 type InstagramTokenInState struct {
-	Verdict string `json:"veredito"`
+	Verdict string `json:"verdict"`
 	// SetAt and ExpiresAt are `null` ONLY when Verdict == nao_se_aplica
 	// — on every tipo=instagram instance they ALWAYS appear, even while
 	// aguardando (it's the consumer's request, said out loud: "we want to
 	// know so we can at least watch the date").
 	SetAt     *string `json:"definido_em"`
-	ExpiresAt *string `json:"expira_em"`
+	ExpiresAt *string `json:"expires_at"`
 	// DaysLeft tracks ExpiresAt under the SAME condition — it exists
 	// because doing the subtraction against ExpiresAt in your head, in the
 	// middle of an incident, is exactly the mistake ReadableDistance (further
 	// below in this file) already exists to spare the OPERATOR from; here
 	// the same holds for the CONSUMER, who only reads the JSON. It can be
 	// NEGATIVE (expired N days ago).
-	DaysLeft *int `json:"dias_restantes"`
+	DaysLeft *int `json:"days_left"`
 	// RenewedAt is the last time the AUTOMATIC LOOP renewed this token
 	// successfully — never a manual rotation by the owner
 	// (RotateInstance never writes token_renovado_em, only
@@ -532,7 +532,7 @@ type InstagramTokenInState struct {
 	// renewal, even if the token itself already has days of life — that's
 	// the distinction that answers "has the mechanism already proven it
 	// works?".
-	RenewedAt *string `json:"renovado_em"`
+	RenewedAt *string `json:"renewed_at"`
 	// FailingSince is the FIRST attempt of the CURRENT run of failures —
 	// `null` when the last attempt succeeded, or there was never an attempt.
 	// Honest SINCE THE FIRST FAILURE: there is no threshold here that delays
@@ -540,11 +540,11 @@ type InstagramTokenInState struct {
 	// every tick with no escalation alarm at all, only the ALARME line in
 	// the gateway's journal, which is operational and never reaches the
 	// consumer).
-	FailingSince *string `json:"falhando_desde"`
+	FailingSince *string `json:"failing_since"`
 	// Instruction ONLY appears when Verdict is falhando or expirado — and
 	// says, in Portuguese, THAT THE FIX IS MANUAL AND IS NOT THE CONSUMER'S.
 	// See the type's comment, above.
-	Instruction *string `json:"instrucao"`
+	Instruction *string `json:"instruction"`
 }
 
 // InstructionIGTokenFailing and InstructionIGTokenExpired are the TWO

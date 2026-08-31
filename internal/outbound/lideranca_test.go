@@ -116,8 +116,8 @@ func TestLeadershipWithSTALELeaseRefusesAsRetryable(t *testing.T) {
 	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
 		t.Fatalf("corpo nao e JSON de erro: %v", err)
 	}
-	if body.Error.Class != "retentavel" {
-		t.Errorf("classe = %q, queria \"retentavel\" — um 4xx faria o consumidor DESISTIR de uma mensagem que so' precisava de outro destino", body.Error.Class)
+	if body.Error.Class != "retryable" {
+		t.Errorf("classe = %q, queria \"retryable\" — um 4xx faria o consumidor DESISTIR de uma mensagem que so' precisava de outro destino", body.Error.Class)
 	}
 }
 

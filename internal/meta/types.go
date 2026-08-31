@@ -6,7 +6,7 @@ package meta
 type EventType string
 
 const (
-	EventTypeMessage        EventType = "mensagem"
+	EventTypeMessage        EventType = "message"
 	EventTypeStatus         EventType = "status"
 	EventTypeTemplateStatus EventType = "template_status"
 
@@ -18,17 +18,17 @@ const (
 	// CHANGE, and it's the only one that gives the direction
 	// (`previous_` -> `new_`) and the appeal window. See
 	// TemplateCategory.
-	EventTypeTemplateCategory EventType = "template_categoria"
+	EventTypeTemplateCategory EventType = "template_category"
 
 	// EventTypeNumberQuality is the `phone_number_quality_update` webhook
 	// (T-058, 2026-07-28) — the daily QUOTA and the number's quality. See
 	// NumberQuality.
-	EventTypeNumberQuality EventType = "qualidade_do_numero"
+	EventTypeNumberQuality EventType = "number_quality"
 
 	// EventTypeAccountAlert is the `account_alerts` webhook (T-058,
 	// 2026-07-28) — an account problem warning, WITH SEVERITY. See
 	// AccountAlert.
-	EventTypeAccountAlert EventType = "alerta_de_conta"
+	EventTypeAccountAlert EventType = "account_alert"
 )
 
 // Reaction: the emoji and target of a message reaction (a message with
@@ -65,7 +65,7 @@ const (
 // this path.
 type Reaction struct {
 	Emoji  string `json:"emoji,omitempty"` // absent = reaction REMOVED
-	Target string `json:"alvo"`            // wamid of the reacted-to message
+	Target string `json:"target"`          // wamid of the reacted-to message
 }
 
 // Location: a point shared by the contact (a message with m.Type ==
@@ -85,8 +85,8 @@ type Reaction struct {
 type Location struct {
 	Latitude  float64 `json:"latitude"`
 	Longitude float64 `json:"longitude"`
-	Name      string  `json:"nome,omitempty"`
-	Address   string  `json:"endereco,omitempty"`
+	Name      string  `json:"name,omitempty"`
+	Address   string  `json:"address,omitempty"`
 }
 
 // StatusError: the reason for an `errors[]` Meta sent — inside `statuses[]`
@@ -139,8 +139,8 @@ type Location struct {
 // only the FIRST — see statusEvent, in parse.go, and the status event
 // section in docs/CONTRATO-CONSUMIDOR.md.
 type StatusError struct {
-	Code    int    `json:"codigo"`
-	Message string `json:"mensagem"`
+	Code    int    `json:"code"`
+	Message string `json:"message"`
 
 	// Details comes from errors[0].error_data.details — a NESTED object
 	// that might not exist (Meta only sends error_data for some codes).
@@ -156,7 +156,7 @@ type StatusError struct {
 	// itself (*StatusError), where the zero value (false, an empty
 	// struct) has a different meaning from absent. A pointer here would
 	// be ceremony with no guarantee.
-	Details string `json:"detalhes,omitempty"`
+	Details string `json:"details,omitempty"`
 }
 
 // Billing: under which category Meta billed this delivery — OUR OWN
@@ -178,7 +178,7 @@ type StatusError struct {
 // envelope only grows, so adding later is free, removing later is a
 // breaking change.
 type Billing struct {
-	Category string `json:"categoria"`
+	Category string `json:"category"`
 
 	// Billable is *bool, NOT bool: the SAME rule as "voz" (Event.Voice,
 	// above), with a BIGGER consequence — here the difference is about
@@ -226,20 +226,20 @@ type TemplateStatus struct {
 	// appears inside Event.ID, where it's needed for the dedup key.
 	// Same rule as Billing: the envelope only grows, so adding later is
 	// free and removing later is a breaking change.
-	Name     string `json:"nome,omitempty"`
-	Language string `json:"idioma,omitempty"`
+	Name     string `json:"name,omitempty"`
+	Language string `json:"language,omitempty"`
 
 	// Category is `message_template_category` — UTILITY, MARKETING,
 	// AUTHENTICATION. It's the field that gives this task the priority
 	// it has (see the type's comment, above).
-	Category string `json:"categoria,omitempty"`
+	Category string `json:"category,omitempty"`
 
 	// State is Meta's `event`: APPROVED, REJECTED, PENDING, PAUSED,
 	// DISABLED... NOT called "status" so it doesn't collide, in the mind
 	// of whoever reads the envelope, with Event.Status
 	// (sent/delivered/read/failed), which talks about a MESSAGE, not a
 	// template.
-	State string `json:"estado"`
+	State string `json:"state"`
 
 	// Reason is Meta's `reason`, PASSED THROUGH AS IT CAME — including
 	// the literal string "NONE", which is the NORMAL value when there's
@@ -248,7 +248,7 @@ type TemplateStatus struct {
 	// and "Meta didn't send the field" are different facts, and the
 	// second can show up on an event type we haven't seen yet. With
 	// omitempty, only the field's real ABSENCE disappears from the JSON.
-	Reason string `json:"motivo,omitempty"`
+	Reason string `json:"reason,omitempty"`
 }
 
 // TemplateCategory: Meta RECLASSIFIED a template's category — the
@@ -291,8 +291,8 @@ type TemplateCategory struct {
 	// (Request.Template + Request.Language), same reason as TemplateStatus.
 	// Meta's `message_template_id` still stays out of the envelope and
 	// inside Event.ID, where it's needed for the dedup key.
-	Name     string `json:"nome,omitempty"`
-	Language string `json:"idioma,omitempty"`
+	Name     string `json:"name,omitempty"`
+	Language string `json:"language,omitempty"`
 
 	// PreviousCategory and NewCategory are `previous_category` and
 	// `new_category`. NewCategory has NO omitempty: it IS the event's
@@ -301,15 +301,15 @@ type TemplateCategory struct {
 	// disappear from the JSON would force the consumer to distinguish
 	// "didn't come" from "came empty" for a case the parser already
 	// prevents.
-	PreviousCategory string `json:"categoria_anterior,omitempty"`
-	NewCategory      string `json:"categoria_nova"`
+	PreviousCategory string `json:"previous_category,omitempty"`
+	NewCategory      string `json:"new_category"`
 
 	// CorrectCategory is `correct_category`: which category Meta
 	// considers correct for this template. In the dashboard's example it
 	// comes EQUAL to PreviousCategory and DIFFERENT from the new one,
 	// which only makes sense alongside AppealStatus — it's what
 	// grounds the appeal. Passed through as it came.
-	CorrectCategory string `json:"categoria_correta,omitempty"`
+	CorrectCategory string `json:"correct_category,omitempty"`
 
 	// AppealStatus is `category_appeal_status` — "ELIGIBLE" in the
 	// dashboard's example. It's the field with money inside: it says the
@@ -342,28 +342,28 @@ type NumberQuality struct {
 	// is about, and that's why it enters the event's key. It does NOT go
 	// through Canonicalize: the gateway isn't addressing anyone here, it's
 	// passing through a label.
-	DisplayNumber string `json:"numero_exibido,omitempty"`
+	DisplayNumber string `json:"display_number,omitempty"`
 
 	// State is Meta's `event`: ONBOARDING, FLAGGED, UNFLAGGED... the
 	// SAME name (and same reason) as TemplateStatus.State — not
 	// called "status" so it doesn't collide, in the mind of whoever
 	// reads the envelope, with Event.Status (sent/delivered/read/
 	// failed), which talks about a MESSAGE.
-	State string `json:"estado,omitempty"`
+	State string `json:"state,omitempty"`
 
 	// CurrentLimit and PreviousLimit come from `current_limit` and
 	// `old_limit`. These are the two that give the DIRECTION — it's the
 	// direction that separates "the account matured" from "the account
 	// was downgraded", and `current_limit` alone doesn't give it.
-	CurrentLimit  string `json:"limite_atual,omitempty"`
-	PreviousLimit string `json:"limite_anterior,omitempty"`
+	CurrentLimit  string `json:"current_limit,omitempty"`
+	PreviousLimit string `json:"previous_limit,omitempty"`
 
 	// MaxDailyLimit is `max_daily_conversations_per_business`. In
 	// the dashboard sample it comes EQUAL to CurrentLimit, and that's why
 	// the corpus has a synthetic fixture with all three different:
 	// without it, swapping the reading of one for the other would pass
 	// green (see testdata/corpus/README.md).
-	MaxDailyLimit string `json:"limite_diario_maximo,omitempty"`
+	MaxDailyLimit string `json:"max_daily_limit,omitempty"`
 }
 
 // AccountAlert: Meta warning about an account problem, WITH SEVERITY —
@@ -388,14 +388,14 @@ type AccountAlert struct {
 	// `entity_id`: what the alert is ABOUT. EntityID is TEXT because
 	// Meta sends it as a NUMBER in the sample — the same tolerance (and
 	// the same risk of not fitting in an int32) as message_template_id.
-	EntityType string `json:"tipo_da_entidade,omitempty"`
+	EntityType string `json:"entity_kind,omitempty"`
 	EntityID   string `json:"id_da_entidade,omitempty"`
 
 	// Type is `alert_type` (e.g. "OBA_APPROVED") — what happened.
 	// Severity is `alert_severity`; State is `alert_status`.
 	Type     string `json:"tipo,omitempty"`
 	Severity string `json:"severidade,omitempty"`
-	State    string `json:"estado,omitempty"`
+	State    string `json:"state,omitempty"`
 
 	// Description is `alert_description`: Meta's free text, in English.
 	// It's the only field in this event that is NOT a closed vocabulary,
@@ -410,7 +410,7 @@ type AccountAlert struct {
 // the envelope, alongside the raw body. It never replaces the raw body: it
 // is enrichment.
 type Event struct {
-	Type EventType `json:"tipo"`
+	Type EventType `json:"kind"`
 
 	// ID is DETERMINISTIC, derived from the event's own content (type
 	// prefix + identifier Meta assigned, e.g. "msg:"+wa_message_id) —
@@ -428,7 +428,7 @@ type Event struct {
 
 	// --- message ---
 	WaMessageID string `json:"wa_message_id,omitempty"`
-	SubType     string `json:"sub_tipo,omitempty"` // text, button, interactive, audio, image...
+	SubType     string `json:"sub_kind,omitempty"` // text, button, interactive, audio, image...
 	// FromRaw is the EXACT value Meta sent; FromCanonical has gone through
 	// Canonicalize. Both exist because Meta doesn't guarantee the same
 	// spelling you registered.
@@ -440,10 +440,10 @@ type Event struct {
 	// the address. FromCanonical == FromRaw always on an Instagram event; the
 	// two fields coexist only so the consumer doesn't need to know,
 	// field by field, which product generated the event.
-	FromRaw       string `json:"de_cru,omitempty"`
-	FromCanonical string `json:"de_canonico,omitempty"`
-	ContactName   string `json:"nome_contato,omitempty"`
-	Text          string `json:"texto,omitempty"`
+	FromRaw       string `json:"from_raw,omitempty"`
+	FromCanonical string `json:"from_canonical,omitempty"`
+	ContactName   string `json:"contact_name,omitempty"`
+	Text          string `json:"text,omitempty"`
 
 	// ReplyTo is the QUOTED message's wamid, when this message is a
 	// reply (the user replied by holding the bubble) — comes from
@@ -476,7 +476,7 @@ type Event struct {
 	// before, the WHOLE message was lost. See messageBlock (parse.go,
 	// called contextoDaMensagem until T-062) and
 	// docs/CONTRATO-CONSUMIDOR.md, "Mudanças que quebram".
-	ReplyTo string `json:"responder_a,omitempty"`
+	ReplyTo string `json:"reply_to,omitempty"`
 
 	// Forwarded and FrequentlyForwarded come from
 	// messages[].context.forwarded and .frequently_forwarded — the other
@@ -526,25 +526,25 @@ type Event struct {
 	// with the reading above (absent and false are the SAME answer) and
 	// necessary for the promise that a normal message doesn't gain a new
 	// key (see TestParseWebhookDoesNotRegressTheCurrent16Fields).
-	Forwarded           bool `json:"encaminhada,omitempty"`
-	FrequentlyForwarded bool `json:"encaminhada_muitas_vezes,omitempty"`
+	Forwarded           bool `json:"forwarded,omitempty"`
+	FrequentlyForwarded bool `json:"frequently_forwarded,omitempty"`
 
 	// Button: filled by both type "button" (a reply to a TEMPLATE, outside
 	// the 24h window) and interactive.button_reply (INSIDE the window).
 	// The consumer sees a single field; the difference is Meta's and it
 	// dies here.
-	ButtonPayload string `json:"botao_payload,omitempty"`
-	ButtonText    string `json:"botao_texto,omitempty"`
+	ButtonPayload string `json:"button_payload,omitempty"`
+	ButtonText    string `json:"button_text,omitempty"`
 
 	// Reaction is only filled when SubType == "reaction". See the Reaction
 	// type for the rule about an absent emoji == removal.
-	Reaction *Reaction `json:"reacao,omitempty"`
+	Reaction *Reaction `json:"reaction,omitempty"`
 
-	MediaID string `json:"midia_id,omitempty"`
+	MediaID string `json:"media_id,omitempty"`
 	// MediaMimePayload comes RAW, with parameter (e.g. "audio/ogg;
 	// codecs=opus"). DO NOT normalize: it's the codecs=opus that makes
 	// the voice note exist.
-	MediaMimePayload string `json:"midia_mime_payload,omitempty"`
+	MediaMimePayload string `json:"media_mime_payload,omitempty"`
 
 	// Voice distinguishes a PLAYABLE voice note from a plain audio
 	// attachment — the INPUT HALF of the two-mimes trap (2026-07-20,
@@ -572,40 +572,40 @@ type Event struct {
 	// between the two projects), and T-026's real capture (2026-07-26)
 	// actually brought "voice": true in the payload
 	// (testdata/corpus/audio_nota_de_voz.json).
-	Voice *bool `json:"voz,omitempty"`
+	Voice *bool `json:"voice,omitempty"`
 
 	// Caption and Filename come from image/video/document.caption and
 	// document.filename (Meta only sends filename for document). They
 	// only apply to the MediaID accompanying the same event.
-	Caption  string `json:"legenda,omitempty"`
-	Filename string `json:"nome_arquivo,omitempty"`
+	Caption  string `json:"caption,omitempty"`
+	Filename string `json:"file_name,omitempty"`
 
 	// --- status ---
 	Status      string `json:"status,omitempty"` // sent, delivered, read, failed
-	ToRaw       string `json:"para_cru,omitempty"`
-	ToCanonical string `json:"para_canonico,omitempty"`
+	ToRaw       string `json:"to_raw,omitempty"`
+	ToCanonical string `json:"to_canonical,omitempty"`
 	// Error appears in TWO places in the envelope, with a DIFFERENT
 	// MEANING in each — the same field, not two similarly-named fields,
 	// because what Meta sends in errors[] has the same format in both:
 	//   - in a STATUS event (Type == "status", here on this side):
 	//     "delivery failed" (Status == "failed").
-	//   - in a MESSAGE event (Type == "mensagem", see SubType above):
+	//   - in a MESSAGE event (Type == "message", see SubType above):
 	//     "Meta received something the Cloud API doesn't know how to
 	//     represent" (SubType == "unsupported", T-033, 2026-07-26) — NOT
 	//     a delivery failure, and treating both cases as the same fact
 	//     would mislead the consumer about what happened.
 	// See StatusError for the absence-vs-zero rule, and what stays out on
 	// purpose.
-	Error *StatusError `json:"erro,omitempty"`
+	Error *StatusError `json:"error,omitempty"`
 
 	// Billing only appears when Meta sent "pricing" in the status
 	// (T-041, 2026-07-26) — 3 of the 148 status events consumer-a
 	// recorded do NOT carry "pricing"; absence is absence, never zero
 	// (see Billing, above).
-	Billing *Billing `json:"cobranca,omitempty"`
+	Billing *Billing `json:"pricing,omitempty"`
 
 	// --- location (SubType == "location") ---
-	Location *Location `json:"localizacao,omitempty"`
+	Location *Location `json:"location,omitempty"`
 
 	// --- template status (Type == EventTypeTemplateStatus) ---
 	//
@@ -624,7 +624,7 @@ type Event struct {
 	// the two events can arrive for the SAME template on the same day
 	// saying different things — merging the vocabularies would make a
 	// consumer read "estado" off an event that isn't about state at all.
-	TemplateCategory *TemplateCategory `json:"template_categoria,omitempty"`
+	TemplateCategory *TemplateCategory `json:"template_category,omitempty"`
 
 	// --- number quota and quality (Type == EventTypeNumberQuality) ---
 	//
@@ -633,8 +633,8 @@ type Event struct {
 	// LABEL (goes into NumberQuality.DisplayNumber), not a routing
 	// key — guard 5a compares `metadata.phone_number_id`, which this
 	// payload doesn't have.
-	NumberQuality *NumberQuality `json:"qualidade_do_numero,omitempty"`
+	NumberQuality *NumberQuality `json:"number_quality,omitempty"`
 
 	// --- account alert (Type == EventTypeAccountAlert) ---
-	AccountAlert *AccountAlert `json:"alerta_de_conta,omitempty"`
+	AccountAlert *AccountAlert `json:"account_alert,omitempty"`
 }

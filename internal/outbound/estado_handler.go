@@ -195,7 +195,7 @@ func (h *StateHandler) state(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		log.Printf("zapgw: erro de store ao autenticar em GET /v1/estado: %v", err)
-		respondError(w, http.StatusServiceUnavailable, "retentavel", "indisponivel", 0)
+		respondError(w, http.StatusServiceUnavailable, "retryable", "indisponivel", 0)
 		return
 	}
 
@@ -207,7 +207,7 @@ func (h *StateHandler) state(w http.ResponseWriter, r *http.Request) {
 		// cannot see this instance" would send the consumer to check their
 		// link, which is fine — the defect would stay hidden in the wrong
 		// place.
-		respondError(w, http.StatusBadRequest, "permanente",
+		respondError(w, http.StatusBadRequest, "permanent",
 			"parametro de consulta `instancia` e obrigatorio", 0)
 		return
 	}
@@ -233,7 +233,7 @@ func (h *StateHandler) state(w http.ResponseWriter, r *http.Request) {
 	seriesRaw, oldSeriesParam := queryAlias(r.URL.Query(), "series_days", "serie_dias")
 	days, err := seriesWindow(seriesRaw, h.retentionDays)
 	if err != nil {
-		respondError(w, http.StatusBadRequest, "permanente", err.Error(), 0)
+		respondError(w, http.StatusBadRequest, "permanent", err.Error(), 0)
 		return
 	}
 	// T-208 Do item 3: recorded ONCE per request, after every guard above
@@ -269,7 +269,7 @@ func (h *StateHandler) state(w http.ResponseWriter, r *http.Request) {
 		// as a zeroed state would be a lie wearing a fact's face, and it
 		// would land exactly on the value the consumer uses to NOT alarm.
 		log.Printf("zapgw: erro ao montar o estado em GET /v1/estado: %v", err)
-		respondError(w, http.StatusServiceUnavailable, "retentavel", "indisponivel", 0)
+		respondError(w, http.StatusServiceUnavailable, "retryable", "indisponivel", 0)
 		return
 	}
 

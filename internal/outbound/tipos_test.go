@@ -172,7 +172,7 @@ func TestRegistrationRefusesInstagramInstanceWith400AndGuidance(t *testing.T) {
 type healthResponseWithVerdict struct {
 	OK         bool   `json:"ok"`
 	VerifiedAt string `json:"verificado_em"`
-	Verdict    string `json:"veredito"`
+	Verdict    string `json:"verdict"`
 }
 
 func TestHealthInstagramAnswersNotApplicableWithoutCallingMeta(t *testing.T) {
