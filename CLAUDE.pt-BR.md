@@ -125,6 +125,21 @@ real, e isso precisa estar registrado.**
    afirme "a versão X está no ar" ou tem de ser medida na hora, ou não deve ser escrita. *Bloco de
    retomada que mente é pior que bloco nenhum: é o primeiro texto que a próxima sessão lê.* O item
    acima é o argumento deste — três mentiras, todas em texto que parecia assentado.
+   🔥 **E em 2026-08-31 ele cobrou, de um jeito que o enquadramento "a versão X está no ar" não
+   cobre.** O bloco de retomada trazia a linha *"um snapshot `pre-update` se acumula no CT a cada
+   deploy e ninguém poda"*. Ninguém tinha medido isso. O dono leu, decidiu *"manter os 3 últimos e
+   podar no deploy"*, uma tarefa foi escrita, um implementador construiu — **79 linhas de remoção
+   irreversível** acrescentadas a um script de deploy de produção — e só então alguém leu
+   `implanta/deploy.sh:324-330`: o script usa nome **fixo** de snapshot e roda `delsnapshot`
+   **antes** de criar o novo, com um comentário dizendo isso. **Existia exatamente um snapshot, e
+   sempre tinha existido.** O dono confirmou: *"não vi nenhum acúmulo"*. Revertido.
+   ➡️ **A falha não é "uma linha errada num doc". É que um sintoma não medido, escrito onde se
+   escreve estado, é indistinguível de uma medição — então ele virou decisão, virou tarefa, e virou
+   código de remoção apontado para produção.** A implementação estava até *correta para a tarefa que
+   recebeu*: ela levaria a contagem de snapshots de um para três, triplicando o disco que dizia
+   economizar.
+   **O bloco registra o que foi medido, ou não diz nada.** Sintoma que você não mediu entra como
+   pergunta, nunca como fato.
 
 ### O que NÃO é regra dura, e por que dizer isso importa
 

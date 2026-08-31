@@ -131,6 +131,20 @@ that has to be on the record.**
    "version X is live" either has to be measured on the spot, or not be written. *A resumption block
    that lies is worse than no block: it is the first text the next session reads.* The item above is
    the argument for this one — three lies, all in text that looked settled.
+   🔥 **And on 2026-08-31 it charged, in a way the "version X is live" framing does not cover.** The
+   resumption block carried the line *"a `pre-update` snapshot piles up in the CT on every deploy and
+   nobody prunes it"*. Nobody had measured it. The owner read it, decided *"keep the last 3, prune in
+   the deploy"*, a task was written, an implementer built it — 79 lines of **irreversible deletion**
+   added to a production deploy script — and only then did someone read
+   `implanta/deploy.sh:324-330`: the script uses a **fixed** snapshot name and runs `delsnapshot`
+   **before** creating the new one, with a comment saying so. **There was exactly one snapshot, and
+   there always had been.** The owner confirmed it: *"não vi nenhum acúmulo"*. Reverted.
+   ➡️ **The failure is not "a wrong line in a doc". It is that an unmeasured symptom, written where
+   state is written, is indistinguishable from a measurement — so it became a decision, a task, and
+   deletion code aimed at production.** The implementation was even *correct for the task it got*: it
+   would have raised the snapshot count from one to three, tripling the disk it claimed to save.
+   **The block records what was measured, or it says nothing.** A symptom you did not measure goes in
+   as a question, never as a fact.
 
 ### What is NOT a hard rule, and why saying so matters
 

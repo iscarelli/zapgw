@@ -61,28 +61,6 @@ na mensagem — bloqueia citando `mensagem da tag, linha 1`.
 📌 **O passo 4 e' MAJOR e PARA PARA PERGUNTAR AO DONO.** Ele vira a saida para ingles e depois apaga o
 apelido de entrada. Nao acontece sozinho, aconteca o que acontecer com a fila.
 
-🙋 **PARA O DONO — a premissa do snapshot era FALSA, e a fonte era eu. A T-194 foi revertida.**
-Voce aprovou *"manter os 3 ultimos e podar no deploy"* com base numa linha que eu escrevi neste
-bloco: *"um snapshot `pre-update` se acumula no CT a cada deploy e ninguem poda"*. **Medido no
-`git show HEAD~1:implanta/deploy.sh:324-330`: e' falso.**
-- O script usa nome **fixo** (`SNAP=pre-update`) e roda `pct delsnapshot` **antes** de criar o novo.
-  O comentario no proprio codigo diz isso desde sempre. **Existe exatamente UM snapshot por vez** —
-  nunca houve acumulo, e nao ha nada para podar.
-- 🔴 **A implementacao, feita sobre a premissa errada, ia na direcao contraria:** trocava o nome fixo
-  por nome com timestamp e passava a **guardar tres** — ou seja, **triplicava** o uso de disco que a
-  tarefa dizia querer reduzir, e ainda acrescentava 79 linhas de remocao irreversivel a um script de
-  producao. Revertido.
-- ⚠️ **A remocao nunca rodou contra dado real** e nem podia: nao ha credencial de producao nesta
-  sessao. O ensaio foi contra lista sintetica, e o implementador **declarou isso sem rodeio** em vez
-  de chamar de prova.
-- ✅ **O que vale guardar do trabalho perdido:** o ensaio achou que um `grep -oE` sem ancora casaria
-  `pre-update-20260830090000-testedomeuadm` — prefixo **como substring** de um nome que um humano
-  poderia criar. Se um dia existir poda de verdade, o filtro tem de ser tokenizado e ancorado
-  (`^pre-update-[0-9]{14}$`), nunca substring. *Filtro de remocao irreversivel casa a linha inteira.*
-- **A pergunta que sobra e' sua:** existe algum lugar onde snapshot realmente acumula (voce viu
-  algo num `pct listsnapshot`?), ou a linha nasceu de leitura errada minha? Se nao acumula, **nao ha
-  tarefa** — e a licao e' a de sempre: *eu escrevi um sintoma que nao medi, e ele virou decisao sua.*
-
 ✅ **FECHADO: o par ANTES/DEPOIS existe, e a `v0.60.1` passou.** Medicao do consumidor em
 2026-08-31 00:28: **77 segundos contra 79 do ANTES**, mesmo roteiro e mesmo template,
 `tentativas: 1` em tudo, nenhuma retentativa. A assimetria de status que ficou aberta no ANTES sumiu
