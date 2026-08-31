@@ -103,57 +103,6 @@ telefone real e `wamid` de producao, e este repositorio e' publico.
 
 > A fila do periodo privado esta em `iscarelli/zapgw-dev`, congelada. Tarefa nova nasce aqui.
 
-## [ ] T-206  The migration table is INCOMPLETE for step 4 — inventory what a `json:` sweep cannot see
-Why:    O `consumer-b` comecou o passo 3 e fez o inventario ao contrario — *"para cada chave que a
-        gente ESCREVE, existe linha na tabela?"*. Achou **cinco lacunas**, e a maior nao e' chave:
-🔴      **(1) Os VALORES de `tipo` sao portugues e nao estao em lugar nenhum do documento.**
-        `texto`, `botoes`, `cta_url`, `midia`, `reacao`, `template`, e dentro de `botoes_template`
-        os valores `resposta_rapida` e `url`. Idem o valor `observado` de um campo de estado.
-        **Se o passo 4 virar `"tipo":"texto"` em `"kind":"text"` sem isso escrito, todo envio deles
-        quebra de uma vez — e quebra com o pedido BEM FORMADO**, porque a chave estara certa e o
-        valor nao. *E' o `contadores` de novo: nome que e' VALOR, entao nenhuma varredura por
-        `json:"` o acha, e nenhuma tabela de renomeacao de CHAVES o cobre.*
-        **(2) Quatro chaves de ENTRADA que eles escrevem hoje e a tabela nao lista:** `titulo`
-        (dentro de cada item de `botoes` — e' outro campo, diferente do `botao_titulo` da linha 7),
-        `indice` (dentro de cada item de `botoes_template`), `telefones` (corpo do `/v1/bloqueios`),
-        e `arquivo` — que **nao e' tag `json`**: e' o nome da parte do multipart no `POST /v1/media`,
-        e por isso escapa de qualquer inventario de tags.
-        **(3) Query param nao esta coberto.** Eles mandam `instancia` como query em
-        `GET /v1/templates`, `GET /v1/media/...` e `GET /v1/estado`. O documento define ENTRADA como
-        *"o corpo que o consumidor manda"* — entao query ficou de fora, e eles deixaram em portugues
-        de proposito por isso.
-        **(4) O proprio contador nao tem par.** `nome_antigo_usado` e' o **vigesimo** contador; a
-        tabela de contadores tem 19 e ele nao esta nela nem nas 119 linhas. Foi acrescentado pela
-        T-203/T-205 sem entrar na tabela — *pela propria falha que a tabela existe para impedir.*
-Files:  docs/INVENTARIO-VALORES.md  (novo)
-
-Do:
-  🔴 **Esta tarefa NAO decide nome nenhum.** Ela MEDE e grava. Coluna de ingles = `A DECIDIR` em toda
-  linha. O planner decide depois — inventar nome de contrato aqui vira quebra silenciosa em producao.
-
-  1. **Vocabularios FECHADOS que sao VALOR, nao chave.** Ache no codigo Go todo conjunto fechado de
-     literais que viaja como **valor** no contrato: os do `tipo` (nivel de topo e dentro de
-     `botoes_template`), o do campo de estado que usa `observado`, o vocabulario dos contadores, e
-     qualquer outro que voce encontre. Para cada valor: `arquivo:linha`, o campo em que ele viaja, e
-     a direcao.
-     **Como achar, ja que `json:"` nao serve:** procure `const`/`iota`, `switch` sobre string,
-     comparacoes com literal, e mapas cujas CHAVES sao literais de dominio.
-  2. **As quatro chaves de ENTRADA do item (2)**, com `arquivo:linha` e direcao. 🔴 O `arquivo` e'
-     **nome de parte multipart** — procure por `FormFile`/`MultipartForm`, nao por tag `json`.
-  3. **Todos os query params do contrato**, rota por rota (`r.URL.Query().Get(...)`), com o nome e a
-     rota. E' uma **quarta direcao** que o documento nao tinha: chame-a `ENTRADA-QUERY`.
-  4. **O contador `nome_antigo_usado`** e qualquer outro contador que exista no codigo e nao esteja
-     na tabela de 19. **Conte quantos existem de verdade.**
-  5. Grave tudo em `docs/INVENTARIO-VALORES.md`, com cabecalho `Código:`. Tabelas, sem prosa, sem
-     recomendacao, sem nome novo.
-
-Verify:
-  - Toda linha tem `arquivo:linha` que existe — confira uma amostra de 6 com `sed -n`.
-  - **Diga quantos vocabularios fechados voce achou, e quantos valores cada um tem.** Se achou algum
-    que o `Why` nao mencionava, ele e' o achado mais valioso da tarefa — destaque.
-  - **Diga quantos contadores existem no codigo** contra os 19 da tabela.
-  - `go test ./...`, `go vet ./...`, `CGO_ENABLED=0 go build ./...`, `gofmt -l cmd internal` limpos.
-
 ## [ ] T-189  O contrato passa a falar ingles — leitor tolerante do lado deles, apelido so' na ENTRADA
 Why:    **decisao do dono, 2026-08-30:** *"o projeto precisa ser em ingles, ter feito em portugues foi
         errado. Se a chave chama nome, tem que passar a se chamar name."*

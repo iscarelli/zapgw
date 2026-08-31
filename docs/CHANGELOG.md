@@ -4,6 +4,16 @@ Uma linha por versao entregue, no mesmo commit do bump. A entrada diz o **efeito
 
 ## Nao lancado
 
+- **The migration table is INCOMPLETE for step 4 — inventory what a `json:` sweep cannot see**
+  (T-206) — new `docs/INVENTARIO-VALORES.md`: 11 closed value-vocabularies (`tipo` alone is FOUR
+  separate vocabularies under the same JSON key, 11+6+2+2 values — the `Why`'s six examples covered
+  only one of them), the 4 ENTRADA keys missing from the existing tables (`titulo`, `indice`,
+  `telefones`, and `arquivo` — a multipart field name, not a JSON tag), a new `ENTRADA-QUERY`
+  direction (13 query-param call sites, 9 distinct names, 6 routes — more than the 3 routes
+  measured before), and confirmation that all 19 counters in the code (including
+  `nome_antigo_usado`) are accounted for. No English name decided — every row is `A DECIDIR`.
+  _Completed 2026-08-31 11:12._
+
 ## v0.61.1 — 2026-08-31
 
 - **The old-name counter now covers every route that accepts an alias, and a structural guard makes
