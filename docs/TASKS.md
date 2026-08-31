@@ -103,6 +103,51 @@ telefone real e `wamid` de producao, e este repositorio e' publico.
 
 > A fila do periodo privado esta em `iscarelli/zapgw-dev`, congelada. Tarefa nova nasce aqui.
 
+## [ ] T-209  THE FLIP: the gateway's OUTPUT speaks English — keys and values, one commit
+Why:    Passo 4 da T-189. **Autorizado pelo dono NA SESSAO em 2026-08-31** (*"pode virar"*), depois de
+        o consumidor confirmar que nao precisa de janela: ele traduz **valor** na porta nas duas
+        direcoes, e nos aceitamos os dois idiomas na entrada desde a `v0.62.0`. **Nao ha instante em
+        que os dois lados precisem trocar juntos** — sem hora marcada, sem deploy coordenado.
+        O portao foi atendido: `enviadas` 18->21 com `nome_antigo_usado` 0->0, medido por eles contra
+        producao, e a `v0.62.1` fechou o ponto cego das treze chaves que o contador nao via.
+Files:  internal/meta/types.go (o evento), internal/meta/templates.go, internal/meta/perfil.go
+        internal/outbound/*.go (as respostas), internal/config/contador.go (nomes de contador)
+        docs/MIGRACAO-CONTRATO-EN.md + par pt-BR
+
+Do:
+  1. **A saida passa a ingles: CHAVES e VALORES, num commit so'.**
+     - **Chaves:** as linhas de direcao `SAIDA-EVENTO` e `SAIDA-RESPOSTA` da tabela
+       (`docs/MIGRACAO-CONTRATO-EN.md`, secoes 6 e 7).
+     - **Valores:** os vocabularios de SAIDA da secao 8 — **8.2** tipo de evento, **8.6** `classe`,
+       **8.7** `estado`, **8.8/8.9/8.10** os tres `veredito`, **8.11** o nome de contador
+       `nome_antigo_usado` -> `old_name_used`.
+  2. 🔴 **A TABELA E' A FONTE. O que nao esta nela NAO MUDA.** Nada de "aproveitar e arrumar" um nome
+     que parece portugues e nao esta listado — foi assim que o consumidor quebrou, ao concluir que
+     o que nao estava na tabela era portugues.
+  3. 🔴 **NAO renomeie o que ja esta em ingles** — `docs/contrato-chaves-que-nao-mudam.txt`, 22
+     chaves. Renomea-las e' a armadilha do `media_id` ao contrario.
+  4. 🔴 **`cru` e `payload` nao se tocam.** Bytes exatos da Meta, com teste provando byte a byte.
+  5. 🔴 **O apelido de ENTRADA CONTINUA NO AR.** Apagar a rede no mesmo movimento e' apostar que a
+     medicao estava certa — e a remocao **volta a ser decisao do dono**, nao esta autorizada aqui.
+     Um pedido em portugues tem de continuar funcionando depois desta tarefa.
+  6. 🔴 **Campo da Meta que passa por nos continua com o nome da Meta.** Se voce nao souber se um
+     campo e' nosso ou de passagem, **a tabela decide**; se ele nao estiver la, nao e' seu.
+  7. **Versao: MINOR, `0.63.0`.** Este projeto esta antes do `1.0.0`, e o `CLAUDE.md` diz que antes
+     do 1.0.0 o MINOR pode quebrar. **NAO suba para `1.0.0`** — essa e' decisao do dono e ele nao a
+     tomou. Nota no changelog no mesmo commit, dizendo que o contrato de SAIDA mudou.
+
+Verify:
+  - 🔴 **A prova da tarefa, e ela e' uma varredura, nao uma amostra:** um teste que serializa um
+    evento e as respostas das rotas e **falha se sobrar qualquer chave ou valor de saida que a tabela
+    lista como portugues**. Sem isso, "eu troquei todas" e' afirmacao.
+  - **`cru` byte a byte igual** ao de antes.
+  - **Entrada em portugues continua funcionando** — os testes da T-203/T-207/T-208 continuam verdes,
+    sem edicao. Se algum precisar mudar, **pare e relate**: ou a tarefa vazou para a entrada, ou o
+    teste estava provando outra coisa.
+  - **As 22 chaves de `contrato-chaves-que-nao-mudam.txt` continuam identicas** na saida — teste que
+    le o arquivo e confere.
+  - `CGO_ENABLED=0 go build ./...`, `go test ./...`, `go vet ./...`, `gofmt -l cmd internal` limpos.
+
 ## [ ] T-189  O contrato passa a falar ingles — leitor tolerante do lado deles, apelido so' na ENTRADA
 Why:    **decisao do dono, 2026-08-30:** *"o projeto precisa ser em ingles, ter feito em portugues foi
         errado. Se a chave chama nome, tem que passar a se chamar name."*
