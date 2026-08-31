@@ -19,11 +19,15 @@ a doutrina de canal deste workspace é explícita: *o que vale para TODOS sai do
 documento duradouro*. Esta tabela vale para todo consumidor, inclusive o `consumer-a`, que ainda
 nem começou a migrar.
 
-🔴 **Este documento NÃO decide nome nenhum.** Ele MONTA uma tabela a partir de duas fontes que já
-existem — uma em que o consumidor e este gateway já combinaram um par, outra em que a chave só foi
-medida contra o código, sem par escolhido ainda. Onde o par em inglês ainda não foi decidido, a
-célula diz exatamente `A DECIDIR`, para o planner preencher depois. **Inventar um nome aqui vira
-quebra silenciosa em produção do lado do consumidor**, e isso já aconteceu uma vez: ver seção 5.
+🔴 **A MONTAGEM desta tabela não decidiu nome nenhum, de propósito** — ela junta duas fontes que já
+existiam, uma em que o consumidor e este gateway já tinham combinado um par, outra em que a chave só
+tinha sido medida contra o código. **Inventar um nome durante a montagem vira quebra silenciosa em
+produção do lado do consumidor**, e isso já aconteceu uma vez: ver seção 5.
+
+✅ **Os 29 pares que faltavam foram decididos pelo planner em 2026-08-31**, num passo separado, a
+partir de convenções que já estavam na tabela A — e com uma conferência de colisão contra o
+vocabulário da Meta. **A seção 7 registra quais convenções, e o que foi medido.** Nenhuma célula diz
+`A DECIDIR` mais.
 
 ## 1. De onde vem cada linha
 
@@ -33,8 +37,8 @@ quebra silenciosa em produção do lado do consumidor**, e isso já aconteceu um
   ponteiro **arquivo:linha** foram **medidos contra o código para este documento** — a mensagem do
   canal não trazia nenhum dos dois.
 - **Tabela B (29 linhas)** — chaves medidas diretamente contra o código (`docs/INVENTARIO-CHAVES.md`,
-  T-198): lidas pelo `consumer-b` mas ausentes da tabela proposta. Coluna de inglês = `A DECIDIR`
-  em toda linha — nenhum par foi escolhido para nenhuma delas ainda.
+  T-198): lidas pelo `consumer-b` mas ausentes da tabela proposta. A coluna de inglês era
+  `A DECIDIR` em toda linha até 2026-08-31, quando o planner preencheu as 29 — ver seção 7.
 - **Total: 119 linhas (90 + 29).** A tarefa que originou este documento estimava 89 + 29 = 118 —
   ver a reconciliação de contagem abaixo para o motivo do número medido ser 90, não 89.
 - **Zero sobreposição entre as duas tabelas** — confirmado por comparação de conjuntos entre as

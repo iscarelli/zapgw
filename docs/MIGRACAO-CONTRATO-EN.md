@@ -19,12 +19,14 @@ workspace's channel doctrine is explicit: *what holds for every consumer belongs
 document, not in a channel*. This table holds for every consumer, including `consumer-a`, who
 hasn't even started migrating yet.
 
-🔴 **This document decides NO name.** It ASSEMBLES a table from two sources that already exist —
-one where the consumer and this gateway already agreed on a pair, one where the key was only
-measured against the code, pair not yet chosen. Wherever the English pair is still undecided, the
-cell says exactly `A DECIDIR` — literally "to decide" — for the planner to fill in later.
-**Inventing a name here turns into a silent production break on the consumer's side**, and it has
-already happened once: see section 5.
+🔴 **The ASSEMBLY of this table decided no name, on purpose** — it merges two sources that already
+existed, one where the consumer and this gateway had agreed on a pair, one where the key had only
+been measured against the code. **Inventing a name during assembly turns into a silent production
+break on the consumer's side**, and it has already happened once: see section 5.
+
+✅ **The 29 undecided pairs were filled in by the planner on 2026-08-31**, in a separate step, from
+conventions already present in table A — and with a collision check against Meta's vocabulary.
+**Section 7 records which conventions, and what was measured.** No cell says `A DECIDIR` any more.
 
 ## 1. Where each row comes from
 
@@ -34,8 +36,8 @@ already happened once: see section 5.
   and the **file:line** pointer were **measured against the code for this document** — the channel
   message did not carry them.
 - **Table B (29 rows)** — keys measured directly against the code (`docs/INVENTARIO-CHAVES.md`,
-  T-198): read by `consumer-b` but missing from the proposed table. English column is `A DECIDIR`
-  for every row — no pair has been chosen for any of them yet.
+  T-198): read by `consumer-b` but missing from the proposed table. The English column was
+  `A DECIDIR` on every row until 2026-08-31, when the planner filled all 29 — see section 7.
 - **Total: 119 rows (90 + 29).** The task that created this document estimated 89 + 29 = 118 —
   see the count reconciliation below for why the measured number is 90, not 89.
 - **Zero overlap between the two tables** — confirmed by a set comparison of both key lists.
