@@ -35,6 +35,19 @@
 # This hook now simply forwards BOTH shas to the test verbatim, zero or not,
 # and lets the Go code decide which formula applies.
 #
+# 🔴 T-204: EVEN AFTER T-200, A TAG PUSH COULD STILL ONLY BE PUSHED WITH
+# --no-verify — this project launches by tag, and the ORDINARY release flow
+# (tag the commit AFTER it already merged to main) makes the pushed interval
+# LEGITIMATELY EMPTY: the push adds a pointer, not a commit. T-199/T-200 had
+# treated any empty interval as "the measurement is empty, fail closed",
+# which is correct for "I could not compute the interval" and wrong for "I
+# computed it, and it is genuinely zero." Same shape of defect as T-200,
+# different disguise. This hook's own logic did not need to change for the
+# fix — it already forwards both shas verbatim; the distinction (and the
+# tag's own MESSAGE, swept unconditionally because it is free text a human
+# wrote and it travels to `origin` too) lives entirely in
+# internal/config/prepush_test.go. See docs/ARMADILHAS.md.
+#
 # ACTIVATION IS NOT AUTOMATIC. A file in .git/hooks/ is not versioned and
 # does not survive a clone; this hook only runs once someone points git at
 # this versioned directory:

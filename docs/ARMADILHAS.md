@@ -4130,6 +4130,56 @@ gate at all, because the discipline of using the escape hatch decays the moment 
 
 ---
 
+### 🔥 Zero commits is not always "could not measure" — it can be the correct answer, and the gate did not know that (2026-08-31)
+
+T-200 replaced a blanket refusal on every new ref with a formula (`git rev-list <new-sha> --not --remotes`) that
+correctly computes what a first push actually introduces. What it did not change is what `TestPrePushGate` did
+with an EMPTY result: `t.Fatalf`, unconditionally, on the theory that "a push with something to push always has
+at least one commit; zero is a sign the measurement is empty." That theory is false for exactly one case this
+project relies on every release: **pushing an annotated tag on a commit that already reached `origin`** — the
+ordinary flow of merging to `main` and then tagging that same commit. The tag ref is brand new (zero remote sha),
+so `commitsIntroducedByNewRef` peels the tag and correctly finds nothing NEW — the push adds a pointer, not a
+commit. The gate could not tell that apart from "I don't know what this pushes," and refused both identically.
+
+**Measured directly, not inferred:** the planner tagged `v0.61.0` on a commit already merged to `main` and pushed
+it. The hook refused with *"o intervalo 0000...\<sha\> nao contem nenhum commit novo (falha fechada)"* — correct
+as a description of the number, wrong as a verdict, because this project **launches by tag**. With no other path
+to ship a release, the only way forward was `git push --no-verify` — the exact bypass T-200's own postmortem (the
+entry above this one) already named as the failure mode to avoid. Second time in 24 hours this same defect shape
+showed up wearing a different ref type.
+
+**The fix (T-204) does not loosen the failure mode — it asks the right question when the count is zero.**
+`objectAlreadyReachableFromRemotes` answers "is the pushed object (peeled past any tag) already an ancestor of
+some remote-tracking ref this repository knows about?" — which, for the `commitsIntroducedByNewRef` formula, is
+mathematically the SAME condition that produced the empty list in the first place (`git rev-list X --not
+--remotes` is empty if and only if X is reachable from `--remotes`). This is not a second, looser check bolted on
+next to the first one; it is the same question asked in a form the test can branch on instead of only fail on. A
+zero commit list that comes back "not reachable" — a combination that should never legitimately arise — still
+fails closed exactly as before.
+
+**The part nobody thought to check, and the one this task's Verify step demanded as a positive control:** a tag
+object carries its own free-text MESSAGE, written by a human, and that text reaches `origin` on a tag push
+regardless of whether the tag introduces any commit at all. Before T-204 nothing ever looked at it — the gate
+swept files, never a tag's own object. `isAnnotatedTagObject` / `annotatedTagMessage` /
+`sweepTagMessage` now sweep that text unconditionally, with the exact same two functions used everywhere else in
+this file, and `annotatedTagMessage` deliberately strips `git cat-file -p`'s header block (which always includes
+a real `tagger Name <email>` line) before sweeping — sweeping the raw header would have made every tag this
+project's own maintainer creates a guaranteed false positive on the name gate.
+
+Proved against real data, both directions, in the same session: `git push` of the real `v0.61.0` tag against a
+disposable bare repo, then against `origin`, both succeeded with the gate logging "isto e' legitimo" instead of
+refusing; a second annotated tag whose MESSAGE (not any file, not any commit) carried a needle, pushed to the same
+disposable bare repo, was BLOCKED citing the tag message and the exact needle
+(`internal/config/prepush_test.go`, `TestPrePushGateAnnotatedTagOnPublishedCommitPushesClean` /
+`TestPrePushGateBlocksNeedleInTagMessageEvenWithZeroCommits` / `TestObjectAlreadyReachableFromRemotesFalseForUnpublishedCommit`).
+
+**The rule that generalizes, and it is T-200's rule again, sharper:** a fail-closed gate that treats "zero" as a
+single, undifferentiated failure is measuring less than it thinks. Before writing `if count == 0 { fail }`, ask
+whether zero has more than one legitimate cause — and if it does, the gate needs a second signal to tell them
+apart, not a broader definition of "empty."
+
+---
+
 ### 🔥 A gate that reads a commit's diff can be blind to a whole class of commit — and it was, for merges (2026-08-31)
 
 T-199's pre-push gate materializes exactly what EACH commit in the pushed range introduces, via `git diff-tree`,

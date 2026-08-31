@@ -4,6 +4,25 @@ Uma linha por versao entregue, no mesmo commit do bump. A entrada diz o **efeito
 
 ## Nao lancado
 
+- **The pre-push gate must not refuse a TAG that points at an already-pushed commit** (T-204) — an
+  empty pushed interval is no longer an automatic `t.Fatalf`: `objectAlreadyReachableFromRemotes`
+  checks whether the pushed object (peeled past any tag) is already an ancestor of some
+  remote-tracking ref, and a legitimate zero (a release tag on a commit already merged to `main`,
+  the ordinary flow) now logs and continues instead of blocking. A genuinely unmeasured zero still
+  fails closed exactly as before. Also new: the annotated tag object's own free-text MESSAGE is now
+  swept unconditionally (`isAnnotatedTagObject` / `annotatedTagMessage` / `sweepTagMessage`, header
+  lines stripped so a real `tagger Name <email>` never false-positives the name gate), because that
+  text reaches `origin` on a tag push whether or not the tag carries any new commit. Proved against
+  real data both ways in the same session: `v0.61.0` (which existed locally, unpushed, exactly
+  because the old gate refused it) pushed clean to a disposable bare repo and then to `origin`; a
+  second annotated tag whose message alone carried a needle was BLOCKED citing the tag message, on
+  the same disposable remote. T-200/T-201's own tests
+  (`TestPrePushGateNewRefCleanBranchPasses`/`...NewRefBlocksNeedleDeletedLater`/
+  `...NewRefNoRemoteAtAllSweepsEverything`/`...CleanMergeOnMainPasses`/
+  `...BlocksNeedleOnlyInMergeResolution`) stayed green, untouched. `CGO_ENABLED=0 go build ./...`,
+  `go test ./...`, `go vet ./...`, `gofmt -l cmd internal` clean; `--no-verify` never used.
+  _Completed 2026-08-31 09:41._
+
 ## v0.61.0 — 2026-08-31
 
 - **The gateway accepts English key names on ENTRADA input, and counts the old ones** (T-203, passo

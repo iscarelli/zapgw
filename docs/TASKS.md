@@ -127,49 +127,6 @@ telefone real e `wamid` de producao, e este repositorio e' publico.
 
 > A fila do periodo privado esta em `iscarelli/zapgw-dev`, congelada. Tarefa nova nasce aqui.
 
-## [ ] T-204  The pre-push gate must not refuse a TAG that points at an already-pushed commit
-Why:    **Medido pelo planner em 2026-08-31, empurrando a tag `v0.61.0`:** o portao recusou com
-        *"o intervalo `0000…..<sha>` nao contem nenhum commit novo (falha fechada)"*.
-🔴      **E' falso positivo, e a causa e' precisa:** a tag aponta para um commit **que ja esta no
-        `origin`**. Para uma ref nova, o portao calcula `rev-list <sha> --not --remotes` (T-200) — e
-        para uma tag assim o resultado e' **legitimamente zero**, porque o push nao acrescenta commit
-        nenhum ao remoto: acrescenta um *ponteiro*. O portao trata zero como "medicao vazia" e
-        bloqueia.
-🔴      **A consequencia e' a mesma da T-200, noutra roupa:** este projeto **lanca por tag**, entao o
-        unico caminho para lancar passa a ser `git push --no-verify` — desligar o portao. *Falha
-        fechada que torna o caminho legitimo impossivel nao protege: ela treina o bypass.* Segunda
-        vez em 24 h que este mesmo defeito aparece com outra forma.
-Files:  .githooks/pre-push
-        internal/config/prepush_test.go
-        docs/ARMADILHAS.md, docs/ARMADILHAS.pt-BR.md
-
-Do:
-  1. **Distinga "zero commits porque nada foi medido" de "zero commits porque a ref nova nao
-     acrescenta commit"**. O segundo caso e' verdade, nao ausencia de medicao. O sinal que separa os
-     dois: o objeto apontado **ja e' alcancavel** a partir de alguma ref de rastreamento remoto.
-  2. 🔴 **Continue varrendo o que a tag ACRESCENTA, se acrescentar alguma coisa.** Tag anotada que
-     aponta para commit novo (ou ref nova que traz commits) continua sendo varrida como hoje. O
-     conserto e' so' para o caso em que **nada novo entra**.
-  3. ⚠️ **Nao esqueca o objeto da propria tag anotada.** A MENSAGEM da tag vai para o `origin` e e'
-     texto que alguem escreveu — pode carregar agulha. **Varra a mensagem da tag** (`git cat-file -p`
-     do objeto de tag), mesmo quando ela nao traz commit novo. *Este e' o caso em que o portao
-     realmente tem trabalho a fazer num push de tag, e ele e' o que ninguem pensa.*
-  4. **Entrada em `docs/ARMADILHAS.md` + par pt-BR**, no mesmo commit, ligada a' entrada da T-200:
-     e' o mesmo defeito, e a licao que generaliza e' *falha fechada precisa distinguir "nao consegui
-     medir" de "medi, e o resultado e' zero"*. **Duas causas, uma cor** — e a cor foi escolhida antes
-     de alguem perguntar se zero podia ser legitimo.
-
-Verify:
-  - 🔴 **Empurre a tag `v0.61.0` de verdade** (ela existe local e nao esta no `origin`) contra um bare
-    descartavel primeiro, e depois **para o `origin`**. Cole a saida dos dois.
-  - **Controle positivo que nao pode regredir:** tag anotada cuja MENSAGEM contem uma agulha —
-    o push tem de **BLOQUEAR citando a mensagem da tag**. Cole a saida.
-  - **Controle positivo do intervalo continua valendo:** branch nova com agulha em commit A apagada em
-    commit B ainda bloqueia (rode os testes da T-200/T-201, nao reescreva).
-  - **Controle de "nao consegui verificar" continua bloqueando** (sem lista de agulhas).
-  - `CGO_ENABLED=0 go build ./...`, `go test ./...`, `go vet ./...`, `gofmt -l cmd internal` limpos.
-  - 🔴 **Nunca use `--no-verify` para nada nesta tarefa.**
-
 ## [ ] T-189  O contrato passa a falar ingles — leitor tolerante do lado deles, apelido so' na ENTRADA
 Why:    **decisao do dono, 2026-08-30:** *"o projeto precisa ser em ingles, ter feito em portugues foi
         errado. Se a chave chama nome, tem que passar a se chamar name."*

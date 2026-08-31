@@ -4386,6 +4386,58 @@ portão nenhum, porque a disciplina de usar a saída de emergência apodrece no 
 
 ---
 
+### 🔥 Zero commits nem sempre é "não consegui medir" — pode ser a resposta certa, e o portão não sabia disso (2026-08-31)
+
+A T-200 trocou uma recusa geral em toda ref nova por uma fórmula (`git rev-list <sha-novo> --not --remotes`) que
+calcula corretamente o que um primeiro push realmente introduz. O que ela não mudou foi o que `TestPrePushGate`
+fazia com um resultado VAZIO: `t.Fatalf`, sem condição, na teoria de que "um push com algo a empurrar sempre tem
+ao menos um commit; zero é sinal de que a medição está vazia." Essa teoria é falsa exatamente no caso de que este
+projeto depende em TODO lançamento: **empurrar uma tag anotada sobre um commit que já chegou ao `origin`** — o
+fluxo comum de mesclar no `main` e só depois marcar aquele mesmo commit com uma tag. A ref da tag é nova (sha
+remoto zero), então `commitsIntroducedByNewRef` descasca a tag e corretamente não acha nada NOVO — o push
+acrescenta um ponteiro, não um commit. O portão não conseguia distinguir isso de "eu não sei o que este push
+carrega", e recusava os dois igualmente.
+
+**Medido direto, não inferido:** o planner marcou `v0.61.0` sobre um commit já mesclado no `main` e empurrou. O
+hook recusou com *"o intervalo 0000...\<sha\> nao contem nenhum commit novo (falha fechada)"* — correto como
+descrição do número, errado como veredito, porque este projeto **lança por tag**. Sem outro caminho para
+publicar um release, a única saída era `git push --no-verify` — exatamente o desvio que o próprio post-mortem da
+T-200 (a entrada acima desta) já tinha nomeado como o modo de falha a evitar. Segunda vez em 24 horas que este
+mesmo defeito aparece com outra roupa de ref.
+
+**O conserto (T-204) não afrouxa o modo de falha — ele faz a pergunta certa quando a contagem é zero.**
+`objectAlreadyReachableFromRemotes` responde "o objeto empurrado (descascado de qualquer tag) já é ancestral de
+alguma ref de rastreamento remoto que este repositório conhece?" — o que, para a fórmula
+`commitsIntroducedByNewRef`, é matematicamente a MESMA condição que produziu a lista vazia em primeiro lugar
+(`git rev-list X --not --remotes` fica vazio se e somente se X é alcançável a partir de `--remotes`). Isso não é
+um segundo checagem, mais frouxa, colada ao lado da primeira; é a mesma pergunta, feita numa forma sobre a qual o
+teste pode decidir em vez de só falhar. Uma lista de commits zero que volta "não alcançável" — combinação que
+nunca deveria surgir legitimamente — continua falhando fechado exatamente como antes.
+
+**A parte que ninguém pensou em checar, e que o Verify desta tarefa exigiu como controle positivo:** um objeto de
+tag carrega sua própria MENSAGEM em texto livre, escrita por um humano, e esse texto chega ao `origin` num push de
+tag independente de a tag trazer algum commit. Antes da T-204 nada olhava para ela — o portão varria arquivos,
+nunca o próprio objeto de uma tag. `isAnnotatedTagObject` / `annotatedTagMessage` / `sweepTagMessage` agora varrem
+esse texto sem condição, com as mesmas duas funções usadas no resto deste arquivo, e `annotatedTagMessage`
+deliberadamente descarta o bloco de cabeçalho do `git cat-file -p` (que sempre inclui uma linha real `tagger Nome
+<email>`) antes de varrer — varrer o cabeçalho cru teria transformado toda tag que o próprio mantenedor deste
+projeto cria num falso positivo garantido no portão de nome.
+
+Provado contra dado real, nas duas direções, na mesma sessão: `git push` da tag `v0.61.0` de verdade contra um
+repo bare descartável, e depois contra o `origin`, os dois com sucesso e o portão registrando "isto e' legitimo"
+em vez de recusar; uma segunda tag anotada cuja MENSAGEM (não um arquivo, não um commit) carregava uma agulha,
+empurrada para o mesmo bare descartável, foi BLOQUEADA citando a mensagem da tag e a agulha exata
+(`internal/config/prepush_test.go`, `TestPrePushGateAnnotatedTagOnPublishedCommitPushesClean` /
+`TestPrePushGateBlocksNeedleInTagMessageEvenWithZeroCommits` /
+`TestObjectAlreadyReachableFromRemotesFalseForUnpublishedCommit`).
+
+**A regra que generaliza, e é a regra da T-200 de novo, mais afiada:** um portão que falha fechado e trata "zero"
+como uma única falha indiferenciada está medindo menos do que pensa. Antes de escrever `if contagem == 0 {
+falha }`, pergunte se zero tem mais de uma causa legítima — e se tiver, o portão precisa de um segundo sinal para
+separá-las, não de uma definição mais larga de "vazio".
+
+---
+
 ### 🔥 Um portão que lê o diff de um commit pode ficar cego para uma classe inteira de commit — e ficou, para merges (2026-08-31)
 
 O portão de pre-push da T-199 materializa exatamente o que CADA commit no intervalo empurrado introduz, via `git
