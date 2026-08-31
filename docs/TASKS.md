@@ -96,6 +96,53 @@ telefone real e `wamid` de producao, e este repositorio e' publico.
 
 > A fila do periodo privado esta em `iscarelli/zapgw-dev`, congelada. Tarefa nova nasce aqui.
 
+## [ ] T-200  The pre-push gate must not make the legitimate path impossible
+Why:    **Medido pelo planner em 2026-08-31, com push de verdade contra um repo bare descartavel:** o
+        hook da T-199 **bloqueia TODA primeira push de branch nova**, inclusive uma branch limpa, com
+        *"sha remoto = zeros — nao ha base segura"*. Nao existe forma de estabelecer a base: a push
+        que criaria a ref e' a mesma que e' recusada.
+🔴      **O efeito nao e' "portao rigoroso", e' portao que FORCA o desvio.** Se o unico caminho para
+        empurrar uma branch nova e' `git push --no-verify`, entao a pratica que o projeto ensina e'
+        desligar o portao — e quem desliga uma vez desliga de novo, inclusive no dia em que havia
+        agulha. *Falha fechada que torna o caminho legitimo impossivel nao protege: ela treina o
+        bypass.*
+        **A push do `main` funciona** (ref ja existe no `origin`, intervalo calculavel) — em 0,68 s.
+        O defeito e' so' no caso da ref nova, e e' o caso de toda branch de trabalho.
+Files:  .githooks/pre-push
+        internal/config/prepush_test.go
+        docs/ARMADILHAS.md, docs/ARMADILHAS.pt-BR.md
+
+Do:
+  1. **Quando o sha remoto for zeros, calcule a base sem adivinhar:** o conjunto introduzido por esta
+     push e' `git rev-list <sha-local> --not --remotes` — os commits alcancaveis pela ref nova e **nao**
+     alcancaveis por nenhuma ref de rastreamento remoto. E' exatamente "o que esta push acrescenta ao
+     remoto", e' computavel, e nao depende de escolher um branch de referencia.
+  2. 🔴 **Continua falhando fechado onde de fato nao da para saber.** Se `--not --remotes` nao puder
+     ser calculado, ou se o repositorio nao tiver remoto nenhum, **varra todos os commits alcancaveis**
+     — mais lento e seguro — em vez de liberar. **Nunca troque "nao consigo calcular" por "deixa passar".**
+  3. **Teste em `internal/config/prepush_test.go`** cobrindo os dois casos novos:
+     - branch nova e limpa: push **passa**;
+     - branch nova com agulha num commit que um commit posterior apaga: push **bloqueia**, nomeando o
+       commit e o arquivo.
+  4. **Entrada nova em `docs/ARMADILHAS.md` + par pt-BR**, marcada com o fogo (ja cobrou), no mesmo
+     commit: *falha fechada que impede o caminho legitimo nao e' rigor, e' um bypass ensinado.* Diga o
+     custo real: o portao nasceu impedindo toda branch nova, e o unico caminho restante era o
+     `--no-verify` que ele mesmo desaconselha.
+  5. ⚠️ **Registre tambem, na mesma entrada, o erro de METODO que apareceu junto:** o primeiro controle
+     positivo do planner "passou" — o push foi bloqueado — **mas pelo motivo errado** (sha zerado, nao
+     agulha encontrada). Bloqueio observado nao prova que o portao ACHA: prova que ele recusou.
+     *Controle que nao distingue POR QUE reprovou valida o instrumento, nao o dado.*
+
+Verify:
+  - **Branch nova e limpa empurra**, contra um repo bare descartavel — cole a saida e o tempo.
+  - **Branch nova com a agulha em commit A e apagada em commit B: BLOQUEIA nomeando o commit A e o
+    arquivo.** Cole a saida. 🔴 **Confirme que a mensagem cita a agulha encontrada, e nao "nao consegui
+    verificar"** — e' a diferenca entre provar que o portao acha e provar que ele recusa.
+  - **Sem remoto nenhum:** o hook varre tudo em vez de liberar. Cole a saida.
+  - `git ls-remote` no bare descartavel confirmando que nada foi empurrado nos casos bloqueados.
+  - 🔴 **Nunca empurre a branch de controle para o `origin`, e nunca use `--no-verify`.**
+  - `CGO_ENABLED=0 go build ./...`, `go test ./...`, `go vet ./...`, `gofmt -l cmd internal` limpos.
+
 ## [ ] T-189  O contrato passa a falar ingles — leitor tolerante do lado deles, apelido so' na ENTRADA
 Why:    **decisao do dono, 2026-08-30:** *"o projeto precisa ser em ingles, ter feito em portugues foi
         errado. Se a chave chama nome, tem que passar a se chamar name."*
