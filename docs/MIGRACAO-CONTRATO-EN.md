@@ -335,3 +335,106 @@ in the pass-through objects, which are not visited.
 ⚠️ **That measurement is a snapshot, not a guarantee.** If a future change puts a raw Meta object
 alongside one of these fields, the collision becomes real and the consumer's rule is what saves it.
 The rule is the mechanism; this measurement only says the mechanism has nothing to do today.
+
+## 8. The VALUE vocabularies, decided on 2026-08-31
+
+🔴 **Owner's decision, and it is the same one from 2026-08-30 — it was never narrower than this:**
+*"o projeto precisa ser em ingles"*. The example that followed it (*"se a chave chama nome, tem que
+passar a se chamar name"*) named a key because a key was what was in front of him; **it did not
+narrow the rule to keys**. A Portuguese word in the contract is a Portuguese word in the contract,
+whether it sits left or right of the colon. `{"kind": "texto"}` is not a migrated contract.
+
+🔴 **`tipo` is FOUR vocabularies sharing one JSON key.** A global value map — *"wherever `texto`
+appears, write `text`"* — would rewrite objects that are not in the conversation. **Every table below
+is scoped to its own object**, and the consumer's rule (rename only if the destination does not
+already exist in THAT dictionary) applies per object, not per key name.
+
+`*` marks a value that is already the same word in both languages and **does not change**.
+
+### 8.1 `tipo` — top-level message type (`Request.Type`, ENTRADA)
+
+| pt | en | | pt | en |
+|---|---|---|---|---|
+| `texto` | `text` | | `reacao` | `reaction` |
+| `template` | `template` * | | `localizacao` | `location` |
+| `botoes` | `buttons` | | `contatos` | `contacts` |
+| `cta_url` | `cta_url` * | | `flow` | `flow` * |
+| `lista` | `list` | | `midia` | `media` |
+| `pedir_localizacao` | `request_location` | | | |
+
+### 8.2 `tipo` — outgoing event type (`meta.EventType`, SAIDA-EVENTO)
+
+| pt | en |
+|---|---|
+| `mensagem` | `message` |
+| `status` | `status` * |
+| `template_status` | `template_status` * |
+| `template_categoria` | `template_category` |
+| `qualidade_do_numero` | `number_quality` |
+| `alerta_de_conta` | `account_alert` — same pair the KEY table already uses |
+
+### 8.3 `tipo` — template button type (inside `botoes_template[]`, ENTRADA)
+
+| pt | en |
+|---|---|
+| `url` | `url` * |
+| `resposta_rapida` | `quick_reply` |
+
+### 8.4 `tipo` — instance type — **already English** (`whatsapp`, `instagram`). Nothing to do.
+
+### 8.5 `categoria` — media category (`Request.Category`, ENTRADA)
+
+| pt | en |
+|---|---|
+| `imagem` | `image` |
+| `video` | `video` * |
+| `audio` | `audio` * |
+| `documento` | `document` |
+| `sticker` | `sticker` * |
+
+### 8.6 `classe` — error classification (`meta.ErrorClass`, SAIDA-RESPOSTA)
+
+| pt | en |
+|---|---|
+| `retentavel` | `retryable` |
+| `permanente` | `permanent` |
+| `config` | `config` * |
+| `desconhecido` | `unknown` |
+
+### 8.7 `estado` — observation state (SAIDA-RESPOSTA, shared by several state blocks)
+
+| pt | en |
+|---|---|
+| `nunca_observado` | `never_observed` |
+| `observado` | `observed` |
+| `nao_se_aplica` | `not_applicable` |
+| `nao_configurado` | `not_configured` |
+| `desconhecido` | `unknown` |
+| `nao_consegui_verificar` | `could_not_verify` |
+
+### 8.8 / 8.9 / 8.10 — the three `veredito` vocabularies (SAIDA-RESPOSTA)
+
+They share a key name and **not** a word list, so each is decided on its own. Where the same
+Portuguese word appears in more than one, **the English word is the same** — a value that translates
+two different ways depending on the block would be a trap of our own making.
+
+| pt | en | which verdict |
+|---|---|---|
+| `ok` | `ok` * | WhatsApp token, Instagram token |
+| `recusado` | `refused` | WhatsApp token |
+| `desconhecido` | `unknown` | WhatsApp token |
+| `nao_se_aplica` | `not_applicable` | Instagram token, health |
+| `aguardando` | `pending` | Instagram token |
+| `falhando` | `failing` | Instagram token |
+| `expirado` | `expired` | Instagram token |
+
+### 8.11 `contadores` — the counter-name vocabulary
+
+The counter names are values inside `contadores`, and the KEY table already carries their pairs.
+**`nome_antigo_usado` is the one that was missing** — it was created by T-203/T-205 and never added
+to any published table, by the exact failure this document exists to prevent. Its pair:
+
+| pt | en |
+|---|---|
+| `nome_antigo_usado` | `old_name_used` |
+

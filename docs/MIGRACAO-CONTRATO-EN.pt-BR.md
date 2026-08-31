@@ -335,3 +335,30 @@ passagem, que não são visitados.
 ⚠️ **Essa medição é uma fotografia, não uma garantia.** Se uma mudança futura puser um objeto cru da
 Meta ao lado de um destes campos, a colisão passa a ser real e a regra do consumidor é o que salva.
 **A regra é o mecanismo; esta medição só diz que hoje ele não tem o que fazer.**
+
+## 8. Os vocabularios de VALOR, decididos em 2026-08-31
+
+🔴 **Decisao do dono, e ela e a MESMA de 2026-08-30 — nunca foi mais estreita que isto:**
+*"o projeto precisa ser em ingles"*. O exemplo que veio depois (*"se a chave chama nome, tem que
+passar a se chamar name"*) citou uma chave porque chave era o que estava na frente dele; **ele nao
+estreitou a regra para chaves**. Palavra em portugues no contrato e palavra em portugues no
+contrato, esteja ela a esquerda ou a direita dos dois pontos. `{"kind": "texto"}` nao e um contrato
+migrado.
+
+🔴 **`tipo` sao QUATRO vocabularios dividindo uma chave JSON.** Um mapa de valores global —
+*"onde aparecer `texto`, escreva `text`"* — reescreveria objetos que nem estao na conversa. **Cada
+tabela abaixo tem escopo no proprio objeto**, e a regra do consumidor (so renomeia se o destino ainda
+nao existir NAQUELE dicionario) vale por objeto, nao por nome de chave.
+
+`*` marca valor que ja e a mesma palavra nos dois idiomas e **nao muda**.
+
+**As tabelas sao identicas as da versao em ingles (secao 8), porque sao identificadores de
+contrato — traduzir a tabela seria criar uma segunda fonte que diverge.** Ver
+[`MIGRACAO-CONTRATO-EN.md`](MIGRACAO-CONTRATO-EN.md), secao 8: 8.1 `tipo` de mensagem (11 valores),
+8.2 `tipo` de evento (6), 8.3 `tipo` de botao de template (2), 8.4 `tipo` de instancia (ja em
+ingles), 8.5 `categoria` de midia (5), 8.6 `classe` de erro (4), 8.7 `estado` de observacao (6),
+8.8-8.10 os tres `veredito`, 8.11 o contador `nome_antigo_usado` -> `old_name_used`.
+
+🔴 **A regra que atravessa as tres tabelas de `veredito`:** onde a mesma palavra em portugues
+aparece em mais de um vocabulario, **a palavra em ingles e a mesma**. Valor que traduz de dois
+jeitos conforme o bloco seria uma armadilha criada por nos.
