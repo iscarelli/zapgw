@@ -6,7 +6,8 @@
 > Escrito ao fim de 2026-08-30, o dia em que o repositorio virou publico. Bloco de retomada
 > mentindo e' pior que bloco nenhum: e' o primeiro texto que a proxima sessao le.
 
-✅ **FEITO EM 2026-08-31 00:4x: o repositorio publico foi APAGADO E RECRIADO, e o historico comeca
+✅ **FEITO EM 2026-08-31 00:44 (-03; `gh repo view --json createdAt` = `03:44:28Z`): o repositorio
+publico foi APAGADO E RECRIADO, e o historico comeca
 num commit so.** Medido, nao afirmado:
 - `git rev-list --count origin/main` = **1**. A arvore do commit genesis e' **identica** a que passou
   no verify (`git diff` entre a antiga HEAD e o genesis: vazio).
@@ -21,8 +22,10 @@ num commit so.** Medido, nao afirmado:
   `Documentation=` na unit do systemd, e a URL nao mudou.
 
 ✅ **FEITO (T-195): a CI recebe o segredo `ZAPGW_FORBIDDEN_NAMES` como `env:` de JOB e ganhou passo
-proprio do portao de nome** (`.github/workflows/verify.yml`), espelhando o portao de telefone. A CI
-deixa de nascer vermelha.
+proprio do portao de nome** (`.github/workflows/verify.yml`), espelhando o portao de telefone.
+🔴 **Isso ainda NAO foi observado rodando:** o workflow nunca executou neste repositorio, e a cota
+de Actions da conta so' reseta em 2026-09-01. **A CI so' conta
+como mecanismo depois de uma execucao verde aqui** — ate la, o que existe e' arquivo, nao prova.
 ⚠️ **Decisao que eu tomei e que voce pode querer rever:** num PR vindo de **fork**, o GitHub nao
 entrega segredo, entao o portao vai reprovar por "nao consegui verificar" — e eu escolhi manter
 assim, falhando fechado, em vez de virar skip. Skip seria a cegueira que o portao existe para nao ter.
