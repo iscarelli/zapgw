@@ -4,6 +4,24 @@ Uma linha por versao entregue, no mesmo commit do bump. A entrada diz o **efeito
 
 ## Nao lancado
 
+- **A pre-push gate: nothing personal leaves this machine, not even in a commit that a later
+  commit fixes** (T-199) — `.githooks/pre-push` (ativado por clone com `git config core.hooksPath
+  .githooks`) roda `internal/config/prepush_test.go`'s `TestPrePushGate` para cada ref sendo
+  empurrada: materializa o que CADA commit do intervalo introduziu (nao a arvore final) e reusa,
+  sem duplicar, `sweepPhoneNumbersOutsideTheAllowlist` e `sweepForbiddenNamesOutsideTheGate` — as
+  mesmas funcoes dos dois portoes de arvore ja existentes. Controle positivo de intervalo provado:
+  dois commits descartaveis (um acrescenta um numero sintetico fora da allowlist — nao repetido
+  aqui, ver o proprio portao de telefone para o porque de nao crescer a allowlist por um valor
+  de controle descartado — o outro apaga o arquivo, arvore final limpa) tiveram o push BLOQUEADO,
+  nomeando o commit e o arquivo (`CONTROLE-T199-AGULHA.md:1`). Controle de "nao consegui verificar" provado escondendo
+  `~/.zapgw/forbidden-names.txt` (push bloqueado com a mensagem propria; arquivo devolvido, 17
+  linhas confirmadas). Push legitimo mede ~1.7s. Falha fechada em todos os caminhos: `go` ausente,
+  lista de agulhas ausente, intervalo incalculavel, e primeiro push de ref nova (sha remoto todo
+  zeros, sem base segura para calcular o intervalo) bloqueiam, nunca liberam. Limite documentado no
+  proprio codigo: um commit de MERGE mostra diff vazio para `git diff-tree` sem `-m`/`-c`, entao
+  conteudo reintroduzido so' numa resolucao de merge nao e' inspecionado por este gate. Verify:
+  `CGO_ENABLED=0 go build ./...`, `go test ./...`, `go vet ./...`, `gofmt -l cmd internal` limpos.
+  _Completed 2026-08-31 06:29._
 - **Inventory every contract key the consumer reads, with its direction and file:line** (T-198) —
   `docs/INVENTARIO-CHAVES.md` criado: 47 pontos de emissao medidos para as 29 chaves pedidas (18
   chaves repetem por aparecerem em mais de uma direcao/rota), zero ausentes do codigo, zero ja em
