@@ -36,6 +36,8 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
+	"strings"
 )
 
 // ErrConflictingAlias: the consumer sent the SAME field under both its
@@ -157,13 +159,17 @@ var templateHeaderAlias = map[string]string{
 }
 
 // templateButtonAlias: TemplateButtonUnion's fields, applied to EACH item
-// of `botoes_template`. `indice` and `payload` are absent on purpose:
-// `indice` never appears in the migration table (Do item 7 — never invent
-// an alias for a key that is not there), and `payload` is already the
-// same spelling in both languages.
+// of `botoes_template`. `payload` is absent on purpose — already the same
+// spelling in both languages. `index` -> `indice` was added by T-208
+// (docs/MIGRACAO-CONTRATO-EN.md section 9.1, row 2 —
+// docs/INVENTARIO-VALORES.md section 2, item 2): it was missing from the
+// migration table itself, not merely from this dict, which is exactly the
+// blind spot T-208 exists to close — a key with no published pair is
+// invisible to the old-name counter (Do item 6), not merely unaliased.
 var templateButtonAlias = map[string]string{
-	"kind": "tipo",
-	"text": "texto",
+	"kind":  "tipo",
+	"text":  "texto",
+	"index": "indice",
 }
 
 // reactionAlias: ReactionRequest's fields (the `reacao` object). `emoji`
@@ -187,6 +193,32 @@ var locationAlias = map[string]string{
 // not name, even though `fluxo` itself sits one level up.
 var flowAlias = map[string]string{
 	"name": "nome",
+}
+
+// buttonAlias: Button's fields, applied to EACH item of `botoes` — the
+// PLAIN quick-reply buttons of `tipo:"botoes"` (mensagem.go's Button
+// struct), NOT `botoes_template` (TemplateButtonUnion, a different type,
+// aliased above) and NOT `botao_titulo` (Request.ButtonTitle, a THIRD,
+// unrelated field — the single-button title of `tipo:"cta_url"`/`"lista"`/
+// `"flow"`, already in requestAliasAtTopLevel).
+//
+// Added by T-208 (docs/MIGRACAO-CONTRATO-EN.md section 9.1, row 1 —
+// docs/INVENTARIO-VALORES.md section 2, item 1): `titulo` had NO published
+// pair before T-208, and a key the migration table doesn't name is
+// invisible to config.CounterOldNameUsed, not merely unaliased (Do item
+// 6) — this is the exact scenario `consumer-b` measured against production:
+// they sent `titulo` (this field) and the counter never moved. `id` is
+// absent — already the same spelling in both languages.
+var buttonAlias = map[string]string{
+	"title": "titulo",
+}
+
+// translateButtonItem applies buttonAlias to ONE item of `botoes` — same
+// fallback rule as translateSubObject: an item that is not a JSON object
+// comes back unchanged, and the real json.Unmarshal into Button is what
+// reports the shape error.
+func translateButtonItem(raw json.RawMessage) (json.RawMessage, []string, error) {
+	return translateSubObject(raw, buttonAlias)
 }
 
 // translateRequestBody is T-203 Do items 1+2 for POST /v1/messages: it
@@ -250,6 +282,28 @@ func translateRequestBody(raw []byte) ([]byte, []string, error) {
 		oldNames = append(oldNames, old...)
 	}
 
+	// botoes is a LIST of Button (T-208) — each item gets its own
+	// translation, positionally, never the list's key itself (that one is
+	// already handled by requestAliasAtTopLevel above, "buttons"->"botoes").
+	// NOT the same field as botoes_template, below — see buttonAlias's
+	// comment for why the two must never share a dict.
+	if sub, ok := m["botoes"]; ok {
+		var arr []json.RawMessage
+		if err := json.Unmarshal(sub, &arr); err == nil {
+			for i := range arr {
+				translated, old, err := translateButtonItem(arr[i])
+				if err != nil {
+					return nil, nil, err
+				}
+				arr[i] = translated
+				oldNames = append(oldNames, old...)
+			}
+			if out, merr := json.Marshal(arr); merr == nil {
+				m["botoes"] = out
+			}
+		}
+	}
+
 	// botoes_template is a LIST of TemplateButtonUnion — each item gets its
 	// own translation, positionally, never the list's key itself (that one
 	// is already handled by requestAliasAtTopLevel above).
@@ -303,14 +357,28 @@ var registrationAlias = map[string]string{
 	"send_token":     "token_envio",
 }
 
-// instanceOnlyAlias: every other entrada route (POST /v1/pausa,
-// POST/DELETE /v1/bloqueios, POST /v1/leituras, POST /v1/fumaca) only has
-// ONE ENTRADA key from the migration table — `instancia` itself. `telefones`
-// (bloqueios), `wamid`/`digitando` (leituras) and `destino` (fumaca) are
-// NOT in the table (Do item 7: never invent an alias for a key that is not
-// there).
+// instanceOnlyAlias: POST /v1/pausa, POST /v1/leituras and POST /v1/fumaca
+// only have ONE ENTRADA key from the migration table — `instancia` itself.
+// `wamid`/`digitando` (leituras) and `destino` (fumaca) are NOT in the
+// table (Do item 7: never invent an alias for a key that is not there).
+// POST/DELETE /v1/bloqueios is NOT in this list any more — see blockAlias,
+// below: it moved out the day `telefones` got a published pair (T-208).
 var instanceOnlyAlias = map[string]string{
 	"instance": "instancia",
+}
+
+// blockAlias: BlockRequest's fields (POST/DELETE /v1/bloqueios,
+// bloqueio_handler.go). Added by T-208 (docs/MIGRACAO-CONTRATO-EN.md
+// section 9.1, row 3 — docs/INVENTARIO-VALORES.md section 2, item 3):
+// `telefones` had NO published pair before T-208, and — same reasoning as
+// buttonAlias above — a key the migration table doesn't name is invisible
+// to config.CounterOldNameUsed, not merely unaliased (Do item 6). This
+// route used to share instanceOnlyAlias with pausa/leituras/fumaca; it no
+// longer does, because it now has a SECOND aliasable key those three
+// don't have.
+var blockAlias = map[string]string{
+	"instance": "instancia",
+	"phones":   "telefones",
 }
 
 // --- T-207 (step 2 of T-189, for VALUES): docs/MIGRACAO-CONTRATO-EN.md
@@ -459,4 +527,51 @@ func translateEntradaOrReject(
 		return nil, nil, false
 	}
 	return translated, oldNames, true
+}
+
+// --- T-208: ENTRADA-QUERY, a query parameter's alias -------------------
+//
+// docs/MIGRACAO-CONTRATO-EN.md section 9.2 / docs/INVENTARIO-VALORES.md
+// section 3. A query parameter is NEVER a JSON key — r.URL.Query() already
+// returns "" for whatever wasn't sent, so none of the machinery above
+// (which exists to tell "absent" apart from "empty JSON value") applies
+// here. Same PRINCIPLE as the body (accept both, count the old one), a
+// DIFFERENT point in the code (docs/TASKS.md, T-208 Do item 2 and 5).
+//
+// queryAlias prefers the NEW (English) name and falls back to the OLD
+// (Portuguese) one only when the new one is absent or blank — the same
+// "novo or velho" idiom `consumer-b` already uses on their own read side
+// (docs/TASKS.md, T-189). It does NOT reject a request that carries BOTH
+// names at once (unlike translateAliasesInPlace's ErrConflictingAlias for
+// a body key): the query string is config for THIS call, never message
+// content that goes out twice on a hash collision, and Do item 2 asks only
+// for "accept both, count the old one" — inventing a second conflict rule
+// with no request behind it is exactly what docs/ARMADILHAS.md's mother
+// trap warns against (a mechanism nobody asked for, that only a NEW kind of
+// bug can grow up in).
+func queryAlias(q url.Values, en, pt string) (value string, oldNameUsed bool) {
+	if v := strings.TrimSpace(q.Get(en)); v != "" {
+		return v, false
+	}
+	if v := strings.TrimSpace(q.Get(pt)); v != "" {
+		return v, true
+	}
+	return "", false
+}
+
+// queryAliasRaw is queryAlias WITHOUT the trim — for the one ENTRADA-QUERY
+// pair whose value must go up EXACTLY AS IT ARRIVED
+// (`mime_do_payload`/`payload_mime`, media_handler.go's download(): "the
+// gateway checks, it never rewrites"). Trimming here would be exactly the
+// silent rewrite that comment forbids — and would also turn a
+// whitespace-only value into an EMPTY one, skipping wellFormedMime's 400
+// instead of triggering it.
+func queryAliasRaw(q url.Values, en, pt string) (value string, oldNameUsed bool) {
+	if v := q.Get(en); v != "" {
+		return v, false
+	}
+	if v := q.Get(pt); v != "" {
+		return v, true
+	}
+	return "", false
 }

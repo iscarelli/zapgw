@@ -353,7 +353,7 @@ func stateRouteWithIngress(t *testing.T, ingress IngressSource) (http.Handler, *
 	store, path := storeWithConsumer(t)
 	activateInstance(t, path, "lojinha")
 	h := NewStateHandler(store, NewAuthenticator(store), testInertWatchdog(store), nil,
-		ingress, nil, nil, testVersion, config.DefaultRetentionDays, AllTypes)
+		ingress, nil, nil, testVersion, config.DefaultRetentionDays, config.NewCounter(store), AllTypes)
 	return h, store
 }
 

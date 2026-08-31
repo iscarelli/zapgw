@@ -17,6 +17,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/iscarelli/zapgw/internal/config"
 	"github.com/iscarelli/zapgw/internal/meta"
 )
 
@@ -130,7 +131,7 @@ func testMediaHandler(t *testing.T, srv *httptest.Server, active ...string) http
 	for _, slug := range active {
 		activateInstance(t, path, slug)
 	}
-	return NewMediaHandler(store, NewAuthenticator(store), meta.NewClient(srv.Client(), srv.URL), WhatsAppOnly)
+	return NewMediaHandler(store, NewAuthenticator(store), meta.NewClient(srv.Client(), srv.URL), config.NewCounter(store), WhatsAppOnly)
 }
 
 // ---------------------------------------------------------------------------

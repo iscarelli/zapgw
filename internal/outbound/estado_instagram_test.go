@@ -207,7 +207,7 @@ func TestGETStateInstagramExposesInstagramTokenInTheJSON(t *testing.T) {
 
 	renewer := NewInstagramRenewer(store, meta.NewClient(nil, "http://127.0.0.1:1"), "http://127.0.0.1:1")
 	h := NewStateHandler(store, NewAuthenticator(store), testInertWatchdog(store), renewer,
-		IngressSource{}, nil, nil, testVersion, config.DefaultRetentionDays, AllTypes)
+		IngressSource{}, nil, nil, testVersion, config.DefaultRetentionDays, config.NewCounter(store), AllTypes)
 
 	rec := askState(t, h, "token-do-a", "insta-loja")
 	if rec.Code != http.StatusOK {
@@ -242,7 +242,7 @@ func TestGETStateWhatsappInstagramTokenIsNotApplicableInTheJSON(t *testing.T) {
 	activateInstance(t, path, "lojinha")
 
 	h := NewStateHandler(store, NewAuthenticator(store), testInertWatchdog(store), nil,
-		IngressSource{}, nil, nil, testVersion, config.DefaultRetentionDays, AllTypes)
+		IngressSource{}, nil, nil, testVersion, config.DefaultRetentionDays, config.NewCounter(store), AllTypes)
 
 	rec := askState(t, h, "token-do-a", "lojinha")
 	if rec.Code != http.StatusOK {
@@ -339,7 +339,7 @@ func TestGETStateInstagramNumberAtMetaAndMetaTokenAreNotApplicableInTheJSON(t *t
 	activateInstance(t, path, "insta-loja")
 
 	h := NewStateHandler(store, NewAuthenticator(store), testInertWatchdog(store), nil,
-		IngressSource{}, nil, nil, testVersion, config.DefaultRetentionDays, AllTypes)
+		IngressSource{}, nil, nil, testVersion, config.DefaultRetentionDays, config.NewCounter(store), AllTypes)
 
 	rec := askState(t, h, "token-do-a", "insta-loja")
 	if rec.Code != http.StatusOK {
@@ -413,7 +413,7 @@ func TestGETStateInstagramExposesTypeAndIgIDInTheJSON(t *testing.T) {
 	activateInstance(t, path, "insta-loja")
 
 	h := NewStateHandler(store, NewAuthenticator(store), testInertWatchdog(store), nil,
-		IngressSource{}, nil, nil, testVersion, config.DefaultRetentionDays, AllTypes)
+		IngressSource{}, nil, nil, testVersion, config.DefaultRetentionDays, config.NewCounter(store), AllTypes)
 
 	rec := askState(t, h, "token-do-a", "insta-loja")
 	if rec.Code != http.StatusOK {
@@ -436,7 +436,7 @@ func TestGETStateWhatsappExposesTypeAndIgIDAsNotApplicableInTheJSON(t *testing.T
 	activateInstance(t, path, "lojinha")
 
 	h := NewStateHandler(store, NewAuthenticator(store), testInertWatchdog(store), nil,
-		IngressSource{}, nil, nil, testVersion, config.DefaultRetentionDays, AllTypes)
+		IngressSource{}, nil, nil, testVersion, config.DefaultRetentionDays, config.NewCounter(store), AllTypes)
 
 	rec := askState(t, h, "token-do-a", "lojinha")
 	if rec.Code != http.StatusOK {

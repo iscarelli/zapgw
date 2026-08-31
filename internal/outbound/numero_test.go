@@ -238,7 +238,7 @@ func TestNumberAtMetaAppearsOnBOTHSurfacesWithoutAnyoneEnumerating(t *testing.T)
 	watchdog := NewWatchdog(store, g.client(t))
 	watchdog.Check(context.Background())
 
-	h := NewStateHandler(store, NewAuthenticator(store), watchdog, nil, IngressSource{}, nil, nil, testVersion, config.DefaultRetentionDays, AllTypes)
+	h := NewStateHandler(store, NewAuthenticator(store), watchdog, nil, IngressSource{}, nil, nil, testVersion, config.DefaultRetentionDays, config.NewCounter(store), AllTypes)
 
 	// 1. THE ROUTE, which serializes the State to JSON without naming a
 	// single field.

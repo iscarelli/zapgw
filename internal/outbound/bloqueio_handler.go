@@ -229,11 +229,12 @@ func (h *BlockHandler) process(
 		return
 	}
 
-	// T-203 (step 2 of T-189): accept `instance` as an alias of `instancia`
-	// (docs/MIGRACAO-CONTRATO-EN.md) — the only ENTRADA key this route has
-	// (`telefones` is not in the migration table).
+	// T-203 (step 2 of T-189): accept `instance` as an alias of `instancia`.
+	// T-208: `telefones` also has a published pair now (`phones`) — see
+	// blockAlias's comment in entrada_apelidos.go for why this route no
+	// longer shares instanceOnlyAlias with pausa/leituras/fumaca.
 	translated, oldNames, ok := translateEntradaOrReject(
-		w, h.throttleLog, route, consumer.Name, raw, instanceOnlyAlias)
+		w, h.throttleLog, route, consumer.Name, raw, blockAlias)
 	if !ok {
 		return
 	}
@@ -373,7 +374,10 @@ func (h *BlockHandler) list(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	slug := strings.TrimSpace(r.URL.Query().Get("instancia"))
+	// T-208: `instancia`/`instance` is ENTRADA-QUERY here, not a body key —
+	// queryAlias (entrada_apelidos.go) is the SAME "novo or velho" idiom,
+	// applied at the point query strings are actually read.
+	slug, oldInstanceParam := queryAlias(r.URL.Query(), "instance", "instancia")
 	if slug == "" {
 		logRejection(h.throttleLog, listBlocksRoute, "", consumer.Name, "parametro instancia e obrigatorio")
 		respondError(w, http.StatusBadRequest, "permanente", "parametro instancia e obrigatorio", 0)
@@ -404,6 +408,12 @@ func (h *BlockHandler) list(w http.ResponseWriter, r *http.Request) {
 	}
 	if !checkType(w, h.types, inst, "") {
 		return
+	}
+	// T-208: recorded only after every guard above accepted the request —
+	// the same "count what the gateway actually served" moment as
+	// GET /v1/estado and GET /v1/perfil (see their comments).
+	if oldInstanceParam {
+		h.counter.Record(inst.Slug, config.CounterOldNameUsed)
 	}
 
 	limit := 0

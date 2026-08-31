@@ -96,7 +96,7 @@ func TestMediaUploadRefusesInstagramInstanceWith400WithoutCallingMeta(t *testing
 	store, path := storeWithInstagramConsumer(t)
 	activateInstance(t, path, "insta-loja")
 	srv := uncallableMeta(t)
-	h := NewMediaHandler(store, NewAuthenticator(store), meta.NewClient(srv.Client(), srv.URL), WhatsAppOnly)
+	h := NewMediaHandler(store, NewAuthenticator(store), meta.NewClient(srv.Client(), srv.URL), config.NewCounter(store), WhatsAppOnly)
 
 	rec := run(h, newUploadRequest(t, "insta-loja", "arquivo", "nota.ogg",
 		"audio/ogg; codecs=opus", []byte("OggS-bytes-de-audio"), true))
@@ -220,7 +220,7 @@ func TestFourWriteRoutesAndHealthStay403ForForeignInstagramBeforeTheType(t *test
 		},
 		"media": func(t *testing.T) *httptest.ResponseRecorder {
 			srv := uncallableMeta(t)
-			h := NewMediaHandler(store, NewAuthenticator(store), meta.NewClient(srv.Client(), srv.URL), WhatsAppOnly)
+			h := NewMediaHandler(store, NewAuthenticator(store), meta.NewClient(srv.Client(), srv.URL), config.NewCounter(store), WhatsAppOnly)
 			req := newUploadRequest(t, "insta-loja", "arquivo", "nota.ogg",
 				"audio/ogg; codecs=opus", []byte("bytes"), true)
 			req.Header.Set("Authorization", "Bearer token-outsider")

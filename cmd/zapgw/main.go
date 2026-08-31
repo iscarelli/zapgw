@@ -423,7 +423,7 @@ func main() {
 		outbound.WhatsAppOnly)
 	// T-111: WhatsAppOnly — upload and download use inst.PhoneNumberID;
 	// Instagram's first slice (T-097) does not send media.
-	media := outbound.NewMediaHandler(store, authenticator, metaClient, outbound.WhatsAppOnly)
+	media := outbound.NewMediaHandler(store, authenticator, metaClient, counter, outbound.WhatsAppOnly)
 	// The SAME counter as sending, with its OWN KEY (T-075): marking as
 	// read never adds to `enviadas`. See internal/config/contador.go.
 	// T-111: WhatsAppOnly — marking as read uses inst.PhoneNumberID.
@@ -462,7 +462,7 @@ func main() {
 	// WhatsAppOnly — profileNode (internal/outbound/perfil_handler.go)
 	// uses inst.PhoneNumberID, a field exclusive to WhatsApp; there is no
 	// documented Instagram-equivalent endpoint in this slice.
-	profileRoute := outbound.NewProfileHandler(store, authenticator, metaClient, maxBytes, outbound.WhatsAppOnly)
+	profileRoute := outbound.NewProfileHandler(store, authenticator, metaClient, maxBytes, counter, outbound.WhatsAppOnly)
 
 	// The token watcher (T-060) is the PRIMARY SENSOR for the verdict
 	// GET /v1/estado publishes: it runs per ACTIVE instance, independent
@@ -516,7 +516,7 @@ func main() {
 		// answers for the same fact, and the divergence would only show
 		// up on failover day.
 		leadership,
-		version, counterDays, outbound.AllTypes)
+		version, counterDays, counter, outbound.AllTypes)
 
 	log.Printf("zapgw ouvindo em %s", address)
 	if err := http.ListenAndServe(address, routes(h, leadership.Require(out), health, templates, media, state, reads, enrollment, smokeRoute, pauseRoute, blockingRoute, profileRoute)); err != nil {

@@ -64,6 +64,13 @@ type ProfileHandler struct {
 	// types declares which instance types this route serves (T-111) — see
 	// the comment on AcceptedTypes in types.go.
 	types AcceptedTypes
+	// counter is the old-name migration metric (T-208,
+	// config.CounterOldNameUsed). GET /v1/perfil's `instancia`/`instance` is
+	// ENTRADA-QUERY: a query parameter is never a JSON key, so it never went
+	// through translateAliasesInPlace, published pair or not, before T-208.
+	// POSITIONAL AND MANDATORY, same discipline as the other counter-carrying
+	// handlers — see the comment on BlockHandler.counter.
+	counter *config.Counter
 }
 
 // NewProfileHandler builds the two routes. It does NOT keep PROFILE state: no
@@ -74,10 +81,11 @@ type ProfileHandler struct {
 // config.TypeWhatsApp, empty on any Instagram instance (T-111). The business
 // profile is exclusive to the WhatsApp Cloud API; there is no documented
 // equivalent endpoint for Instagram in this slice.
-func NewProfileHandler(store *config.Store, auth *Authenticator, client *meta.Client, maxBytes int, types AcceptedTypes) http.Handler {
+func NewProfileHandler(store *config.Store, auth *Authenticator, client *meta.Client, maxBytes int, counter *config.Counter, types AcceptedTypes) http.Handler {
 	h := &ProfileHandler{
 		store: store, auth: auth, client: client, maxBytes: maxBytes,
 		throttleLog: newLogThrottle(logSuppressionWindow),
+		counter:     counter,
 		types:       types,
 	}
 	mux := http.NewServeMux()
@@ -120,7 +128,9 @@ func (h *ProfileHandler) read(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	slug := strings.TrimSpace(r.URL.Query().Get("instancia"))
+	// T-208: `instancia`/`instance` is ENTRADA-QUERY here — see queryAlias's
+	// comment in entrada_apelidos.go.
+	slug, oldInstanceParam := queryAlias(r.URL.Query(), "instance", "instancia")
 	if slug == "" {
 		logRejection(h.throttleLog, "GET /v1/perfil", "", consumer.Name, "parametro instancia e obrigatorio")
 		respondError(w, http.StatusBadRequest, "permanente", "parametro instancia e obrigatorio", 0)
@@ -129,6 +139,9 @@ func (h *ProfileHandler) read(w http.ResponseWriter, r *http.Request) {
 	inst, ok := h.instanceActive(w, consumer, slug, "GET /v1/perfil")
 	if !ok {
 		return
+	}
+	if oldInstanceParam {
+		h.counter.Record(inst.Slug, config.CounterOldNameUsed)
 	}
 
 	ctx, cancel := context.WithTimeout(r.Context(), InstanceDeadline(inst))

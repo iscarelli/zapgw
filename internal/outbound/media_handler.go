@@ -73,6 +73,11 @@ const (
 // partName is the name of the multipart field that carries the bytes.
 const partName = "arquivo"
 
+// partNameEnglish is partName's T-208 alias — see filePart's comment for
+// why this is a SEPARATE mechanism from translateAliasesInPlace (it's a
+// multipart FIELD NAME, not a json:"..." tag at all).
+const partNameEnglish = "file"
+
 type MediaHandler struct {
 	store  *config.Store
 	auth   *Authenticator
@@ -83,6 +88,16 @@ type MediaHandler struct {
 	// types declares which instance types this route serves (T-111) — see
 	// the comment on AcceptedTypes in types.go.
 	types AcceptedTypes
+	// counter is the old-name migration metric (T-208,
+	// config.CounterOldNameUsed). This route has TWO ENTRADA-QUERY
+	// parameters (`instancia`/`instance`, shared by both routes;
+	// `mime_do_payload`/`payload_mime`, download only) and ONE ENTRADA
+	// multipart field name (`arquivo`/`file`, upload only) — none of the
+	// three is a JSON key, so none of them ever went through
+	// translateAliasesInPlace, published pair or not, before T-208.
+	// POSITIONAL AND MANDATORY, same discipline as the other
+	// counter-carrying handlers — see the comment on BlockHandler.counter.
+	counter *config.Counter
 }
 
 // NewMediaHandler builds the two routes. Like the health probe, it holds
@@ -93,10 +108,10 @@ type MediaHandler struct {
 // inst.PhoneNumberID, a field that only exists on config.TypeWhatsApp —
 // empty on any Instagram instance (T-111). There is no Instagram
 // equivalent in this slice.
-func NewMediaHandler(store *config.Store, auth *Authenticator, client *meta.Client, types AcceptedTypes) http.Handler {
+func NewMediaHandler(store *config.Store, auth *Authenticator, client *meta.Client, counter *config.Counter, types AcceptedTypes) http.Handler {
 	h := &MediaHandler{
 		store: store, auth: auth, client: client, throttleLog: newLogThrottle(logSuppressionWindow),
-		types: types,
+		counter: counter, types: types,
 	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /v1/media", h.upload)
@@ -113,19 +128,28 @@ func NewMediaHandler(store *config.Store, auth *Authenticator, client *meta.Clie
 //
 // `rota` is only for the rejection log (T-037) to distinguish upload from
 // download — both call this function.
-func (h *MediaHandler) instanceAuthorized(w http.ResponseWriter, r *http.Request, route string) (config.Consumer, config.Instance, bool) {
+//
+// T-208: also returns whether `instancia` (the OLD spelling of the query
+// parameter) supplied the slug. It does NOT record config.CounterOldNameUsed
+// itself: each caller has a SECOND ENTRADA point of its own (upload's
+// `arquivo`/`file` part name, download's `mime_do_payload`/`payload_mime`),
+// and this project's counter convention (translateEntradaOrReject's
+// callers, docs/TASKS.md T-203 Do item 6) is ONE Record call per REQUEST,
+// combining every old name that request carried — never one call per key,
+// which would double-count a request that used two old names at once.
+func (h *MediaHandler) instanceAuthorized(w http.ResponseWriter, r *http.Request, route string) (config.Consumer, config.Instance, bool, bool) {
 	consumer, err := h.auth.Authenticate(r.Header.Get("Authorization"))
 	if err != nil {
 		if errors.Is(err, ErrNoToken) || errors.Is(err, ErrInvalidToken) {
 			respondError(w, http.StatusUnauthorized, "config", "token ausente ou invalido", 0)
-			return config.Consumer{}, config.Instance{}, false
+			return config.Consumer{}, config.Instance{}, false, false
 		}
 		log.Printf("zapgw: erro de store ao autenticar em midia: %v", err)
 		respondError(w, http.StatusServiceUnavailable, "retentavel", "indisponivel", 0)
-		return config.Consumer{}, config.Instance{}, false
+		return config.Consumer{}, config.Instance{}, false, false
 	}
 
-	slug := strings.TrimSpace(r.URL.Query().Get("instancia"))
+	slug, oldInstanceParam := queryAlias(r.URL.Query(), "instance", "instancia")
 	// Before any byte and before any call to Meta: without this, a token
 	// leaked from system A would spend system B's instance quota — and
 	// would discover which slugs exist from the response status.
@@ -135,7 +159,7 @@ func (h *MediaHandler) instanceAuthorized(w http.ResponseWriter, r *http.Request
 		logRejection(h.throttleLog, route, slug, consumer.Name, "instancia nao autorizada para este consumidor")
 		respondError(w, http.StatusForbidden, "config",
 			"instancia nao autorizada para este consumidor (mande ?instancia={slug})", 0)
-		return config.Consumer{}, config.Instance{}, false
+		return config.Consumer{}, config.Instance{}, false, false
 	}
 
 	inst, err := h.store.FindInstance(slug)
@@ -143,28 +167,28 @@ func (h *MediaHandler) instanceAuthorized(w http.ResponseWriter, r *http.Request
 		if errors.Is(err, config.ErrInstanceNotFound) {
 			logRejection(h.throttleLog, route, slug, consumer.Name, "instancia desconhecida")
 			respondError(w, http.StatusNotFound, "config", "instancia desconhecida", 0)
-			return config.Consumer{}, config.Instance{}, false
+			return config.Consumer{}, config.Instance{}, false, false
 		}
 		log.Printf("zapgw: erro de store ao buscar instancia %q em midia: %v", slug, err)
 		respondError(w, http.StatusServiceUnavailable, "retentavel", "indisponivel", 0)
-		return config.Consumer{}, config.Instance{}, false
+		return config.Consumer{}, config.Instance{}, false, false
 	}
 	if !inst.Active {
 		respondError(w, http.StatusServiceUnavailable, "retentavel", "instancia pausada", 0)
-		return config.Consumer{}, config.Instance{}, false
+		return config.Consumer{}, config.Instance{}, false, false
 	}
 	// T-111: AFTER the bond check (403) and existence (404) — NEVER before,
 	// otherwise this route becomes an oracle for "what type is this slug"
 	// for someone who doesn't own it. checkType already writes the
 	// 400/config response when it rejects.
 	if !checkType(w, h.types, inst, "") {
-		return config.Consumer{}, config.Instance{}, false
+		return config.Consumer{}, config.Instance{}, false, false
 	}
-	return consumer, inst, true
+	return consumer, inst, true, oldInstanceParam
 }
 
 func (h *MediaHandler) upload(w http.ResponseWriter, r *http.Request) {
-	consumer, inst, ok := h.instanceAuthorized(w, r, "POST /v1/media")
+	consumer, inst, ok, oldInstanceParam := h.instanceAuthorized(w, r, "POST /v1/media")
 	if !ok {
 		return
 	}
@@ -176,21 +200,28 @@ func (h *MediaHandler) upload(w http.ResponseWriter, r *http.Request) {
 	parts, err := r.MultipartReader()
 	if err != nil {
 		logRejection(h.throttleLog, "POST /v1/media", inst.Slug, consumer.Name,
-			"o corpo precisa ser multipart/form-data com uma parte chamada "+partName)
+			"o corpo precisa ser multipart/form-data com uma parte chamada "+partName+" (ou "+partNameEnglish+")")
 		respondError(w, http.StatusBadRequest, "permanente",
-			"o corpo precisa ser multipart/form-data com uma parte chamada "+partName, 0)
+			"o corpo precisa ser multipart/form-data com uma parte chamada "+partName+" (ou "+partNameEnglish+")", 0)
 		return
 	}
 
-	part, err := filePart(parts)
+	part, oldPartName, err := filePart(parts)
 	if err != nil {
 		logRejection(h.throttleLog, "POST /v1/media", inst.Slug, consumer.Name,
-			"nao veio a parte "+partName+" com os bytes")
+			"nao veio a parte "+partName+" (ou "+partNameEnglish+") com os bytes")
 		respondError(w, http.StatusBadRequest, "permanente",
-			"nao veio a parte "+partName+" com os bytes", 0)
+			"nao veio a parte "+partName+" (ou "+partNameEnglish+") com os bytes", 0)
 		return
 	}
 	defer part.Close()
+	// T-208: ONE Record call for the WHOLE request, combining BOTH
+	// ENTRADA points upload() has (`instancia`/`instance`,
+	// `arquivo`/`file`) — see instanceAuthorized's comment for why this
+	// isn't two separate calls.
+	if oldInstanceParam || oldPartName {
+		h.counter.Record(inst.Slug, config.CounterOldNameUsed)
+	}
 
 	// The mime comes from the PART HEADER and goes to the wire EXACTLY AS
 	// IT ARRIVED. It's only parsed to figure out the category
@@ -260,22 +291,37 @@ func (h *MediaHandler) upload(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(map[string]string{"media_id": id})
 }
 
-// filePart looks for the `file` part, skipping small text fields
-// the consumer's HTTP client might have placed before it. The discard is
-// LIMITED: a giant text field can't become a memory-consumption path that
-// isn't even media.
-func filePart(parts *multipart.Reader) (*multipart.Part, error) {
+// filePart looks for the `arquivo` part (or its T-208 English alias,
+// `file`), skipping small text fields the consumer's HTTP client might
+// have placed before it. The discard is LIMITED: a giant text field can't
+// become a memory-consumption path that isn't even media.
+//
+// T-208: `arquivo`/`file` is the multipart FIELD NAME of POST /v1/media
+// (docs/MIGRACAO-CONTRATO-EN.md section 9.1, row 4 —
+// docs/INVENTARIO-VALORES.md section 2, item 4) — NOT a `json:"…"` tag at
+// all, so it can never reach translateAliasesInPlace, which only ever sees
+// an already-decoded JSON object. That is why this alias lives here,
+// beside multipart.Reader.NextPart, instead of beside the JSON dicts in
+// entrada_apelidos.go: the SAME "accept both, count the old one" principle
+// (Do item 2), a DIFFERENT point in the code because the field itself is a
+// different KIND of key. oldName reports whether the OLD (`arquivo`)
+// spelling matched, for config.CounterOldNameUsed — the caller records it,
+// same split as translateEntradaOrReject's callers.
+func filePart(parts *multipart.Reader) (part *multipart.Part, oldName bool, err error) {
 	for {
 		part, err := parts.NextPart()
 		if err != nil {
-			return nil, err
+			return nil, false, err
 		}
-		if part.FormName() == partName {
-			return part, nil
+		switch part.FormName() {
+		case partName:
+			return part, true, nil
+		case partNameEnglish:
+			return part, false, nil
 		}
 		if _, err := io.Copy(io.Discard, io.LimitReader(part, 4<<10)); err != nil {
 			part.Close()
-			return nil, err
+			return nil, false, err
 		}
 		part.Close()
 	}
@@ -293,7 +339,10 @@ func (h *MediaHandler) download(w http.ResponseWriter, r *http.Request) {
 	// NOT replace the value — what goes up is the original, otherwise
 	// "checking" would turn into normalizing through the back door, which
 	// is exactly what this endpoint exists to not do.
-	payloadMime := r.URL.Query().Get("mime_do_payload")
+	// T-208: `mime_do_payload`/`payload_mime` is ENTRADA-QUERY —
+	// queryAliasRaw (NOT queryAlias — see its own comment) preserves the
+	// "goes up exactly as it arrived" guarantee just below.
+	payloadMime, oldMimeParam := queryAliasRaw(r.URL.Query(), "payload_mime", "mime_do_payload")
 	if payloadMime != "" && !wellFormedMime(payloadMime) {
 		respondError(w, http.StatusBadRequest, "permanente",
 			"mime_do_payload nao e um mime valido; mande o valor de midia_mime_payload "+
@@ -301,9 +350,15 @@ func (h *MediaHandler) download(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, inst, ok := h.instanceAuthorized(w, r, "GET /v1/media/{id}")
+	_, inst, ok, oldInstanceParam := h.instanceAuthorized(w, r, "GET /v1/media/{id}")
 	if !ok {
 		return
+	}
+	// T-208: ONE Record call for the WHOLE request, combining BOTH
+	// ENTRADA-QUERY points download() has — see instanceAuthorized's
+	// comment (and upload()'s matching call) for why this isn't two calls.
+	if oldInstanceParam || oldMimeParam {
+		h.counter.Record(inst.Slug, config.CounterOldNameUsed)
 	}
 
 	ctx, cancel := context.WithTimeout(context.WithoutCancel(r.Context()), mediaDeadline)

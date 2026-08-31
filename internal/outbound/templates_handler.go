@@ -413,7 +413,9 @@ func (h *TemplatesHandler) list(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	slug := strings.TrimSpace(r.URL.Query().Get("instancia"))
+	// T-208: `instancia`/`instance` is ENTRADA-QUERY here — see queryAlias's
+	// comment in entrada_apelidos.go.
+	slug, oldInstanceParam := queryAlias(r.URL.Query(), "instance", "instancia")
 	if slug == "" {
 		logRejection(h.throttleLog, "GET /v1/templates", "", consumer.Name,
 			"parametro instancia e obrigatorio")
@@ -424,6 +426,9 @@ func (h *TemplatesHandler) list(w http.ResponseWriter, r *http.Request) {
 	inst, ok := h.instanceActive(w, consumer, slug, "GET /v1/templates")
 	if !ok {
 		return
+	}
+	if oldInstanceParam {
+		h.counter.Record(inst.Slug, config.CounterOldNameUsed)
 	}
 
 	// The deadline covers PAGINATION AS A WHOLE. A catalog that does not fit
@@ -595,7 +600,9 @@ func (h *TemplatesHandler) deleteTemplate(w http.ResponseWriter, r *http.Request
 	if !ok {
 		return
 	}
-	slug := strings.TrimSpace(r.URL.Query().Get("instancia"))
+	// T-208: `instancia`/`instance` and `nome`/`name` are ENTRADA-QUERY
+	// here — see queryAlias's comment in entrada_apelidos.go.
+	slug, oldInstanceParam := queryAlias(r.URL.Query(), "instance", "instancia")
 	if slug == "" {
 		logRejection(h.throttleLog, "DELETE /v1/templates", "", consumer.Name,
 			"parametro instancia e obrigatorio")
@@ -603,7 +610,7 @@ func (h *TemplatesHandler) deleteTemplate(w http.ResponseWriter, r *http.Request
 			"parametro instancia e obrigatorio", 0)
 		return
 	}
-	name := strings.TrimSpace(r.URL.Query().Get("nome"))
+	name, oldNameParam := queryAlias(r.URL.Query(), "name", "nome")
 	if name == "" {
 		logRejection(h.throttleLog, "DELETE /v1/templates", slug, consumer.Name,
 			"parametro nome e obrigatorio")
@@ -628,6 +635,9 @@ func (h *TemplatesHandler) deleteTemplate(w http.ResponseWriter, r *http.Request
 	inst, ok := h.instanceActive(w, consumer, slug, "DELETE /v1/templates")
 	if !ok {
 		return
+	}
+	if oldInstanceParam || oldNameParam {
+		h.counter.Record(inst.Slug, config.CounterOldNameUsed)
 	}
 
 	ctx, cancel := context.WithTimeout(r.Context(), InstanceDeadline(inst))

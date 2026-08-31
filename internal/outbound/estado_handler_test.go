@@ -45,7 +45,7 @@ func testStateWithRetention(t *testing.T, m *fakeHealthMeta, retentionDays int, 
 	// nil in place of the Instagram renewer: no test in this file has an
 	// Instagram instance, and BuildStateWithSeries treats nil as "no known
 	// failure" (see IGRenewalFailureReader, estado.go).
-	return NewStateHandler(store, NewAuthenticator(store), watchdog, nil, IngressSource{}, nil, nil, testVersion, retentionDays, AllTypes), store, watchdog
+	return NewStateHandler(store, NewAuthenticator(store), watchdog, nil, IngressSource{}, nil, nil, testVersion, retentionDays, config.NewCounter(store), AllTypes), store, watchdog
 }
 
 func askState(t *testing.T, h http.Handler, token, slug string) *httptest.ResponseRecorder {
@@ -53,14 +53,27 @@ func askState(t *testing.T, h http.Handler, token, slug string) *httptest.Respon
 	return askStateWithWindow(t, h, token, slug, "")
 }
 
-// askStateWithWindow appends the RAW `?serie_dias=` (string, not int) on
+// askStateWithWindow appends the RAW `?series_days=` (string, not int) on
 // purpose: the consumer sends text, and "abc", "0" and "-3" are requests that
 // really exist and need a named response.
+//
+// T-208: this general-purpose helper uses the NEW (English) spelling of
+// both query parameters — `instance`/`series_days`, not `instancia`/
+// `serie_dias` — on purpose. GET /v1/estado now records
+// config.CounterOldNameUsed when the OLD spelling is used (it's an
+// ENTRADA-QUERY point like any other, section 9.2), and this helper backs
+// the vast majority of this package's state-reading tests, which have
+// nothing to do with that migration. Using the OLD spelling here would
+// make nearly every test in this file silently increment that counter as
+// a side effect of merely reading state — exactly the kind of noise
+// TestStateWithoutTrafficAnswersZerosNotError exists to catch. Tests that
+// DO want to exercise the alias use the old spelling explicitly — see
+// entrada_apelidos_test.go's ENTRADA-QUERY cases.
 func askStateWithWindow(t *testing.T, h http.Handler, token, slug, seriesDays string) *httptest.ResponseRecorder {
 	t.Helper()
 	target := "/v1/estado"
 	if slug != "" {
-		target += "?instancia=" + slug
+		target += "?instance=" + slug
 	}
 	if seriesDays != "" {
 		if slug == "" {
@@ -68,7 +81,7 @@ func askStateWithWindow(t *testing.T, h http.Handler, token, slug, seriesDays st
 		} else {
 			target += "&"
 		}
-		target += "serie_dias=" + url.QueryEscape(seriesDays)
+		target += "series_days=" + url.QueryEscape(seriesDays)
 	}
 	req := httptest.NewRequest(http.MethodGet, target, nil)
 	if token != "" {

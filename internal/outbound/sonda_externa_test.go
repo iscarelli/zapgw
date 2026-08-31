@@ -307,7 +307,7 @@ func stateRouteWithReach(t *testing.T, reach *ExternalProbe) (http.Handler, *con
 	store, path := storeWithConsumer(t)
 	activateInstance(t, path, "lojinha")
 	h := NewStateHandler(store, NewAuthenticator(store), testInertWatchdog(store), nil,
-		IngressSource{}, reach, nil, testVersion, config.DefaultRetentionDays, AllTypes)
+		IngressSource{}, reach, nil, testVersion, config.DefaultRetentionDays, config.NewCounter(store), AllTypes)
 	return h, store
 }
 

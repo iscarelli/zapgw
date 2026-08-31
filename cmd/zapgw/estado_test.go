@@ -443,9 +443,17 @@ func TestStateRouteReturnsTheSameNumbersAsTheStateCommand(t *testing.T) {
 	// `conector: nao_configurado`.
 	h := outbound.NewStateHandler(store, outbound.NewAuthenticator(store), watchdog, nil,
 		outbound.IngressSource{}, nil, nil, version,
-		config.CounterRetentionDays(fakeEnvironment(vars)), outbound.AllTypes)
+		config.CounterRetentionDays(fakeEnvironment(vars)), config.NewCounter(store), outbound.AllTypes)
 
-	req := httptest.NewRequest(http.MethodGet, "/v1/estado?instancia=lojinha", nil)
+	// T-208: `instance` (English), not `instancia` — this route now records
+	// config.CounterOldNameUsed on the OLD spelling (GET /v1/estado's own
+	// ENTRADA-QUERY, docs/MIGRACAO-CONTRATO-EN.md section 9.2), and this
+	// test compares the route's counters against a snapshot the CLI
+	// command already took — using the old spelling here would make the
+	// route's OWN read self-increment the very counter it's about to
+	// report, diverging from the earlier snapshot for a reason unrelated
+	// to what this test checks.
+	req := httptest.NewRequest(http.MethodGet, "/v1/estado?instance=lojinha", nil)
 	req.Header.Set("Authorization", "Bearer "+token)
 	rec := httptest.NewRecorder()
 	// The route NEVER talks to Meta on a read (vigia.go): the fake

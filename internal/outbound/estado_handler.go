@@ -117,16 +117,26 @@ type StateHandler struct {
 	// since T-097/T-107 — the field exists only so this handler's
 	// construction is forced to declare it, like every other one.
 	types AcceptedTypes
+	// counter is the old-name migration metric (T-208,
+	// config.CounterOldNameUsed) — this route's OWN two ENTRADA-QUERY
+	// parameters (`instancia`/`instance`, `serie_dias`/`series_days`) were
+	// invisible to it before T-208: a query parameter is never a JSON key,
+	// so it never went through translateAliasesInPlace at all, published
+	// pair or not. POSITIONAL AND MANDATORY, same discipline as the other
+	// counter-carrying handlers (bloqueio_handler.go) — an optional counter
+	// here is the exact defect T-205 named: a route silently NOT counting
+	// while the number that authorizes step 4 believes it does.
+	counter *config.Counter
 }
 
 // NewStateHandler builds the route. `types` is AllTypes: GET
 // /v1/estado already publishes both types, handling the difference
 // INTERNALLY (State.Type, NotApplicable in the blocks that don't apply) —
 // see the comment on the `types` field, above.
-func NewStateHandler(store *config.Store, auth *Authenticator, watchdog *Watchdog, renewer *InstagramRenewer, ingress IngressSource, reach *ExternalProbe, leadership *Leadership, version string, retentionDays int, types AcceptedTypes) http.Handler {
+func NewStateHandler(store *config.Store, auth *Authenticator, watchdog *Watchdog, renewer *InstagramRenewer, ingress IngressSource, reach *ExternalProbe, leadership *Leadership, version string, retentionDays int, counter *config.Counter, types AcceptedTypes) http.Handler {
 	h := &StateHandler{
 		store: store, auth: auth, watchdog: watchdog, renewer: renewer, ingress: ingress, reach: reach, leadership: leadership, version: version,
-		retentionDays: retentionDays, types: types,
+		retentionDays: retentionDays, counter: counter, types: types,
 	}
 	if h.retentionDays < 1 {
 		// A caller that didn't resolve the deadline (or resolved it to zero)
@@ -189,7 +199,9 @@ func (h *StateHandler) state(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	slug := strings.TrimSpace(r.URL.Query().Get("instancia"))
+	// T-208: `instancia`/`instance` is ENTRADA-QUERY here — see queryAlias's
+	// comment in entrada_apelidos.go.
+	slug, oldInstanceParam := queryAlias(r.URL.Query(), "instance", "instancia")
 	if slug == "" {
 		// 400, and not the 403 CanUse("") would hand out for free: "you
 		// cannot see this instance" would send the consumer to check their
@@ -216,10 +228,22 @@ func (h *StateHandler) state(w http.ResponseWriter, r *http.Request) {
 	// refusal message cites this installation's retention deadline, and
 	// retention deadline is an operational detail. Whoever can't even read
 	// the instance learns nothing about it from a parameter error.
-	days, err := seriesWindow(r.URL.Query().Get("serie_dias"), h.retentionDays)
+	// T-208: `serie_dias`/`series_days` is the second ENTRADA-QUERY pair
+	// this route has.
+	seriesRaw, oldSeriesParam := queryAlias(r.URL.Query(), "series_days", "serie_dias")
+	days, err := seriesWindow(seriesRaw, h.retentionDays)
 	if err != nil {
 		respondError(w, http.StatusBadRequest, "permanente", err.Error(), 0)
 		return
+	}
+	// T-208 Do item 3: recorded ONCE per request, after every guard above
+	// accepted it — the same "count a request the gateway actually served"
+	// moment translateEntradaOrReject's callers use on the body routes,
+	// just after THIS route's own validation instead of before its
+	// authorization check (this route checks the link BEFORE the series
+	// window, the two body-route steps are reversed here).
+	if oldInstanceParam || oldSeriesParam {
+		h.counter.Record(slug, config.CounterOldNameUsed)
 	}
 
 	// One call, and the body is the entire State serialized — no field

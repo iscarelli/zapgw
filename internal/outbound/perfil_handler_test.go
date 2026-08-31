@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/iscarelli/zapgw/internal/config"
 	"github.com/iscarelli/zapgw/internal/meta"
 )
 
@@ -17,7 +18,7 @@ func testProfileHandler(t *testing.T, srv *httptest.Server, active ...string) (h
 	for _, slug := range active {
 		activateInstance(t, path, slug)
 	}
-	h := NewProfileHandler(store, NewAuthenticator(store), meta.NewClient(srv.Client(), srv.URL), 1<<20, WhatsAppOnly)
+	h := NewProfileHandler(store, NewAuthenticator(store), meta.NewClient(srv.Client(), srv.URL), 1<<20, config.NewCounter(store), WhatsAppOnly)
 	return h, path
 }
 
@@ -125,7 +126,7 @@ func TestProfileGetInstagramRefuses400WithoutCallingMeta(t *testing.T) {
 	store, path := storeWithInstagramConsumer(t)
 	activateInstance(t, path, "insta-loja")
 	srv := uncallableMeta(t)
-	h := NewProfileHandler(store, NewAuthenticator(store), meta.NewClient(srv.Client(), srv.URL), 1<<20, WhatsAppOnly)
+	h := NewProfileHandler(store, NewAuthenticator(store), meta.NewClient(srv.Client(), srv.URL), 1<<20, config.NewCounter(store), WhatsAppOnly)
 
 	rec := readProfile(t, h, "token-do-a", "insta-loja")
 
@@ -145,7 +146,7 @@ func TestProfilePostInstagramRefuses400WithoutCallingMeta(t *testing.T) {
 	store, path := storeWithInstagramConsumer(t)
 	activateInstance(t, path, "insta-loja")
 	srv := uncallableMeta(t)
-	h := NewProfileHandler(store, NewAuthenticator(store), meta.NewClient(srv.Client(), srv.URL), 1<<20, WhatsAppOnly)
+	h := NewProfileHandler(store, NewAuthenticator(store), meta.NewClient(srv.Client(), srv.URL), 1<<20, config.NewCounter(store), WhatsAppOnly)
 
 	rec := writeProfile(t, h, "token-do-a", `{"instancia":"insta-loja","about":"x"}`)
 
@@ -207,7 +208,7 @@ func TestProfileForeignInstanceRefuses403OnBothRoutes(t *testing.T) {
 	if err := store.CreateConsumer("sistema-b", "token-do-b", []string{"clinica"}); err != nil {
 		t.Fatalf("CreateConsumer: %v", err)
 	}
-	h := NewProfileHandler(store, NewAuthenticator(store), meta.NewClient(srv.Client(), srv.URL), 1<<20, WhatsAppOnly)
+	h := NewProfileHandler(store, NewAuthenticator(store), meta.NewClient(srv.Client(), srv.URL), 1<<20, config.NewCounter(store), WhatsAppOnly)
 
 	if rec := readProfile(t, h, "token-do-b", "lojinha"); rec.Code != http.StatusForbidden {
 		t.Errorf("GET: status = %d, quero 403; corpo = %s", rec.Code, rec.Body.String())

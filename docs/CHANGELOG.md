@@ -2,6 +2,39 @@
 
 Uma linha por versao entregue, no mesmo commit do bump. A entrada diz o **efeito**, nao o diff.
 
+## v0.62.1 — 2026-08-31
+
+- **Teach the counter to see the thirteen keys it was blind to** (T-208) — `nome_antigo_usado`
+  only counted a key that had a PUBLISHED pair; `consumer-b` proved the blind spot against
+  production by sending `titulo` (inside `botoes[]`) and the counter never moved. Published the
+  pair AND wired the counter for the 13 rows `docs/MIGRACAO-CONTRATO-EN.md` section 9 names:
+  4 body/multipart keys (`titulo`->`title` inside each `botoes[]` item — NOT `botao_titulo`,
+  already aliased; `indice`->`index` inside each `botoes_template[]` item; `telefones`->`phones`,
+  body of `POST/DELETE /v1/bloqueios`, which no longer shares `instanceOnlyAlias` with
+  pausa/leituras/fumaca; `arquivo`->`file`, the multipart FIELD NAME of `POST /v1/media` — not a
+  `json:"…"` tag at all, so it goes through a separate mechanism, `filePart`, not
+  `translateAliasesInPlace`) and 9 `ENTRADA-QUERY` call sites across 6 routes
+  (`instancia`->`instance` on `GET /v1/media/{id}` + `POST /v1/media` (shared), `GET /v1/estado`,
+  `GET /v1/bloqueios`, `GET /v1/perfil`, `GET /v1/templates`, `DELETE /v1/templates`;
+  `mime_do_payload`->`payload_mime` on `GET /v1/media/{id}`; `serie_dias`->`series_days` on
+  `GET /v1/estado`; `nome`->`name` on `DELETE /v1/templates` — new `queryAlias`/`queryAliasRaw`
+  helpers in `entrada_apelidos.go`, the same "novo or velho" principle as the body but a
+  DIFFERENT point in the code, since a query parameter is never a JSON key). `MediaHandler`,
+  `StateHandler` and `ProfileHandler` gained a POSITIONAL AND MANDATORY `counter *config.Counter`
+  (same discipline T-205 used for bloqueio/cadastro/pausa) — none of the three had one before,
+  because none of their ENTRADA points were JSON keys. One `Record` call per REQUEST, combining
+  every old name that request carried, never one per key (media's `instanceAuthorized` returns its
+  flag instead of recording, so `upload`/`download` can combine it with their own second flag).
+  14 new tests, one per key plus the exact control: a request with every key in English except
+  `titulo` inside `botoes[]` now moves the counter by exactly +1
+  (`TestEntradaConsumerScenarioTitleInPortugueseMovesTheCounter`) — before this task it did not
+  move at all. Output is untouched. Two existing test helpers
+  (`askStateWithWindow`/`cmd/zapgw/estado_test.go`'s state-route test) switched their OWN query
+  spelling from `instancia`/`serie_dias` to `instance`/`series_days`, since `GET /v1/estado` now
+  self-counts on the old spelling and those helpers back nearly every state-reading test in the
+  suite, unrelated to this migration. `CGO_ENABLED=0 go build ./...`, `go test ./...`,
+  `go vet ./...`, `gofmt -l cmd internal` clean. _Completed 2026-08-31 13:09._
+
 ## v0.62.0 — 2026-08-31
 
 - **Step 2 of the ENTRADA migration, for VALUES this time: the gateway accepts the English value on

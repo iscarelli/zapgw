@@ -1,6 +1,7 @@
 package outbound
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"go/ast"
@@ -9,6 +10,7 @@ import (
 	"go/types"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"strings"
 	"sync"
@@ -415,16 +417,17 @@ func TestEntradaOldNameCounterCountsAndAppearsInEstado(t *testing.T) {
 	store, path := storeWithConsumer(t)
 	activateInstance(t, path, "lojinha")
 
+	counter := config.NewCounter(store)
 	sendSrv := acceptingMeta("wamid.CONTADOR")
 	defer sendSrv.Close()
 	send := NewHandler(store, NewAuthenticator(store),
-		meta.NewClient(sendSrv.Client(), sendSrv.URL), 1<<20, config.NewCounter(store), config.NewTransit(store), AllTypes)
+		meta.NewClient(sendSrv.Client(), sendSrv.URL), 1<<20, counter, config.NewTransit(store), AllTypes)
 
 	healthMeta := tokenAcceptingMeta()
 	healthSrv := healthMeta.server(t)
 	watchdog := NewWatchdog(store, meta.NewClient(healthSrv.Client(), healthSrv.URL))
 	state := NewStateHandler(store, NewAuthenticator(store), watchdog, nil, IngressSource{}, nil, nil,
-		testVersion, config.DefaultRetentionDays, AllTypes)
+		testVersion, config.DefaultRetentionDays, counter, AllTypes)
 
 	// A request in the OLD (Portuguese) spelling — key AND value — counts.
 	pt := ask(t, send, "token-do-a", "chave-pt-contador", textBody)
@@ -481,7 +484,7 @@ func stateHandlerFor(t *testing.T, store *config.Store) http.Handler {
 	srv := m.server(t)
 	watchdog := NewWatchdog(store, meta.NewClient(srv.Client(), srv.URL))
 	return NewStateHandler(store, NewAuthenticator(store), watchdog, nil, IngressSource{}, nil, nil,
-		testVersion, config.DefaultRetentionDays, AllTypes)
+		testVersion, config.DefaultRetentionDays, config.NewCounter(store), AllTypes)
 }
 
 // oldNameCounterTodayInEstado reads config.CounterOldNameUsed for `slug`
@@ -564,7 +567,10 @@ func TestEntradaOldNameCounterOnBlock(t *testing.T) {
 		t.Fatalf("apos o pedido em PORTUGUES: contador = %d, quero 1", got)
 	}
 
-	en := askBlock(t, h, http.MethodPost, "token-do-a", `{"instance":"lojinha","telefones":["5511999990000"]}`)
+	// T-208: `phones` (not `telefones`) — `telefones` had no published pair
+	// before T-208 (blockAlias), so this body needs BOTH keys in English to
+	// count as "fully migrated" now.
+	en := askBlock(t, h, http.MethodPost, "token-do-a", `{"instance":"lojinha","phones":["5511999990000"]}`)
 	if en.Code != http.StatusOK {
 		t.Fatalf("EN: status = %d, corpo = %s", en.Code, en.Body)
 	}
@@ -1098,5 +1104,462 @@ func TestEntradaOldNameCounterCountsOldValueUsage(t *testing.T) {
 	if got := oldNameCounterTodayInEstado(t, store, "lojinha"); got != 1 {
 		t.Errorf("contadores[%q].hoje = %d, quero 1 (so o valor velho conta)",
 			config.CounterOldNameUsed, got)
+	}
+}
+
+// --- T-208: the thirteen keys the counter was blind to ---------------------
+//
+// docs/MIGRACAO-CONTRATO-EN.md section 9 / docs/INVENTARIO-VALORES.md
+// sections 2 and 3. Before T-208, `config.CounterOldNameUsed` only saw a
+// key that had a PUBLISHED pair — these 13 had none, so a request using
+// them in Portuguese was genuinely invisible to the counter, not merely
+// unaliased. Each test below proves the SAME pair of facts for its one
+// key: the OLD spelling is accepted AND counts; the NEW spelling is
+// accepted and does NOT count again. One test per key, never by sample.
+
+// newAuthedGetRequest is the shared shape every ENTRADA-QUERY test below
+// needs: a GET with the bearer token, and nothing else. The routes
+// exercised here (media, estado, perfil, templates) all read
+// "Authorization" the same way, so one helper serves all four instead of
+// four near-identical ones.
+func newAuthedGetRequest(t *testing.T, target string) *http.Request {
+	t.Helper()
+	req := httptest.NewRequest(http.MethodGet, target, nil)
+	req.Header.Set("Authorization", "Bearer token-do-a")
+	return req
+}
+
+// --- 9.1: the four ENTRADA body/multipart keys ------------------------------
+
+// buttonTitleBody is a POST /v1/messages body for `tipo:"botoes"`
+// (Request.Buttons) — EVERY key already in its NEW (English) spelling
+// except the one under test, `titulo`/`title` inside the ONE item of
+// `botoes[]` (Button.Title, mensagem.go:153). Isolating every other key
+// is what lets a single assertion attribute a counter change to THIS
+// field alone.
+func buttonTitleBody(titleKey string) string {
+	return `{"instance":"lojinha","to":"5511999990000","kind":"buttons","text":"oi",` +
+		`"buttons":[{"id":"b1","` + titleKey + `":"Ver mais"}]}`
+}
+
+// TestEntradaButtonTitleOldNameCounts is row 1 of
+// docs/MIGRACAO-CONTRATO-EN.md section 9.1: `titulo` inside EACH item of
+// `botoes[]` — NOT `botao_titulo` (a different field, already aliased
+// since T-203). It had no published pair before T-208, so it was
+// INVISIBLE to the counter, not merely unaliased (Do item 6).
+func TestEntradaButtonTitleOldNameCounts(t *testing.T) {
+	srv := acceptingMeta("wamid.BOTAOTITULO")
+	defer srv.Close()
+	h, store := testHandler(t, srv)
+
+	old := ask(t, h, "token-do-a", "titulo-velho-208", buttonTitleBody("titulo"))
+	if old.Code != http.StatusOK {
+		t.Fatalf("titulo (PT): status = %d, corpo = %s", old.Code, old.Body)
+	}
+	if got := oldNameCounterTodayInEstado(t, store, "lojinha"); got != 1 {
+		t.Fatalf("apos botoes[].titulo: contador = %d, quero 1", got)
+	}
+
+	newer := ask(t, h, "token-do-a", "titulo-novo-208", buttonTitleBody("title"))
+	if newer.Code != http.StatusOK {
+		t.Fatalf("title (EN): status = %d, corpo = %s", newer.Code, newer.Body)
+	}
+	if got := oldNameCounterTodayInEstado(t, store, "lojinha"); got != 1 {
+		t.Fatalf("apos botoes[].title: contador = %d, quero 1 (nao pode subir de novo)", got)
+	}
+}
+
+// TestEntradaConsumerScenarioTitleInPortugueseMovesTheCounter is the
+// CONTROL T-208's Why names by hand: `consumer-b` measured this against
+// PRODUCTION on 2026-08-31 by sending a request with every key already in
+// English except `titulo` inside `botoes[]`, and the counter DID NOT
+// MOVE — because `titulo` had no published pair at all. This test
+// reproduces that exact shape and requires the counter to move by
+// EXACTLY one, proving the blind spot T-208 exists to close is closed.
+func TestEntradaConsumerScenarioTitleInPortugueseMovesTheCounter(t *testing.T) {
+	srv := acceptingMeta("wamid.CENARIOB")
+	defer srv.Close()
+	h, store := testHandler(t, srv)
+
+	before := oldNameCounterTodayInEstado(t, store, "lojinha")
+
+	// Every key in English (instance/to/kind/text/buttons/id) EXCEPT
+	// `titulo`, still in Portuguese inside the one button — the exact
+	// request `consumer-b` sent.
+	body := `{"instance":"lojinha","to":"5511999990000","kind":"buttons","text":"oi",` +
+		`"buttons":[{"id":"b1","titulo":"Ver mais"}]}`
+	rec := ask(t, h, "token-do-a", "cenario-consumidor-b-208", body)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, corpo = %s", rec.Code, rec.Body)
+	}
+
+	after := oldNameCounterTodayInEstado(t, store, "lojinha")
+	if after != before+1 {
+		t.Fatalf("chaves em ingles + titulo em portugues dentro de botoes[]: contador foi de %d para %d "+
+			"(quero +1) — este e o cenario exato que o consumidor mandou contra producao, e ANTES de "+
+			"T-208 o contador nao se movia com este pedido", before, after)
+	}
+}
+
+// templateButtonIndexBody is a POST /v1/messages body for
+// `tipo:"template"` with ONE `botoes_template[]` item — every key already
+// in its NEW spelling except `indice`/`index` (TemplateButtonUnion.Index,
+// mensagem.go:235), the field under test.
+func templateButtonIndexBody(indexKey string) string {
+	return `{"instance":"lojinha","to":"5511999990000","kind":"template","template":"promo",` +
+		`"language":"pt_BR","template_buttons":[{"` + indexKey + `":0,"kind":"url","text":"abc"}]}`
+}
+
+// TestEntradaTemplateButtonIndexOldNameCounts is row 2 of section 9.1:
+// `indice` inside EACH item of `botoes_template[]` had no published pair
+// before T-208 — same blind spot as `titulo`, on the SIBLING button list.
+func TestEntradaTemplateButtonIndexOldNameCounts(t *testing.T) {
+	srv := acceptingMeta("wamid.INDICEBOTAO")
+	defer srv.Close()
+	h, store := testHandler(t, srv)
+
+	old := ask(t, h, "token-do-a", "indice-velho-208", templateButtonIndexBody("indice"))
+	if old.Code != http.StatusOK {
+		t.Fatalf("indice (PT): status = %d, corpo = %s", old.Code, old.Body)
+	}
+	if got := oldNameCounterTodayInEstado(t, store, "lojinha"); got != 1 {
+		t.Fatalf("apos botoes_template[].indice: contador = %d, quero 1", got)
+	}
+
+	newer := ask(t, h, "token-do-a", "indice-novo-208", templateButtonIndexBody("index"))
+	if newer.Code != http.StatusOK {
+		t.Fatalf("index (EN): status = %d, corpo = %s", newer.Code, newer.Body)
+	}
+	if got := oldNameCounterTodayInEstado(t, store, "lojinha"); got != 1 {
+		t.Fatalf("apos botoes_template[].index: contador = %d, quero 1 (nao pode subir de novo)", got)
+	}
+}
+
+// TestEntradaBlockPhonesOldNameCounts is row 3 of section 9.1: `telefones`
+// (BlockRequest.Phones, body of POST/DELETE /v1/bloqueios) had no
+// published pair before T-208 — `instance`/`instancia` already did
+// (T-203), which is why this route used to share instanceOnlyAlias with
+// pausa/leituras/fumaca (see blockAlias's comment in entrada_apelidos.go).
+func TestEntradaBlockPhonesOldNameCounts(t *testing.T) {
+	g := respondingBlockGraph(t, http.StatusOK,
+		`{"messaging_product":"whatsapp","block_users":{"added_users":[{"input":"5511999990000","wa_id":"5511999990000"}]}}`)
+	h, store := testBlock(t, g)
+
+	old := askBlock(t, h, http.MethodPost, "token-do-a", `{"instance":"lojinha","telefones":["5511999990000"]}`)
+	if old.Code != http.StatusOK {
+		t.Fatalf("telefones (PT): status = %d, corpo = %s", old.Code, old.Body)
+	}
+	if got := oldNameCounterTodayInEstado(t, store, "lojinha"); got != 1 {
+		t.Fatalf("apos telefones: contador = %d, quero 1", got)
+	}
+
+	newer := askBlock(t, h, http.MethodPost, "token-do-a", `{"instance":"lojinha","phones":["5511999990000"]}`)
+	if newer.Code != http.StatusOK {
+		t.Fatalf("phones (EN): status = %d, corpo = %s", newer.Code, newer.Body)
+	}
+	if got := oldNameCounterTodayInEstado(t, store, "lojinha"); got != 1 {
+		t.Fatalf("apos phones: contador = %d, quero 1 (nao pode subir de novo)", got)
+	}
+}
+
+// testMediaHandlerWithStore is testMediaHandler (media_handler_test.go)
+// ALSO returning the store — the T-208 tests below need to read
+// config.CounterOldNameUsed back through GET /v1/estado, the same reason
+// templatesHandlerWithStore exists.
+func testMediaHandlerWithStore(t *testing.T, srv *httptest.Server, active ...string) (http.Handler, *config.Store) {
+	t.Helper()
+	store, path := storeWithConsumer(t)
+	for _, slug := range active {
+		activateInstance(t, path, slug)
+	}
+	h := NewMediaHandler(store, NewAuthenticator(store), meta.NewClient(srv.Client(), srv.URL),
+		config.NewCounter(store), WhatsAppOnly)
+	return h, store
+}
+
+// newUploadRequestWithQuery is newUploadRequest (media_handler_test.go)
+// with the query string under the caller's FULL control — the T-208 tests
+// below need to isolate the multipart FIELD NAME from the `instancia`/
+// `instance` query parameter, which the fixed-query newUploadRequest
+// cannot do (it always writes `?instancia=`, itself an OLD spelling that
+// would add noise to a test measuring the field name alone).
+func newUploadRequestWithQuery(t *testing.T, query, field, filename, mimeType string, content []byte) *http.Request {
+	t.Helper()
+	raw, contentType := multipartBody(t, field, filename, mimeType, content)
+	req := httptest.NewRequest(http.MethodPost, "/v1/media?"+query, bytes.NewReader(raw))
+	req.Header.Set("Content-Type", contentType)
+	req.Header.Set("Authorization", "Bearer token-do-a")
+	return req
+}
+
+// TestEntradaMediaPartNameOldNameCounts is row 4 of section 9.1, and the
+// one T-208's Do item 4 singled out: `arquivo`/`file` is the multipart
+// FIELD NAME of POST /v1/media, not a json:"..." tag at all — it goes
+// through filePart (media_handler.go), a SEPARATE mechanism from
+// translateAliasesInPlace. The query stays `instance=` (already new) on
+// BOTH requests, so only the part name can be responsible for the count.
+func TestEntradaMediaPartNameOldNameCounts(t *testing.T) {
+	m := newFakeFileMeta()
+	h, store := testMediaHandlerWithStore(t, m.server(t), "lojinha")
+
+	old := run(h, newUploadRequestWithQuery(t, "instance=lojinha", "arquivo", "a.ogg", "audio/ogg", []byte("bytes")))
+	if old.Code != http.StatusOK {
+		t.Fatalf("arquivo (PT): status = %d, corpo = %s", old.Code, old.Body)
+	}
+	if got := oldNameCounterTodayInEstado(t, store, "lojinha"); got != 1 {
+		t.Fatalf("apos a parte arquivo: contador = %d, quero 1", got)
+	}
+
+	newer := run(h, newUploadRequestWithQuery(t, "instance=lojinha", "file", "b.ogg", "audio/ogg", []byte("bytes")))
+	if newer.Code != http.StatusOK {
+		t.Fatalf("file (EN): status = %d, corpo = %s", newer.Code, newer.Body)
+	}
+	if got := oldNameCounterTodayInEstado(t, store, "lojinha"); got != 1 {
+		t.Fatalf("apos a parte file: contador = %d, quero 1 (nao pode subir de novo)", got)
+	}
+}
+
+// --- 9.2: the nine ENTRADA-QUERY parameter occurrences that needed a pair --
+
+// TestEntradaMediaInstanceQueryOldNameCounts is row 1 of section 9.2 (also
+// counted in rows 3/5/9/10/12 — the SAME pair on other routes, tested
+// separately below): `instancia`/`instance` in instanceAuthorized, shared
+// by POST /v1/media and GET /v1/media/{id}. Exercised through the
+// download route because it needs no multipart body, keeping this test
+// about the QUERY parameter alone.
+func TestEntradaMediaInstanceQueryOldNameCounts(t *testing.T) {
+	m := newFakeFileMeta()
+	h, store := testMediaHandlerWithStore(t, m.server(t), "lojinha")
+
+	old := run(h, newAuthedGetRequest(t, "/v1/media/MEDIA-1?instancia=lojinha"))
+	if old.Code != http.StatusOK {
+		t.Fatalf("instancia (PT): status = %d, corpo = %s", old.Code, old.Body)
+	}
+	if got := oldNameCounterTodayInEstado(t, store, "lojinha"); got != 1 {
+		t.Fatalf("apos ?instancia=: contador = %d, quero 1", got)
+	}
+
+	newer := run(h, newAuthedGetRequest(t, "/v1/media/MEDIA-2?instance=lojinha"))
+	if newer.Code != http.StatusOK {
+		t.Fatalf("instance (EN): status = %d, corpo = %s", newer.Code, newer.Body)
+	}
+	if got := oldNameCounterTodayInEstado(t, store, "lojinha"); got != 1 {
+		t.Fatalf("apos ?instance=: contador = %d, quero 1 (nao pode subir de novo)", got)
+	}
+}
+
+// TestEntradaMediaPayloadMimeQueryOldNameCounts is row 2 of section 9.2:
+// `mime_do_payload`/`payload_mime`, GET /v1/media/{id} only. The
+// `instance=` query stays new on both requests, isolating the mime
+// parameter alone.
+func TestEntradaMediaPayloadMimeQueryOldNameCounts(t *testing.T) {
+	m := newFakeFileMeta()
+	h, store := testMediaHandlerWithStore(t, m.server(t), "lojinha")
+
+	old := run(h, newAuthedGetRequest(t, "/v1/media/MEDIA-1?instance=lojinha&mime_do_payload=audio/ogg"))
+	if old.Code != http.StatusOK {
+		t.Fatalf("mime_do_payload (PT): status = %d, corpo = %s", old.Code, old.Body)
+	}
+	if got := oldNameCounterTodayInEstado(t, store, "lojinha"); got != 1 {
+		t.Fatalf("apos mime_do_payload: contador = %d, quero 1", got)
+	}
+
+	newer := run(h, newAuthedGetRequest(t, "/v1/media/MEDIA-2?instance=lojinha&payload_mime=audio/ogg"))
+	if newer.Code != http.StatusOK {
+		t.Fatalf("payload_mime (EN): status = %d, corpo = %s", newer.Code, newer.Body)
+	}
+	if got := oldNameCounterTodayInEstado(t, store, "lojinha"); got != 1 {
+		t.Fatalf("apos payload_mime: contador = %d, quero 1 (nao pode subir de novo)", got)
+	}
+}
+
+// TestEntradaEstadoInstanceQueryOldNameCounts is row 3 of section 9.2:
+// GET /v1/estado's OWN `instancia`/`instance`. Every other test in this
+// package reads state through askState/askStateWithWindow
+// (estado_handler_test.go), which deliberately use the NEW spelling for
+// exactly this reason (see that function's comment) — this test is the
+// one place the OLD spelling is used on purpose.
+func TestEntradaEstadoInstanceQueryOldNameCounts(t *testing.T) {
+	store, path := storeWithConsumer(t)
+	activateInstance(t, path, "lojinha")
+	h := stateHandlerFor(t, store)
+
+	old := httptest.NewRecorder()
+	h.ServeHTTP(old, newAuthedGetRequest(t, "/v1/estado?instancia=lojinha"))
+	if old.Code != http.StatusOK {
+		t.Fatalf("instancia (PT): status = %d, corpo = %s", old.Code, old.Body)
+	}
+	if got := oldNameCounterTodayInEstado(t, store, "lojinha"); got != 1 {
+		t.Fatalf("apos ?instancia=: contador = %d, quero 1", got)
+	}
+
+	newer := httptest.NewRecorder()
+	h.ServeHTTP(newer, newAuthedGetRequest(t, "/v1/estado?instance=lojinha"))
+	if newer.Code != http.StatusOK {
+		t.Fatalf("instance (EN): status = %d, corpo = %s", newer.Code, newer.Body)
+	}
+	if got := oldNameCounterTodayInEstado(t, store, "lojinha"); got != 1 {
+		t.Fatalf("apos ?instance=: contador = %d, quero 1 (nao pode subir de novo)", got)
+	}
+}
+
+// TestEntradaEstadoSeriesDaysQueryOldNameCounts is row 4 of section 9.2:
+// `serie_dias`/`series_days`. The `instance=` query stays new on both
+// requests, isolating the series-window parameter alone.
+func TestEntradaEstadoSeriesDaysQueryOldNameCounts(t *testing.T) {
+	store, path := storeWithConsumer(t)
+	activateInstance(t, path, "lojinha")
+	h := stateHandlerFor(t, store)
+
+	old := httptest.NewRecorder()
+	h.ServeHTTP(old, newAuthedGetRequest(t, "/v1/estado?instance=lojinha&serie_dias=3"))
+	if old.Code != http.StatusOK {
+		t.Fatalf("serie_dias (PT): status = %d, corpo = %s", old.Code, old.Body)
+	}
+	if got := oldNameCounterTodayInEstado(t, store, "lojinha"); got != 1 {
+		t.Fatalf("apos ?serie_dias=: contador = %d, quero 1", got)
+	}
+
+	newer := httptest.NewRecorder()
+	h.ServeHTTP(newer, newAuthedGetRequest(t, "/v1/estado?instance=lojinha&series_days=3"))
+	if newer.Code != http.StatusOK {
+		t.Fatalf("series_days (EN): status = %d, corpo = %s", newer.Code, newer.Body)
+	}
+	if got := oldNameCounterTodayInEstado(t, store, "lojinha"); got != 1 {
+		t.Fatalf("apos ?series_days=: contador = %d, quero 1 (nao pode subir de novo)", got)
+	}
+}
+
+// TestEntradaBlockListInstanceQueryOldNameCounts is row 5 of section 9.2:
+// GET /v1/bloqueios' own `instancia`/`instance` — a SEPARATE call site
+// from POST/DELETE's body key (blockAlias), on the SAME struct's `list`
+// method.
+func TestEntradaBlockListInstanceQueryOldNameCounts(t *testing.T) {
+	g := respondingBlockGraph(t, http.StatusOK, `{"data":[]}`)
+	h, store := testBlock(t, g)
+
+	old := listBlocks(t, h, "token-do-a", url.Values{"instancia": {"lojinha"}})
+	if old.Code != http.StatusOK {
+		t.Fatalf("instancia (PT): status = %d, corpo = %s", old.Code, old.Body)
+	}
+	if got := oldNameCounterTodayInEstado(t, store, "lojinha"); got != 1 {
+		t.Fatalf("apos ?instancia=: contador = %d, quero 1", got)
+	}
+
+	newer := listBlocks(t, h, "token-do-a", url.Values{"instance": {"lojinha"}})
+	if newer.Code != http.StatusOK {
+		t.Fatalf("instance (EN): status = %d, corpo = %s", newer.Code, newer.Body)
+	}
+	if got := oldNameCounterTodayInEstado(t, store, "lojinha"); got != 1 {
+		t.Fatalf("apos ?instance=: contador = %d, quero 1 (nao pode subir de novo)", got)
+	}
+}
+
+// testProfileHandlerWithStore is testProfileHandler (perfil_handler_test.go)
+// ALSO returning the store, for the SAME reason as testMediaHandlerWithStore.
+func testProfileHandlerWithStore(t *testing.T, srv *httptest.Server, active ...string) (http.Handler, *config.Store) {
+	t.Helper()
+	store, path := storeWithConsumer(t)
+	for _, slug := range active {
+		activateInstance(t, path, slug)
+	}
+	h := NewProfileHandler(store, NewAuthenticator(store), meta.NewClient(srv.Client(), srv.URL),
+		1<<20, config.NewCounter(store), WhatsAppOnly)
+	return h, store
+}
+
+// TestEntradaProfileInstanceQueryOldNameCounts is row 9 of section 9.2:
+// GET /v1/perfil's `instancia`/`instance`.
+func TestEntradaProfileInstanceQueryOldNameCounts(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"data":[{"about":"sobre"}]}`))
+	}))
+	defer srv.Close()
+	h, store := testProfileHandlerWithStore(t, srv, "lojinha")
+
+	old := run(h, newAuthedGetRequest(t, "/v1/perfil?instancia=lojinha"))
+	if old.Code != http.StatusOK {
+		t.Fatalf("instancia (PT): status = %d, corpo = %s", old.Code, old.Body)
+	}
+	if got := oldNameCounterTodayInEstado(t, store, "lojinha"); got != 1 {
+		t.Fatalf("apos ?instancia=: contador = %d, quero 1", got)
+	}
+
+	newer := run(h, newAuthedGetRequest(t, "/v1/perfil?instance=lojinha"))
+	if newer.Code != http.StatusOK {
+		t.Fatalf("instance (EN): status = %d, corpo = %s", newer.Code, newer.Body)
+	}
+	if got := oldNameCounterTodayInEstado(t, store, "lojinha"); got != 1 {
+		t.Fatalf("apos ?instance=: contador = %d, quero 1 (nao pode subir de novo)", got)
+	}
+}
+
+// TestEntradaTemplatesListInstanceQueryOldNameCounts is row 10 of section
+// 9.2: GET /v1/templates' `instancia`/`instance`.
+func TestEntradaTemplatesListInstanceQueryOldNameCounts(t *testing.T) {
+	h, store := templatesHandlerWithStore(t, &fakeTemplateMeta{}, "lojinha")
+
+	old := askTemplates(t, h, "token-do-a", "?instancia=lojinha")
+	if old.Code != http.StatusOK {
+		t.Fatalf("instancia (PT): status = %d, corpo = %s", old.Code, old.Body)
+	}
+	if got := oldNameCounterTodayInEstado(t, store, "lojinha"); got != 1 {
+		t.Fatalf("apos ?instancia=: contador = %d, quero 1", got)
+	}
+
+	newer := askTemplates(t, h, "token-do-a", "?instance=lojinha")
+	if newer.Code != http.StatusOK {
+		t.Fatalf("instance (EN): status = %d, corpo = %s", newer.Code, newer.Body)
+	}
+	if got := oldNameCounterTodayInEstado(t, store, "lojinha"); got != 1 {
+		t.Fatalf("apos ?instance=: contador = %d, quero 1 (nao pode subir de novo)", got)
+	}
+}
+
+// TestEntradaTemplatesDeleteInstanceQueryOldNameCounts is row 12 of
+// section 9.2: DELETE /v1/templates' `instancia`/`instance` — a SEPARATE
+// call site from the GET route above, on the SAME struct.  `name=` stays
+// new (row 13, tested on its own below) on both requests.
+func TestEntradaTemplatesDeleteInstanceQueryOldNameCounts(t *testing.T) {
+	h, store := templatesHandlerWithStore(t, &fakeTemplateMeta{}, "lojinha")
+
+	old := callDeleteTemplate(t, h, "token-do-a", "?instancia=lojinha&name=inexistente")
+	if old.Code != http.StatusOK {
+		t.Fatalf("instancia (PT): status = %d, corpo = %s", old.Code, old.Body)
+	}
+	if got := oldNameCounterTodayInEstado(t, store, "lojinha"); got != 1 {
+		t.Fatalf("apos ?instancia=: contador = %d, quero 1", got)
+	}
+
+	newer := callDeleteTemplate(t, h, "token-do-a", "?instance=lojinha&name=inexistente")
+	if newer.Code != http.StatusOK {
+		t.Fatalf("instance (EN): status = %d, corpo = %s", newer.Code, newer.Body)
+	}
+	if got := oldNameCounterTodayInEstado(t, store, "lojinha"); got != 1 {
+		t.Fatalf("apos ?instance=: contador = %d, quero 1 (nao pode subir de novo)", got)
+	}
+}
+
+// TestEntradaTemplatesDeleteNameQueryOldNameCounts is row 13 of section
+// 9.2: DELETE /v1/templates' `nome`/`name`. `instance=` stays new on both
+// requests, isolating the name parameter alone.
+func TestEntradaTemplatesDeleteNameQueryOldNameCounts(t *testing.T) {
+	h, store := templatesHandlerWithStore(t, &fakeTemplateMeta{}, "lojinha")
+
+	old := callDeleteTemplate(t, h, "token-do-a", "?instance=lojinha&nome=inexistente")
+	if old.Code != http.StatusOK {
+		t.Fatalf("nome (PT): status = %d, corpo = %s", old.Code, old.Body)
+	}
+	if got := oldNameCounterTodayInEstado(t, store, "lojinha"); got != 1 {
+		t.Fatalf("apos ?nome=: contador = %d, quero 1", got)
+	}
+
+	newer := callDeleteTemplate(t, h, "token-do-a", "?instance=lojinha&name=inexistente2")
+	if newer.Code != http.StatusOK {
+		t.Fatalf("name (EN): status = %d, corpo = %s", newer.Code, newer.Body)
+	}
+	if got := oldNameCounterTodayInEstado(t, store, "lojinha"); got != 1 {
+		t.Fatalf("apos ?name=: contador = %d, quero 1 (nao pode subir de novo)", got)
 	}
 }
