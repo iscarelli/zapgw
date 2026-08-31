@@ -35,6 +35,28 @@ entrega segredo, entao o portao vai reprovar por "nao consegui verificar" — e 
 assim, falhando fechado, em vez de virar skip. Skip seria a cegueira que o portao existe para nao ter.
 Documentado em comentario no proprio workflow.
 
+🙋 **PARA O DONO — a premissa do snapshot era FALSA, e a fonte era eu. A T-194 foi revertida.**
+Voce aprovou *"manter os 3 ultimos e podar no deploy"* com base numa linha que eu escrevi neste
+bloco: *"um snapshot `pre-update` se acumula no CT a cada deploy e ninguem poda"*. **Medido no
+`git show HEAD~1:implanta/deploy.sh:324-330`: e' falso.**
+- O script usa nome **fixo** (`SNAP=pre-update`) e roda `pct delsnapshot` **antes** de criar o novo.
+  O comentario no proprio codigo diz isso desde sempre. **Existe exatamente UM snapshot por vez** —
+  nunca houve acumulo, e nao ha nada para podar.
+- 🔴 **A implementacao, feita sobre a premissa errada, ia na direcao contraria:** trocava o nome fixo
+  por nome com timestamp e passava a **guardar tres** — ou seja, **triplicava** o uso de disco que a
+  tarefa dizia querer reduzir, e ainda acrescentava 79 linhas de remocao irreversivel a um script de
+  producao. Revertido.
+- ⚠️ **A remocao nunca rodou contra dado real** e nem podia: nao ha credencial de producao nesta
+  sessao. O ensaio foi contra lista sintetica, e o implementador **declarou isso sem rodeio** em vez
+  de chamar de prova.
+- ✅ **O que vale guardar do trabalho perdido:** o ensaio achou que um `grep -oE` sem ancora casaria
+  `pre-update-20260830090000-testedomeuadm` — prefixo **como substring** de um nome que um humano
+  poderia criar. Se um dia existir poda de verdade, o filtro tem de ser tokenizado e ancorado
+  (`^pre-update-[0-9]{14}$`), nunca substring. *Filtro de remocao irreversivel casa a linha inteira.*
+- **A pergunta que sobra e' sua:** existe algum lugar onde snapshot realmente acumula (voce viu
+  algo num `pct listsnapshot`?), ou a linha nasceu de leitura errada minha? Se nao acumula, **nao ha
+  tarefa** — e a licao e' a de sempre: *eu escrevi um sintoma que nao medi, e ele virou decisao sua.*
+
 ⏳ **ESPERANDO O CONSUMIDOR: a medicao de DEPOIS da migracao.**
 🔴 **Ela foi pedida as 23:52 NO ARQUIVO ERRADO** — a seção foi escrita em
 `C:\dev\zapgw\<consumidor-b>-STATUS.local.md`, que e' o arquivo DELES. O monitor deles le o nosso.
@@ -69,9 +91,6 @@ foram copiadas. **A seçao orfa das 23:52 fica no topo do arquivo deles** — na
 outro, nem para desfazer bobagem propria.
 🔴 **`*.local.md` esta no `.gitignore` desde 2026-08-30 e tem de continuar** — o canal carrega
 telefone real e `wamid` de producao, e este repositorio e' publico.
-
-📌 **Snapshot `pre-update` acumula no CT a cada deploy** (um por deploy, visto em `pct listsnapshot`).
-Ninguem poda. Vale virar tarefa antes de virar problema de disco.
 
 ## Active
 

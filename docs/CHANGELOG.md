@@ -4,17 +4,6 @@ Uma linha por versao entregue, no mesmo commit do bump. A entrada diz o **efeito
 
 ## Nao lancado
 
-- **The deploy prunes its own pre-update snapshots** (T-194) — `implanta/deploy.sh` passa a nomear
-  cada snapshot com timestamp proprio (`pre-update-YYYYMMDDHHMMSS`, antes era o nome fixo
-  `pre-update`, sempre reescrito) e, so' depois de o deploy dar certo, apaga os mais antigos mantendo
-  os 3 mais recentes. Selecao isolada numa funcao pura (`selecionar_poda`) testada por ensaio
-  (dry-run) contra uma lista sintetica de nomes, sem tocar producao: dos 7 nomes de entrada (5 do
-  proprio script + o legado `pre-update` sem timestamp + um manual `pre-update-teste-manual-do-dono`),
-  selecionou exatamente os 2 mais antigos, e nenhum nome fora do padrao entrou. Extracao a partir do
-  texto bruto do `pct listsnapshot` corrigida de substring para TOKEN INTEIRO (`tr` + regex ancorado
-  `^pre-update-[0-9]{14}$`), depois de o ensaio mostrar que a versao por substring pegaria um nome
-  humano tipo `pre-update-20260830090000-testedomeuadm` por engano. Se a listagem falhar, nao apaga
-  nada. `bash -n implanta/deploy.sh` limpo. _Completed 2026-08-31 01:15._
 - **Settle whether the instance-type gate exists, and make the row say what is true** (T-197) — o
   mecanismo EXISTE: `internal/outbound/tipos.go` (`AcceptedTypes`, T-111), parametro posicional
   obrigatorio no ultimo lugar de todo construtor `outbound.New*Handler`. Provado removendo
