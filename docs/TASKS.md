@@ -96,6 +96,66 @@ telefone real e `wamid` de producao, e este repositorio e' publico.
 
 > A fila do periodo privado esta em `iscarelli/zapgw-dev`, congelada. Tarefa nova nasce aqui.
 
+## [ ] T-199  A pre-push gate: nothing personal leaves this machine, not even in a commit that a later commit fixes
+Why:    **Compromisso assumido com o dono em 2026-08-31:** telefone nunca sobe — do mesmo jeito que
+        nome nao sobe. Hoje isso nao tem mecanismo de IMPEDIMENTO, so' de deteccao, e sao dois
+        buracos distintos:
+🔴      **(1) A CI reprova DEPOIS do push.** Num repositorio publico, reprovar depois nao evita nada:
+        o dado ja esta no `origin`, e nao existe despublicar. O `CLAUDE.md:86` ja declara este buraco
+        por escrito ("a per-project hook | partial — o `.gitignore` esta aqui; o hook nao"), e buraco
+        declarado nao e' buraco coberto — foi essa exata frase que nos custou o nome de cliente.
+🔴      **(2) Os dois portoes varrem a ARVORE DE TRABALHO, nao o que esta sendo empurrado.** Um numero
+        que entra no commit A e sai no commit B passa limpo pelos dois portoes — a arvore final esta
+        limpa — e **e' publicado assim mesmo**, porque o commit A vai junto no push e o historico deste
+        repositorio e' publico. Nenhum teste de hoje olha para isso.
+Files:  .githooks/pre-push  (novo)
+        CLAUDE.md, CLAUDE.pt-BR.md  (a linha do hook na tabela, e o comando de instalacao)
+        README.md, README.pt-BR.md  (o comando de instalacao, se houver secao de setup)
+
+Do:
+  1. **Diretorio de hooks versionado** (`.githooks/`) + o comando que o ativa
+     (`git config core.hooksPath .githooks`), escrito na doc. Hook em `.git/hooks/` nao e' versionado
+     e nao sobrevive a um clone — quem clonar em outra maquina fica sem protecao e sem aviso.
+  2. **O `pre-push` roda os DOIS portoes de dado pessoal** (telefone e nome) e **bloqueia o push** se
+     algum reprovar.
+  3. 🔴 **Cobrir o INTERVALO que esta sendo empurrado, nao so' a arvore.** O `pre-push` recebe em
+     `stdin` linhas `<ref-local> <sha-local> <ref-remota> <sha-remoto>`. Para cada commit novo do
+     intervalo, o conteudo introduzido tem de passar pelos portoes. **E' o item (2) do `Why`, e e' o
+     que diferencia esta tarefa de "roda o teste antes do push".**
+  4. 🔴 **NAO ESCREVA UMA SEGUNDA VARREDURA.** A logica de varredura ja existe em Go
+     (`sweepPhoneNumbersOutsideTheAllowlist`, que a T-191 deixou de proposito recebendo uma **lista de
+     arquivos pronta**, e a equivalente do portao de nome). Duas implementacoes da mesma regra
+     divergem, e a que ninguem olha e' a que cria o buraco. Se cobrir o intervalo exigir duplicar a
+     logica, **pare e relate** em vez de duplicar.
+  5. **Falha fechada, sempre.** Se o `go` nao estiver disponivel, se a lista de agulhas nao for
+     encontrada, se o intervalo nao puder ser calculado — **o push e' bloqueado** com mensagem dizendo
+     que **nao conseguiu verificar**, nunca liberado. "Nao consegui verificar" nao pode ter a mesma cor
+     que "esta limpo".
+  6. **A mensagem de bloqueio diz o que fazer**, e diz que `--no-verify` existe e **e' a unica coisa
+     que quebra esta garantia** — quem usar tem de saber que esta desligando o portao, nao "pulando um
+     teste lento".
+  7. **`CLAUDE.md` + par pt-BR:** a linha do hook na tabela de regras duras passa de "parcial — o hook
+     nao existe" para o estado real, com o comando de ativacao. **Nao invente que esta ativo na maquina
+     do dono** — diga que exige o `git config`, e diga como conferir.
+
+Verify:
+  - 🔴 **CONTROLE POSITIVO DE INTERVALO, que e' a prova desta tarefa:** numa branch descartavel, faca
+    **dois** commits — o primeiro acrescenta um numero `55…` fora da allowlist num arquivo novo, o
+    segundo **apaga o arquivo**. A arvore final esta limpa e os dois portoes passam. **Tente empurrar
+    essa branch e confirme que o hook BLOQUEIA**, nomeando o commit e o arquivo. Cole a saida.
+    *Sem essa demonstracao a tarefa nao esta feita — e' exatamente o caso que a CI nao pega.*
+    Apague a branch depois (local; **nao empurre nada dela**).
+  - **Controle positivo simples:** arquivo com agulha na arvore, push bloqueado, arquivo removido,
+    push liberado.
+  - **Controle de "nao consegui verificar":** com a lista de agulhas escondida, o push tem de ser
+    **bloqueado** com a mensagem propria. Devolva a lista depois e confirme (contagem de linhas).
+  - **Controle NEGATIVO:** um push legitimo, sem agulha nenhuma, **passa** — e em quanto tempo. Se o
+    hook demorar mais que alguns segundos, diga quanto: portao lento e' portao que alguem desliga.
+  - `CGO_ENABLED=0 go build ./...`, `go test ./...`, `go vet ./...`, `gofmt -l cmd internal` limpos.
+
+Relate: a saida do bloqueio no controle de INTERVALO (a prova), o tempo do push legitimo, e se voce
+precisou duplicar alguma logica de varredura — se precisou, o que exatamente.
+
 ## [ ] T-189  O contrato passa a falar ingles — leitor tolerante do lado deles, apelido so' na ENTRADA
 Why:    **decisao do dono, 2026-08-30:** *"o projeto precisa ser em ingles, ter feito em portugues foi
         errado. Se a chave chama nome, tem que passar a se chamar name."*
