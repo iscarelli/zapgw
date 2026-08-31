@@ -4,6 +4,21 @@ Uma linha por versao entregue, no mesmo commit do bump. A entrada diz o **efeito
 
 ## Nao lancado
 
+- **The pre-push gate must not make the legitimate path impossible** (T-200) — o primeiro push de
+  QUALQUER ref nova (sha remoto = zeros) parava de ser recusado de saida e passou a ter o intervalo
+  calculado por `git rev-list <sha-novo> --not --remotes` (`commitsForPushedInterval`, em
+  `internal/config/prepush_test.go`) — exatamente "o que este push acrescenta ao `origin`", sem
+  adivinhar merge-base; sem remoto nenhum a formula se reduz sozinha a varrer todos os commits
+  alcancaveis (fallback seguro, sem codigo especial). Provado contra dado real, nao afirmado: push
+  de branch nova e limpa passa; push de branch cujo commit A introduz uma agulha e o commit B apaga
+  o arquivo de novo continua bloqueando, citando o commit A e o arquivo (nao "nao consegui
+  verificar") — tres testes novos (`TestPrePushGateNewRefCleanBranchPasses`,
+  `TestPrePushGateNewRefBlocksNeedleDeletedLater`, `TestPrePushGateNewRefNoRemoteAtAllSweepsEverything`)
+  e um ensaio manual contra um repo bare descartavel. Entrada em `docs/ARMADILHAS.md` (par pt-BR),
+  marcada com o fogo: falha fechada que torna o caminho legitimo impossivel nao protege, ensina o
+  desvio — e o primeiro controle do planner tinha "passado" pelo motivo errado (sha zerado, nao
+  agulha achada). Verify: `CGO_ENABLED=0 go build ./...`, `go test ./...`, `go vet ./...`, `gofmt -l
+  cmd internal` limpos. _Completed 2026-08-31 06:41._
 - **A pre-push gate: nothing personal leaves this machine, not even in a commit that a later
   commit fixes** (T-199) — `.githooks/pre-push` (ativado por clone com `git config core.hooksPath
   .githooks`) roda `internal/config/prepush_test.go`'s `TestPrePushGate` para cada ref sendo

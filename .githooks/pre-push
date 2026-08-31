@@ -19,6 +19,22 @@
 # sweeps the tree-scanning tests use (no second implementation of the scan;
 # see the comment at the top of prepush_test.go).
 #
+# 🔴 T-200: THE FIRST PUSH OF A BRAND-NEW REF USED TO BE REFUSED OUTRIGHT
+# HERE, unconditionally, whenever git's pre-push protocol reported the
+# remote sha as all zeros (no ref on the remote yet — nothing to diff a
+# range against). Measured cost: that blocked EVERY new branch, including a
+# clean one, and the only path left was `git push --no-verify` — i.e.
+# turning this gate off. A gate that makes the legitimate path impossible
+# does not protect anything; it teaches the bypass. See
+# docs/ARMADILHAS.md for the full account.
+#
+# The fix does not live in this shell script: it lives in
+# internal/config/prepush_test.go's commitsForPushedInterval, which computes
+# "what this push introduces" with `git rev-list <new-sha> --not --remotes`
+# instead of a range when the remote sha is zero — no merge-base is guessed.
+# This hook now simply forwards BOTH shas to the test verbatim, zero or not,
+# and lets the Go code decide which formula applies.
+#
 # ACTIVATION IS NOT AUTOMATIC. A file in .git/hooks/ is not versioned and
 # does not survive a clone; this hook only runs once someone points git at
 # this versioned directory:
@@ -68,13 +84,6 @@ while read -r local_ref local_sha remote_ref remote_sha; do
         continue
     fi
 
-    # Primeiro push de uma ref nova (sha remoto = zeros): nao ha base segura
-    # para calcular o intervalo introduzido — nao adivinha um merge-base,
-    # bloqueia (T-199, caso explicito no Verify da tarefa).
-    if [ "$remote_sha" = "$zero" ]; then
-        falha_fechada "primeiro push de '$local_ref' (sha remoto = zeros) — nao ha base segura para calcular o intervalo introduzido por esta ref. Nao consegui verificar."
-    fi
-
     export ZAPGW_PREPUSH_OLD_SHA="$remote_sha"
     export ZAPGW_PREPUSH_NEW_SHA="$local_sha"
 
@@ -82,6 +91,9 @@ while read -r local_ref local_sha remote_ref remote_sha; do
     # stdin que o 'read' acima esta consumindo linha a linha e' o jeito
     # classico de um comando dentro do loop roubar as linhas seguintes.
     if ! (cd "$repo_root" && go test ./internal/config/ -run TestPrePushGate -v < /dev/null); then
+        if [ "$remote_sha" = "$zero" ]; then
+            falha_fechada "a ref nova '$local_ref' (primeiro push, sem base no remoto) introduz dado pessoal fora de algum portao — veja a saida do teste acima para o commit e o arquivo."
+        fi
         falha_fechada "o intervalo $remote_sha..$local_sha (ref '$local_ref') introduz dado pessoal fora de algum portao — veja a saida do teste acima para o commit e o arquivo."
     fi
 done

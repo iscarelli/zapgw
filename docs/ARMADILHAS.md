@@ -4082,3 +4082,48 @@ repository would publish exactly what the gate exists to keep out.
 kind is covered," when the row itself may say otherwise in its last clause. **Read the whole cell, not just its
 checkmark** — and when a doc declares a gap, treat that declaration as a task waiting to be filed, not as
 permission to leave it open.
+
+---
+
+### 🔥 A fail-closed gate that makes the legitimate path impossible does not protect — it trains the bypass (2026-08-31)
+
+T-199's pre-push hook (`.githooks/pre-push`) was built to close a real hole: a phone number or customer name
+introduced in commit A and deleted again in commit B leaves the final tree clean, but commit A still reaches
+`origin` the moment the branch is pushed — there is no despublicar in a public repository. The fix computed the
+pushed range as `oldSha..newSha` and, when git's pre-push protocol reported the remote sha as all zeros (no ref
+on the remote yet), refused outright: *"nao ha base segura para calcular o intervalo introduzido"*.
+
+**That covered every case except the one that happens on every single new branch.** The first push of ANY new
+ref — including one with nothing but clean commits — reports a zero remote sha, because there is no remote ref
+yet. The gate blocked all of them, unconditionally, with no way to satisfy it: the push that would create the
+ref is the same push being refused. **The only remaining path was `git push --no-verify`** — the hook's own text
+names that flag as "the only thing that disables this gate." A gate whose sole failure mode teaches the bypass
+does not raise the bar; it lowers it, because the person who learns to type `--no-verify` for a clean branch
+today types it again on the day there really is a needle in the push.
+
+**Measured by the planner on 2026-08-31, with a real push against a disposable bare repo** (never `origin`): a
+brand-new branch with one clean commit was refused. The refusal message read *"sha remoto = zeros — nao ha base
+segura"* — correct as a description of what happened, useless as a description of what the branch contained.
+
+**The method error that rode along with it, and is worth its own line:** the planner's first control on this
+mechanism "passed" in the sense that the push was blocked — but for the wrong reason. Sha-zero refusal is not
+evidence the gate can find a needle; it is only evidence the gate refuses. *A block that does not distinguish
+"I found the needle" from "I could not verify" proves the instrument recuses, not that it looks.* The same
+confusion the phone/name gates guard against on the data side (`docs/ARMADILHAS.md`, "could not verify" vs.
+"found nothing") showed up on the gate's own self-test.
+
+**The fix (T-200) does not guess a merge-base and does not relax the failure mode — it changes which formula
+computes the interval.** `git rev-list <new-sha> --not --remotes` is exactly "every commit reachable from this
+ref that no remote-tracking ref this repository already knows about can reach" — computable without assuming
+which branch the new ref forked from, and it naturally reduces to "sweep every commit reachable from `HEAD`" when
+the repository has no remote-tracking ref at all (`--remotes` then matches nothing, so `--not --remotes` excludes
+nothing) — the safe, slower fallback the task required instead of ever treating "cannot compute the smart
+interval" as "let it through." Verified against real data, not asserted: a clean new branch now pushes; a branch
+whose commit A introduces a needle and commit B deletes the file again still blocks, and the message names commit
+A and the file, not just "blocked" (`internal/config/prepush_test.go`,
+`TestPrePushGateNewRefCleanBranchPasses` / `TestPrePushGateNewRefBlocksNeedleDeletedLater` /
+`TestPrePushGateNewRefNoRemoteAtAllSweepsEverything`).
+
+**The rule that generalizes:** when a fail-closed gate's only escape hatch is "turn the gate off," the gate is
+mis-scoped, not merely strict — rigor that has no legitimate path left is indistinguishable, in practice, from no
+gate at all, because the discipline of using the escape hatch decays the moment it becomes routine.

@@ -4338,3 +4338,49 @@ repositório público publicaria exatamente o que o portão existe para impedir.
 não só o visto** — e quando uma doc declara uma lacuna, trate essa declaração como uma tarefa esperando ser aberta,
 não como permissão para deixá-la aberta.
 
+---
+
+### 🔥 Portão que falha fechado e torna o caminho legítimo impossível não protege — ensina o desvio (2026-08-31)
+
+O hook de pre-push da T-199 (`.githooks/pre-push`) foi construído para fechar um buraco real: um telefone ou nome
+de cliente introduzido no commit A e apagado de novo no commit B deixa a árvore final limpa, mas o commit A ainda
+chega ao `origin` no instante em que a branch é empurrada — não existe "despublicar" num repositório público. O
+conserto calculava o intervalo empurrado como `oldSha..newSha` e, quando o protocolo de pre-push do git reportava
+o sha remoto como zero (nenhuma ref no remoto ainda), recusava de saída: *"nao ha base segura para calcular o
+intervalo introduzido"*.
+
+**Isso cobria todo caso, exceto o que acontece em TODA branch nova.** O primeiro push de QUALQUER ref nova —
+inclusive uma so' com commits limpos — reporta sha remoto zerado, porque ainda não existe ref remota. O portão
+bloqueava todas, sem exceção, sem forma de satisfazê-lo: o push que criaria a ref é o mesmo push sendo recusado.
+**O único caminho restante era `git push --no-verify`** — o próprio texto do hook chama essa flag de "a única
+coisa que desliga este portão". Um portão cujo único modo de falha ensina o desvio não eleva a régua; abaixa,
+porque quem aprende a digitar `--no-verify` para uma branch limpa hoje digita de novo no dia em que existe mesmo
+uma agulha no push.
+
+**Medido pelo planner em 2026-08-31, com um push de verdade contra um repo bare descartável** (nunca o `origin`):
+uma branch nova, com um único commit limpo, foi recusada. A mensagem de recusa dizia *"sha remoto = zeros — nao
+ha base segura"* — correta como descrição do que aconteceu, inútil como descrição do que a branch continha.
+
+**O erro de método que veio junto, e merece linha própria:** o primeiro controle do planner sobre este mecanismo
+"passou" no sentido de que o push foi bloqueado — mas pelo motivo errado. Recusa por sha zerado não é evidência de
+que o portão acha uma agulha; é só evidência de que ele recusa. *Um bloqueio que não distingue "achei a agulha" de
+"não consegui verificar" prova que o instrumento se recusa, não que ele olha.* É a mesma confusão contra a qual os
+portões de telefone/nome se protegem do lado do dado (`docs/ARMADILHAS.md`, "não consegui verificar" vs. "não
+achei nada") — desta vez aparecendo no autoteste do próprio portão.
+
+**O conserto (T-200) não adivinha merge-base nem relaxa o modo de falha — troca a fórmula que calcula o
+intervalo.** `git rev-list <sha-novo> --not --remotes` é exatamente "todo commit alcançável por esta ref que
+nenhuma ref de rastreamento remoto que este repositório já conhece alcança" — computável sem supor de qual branch
+a ref nova saiu, e se reduz sozinho a "varra todo commit alcançável a partir do `HEAD`" quando o repositório não
+tem ref de rastreamento remoto nenhuma (`--remotes` então não casa nada, então `--not --remotes` não exclui nada)
+— o fallback seguro e mais lento que a tarefa exigia, em vez de tratar "não consigo calcular o intervalo esperto"
+como "deixa passar". Provado contra dado real, não afirmado: uma branch nova e limpa agora empurra; uma branch cujo
+commit A introduz uma agulha e o commit B apaga o arquivo de novo continua bloqueando, e a mensagem cita o commit A
+e o arquivo, não só "bloqueado" (`internal/config/prepush_test.go`,
+`TestPrePushGateNewRefCleanBranchPasses` / `TestPrePushGateNewRefBlocksNeedleDeletedLater` /
+`TestPrePushGateNewRefNoRemoteAtAllSweepsEverything`).
+
+**A regra que generaliza:** quando a única saída de um portão que falha fechado é "desligar o portão", o portão
+está mal dimensionado, não apenas rigoroso — rigor sem caminho legítimo nenhum é, na prática, indistinguível de
+portão nenhum, porque a disciplina de usar a saída de emergência apodrece no instante em que ela vira rotina.
+
