@@ -133,7 +133,7 @@ func NewMediaHandler(store *config.Store, auth *Authenticator, client *meta.Clie
 // parameter) supplied the slug. It does NOT record config.CounterOldNameUsed
 // itself: each caller has a SECOND ENTRADA point of its own (upload's
 // `arquivo`/`file` part name, download's `mime_do_payload`/`payload_mime`),
-// and this project's counter convention (translateEntradaOrReject's
+// and this project's counter convention (translateInputOrReject's
 // callers, docs/TASKS.md T-203 Do item 6) is ONE Record call per REQUEST,
 // combining every old name that request carried — never one call per key,
 // which would double-count a request that used two old names at once.
@@ -302,11 +302,11 @@ func (h *MediaHandler) upload(w http.ResponseWriter, r *http.Request) {
 // all, so it can never reach translateAliasesInPlace, which only ever sees
 // an already-decoded JSON object. That is why this alias lives here,
 // beside multipart.Reader.NextPart, instead of beside the JSON dicts in
-// entrada_apelidos.go: the SAME "accept both, count the old one" principle
+// input_aliases.go: the SAME "accept both, count the old one" principle
 // (Do item 2), a DIFFERENT point in the code because the field itself is a
 // different KIND of key. oldName reports whether the OLD (`arquivo`)
 // spelling matched, for config.CounterOldNameUsed — the caller records it,
-// same split as translateEntradaOrReject's callers.
+// same split as translateInputOrReject's callers.
 func filePart(parts *multipart.Reader) (part *multipart.Part, oldName bool, err error) {
 	for {
 		part, err := parts.NextPart()

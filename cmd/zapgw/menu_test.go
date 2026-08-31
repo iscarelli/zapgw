@@ -280,7 +280,7 @@ func TestMenuDoesEXACTLYWhatTheCommandLineDoes(t *testing.T) {
 	// moment of creation, internal/config/store.go CreateInstanceAt) would
 	// diverge over a field that proves NOTHING about "the menu does the
 	// same as the command line" (docs/ARMADILHAS.md, "Relógio e
-	// carimbo"; T-100). Freezing creationClock (provisionar.go) for
+	// carimbo"; T-100). Freezing creationClock (provision.go) for
 	// both calls is what makes both timestamps come out IDENTICAL, and it
 	// returns the comparison to the ENTIRE struct — with no field
 	// exception at all, not for today's fields nor for the next timestamp
@@ -525,7 +525,7 @@ func TestMenuDoesNotPrintASecretTheCommandDoesNotPrint(t *testing.T) {
 // ENTER on `--callback-url` has to OMIT the flag. Passing the flag empty
 // would wipe out delivery for an instance that is receiving traffic — the
 // TYPED flag is what distinguishes "clear it" from "leave it alone"
-// (fs.Visit, provisionar.go).
+// (fs.Visit, provision.go).
 func TestMenuDoesNotClearCallbackWhenTheOperatorJustPressesEnter(t *testing.T) {
 	vars := testEnvironment(t)
 	if err := dispatch(instanceArgs("lojinha"), io.Discard, fakeEnvironment(vars)); err != nil {

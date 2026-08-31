@@ -121,33 +121,7 @@ fizeram no `processado_em` hoje de manha.
 ## Active
 
 > A fila do periodo privado esta em `iscarelli/zapgw-dev`, congelada. Tarefa nova nasce aqui.
-## [ ] T-212  CAMADA 1: file names and identifiers stop speaking Portuguese
-Why:    **Decisao do dono, 2026-08-31: limpar o sistema de tudo em PT-BR.** Esta e' a camada que **nao
-        toca contrato nenhum** e que o compilador confere: **69 arquivos `.go`** com nome em portugues
-        e **38 identificadores** medidos. E' a maior em volume e a de menor risco — por isso vem
-        primeiro.
-Files:  os 69 arquivos e quem os referencia
-
-Do:
-  1. **Renomeie arquivo e identificador para ingles.** `git mv` para os arquivos, para o historico
-     seguir o arquivo.
-  2. 🔴 **NAO toque em tag `json`, valor emitido, nome de variavel de ambiente, verbo de CLI, nem
-     string de mensagem.** Esta camada e' **interna**. Se voce se pegar editando uma dessas, parou:
-     sao as camadas 2, 3 e 4, e cada uma tem risco proprio.
-  3. **Nome de teste tambem** — eles descrevem comportamento e sao lidos por quem investiga.
-  4. Faca em lotes, com o verify entre eles.
-
-Verify:
-  - `CGO_ENABLED=0 go build ./...` e `go test -count=1 ./...` verdes — o compilador e' o portao desta
-    camada.
-  - 🔴 **`git diff --stat` nao pode conter mudanca em tag `json`.** Confira com
-    `git diff -U0 | grep 'json:"'` — tem de sair vazio.
-  - **A varredura do contrato (`TestOutputContractHasNoPortugueseKeyOrValue`) continua verde sem
-    edicao.**
-  - Diga quantos arquivos e quantos identificadores mudaram.
-
 ## [ ] T-213  CAMADA 3, primeira metade: measure which Portuguese strings REACH the consumer
-After:  T-212
 Why:    Ha **207 strings de producao em portugues** medidas. Parte e' log interno — grátis de trocar.
         Parte viaja no corpo da resposta, dentro de `erro`, `motivo`, `explicacao_meta`, e **o
         consumidor pode estar comparando com ela**.

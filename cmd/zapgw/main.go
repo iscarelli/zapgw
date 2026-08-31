@@ -4,7 +4,7 @@
 // registers routes, starts the server. No business rule lives here.
 //
 // WITH a command-line argument the binary is a provisioning tool (see
-// provisionar.go and fumaca.go); WITH NO argument at all it starts the
+// provision.go and smoke.go); WITH NO argument at all it starts the
 // server, which is how systemd runs it — the ONLY exception is a person
 // at a terminal, who gets the menu instead (menu.go, T-082). Scripts and
 // systemd have no terminal, so nothing changes for them: see
@@ -305,7 +305,7 @@ func main() {
 	// It wraps ONLY /v1/messages. Receiving, health, state and
 	// registration keep responding on a non-leader by design: what
 	// cannot happen in duplicate is ACTING outward (talking to Meta) —
-	// see the header of internal/outbound/lideranca.go.
+	// see the header of internal/outbound/leadership.go.
 	leadership, err := outbound.NewLeadership(os.Getenv)
 	if err != nil {
 		log.Fatalf("%v", err)
@@ -418,14 +418,14 @@ func main() {
 	// restriction as sending, which only accepts "texto" for Instagram).
 	// The SAME counter as sending, with its OWN KEY (T-173): the deletion
 	// counts into `templates_apagados` and nothing else. See
-	// internal/config/contador.go.
+	// internal/config/counter.go.
 	templates := outbound.NewTemplatesHandler(store, authenticator, metaClient, maxBytes, counter,
 		outbound.WhatsAppOnly)
 	// T-111: WhatsAppOnly — upload and download use inst.PhoneNumberID;
 	// Instagram's first slice (T-097) does not send media.
 	media := outbound.NewMediaHandler(store, authenticator, metaClient, counter, outbound.WhatsAppOnly)
 	// The SAME counter as sending, with its OWN KEY (T-075): marking as
-	// read never adds to `enviadas`. See internal/config/contador.go.
+	// read never adds to `enviadas`. See internal/config/counter.go.
 	// T-111: WhatsAppOnly — marking as read uses inst.PhoneNumberID.
 	reads := outbound.NewReadsHandler(store, authenticator, metaClient, maxBytes, counter, outbound.WhatsAppOnly)
 	// The cadastro route does NOT receive metaClient, and the absence
@@ -442,12 +442,12 @@ func main() {
 	// consumer "Prova o canal (`fumaca`)") becomes executable by a
 	// third-party consumer, with no shell on the gateway machine. fumaca
 	// calls the SAME outbound.SmokeWithInstagramBase function that
-	// `cmd/zapgw fumaca` calls (fumaca.go); pausa calls the SAME
+	// `cmd/zapgw fumaca` calls (smoke.go); pausa calls the SAME
 	// store.PauseInstance that `zapgw instancia pausar` already calls.
 	// T-104: the SAME Instagram base as the sending route, above — the
 	// smoke test also sends SendInstagramMessage for real (step 3).
 	// T-111: AllTypes — the smoke test already knows how to activate
-	// both types, handling the difference INTERNALLY (fumaca.go). pausa
+	// both types, handling the difference INTERNALLY (smoke.go). pausa
 	// is AllTypes because it reads no type-specific field at all: it
 	// only toggles `ativo`.
 	smokeRoute := outbound.NewSmokeHandlerWithInstagramBase(store, authenticator, metaClient, counter, maxBytes,
@@ -459,7 +459,7 @@ func main() {
 	// this slice.
 	blockingRoute := outbound.NewBlockHandler(store, authenticator, metaClient, maxBytes, counter, outbound.WhatsAppOnly)
 	// GET/POST /v1/perfil (T-155): the whatsapp_business_profile. T-111:
-	// WhatsAppOnly — profileNode (internal/outbound/perfil_handler.go)
+	// WhatsAppOnly — profileNode (internal/outbound/profile_handler.go)
 	// uses inst.PhoneNumberID, a field exclusive to WhatsApp; there is no
 	// documented Instagram-equivalent endpoint in this slice.
 	profileRoute := outbound.NewProfileHandler(store, authenticator, metaClient, maxBytes, counter, outbound.WhatsAppOnly)
@@ -469,7 +469,7 @@ func main() {
 	// of traffic and of anyone watching. Without Start, the route would
 	// keep responding — always `desconhecido` —, and "desconhecido"
 	// forever is exactly the blind panel this task exists to end. See
-	// vigia.go.
+	// watchdog.go.
 	watchdog := outbound.NewWatchdog(store, metaClient)
 	watchdog.Start()
 
@@ -478,7 +478,7 @@ func main() {
 	// of WhatsApp's acceptance verdict: it runs per tipo=instagram
 	// instance, independent of traffic and of anyone watching. Without
 	// Start, the token would expire in SILENCE — exactly the defect
-	// T-098 exists to close. See renovador_instagram.go.
+	// T-098 exists to close. See instagram_renewer.go.
 	igRenewer := outbound.NewInstagramRenewer(store, metaClient, instagramRenewalBase(os.Getenv))
 	igRenewer.Start()
 
@@ -492,7 +492,7 @@ func main() {
 	//
 	// ⚠️ IT DOES NOT MEASURE, AND CANNOT START MEASURING, WHETHER THE
 	// GATEWAY IS REACHABLE FROM OUTSIDE — only the public probe answers
-	// that, from outside. See entrada.go.
+	// that, from outside. See ingress.go.
 	connector := outbound.NewConnectorProbe(outbound.ConnectorAddress(os.Getenv))
 	connector.Start()
 
@@ -507,7 +507,7 @@ func main() {
 	externalProbe.Start()
 
 	// T-111: AllTypes — GET /v1/estado already publishes both types,
-	// handling the difference INTERNALLY (estado.go).
+	// handling the difference INTERNALLY (state.go).
 	state := outbound.NewStateHandler(store, authenticator, watchdog, igRenewer,
 		outbound.IngressSource{Via: via, Connector: connector}, externalProbe,
 		// The SAME `lideranca` that wraps /v1/messages, on purpose: if

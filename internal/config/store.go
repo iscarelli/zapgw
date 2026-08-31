@@ -10,7 +10,7 @@
 //
 //   - IDEMPOTENCY (further below): keeps only (consumidor, key) ->
 //     wa_message_id, with a short TTL — a DELIVERY record, not a message.
-//   - TRANSIT (transito.go, T-091): records that a message PASSED through
+//   - TRANSIT (transit.go, T-091): records that a message PASSED through
 //     here — instance, direction, HMAC of the phone number and the wamid
 //     (never the value in the clear), type, correlation, stamp and
 //     outcome —, with its own TTL (DefaultTransitRetentionDays). It is
@@ -344,7 +344,7 @@ type Instance struct {
 	// path (creation, consumer registration, owner rotation, or Instagram's
 	// automatic renewal, T-098). NOT a secret (it's just a stamp), but only
 	// matters today for tipo=instagram: it's what
-	// internal/outbound/renovador_instagram.go uses to know the token's AGE
+	// internal/outbound/instagram_renewer.go uses to know the token's AGE
 	// and decide whether it's already time to renew. RFC3339 UTC, or ""
 	// when the row was born before this column existed and was never
 	// rewritten (see the migration
@@ -411,7 +411,7 @@ var migrations = []migration{
 	{"instancia.bundle_ca", func(ctx context.Context, c *sql.Conn) error {
 		return addColumn(ctx, c, "instancia", "bundle_ca", "TEXT NOT NULL DEFAULT ''")
 	}},
-	// T-035: instance counters. Read/write in internal/config/contador.go.
+	// T-035: instance counters. Read/write in internal/config/counter.go.
 	{"contador", func(ctx context.Context, c *sql.Conn) error {
 		_, err := c.ExecContext(ctx, counterSchema)
 		return err
@@ -429,12 +429,12 @@ var migrations = []migration{
 	//
 	// The '' DEFAULT for rows that already exist means "counted before the
 	// column existed": the read treats it as ABSENCE of a stamp, never as a
-	// zero date (see LastEventPerKey in contador.go).
+	// zero date (see LastEventPerKey in counter.go).
 	{"contador.ultimo", func(ctx context.Context, c *sql.Conn) error {
 		return addColumn(ctx, c, "contador", "ultimo", "TEXT NOT NULL DEFAULT ''")
 	}},
 	// T-064: the callback certificate's validity, as the DELIVERY saw it.
-	// Read/write in internal/config/certificado.go.
+	// Read/write in internal/config/certificate.go.
 	{"certificado do callback", func(ctx context.Context, c *sql.Conn) error {
 		_, err := c.ExecContext(ctx, callbackCertificateSchema)
 		return err
@@ -481,7 +481,7 @@ var migrations = []migration{
 		return err
 	}},
 	// T-080: the number's quality and messaging limit, as Meta reports them.
-	// Read/write in internal/config/numero.go.
+	// Read/write in internal/config/number.go.
 	{"numero na meta", func(ctx context.Context, c *sql.Conn) error {
 		_, err := c.ExecContext(ctx, numberAtMetaSchema)
 		return err
@@ -517,7 +517,7 @@ var migrations = []migration{
 	}},
 	// T-091: TRANSIT log — "did this message pass through here?" without
 	// storing content or the phone number in the clear. Read/write in
-	// internal/config/transito.go.
+	// internal/config/transit.go.
 	{"transito", func(ctx context.Context, c *sql.Conn) error {
 		_, err := c.ExecContext(ctx, transitSchema)
 		return err
@@ -525,7 +525,7 @@ var migrations = []migration{
 	// T-094: the transit log's phone number and wamid now go in the CLEAR —
 	// owner's decision, 2026-07-30 ("you can put the number in, it's not a
 	// secret"), which reverts, ONLY on those two fields, T-091's HMAC design
-	// (`correlacao` stays HMAC — see internal/config/transito.go).
+	// (`correlacao` stays HMAC — see internal/config/transit.go).
 	//
 	// A ROW WRITTEN BEFORE THIS MIGRATION KEEPS contraparte/wamid EMPTY
 	// FOREVER: HMAC is ONE-WAY, there is no way to recover the phone number
@@ -554,7 +554,7 @@ var migrations = []migration{
 		}
 		// The new index matches on the EXPRESSION substr(contraparte, -8) —
 		// the LAST EIGHT DIGITS, not the whole column. It's the same key
-		// Store.SearchTransit uses (internal/config/transito.go), and it's
+		// Store.SearchTransit uses (internal/config/transit.go), and it's
 		// what makes the four spellings of the same subscriber find the
 		// SAME row (T-094's Verify (a)).
 		_, err := c.ExecContext(ctx,
@@ -573,7 +573,7 @@ var migrations = []migration{
 		return addColumn(ctx, c, "instancia", "ig_id", "TEXT NOT NULL DEFAULT ''")
 	}},
 	// T-098: renewal of Instagram's long-lived token (60 days, no renewal
-	// possible once expired — see internal/outbound/renovador_instagram.go).
+	// possible once expired — see internal/outbound/instagram_renewer.go).
 	//
 	// TWO COLUMNS, NOT ONE, and the difference matters: token_definido_em is
 	// the validity IN FORCE (every path that writes token_envio updates it —
@@ -1253,7 +1253,7 @@ func (s *Store) ReopenRegistrationWindow(slug string) error {
 
 // ActivateInstance is the ONLY path to `ativo = 1` in this project.
 //
-// WHO CALLS IT: only the smoke test (cmd/zapgw/fumaca.go), and only after
+// WHO CALLS IT: only the smoke test (cmd/zapgw/smoke.go), and only after
 // having proven, against the real Meta, that the token is accepted and that
 // a message goes out with an id. The guarantee "instance is born paused"
 // (see CreateInstance) only holds as long as this remains the only door: a
@@ -1463,7 +1463,7 @@ func (s *Store) RotateInstance(slug string, r Rotation) error {
 // RenewInstagramTokenAt writes the NEW TOKEN Meta returned for an
 // Instagram renewal, and restarts the validity from `now` — the ONLY
 // write path used by the automatic loop
-// (internal/outbound/renovador_instagram.go, T-098).
+// (internal/outbound/instagram_renewer.go, T-098).
 //
 // SEPARATE FROM RotateInstance ON PURPOSE, and it's not duplication:
 // the decision of WHICH field to touch is AUTOMATIC here (always
@@ -1734,8 +1734,8 @@ type InstanceSummary struct {
 
 // StateOf is the word that describes an instance's state — "ativa" or
 // "pausada" — for EVERY surface of this gateway: the command line
-// (cmd/zapgw/provisionar.go, cmd/zapgw/estado.go) and the GET /v1/estado
-// route (internal/outbound/estado_handler.go).
+// (cmd/zapgw/provision.go, cmd/zapgw/state.go) and the GET /v1/estado
+// route (internal/outbound/state_handler.go).
 //
 // ONE function, and not the same condition written in each place: two
 // spellings would make a `grep pausada` lie, and on the day a third state

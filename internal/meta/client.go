@@ -133,8 +133,8 @@ func (c *Client) SendMessage(
 // consumer would start depending on it; whoever needs to describe the
 // number reads the store, which is our own data.
 //
-// It is step 2 of the smoke test (cmd/zapgw/fumaca.go) AND the body of the
-// per-instance probe (internal/outbound/saude_handler.go). A copy of the
+// It is step 2 of the smoke test (cmd/zapgw/smoke.go) AND the body of the
+// per-instance probe (internal/outbound/health_handler.go). A copy of the
 // call in each place would be this project's mother trap — the same true
 // sentence in one place and not the next, diverging at the first change.
 func (c *Client) CheckCredential(ctx context.Context, phoneNumberID, token string) error {
@@ -248,7 +248,7 @@ func sendResponse(raw []byte) (SendResponse, error) {
 // changes.
 //
 // EXPORTED because there is a SECOND place that builds a URL with this id:
-// step 2 of the smoke test (cmd/zapgw/fumaca.go), which does GET
+// step 2 of the smoke test (cmd/zapgw/smoke.go), which does GET
 // /{phone_number_id}. A copy of the rule there would be exactly this
 // project's mother trap — the same true sentence in one place and not the
 // next, diverging at the first change.

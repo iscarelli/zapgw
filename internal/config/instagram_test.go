@@ -75,7 +75,7 @@ func TestCreateWhatsAppInstanceWithNoTypeNormalizesToWhatsApp(t *testing.T) {
 
 // TestCreateInstagramInstanceWritesTokenSetAt proves the half that
 // TestCreateInstagramInstanceKeepsAndReturnsIgID doesn't cover: the field the
-// renewal loop (internal/outbound/renovador_instagram.go) uses to compute
+// renewal loop (internal/outbound/instagram_renewer.go) uses to compute
 // the token's AGE is born filled in, never empty.
 func TestCreateInstagramInstanceWritesTokenSetAt(t *testing.T) {
 	s := testStore(t)

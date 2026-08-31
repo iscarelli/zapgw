@@ -147,7 +147,7 @@ func TestHandlerInstagramSendTextBuildsTheExactRequest(t *testing.T) {
 // EXACTLY the format meta.Canonicalize would mutate by inserting a "9th digit" —
 // if this test used p.To (canonicalized) instead of rawTo for the
 // counterpart, it would catch the mutation. See the comment on Request in
-// mensagem.go and on rawTo in handler.go.
+// message.go and on rawTo in handler.go.
 func TestHandlerInstagramTransitWritesTheIGSIDIntactEvenWhenPhoneShaped(t *testing.T) {
 	igsidShapedLikePhone := "551987654321"
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -303,7 +303,7 @@ func TestHandlerWhatsAppKeepsUsingCBaseEvenWithADifferentInstagramBase(t *testin
 // recorded in that task's final report: without this, an Instagram instance
 // would NEVER leave PAUSED (config.CreateInstance always forces ativo=0, and
 // config.ActivateInstance is only called by outbound.SmokeWithInstagramBase —
-// see both headers). Reuses fumaca_handler_test.go/smokeGraph (the SAME
+// see both headers). Reuses smoke_handler_test.go/smokeGraph (the SAME
 // two-route fake the WhatsApp smoke test already uses), just with postBody
 // in Instagram's format.
 //
@@ -312,7 +312,7 @@ func TestHandlerWhatsAppKeepsUsingCBaseEvenWithADifferentInstagramBase(t *testin
 // that requirement would NEVER have caught the real defect (the call was
 // going to the wrong host AND STILL counted as "hit", because g.srv answered
 // both methods). This task's decision was to SKIP step 2 for Instagram (see
-// the comment in fumaca.go) instead of forcing a call with no measured
+// the comment in smoke.go) instead of forcing a call with no measured
 // source — this test now proves the opposite of what it proved before, on
 // purpose.
 func TestSmokeRouteActivatesInstagramInstanceOnlyAfterSendingAMessage(t *testing.T) {

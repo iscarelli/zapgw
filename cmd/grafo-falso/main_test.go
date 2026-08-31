@@ -1,7 +1,7 @@
 // What these tests guard: that the fake speaks the language the PRODUCTION code
 // understands.
 //
-// They do not exercise the gateway — that is cmd/zapgw/fumaca_test.go, and in
+// They do not exercise the gateway — that is cmd/zapgw/smoke_test.go, and in
 // particular TestSmokeWithSendFailureLEAVESTheInstancePAUSED, which is what
 // proves the proof requirement survives the lab. Here the question is another
 // one, and narrower: does the real client (internal/meta) accept the success and

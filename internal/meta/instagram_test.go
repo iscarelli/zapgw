@@ -1,6 +1,6 @@
 // Tests for SendInstagramMessage (T-104) — the network call for sending
 // an Instagram DM, ISOLATED from the instance and from the handler.
-// Complements instagram_renovacao_test.go (RenewInstagramToken) and
+// Complements instagram_renewal_test.go (RenewInstagramToken) and
 // client_test.go (SendMessage, WhatsApp), which already prove the same
 // discipline for the sibling functions.
 //

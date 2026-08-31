@@ -11,8 +11,8 @@ import (
 )
 
 // T-199's GATE, and it is a different shape from the phone and name gates
-// that already exist in this package (telefones_allowlist_test.go,
-// nomes_allowlist_test.go). Those two scan the WORKING TREE — the state of
+// that already exist in this package (phones_allowlist_test.go,
+// names_allowlist_test.go). Those two scan the WORKING TREE — the state of
 // the files on disk right now. That leaves a hole this repository's history
 // is public and never gets rewritten: a commit A that adds a real phone
 // number and a LATER commit B that deletes the file again leaves the FINAL

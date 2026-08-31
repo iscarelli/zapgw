@@ -419,7 +419,7 @@ func TestRegisterMetaRefusesEmptyIdentification(t *testing.T) {
 
 func TestStoreIsBornWithTheInstancePaused(t *testing.T) {
 	// An instance is born PAUSED. Only the smoke test
-	// (cmd/zapgw/fumaca.go) activates it — otherwise a misconfigured
+	// (cmd/zapgw/smoke.go) activates it — otherwise a misconfigured
 	// instance enters production "working".
 	s := testStore(t)
 	i := testInstance()
@@ -2831,7 +2831,7 @@ func TestTheTransitMigrationCounterpartyAndWamidInTheClearReplaceTheHMAC(t *test
 //
 // The three prove it by EFFECT, following the mold of
 // TestIdempotencyUnderConcurrencyOnlyGivesTheThreeOutcomes (above) and
-// TestCounterRecordUnderConcurrencyAddsUpRight (contador_test.go):
+// TestCounterRecordUnderConcurrencyAddsUpRight (counter_test.go):
 // goroutines contending, and at the end an INVARIANT is checked — never a
 // specific expected sequence, because the real order of two goroutines is
 // never guaranteed.

@@ -132,7 +132,7 @@ func (t *logThrottle) allow(key string) bool {
 // carry request data — it names the FIELD, never the value (see
 // Request.Validate() and the sibling validations in templates_handler.go and
 // media_handler.go). The rule has known exceptions that are already handled —
-// see safeRejectionMessage in mensagem.go, which exists exactly for the
+// see safeRejectionMessage in message.go, which exists exactly for the
 // Validate() messages that quote the rejected value (ErrUnknownType and
 // friends): whoever calls logRejection for a Request.Validate() rejection must
 // pass safeRejectionMessage(err), never raw err.Error(). IF the general rule
@@ -159,7 +159,7 @@ type Handler struct {
 	client   *meta.Client
 	maxBytes int
 	// counter is the SERIALIZED writer of instance counters (T-035).
-	// Register returns no error at all — see internal/config/contador.go —
+	// Register returns no error at all — see internal/config/counter.go —
 	// so nothing here can propagate a counting failure to the response already
 	// written to the consumer.
 	counter *config.Counter
@@ -303,12 +303,12 @@ type errorResponse struct {
 }
 
 // respondError is a FUNCTION, not a method: the health probe
-// (saude_handler.go) answers with the SAME error format, and the consumer
+// (health_handler.go) answers with the SAME error format, and the consumer
 // should not have to learn two. A second error writer in the package would
 // diverge from the first on the first change.
 //
 // This package has dozens of callers of respondError outside this file
-// (templates_handler.go, media_handler.go, cadastro_handler.go, …) none of
+// (templates_handler.go, media_handler.go, registration_handler.go, …) none of
 // which have Meta detail to pass — changing respondError's signature would
 // force touching all of them just to always pass "". Instead, respondError
 // keeps the SAME signature as always and delegates to
@@ -404,7 +404,7 @@ func (h *Handler) send(w http.ResponseWriter, r *http.Request) {
 	// unmarshaling — so p.Validate(), RequestHash and every downstream
 	// consumer of Request see the SAME struct regardless of which language
 	// the consumer wrote the body in. Must run before json.Unmarshal below:
-	// see the header comment on entrada_apelidos.go for why the ORDER is
+	// see the header comment on input_aliases.go for why the ORDER is
 	// the whole point (idempotency has to hash the canonical form, or the
 	// same message written in PT and in EN would send twice).
 	translated, oldNames, err := translateRequestBody(raw)
@@ -423,7 +423,7 @@ func (h *Handler) send(w http.ResponseWriter, r *http.Request) {
 	// T-097: captured BEFORE p.Validate() mutates p.To. For an Instagram
 	// instance, `para` is an IGSID — not a phone number —, and Validate() still
 	// runs meta.Canonicalize(p.To) for EVERY request (WhatsApp non-regression:
-	// see the comment on Validate() in mensagem.go). An IGSID that happened to
+	// see the comment on Validate() in message.go). An IGSID that happened to
 	// have 12 digits starting with "55" would come out of Canonicalize with a
 	// digit INSERTED — a corrupted address, silently. rawTo is the exact
 	// value the consumer sent (only trimmed), and it is THAT ONE that goes to
@@ -433,7 +433,7 @@ func (h *Handler) send(w http.ResponseWriter, r *http.Request) {
 		// The schema error message is OURS and does not carry request data —
 		// it names the field, never the value (with three exceptions that quote
 		// the rejected value to guide the consumer; safeRejectionMessage
-		// swaps them for a fixed text before logging — see mensagem.go). The
+		// swaps them for a fixed text before logging — see message.go). The
 		// response body to the CONSUMER still uses the raw err.Error(): whoever
 		// sent the wrong value already knows it, only the log must not repeat it.
 		logRejection(h.throttleLog, "POST /v1/messages", p.Instance, consumer.Name, safeRejectionMessage(err))
@@ -485,7 +485,7 @@ func (h *Handler) send(w http.ResponseWriter, r *http.Request) {
 	// implemented yet). p.Validate() has already accepted the generic request
 	// schema; this is the restriction SPECIFIC TO THE INSTANCE TYPE, which can
 	// only be known after fetching `inst` — that is why it lives here, and not
-	// in Validate() (mensagem.go), which does not know the instance type (it
+	// in Validate() (message.go), which does not know the instance type (it
 	// runs BEFORE CanUse/FindInstance, on purpose — see this file's
 	// header).
 	if inst.Type == config.TypeInstagram && p.Type != "texto" {
@@ -606,7 +606,7 @@ func (h *Handler) send(w http.ResponseWriter, r *http.Request) {
 		}
 		h.respondSendError(w, inst.Slug, err)
 		// T-035: count ONLY AFTER the response to the consumer has been written.
-		// Register returns no error at all (internal/config/contador.go) — a
+		// Register returns no error at all (internal/config/counter.go) — a
 		// counting failure only logs, it never changes what was already
 		// answered.
 		h.count(inst.Slug, config.CounterSendFailures)

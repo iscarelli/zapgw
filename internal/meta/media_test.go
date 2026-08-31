@@ -505,8 +505,8 @@ func TestTheCategoryTableIsComplete(t *testing.T) {
 		t.Error("KnownCategory aceitou uma categoria que nao existe")
 	}
 	// audio and sticker have no caption in the Graph API body, and only
-	// document has a file name. Whoever validates (mensagem.go) and
-	// whoever builds (corpo.go) read FROM HERE: if they read their own
+	// document has a file name. Whoever validates (message.go) and
+	// whoever builds (body.go) read FROM HERE: if they read their own
 	// rules, one would accept the field the other throws away — and the
 	// consumer would see the text vanish with no error at all.
 	if AcceptsCaption(CategoryAudio) || AcceptsCaption(CategorySticker) {

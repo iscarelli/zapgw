@@ -24,7 +24,7 @@ var ErrInvalidKey = errors.New("config: chave de cifra invalida (quero 32 bytes 
 
 type Vault struct {
 	aead cipher.AEAD
-	// hmacKey is USED ONLY by the TRANSIT log (T-091, transito.go). It
+	// hmacKey is USED ONLY by the TRANSIT log (T-091, transit.go). It
 	// comes from the SAME encryption key (ZAPGW_CHAVE_CIFRA) but with DOMAIN
 	// SEPARATION (the fixed prefix below): never the same byte sequence that
 	// goes into AES, so that using this key elsewhere doesn't hand over the
@@ -82,7 +82,7 @@ func (c *Vault) Decrypt(ciphertext string) (string, error) {
 
 // DeterministicHMAC is the opposite of Encrypt ON PURPOSE: the SAME input
 // ALWAYS produces the SAME output (hex of HMAC-SHA256), because that is how
-// the TRANSIT log (T-091, transito.go) can answer "did this Idempotency-Key
+// the TRANSIT log (T-091, transit.go) can answer "did this Idempotency-Key
 // pass through here?" without storing the value in the clear — whoever asks
 // computes the SAME HMAC and searches by equality (Store.HMACCorrelation).
 //

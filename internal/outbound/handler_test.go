@@ -1146,7 +1146,7 @@ func TestHandlerLogsValidationRejectionWithoutLeakingValueNorIdempotencyKey(t *t
 	const keySentinel = "IDEMP-SENTINELA-CHAVE-001"
 	// an empty `para` is the field that fails; `texto` carries the sentinel and does NOT
 	// participate in the error (the `para` error comes before the type switch, in
-	// mensagem.go) — if the log leaked ANY value from the body, it would be this one.
+	// message.go) — if the log leaked ANY value from the body, it would be this one.
 	body := `{"instancia":"lojinha","para":"","tipo":"texto","texto":"` + textSentinel + `"}`
 
 	var logBuf bytes.Buffer
@@ -1176,10 +1176,10 @@ func TestHandlerLogsValidationRejectionWithoutLeakingValueNorIdempotencyKey(t *t
 	}
 }
 
-// The same proof (b), but for the THREE points in mensagem.go that deliberately
+// The same proof (b), but for the THREE points in message.go that deliberately
 // quote the refused value in the RESPONSE body (ErrUnknownType,
 // ErrUnknownCategory) — found while writing this task (see
-// safeRejectionMessage in mensagem.go). Without that function, this test would be the
+// safeRejectionMessage in message.go). Without that function, this test would be the
 // one to catch the raw message leaking the made-up `tipo` into the log.
 func TestHandlerLogsUnknownTypeWithoutLeakingTheRefusedValue(t *testing.T) {
 	srv := acceptingMeta("wamid.NAO-DEVE-SER-CHAMADO")

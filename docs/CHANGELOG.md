@@ -4,6 +4,25 @@ Uma linha por versao entregue, no mesmo commit do bump. A entrada diz o **efeito
 
 ## Nao lancado
 
+- **T-212 — CAMADA 1: file names and identifiers stop speaking Portuguese** —
+  **86 arquivos `.go` renomeados** (`git mv`, historico preservado — mais que os 69 medidos na
+  spec; a medicao original parece ter contado so' um subconjunto, e esta tarefa mediu de novo lendo
+  o codigo atual) e **exatos 38 identificadores** corrigidos: `translateEntradaOrReject` ->
+  `translateInputOrReject` e 37 `TestEntrada*`/`oldNameCounterTodayInEstado` ->
+  `TestInput*`/`oldNameCounterTodayInState` em `internal/outbound/input_aliases_test.go`, o unico
+  lugar onde a palavra "Entrada"/"Estado" sobrevivia num identificador — o resto do codigo ja
+  estava em ingles antes desta tarefa comecar (o numero bate exatamente com os 38 da spec).
+  Todo comentario que apontava o nome antigo do arquivo foi corrigido no mesmo lote (substituicao
+  mecanica string-a-string, nunca tocando tag `json`, verbo de CLI, nome `ZAPGW_*` nem mensagem).
+  `git diff -U0 | grep 'json:"'` saiu vazio e `TestOutputContractHasNoPortugueseKeyOrValue`
+  continuou verde sem edicao de logica (so' o header `Código:` de
+  `internal/outbound/english_contract_test.go`, que apontava dois arquivos renomeados, foi
+  atualizado). Verify completo (`build`, `test -count=1`, `vet`, `gofmt`) limpo. Achado e NAO
+  tocado, por ficar fora desta camada: o diretorio `cmd/grafo-falso` (nome em portugues, "grafo
+  falso") — seus `.go` ja se chamavam `main.go`/`main_test.go` em ingles, o nome so' vive no
+  diretorio, e mudar isso arrastaria dois docs grandes (`docs/ARMADILHAS.md`/`.pt-BR.md`) para fora
+  do escopo "arquivo e identificador" desta tarefa. _Completed 2026-08-31 15:11._
+
 - **T-211 — The CI is flaky on a wall-clock test** — `TestHandlerRespectsTheInstanceTimeoutMs`
   media agora a PASSAGEM do valor, nao a duracao: um `http.RoundTripper` falso que nunca toca a
   rede captura `req.Context().Deadline()` e confere que ela cai na janela `[antes+50ms,

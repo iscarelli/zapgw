@@ -276,7 +276,7 @@ func sumOfDurations(ds []time.Duration) time.Duration {
 
 // waitReread is the pause between a re-read that did NOT find it and
 // the next one. Package var, in the SAME pattern as creationClock
-// (cmd/zapgw/provisionar.go): the test swaps the function for a spy that does
+// (cmd/zapgw/provision.go): the test swaps the function for a spy that does
 // NOT actually sleep — a test that slept the up-to-17s ceiling would stall the
 // whole suite (docs/ARMADILHAS.md forbids a test that actually sleeps).
 var waitReread = waitWithContext
@@ -414,7 +414,7 @@ func (h *TemplatesHandler) list(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// T-208: `instancia`/`instance` is ENTRADA-QUERY here — see queryAlias's
-	// comment in entrada_apelidos.go.
+	// comment in input_aliases.go.
 	slug, oldInstanceParam := queryAlias(r.URL.Query(), "instance", "instancia")
 	if slug == "" {
 		logRejection(h.throttleLog, "GET /v1/templates", "", consumer.Name,
@@ -484,7 +484,7 @@ func (h *TemplatesHandler) create(w http.ResponseWriter, r *http.Request) {
 	// T-203 (step 2 of T-189): accept the English name of every ENTRADA key
 	// this route has (docs/MIGRACAO-CONTRATO-EN.md), translated to the
 	// canonical (Portuguese) form BEFORE unmarshaling.
-	translated, oldNames, ok := translateEntradaOrReject(
+	translated, oldNames, ok := translateInputOrReject(
 		w, h.throttleLog, "POST /v1/templates", consumer.Name, raw, createTemplateAlias)
 	if !ok {
 		return
@@ -601,7 +601,7 @@ func (h *TemplatesHandler) deleteTemplate(w http.ResponseWriter, r *http.Request
 		return
 	}
 	// T-208: `instancia`/`instance` and `nome`/`name` are ENTRADA-QUERY
-	// here — see queryAlias's comment in entrada_apelidos.go.
+	// here — see queryAlias's comment in input_aliases.go.
 	slug, oldInstanceParam := queryAlias(r.URL.Query(), "instance", "instancia")
 	if slug == "" {
 		logRejection(h.throttleLog, "DELETE /v1/templates", "", consumer.Name,

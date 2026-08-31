@@ -484,7 +484,7 @@ func TestHandlerRejectsAccountWebhookWithUnreadableWabaID(t *testing.T) {
 // waba_id," and that is true of TODAY'S PATH, not of the type: until T-074,
 // `config.Store.CreateInstance` validated slug, callback_url and bundle_ca,
 // and did NOT validate waba_id — the only thing that validated it was
-// `zapgw provisionar instancia` (cmd/zapgw/provisionar.go), the FIRST
+// `zapgw provisionar instancia` (cmd/zapgw/provision.go), the FIRST
 // creation path. A future seed or admin endpoint would be born without that
 // check — the exact scenario CreateInstance's own comment raises.
 //
@@ -1173,7 +1173,7 @@ func handlerWithAlwaysFailingCounter(t *testing.T, callback string) (http.Handle
 //	(i)  moving h.counter.Register(slug, config.CounterNumberDiscarded) to
 //	     BEFORE w.WriteHeader(http.StatusOK), just that: this test stays
 //	     GREEN. It isn't that the test is weak — it's that
-//	     Counter.Register RETURNS NOTHING (internal/config/contador.go),
+//	     Counter.Register RETURNS NOTHING (internal/config/counter.go),
 //	     so there is no path by which a counting failure could reach the
 //	     response. The defense is the SIGNATURE, not the order;
 //	(ii) moving AND swapping the call for a variant that returns an error,

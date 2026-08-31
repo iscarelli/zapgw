@@ -508,7 +508,7 @@ func instagramSendResponse(raw []byte) (SendResponse, error) {
 // 🔴 T-104: THERE IS NO CheckCredential FOR INSTAGRAM, AND THE ABSENCE IS
 // DELIBERATE.
 //
-// The smoke test's step 2 (internal/outbound/fumaca.go) exists to catch a
+// The smoke test's step 2 (internal/outbound/smoke.go) exists to catch a
 // revoked token WITHOUT sending a message to a real number — on WhatsApp
 // that's `GET /{phone_number_id}` (CheckCredential, client.go). This
 // file has NO sibling function for Instagram because there is no
@@ -521,7 +521,7 @@ func instagramSendResponse(raw []byte) (SendResponse, error) {
 // Inventing a `GET /{ig_id}` "by analogy" with WhatsApp would be a call
 // that CAN lie (accept or reject for a reason that isn't the token), and
 // this project prefers skipping a check to making one that deceives — see
-// the decision in internal/outbound/fumaca.go, where step 2 is SKIPPED for
+// the decision in internal/outbound/smoke.go, where step 2 is SKIPPED for
 // Instagram instances, documenting why. Meta still confirms the token: only
 // at step 3, when the real test send goes out.
 //
@@ -541,7 +541,7 @@ func instagramSendResponse(raw []byte) (SendResponse, error) {
 // `expires_in` is NOT read: this gateway already knows the validity from
 // its own source (60 days, T-098's `Source:` block) and it's the same
 // constant that DECIDES when to renew (InstagramTokenValidity,
-// internal/outbound/renovador_instagram.go) — using ONE response's
+// internal/outbound/instagram_renewer.go) — using ONE response's
 // `expires_in` to redefine the validity would create a SECOND source of the
 // same truth, and the two would diverge the day Meta changes the number
 // without notice. `token_definido_em` (when THIS function returns success)
@@ -564,7 +564,7 @@ func instagramSendResponse(raw []byte) (SendResponse, error) {
 // different name: a new constant, with the SAME value, would be a third
 // way of saying "graph.instagram.com" — this project's mother trap
 // (docs/ARMADILHAS.md) applied to a URL. Renaming it would require
-// touching every reference (main.go, renovador_instagram.go, the tests,
+// touching every reference (main.go, instagram_renewer.go, the tests,
 // the docs) for aesthetics alone; it wasn't done.
 //
 // EXPORTED and INJECTABLE for the SAME reason as graphBase
@@ -585,7 +585,7 @@ var ErrRenewalWithoutAccessToken = errors.New("meta: resposta 2xx da renovacao d
 // RenewInstagramToken requests a new long-lived token starting from a
 // token that's STILL valid. It does NOT decide WHEN to renew nor validate
 // Meta's preconditions (24h old, not expired) — that's the CALLER's job
-// (internal/outbound/renovador_instagram.go); this function only talks to
+// (internal/outbound/instagram_renewer.go); this function only talks to
 // Meta and returns the new token, or the classified error.
 //
 // 🔴 THE TOKEN GOES IN THE QUERY STRING, NOT IN THE HEADER — and this is a

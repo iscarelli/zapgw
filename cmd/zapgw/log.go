@@ -17,7 +17,7 @@
 // opposite: "you can put the number in, it's not a secret." The
 // `contraparte` column (T-094) shows the phone number ALREADY CANONICAL,
 // IN PLAIN TEXT — never the HMAC (it no longer exists for this field, see
-// internal/config/transito.go). A row recorded BEFORE T-094 prints "—":
+// internal/config/transit.go). A row recorded BEFORE T-094 prints "—":
 // HMAC is one-way, and there is no way to recover the phone number from
 // the hash T-091 recorded — it is not a bug, it is the known price of the
 // earlier safeguard.
@@ -201,7 +201,7 @@ func runLog(ctx context.Context, store *config.Store, slug string, n int, out io
 			// 🔴 T-096: `log clear` may have deleted the highest rowid —
 			// SQLite REUSES rowids (the `transito` table does not declare
 			// AUTOINCREMENT, see transitSchema in
-			// internal/config/transito.go), so the next row recorded can
+			// internal/config/transit.go), so the next row recorded can
 			// be born with rowid <= lastRowid. Without this reset,
 			// `LogLinesSince` (which filters `rowid > lastRowid`)
 			// would never find anything again and the follow would go
@@ -310,7 +310,7 @@ func printLogRows(out io.Writer, lines []config.LogLine) error {
 // because the BLAST RADIUS is different:
 //
 //   - `--instancia` deletes an instance's entire log — the same pattern as
-//     `instancia remover` (provisionar.go): `--confirmo <slug>` with the
+//     `instancia remover` (provision.go): `--confirmo <slug>` with the
 //     slug RETYPED, never a `-y`. The asymmetry with `instancia pausar`
 //     (which confirms nothing) is the information: pausing has an undo,
 //     this does not.
@@ -347,7 +347,7 @@ func logClearCommand(args []string, out io.Writer, env environment) error {
 	}
 
 	// THE CONFIRMATION IS CHECKED BEFORE OPENING THE DATABASE, same
-	// pattern as `removeInstance` (provisionar.go): reject early,
+	// pattern as `removeInstance` (provision.go): reject early,
 	// without touching anything. Both halves require the SAME pattern
 	// since T-114 — neither has a `-y`.
 	if slug != "" && strings.TrimSpace(*confirm) != slug {
@@ -373,7 +373,7 @@ func logClearCommand(args []string, out io.Writer, env environment) error {
 
 // logClearByInstance deletes an instance's ENTIRE transit log — only
 // the log, never the instance nor any other table (that is `instancia
-// remover`, provisionar.go).
+// remover`, provision.go).
 func logClearByInstance(store *config.Store, slug string, out io.Writer) error {
 	deleted, err := store.ClearInstanceTransit(slug)
 	if err != nil {

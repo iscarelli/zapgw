@@ -60,7 +60,7 @@ type Handler struct {
 	maxBytes   int
 	rejections *rejectionCounter
 	// counter is the SERIALIZED writer for instance counters (T-035).
-	// Register returns no error at all — see internal/config/contador.go —
+	// Register returns no error at all — see internal/config/counter.go —
 	// so nothing here can propagate a counting failure into the response to
 	// Meta.
 	counter *config.Counter
@@ -81,7 +81,7 @@ type Handler struct {
 	// warnedCategories holds which UNKNOWN billing categories have already
 	// produced an ALARM on this instance, so the warning fires once per
 	// process instead of once per message (T-063, see
-	// internal/inbound/cobranca.go).
+	// internal/inbound/billing.go).
 	warnedCategories *unknownCategoryWarning
 	// now is injectable only for tests, like the Watchdog's own `now` —
 	// without it, proving the tie-break rule between webhook and measurement
@@ -377,7 +377,7 @@ func (h *Handler) receive(w http.ResponseWriter, r *http.Request) {
 	// the isolation rejection was invisible in `zapgw estado` and the only
 	// trace was a journal line, which docs/ARMADILHAS.md records that no
 	// one reads out of habit. Why there are TWO keys and not one: see the
-	// comment on CounterNumberDiscarded in internal/config/contador.go.
+	// comment on CounterNumberDiscarded in internal/config/counter.go.
 	//
 	// NEITHER OF THE TWO COUNTS `recebidas`, AND THAT IS DELIBERATE — the
 	// question was asked in T-047 and the answer is NO. In this handler
@@ -416,7 +416,7 @@ func (h *Handler) receive(w http.ResponseWriter, r *http.Request) {
 				// the ACCOUNT/ENTRY level, with no finer message-level key
 				// to separate it?" — is EXACTLY the same one WhatsApp's 5b
 				// answers. See the comment on CounterNumberDiscarded
-				// (internal/config/contador.go) for why there are two
+				// (internal/config/counter.go) for why there are two
 				// DIFFERENT keys when the question CHANGES — here it
 				// doesn't.
 				if h.counter != nil {
@@ -515,7 +515,7 @@ func (h *Handler) receive(w http.ResponseWriter, r *http.Request) {
 		// invisible in `zapgw estado` and the only trace was a journal
 		// line, which docs/ARMADILHAS.md records that no one reads out of
 		// habit. Why there are TWO keys and not one: see the comment on
-		// CounterNumberDiscarded in internal/config/contador.go.
+		// CounterNumberDiscarded in internal/config/counter.go.
 		//
 		// NEITHER OF THE TWO COUNTS `recebidas`, AND THAT IS DELIBERATE —
 		// the question was asked in T-047 and the answer is NO. In this
@@ -744,7 +744,7 @@ func counterpartAndWamidOfEvent(e meta.Event) (counterpart, wamid string) {
 //
 // THE TIMESTAMP IS OUR OWN CLOCK, not Meta's `entry.time`. The why
 // (comparing two clocks no one synchronized would silently decide which
-// source wins) lives in internal/config/numero.go, which is where the
+// source wins) lives in internal/config/number.go, which is where the
 // tie-break rule lives.
 func (h *Handler) recordNumberLimit(slug string, evs []meta.Event) {
 	for _, e := range evs {

@@ -16,7 +16,7 @@ import (
 
 // fakeTemplateGraph is a fake Graph API that only serves
 // POST .../message_templates. Calls are counted atomically for the same
-// reason as fakeGraph in fumaca_test.go: httptest.Server serves each
+// reason as fakeGraph in smoke_test.go: httptest.Server serves each
 // request in its own goroutine.
 type fakeTemplateGraph struct {
 	status int

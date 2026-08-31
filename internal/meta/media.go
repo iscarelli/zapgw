@@ -59,7 +59,7 @@ const (
 
 // categoryRules is everything the rest of the project needs to know
 // about a category. A single table, on purpose: whoever validates
-// (outbound/mensagem.go), whoever builds the body (outbound/corpo.go), and
+// (outbound/message.go), whoever builds the body (outbound/body.go), and
 // whoever rejects before the wire (outbound/media_handler.go) read FROM
 // HERE. Two tables for the same question diverge at the first change — this
 // project's mother trap.

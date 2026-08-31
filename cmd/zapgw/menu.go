@@ -13,7 +13,7 @@
 // (1) IT IS NOT A SECOND PATH.
 // The menu only does two things: ASK and ASSEMBLE `args`. What executes
 // is `dispatch` — the SAME entry point as the command line
-// (provisionar.go). There is no validation, confirmation, secret
+// (provision.go). There is no validation, confirmation, secret
 // generation, or database write here; one more `if` in this file would be
 // this project's mother trap ("a regra vale num lugar e não vale no
 // seguinte", docs/ARMADILHAS.md) in its most expensive form: a menu that
@@ -34,7 +34,7 @@
 // (2) IT DOES NOT WEAKEN ANY CONFIRMATION.
 // `instancia remover` requires retyping the slug and `instancia pausar`
 // requires nothing — the asymmetry is deliberate (confirming everything
-// trains people to hit "yes" on autopilot, provisionar.go). The menu is
+// trains people to hit "yes" on autopilot, provision.go). The menu is
 // precisely where confirmation turns into a reflex, so this file HAS NO
 // CONFIRMATION CODE: `--confirmo` is a field like any other, the typed
 // text goes VERBATIM to `dispatch`, and whoever compares it with
@@ -50,7 +50,7 @@
 //
 // SECRETS ARE NOT ASKED HERE. The instance's four secrets still come from
 // the environment (ZAPGW_APP_SECRET, ZAPGW_VERIFY_TOKEN, ZAPGW_TOKEN_ENVIO,
-// ZAPGW_SEGREDO_ENTREGA), as provisionar.go requires — asking on screen
+// ZAPGW_SEGREDO_ENTREGA), as provision.go requires — asking on screen
 // would put the value in the scrollback and in the transcript, which is
 // exactly how four secrets leaked on 2026-07-28 (docs/ARMADILHAS.md). The
 // menu also stores nothing to disk: there is no history, no session file,
@@ -503,7 +503,7 @@ func findItem(key string) (menuItem, bool) {
 //     single place;
 //   - and the case that costs the most: in `instancia rotacionar`, the
 //     TYPED flag is what distinguishes "clear the callback" from "leave
-//     it alone" (fs.Visit, see provisionar.go). Passing `--callback-url
+//     it alone" (fs.Visit, see provision.go). Passing `--callback-url
 //     ""` just because the operator hit ENTER would silently wipe out
 //     delivery for an instance that is receiving traffic.
 //

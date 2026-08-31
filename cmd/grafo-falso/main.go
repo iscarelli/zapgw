@@ -11,7 +11,7 @@
 // lab points `fumaca` at ANOTHER ENDPOINT. The proof requirement stays whole —
 // `fumaca` only activates after a send that returned an id — and the lab
 // exercises the ENTIRE production path, which is what a lab is there to do. The
-// full why is in cmd/zapgw/fumaca.go, next to the guarantee it protects.
+// full why is in cmd/zapgw/smoke.go, next to the guarantee it protects.
 //
 // THIS BINARY DOES NOT GO TO PRODUCTION, and not by convention:
 // `implanta/deploy.sh` builds `./cmd/zapgw`, only it. Nothing here changes the
@@ -259,7 +259,7 @@ func (g *fakeGraph) checkCredential(w http.ResponseWriter, r *http.Request) {
 // API: the SEND and the READ RECEIPT (T-075). What tells them apart is the BODY
 // (`"status": "read"`), not the verb nor the path — both are
 // `POST /{phone_number_id}/messages`, checked against Meta's docs on 2026-07-28
-// (the URLs are in internal/meta/leitura.go).
+// (the URLs are in internal/meta/read.go).
 //
 // A fake that answered "send" to both would return `messages[].id` to a read
 // receipt — data Meta NEVER sends there — and the lab would start hiding exactly
@@ -289,7 +289,7 @@ func (g *fakeGraph) postToMessages(w http.ResponseWriter, r *http.Request) {
 //
 // `--recusar-envio` does NOT reach this path, on purpose: that flag exists to
 // prove that a refused send leaves the instance PAUSED (see the header and
-// cmd/zapgw/fumaca.go), and no step of the lab marks a read. If one day someone
+// cmd/zapgw/smoke.go), and no step of the lab marks a read. If one day someone
 // needs to exercise the refusal here, the new flag is its own — reusing that one
 // would make a log line say "envio recusado" for something that is not a send.
 func (g *fakeGraph) markAsRead(w http.ResponseWriter) {

@@ -670,7 +670,7 @@ func TestRunLogEndsWhenTheContextIsCancelled(t *testing.T) {
 // Verify (a): `--instancia` with no `--confirmo` rejects and deletes
 // nothing; with the WRONG slug in `--confirmo`, same; with the RIGHT
 // slug, deletes only that instance's and does not touch the others. THE
-// SAME pattern as `instancia remover` (provisionar_test.go).
+// SAME pattern as `instancia remover` (provision_test.go).
 func TestLogClearInstanceRequiresConfirmEqualToTheSlug(t *testing.T) {
 	vars := testEnvironment(t)
 	store := storeFromEnvironment(t, vars)

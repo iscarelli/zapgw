@@ -218,7 +218,7 @@ type Billing struct {
 // nesting, timestamp), not the third party's value vocabulary.
 type TemplateStatus struct {
 	// Name and Language are what IDENTIFIES a template on SEND
-	// (Request.Template + Request.Language, internal/outbound/mensagem.go) —
+	// (Request.Template + Request.Language, internal/outbound/message.go) —
 	// that's why they're the pair that lets the consumer connect this
 	// warning to what they send. Meta's `message_template_id` is NOT
 	// modeled: it identifies the template in the dashboard and in the
@@ -449,7 +449,7 @@ type Event struct {
 	// reply (the user replied by holding the bubble) — comes from
 	// messages[].context.id on Meta's side. THE SAME NAME as the
 	// equivalent field on SEND (Request.ReplyTo,
-	// internal/outbound/mensagem.go:158): sending and receiving with
+	// internal/outbound/message.go:158): sending and receiving with
 	// different names for the same thing would be the start of two
 	// vocabularies (reason written in T-024, and it holds here too). The
 	// referent is identical in both directions — the quoted message's
