@@ -37,10 +37,9 @@ func lostCommand(args []string, out io.Writer, env environment) error {
 	}
 	currentPath := *current
 	if currentPath == "" {
-		currentPath = env("ZAPGW_BANCO")
-		if currentPath == "" {
-			currentPath = "zapgw.db"
-		}
+		var oldUsed bool
+		currentPath, oldUsed = databasePath(env)
+		config.WarnOldEnvVar(oldUsed, envDatabaseOld, envDatabaseNew)
 	}
 
 	c, err := config.CompareFailover(*old, currentPath)

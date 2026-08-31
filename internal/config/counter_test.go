@@ -1,7 +1,10 @@
 package config
 
 import (
+	"bytes"
 	"errors"
+	"log"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -496,5 +499,63 @@ func TestCounterRetentionDaysReadsTheEnvironment(t *testing.T) {
 	}
 	if has := CounterRetentionDays(nil); has != DefaultRetentionDays {
 		t.Errorf("sem ambiente nenhum -> %d dias, quero %d", has, DefaultRetentionDays)
+	}
+}
+
+// T-214: CounterRetentionEnvVarNew (ZAPGW_TTL_COUNTERS_DAYS) is accepted in
+// addition to the old (Portuguese) name, and the NEW one wins when both are
+// set.
+func TestCounterRetentionDaysAcceptsNewNameAndItWins(t *testing.T) {
+	vars := func(m map[string]string) func(string) string {
+		return func(k string) string { return m[k] }
+	}
+	cases := []struct {
+		name string
+		vars map[string]string
+		want int
+	}{
+		{"so a nova", map[string]string{CounterRetentionEnvVarNew: "12"}, 12},
+		{"so a velha", map[string]string{CounterRetentionEnvVar: "18"}, 18},
+		{"as duas: a NOVA vence", map[string]string{
+			CounterRetentionEnvVarNew: "12", CounterRetentionEnvVar: "18",
+		}, 12},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			if has := CounterRetentionDays(vars(c.vars)); has != c.want {
+				t.Errorf("CounterRetentionDays = %d, quero %d", has, c.want)
+			}
+		})
+	}
+}
+
+// T-214 Do item 3: using the OLD name logs a warning ONCE; using only the
+// NEW name (or neither) stays silent.
+func TestCounterRetentionDaysWarnsOnlyWhenOldNameWins(t *testing.T) {
+	cases := []struct {
+		name     string
+		vars     map[string]string
+		wantWarn bool
+	}{
+		{"so a velha: avisa", map[string]string{CounterRetentionEnvVar: "10"}, true},
+		{"so a nova: fica calado", map[string]string{CounterRetentionEnvVarNew: "10"}, false},
+		{"nenhuma: fica calado", map[string]string{}, false},
+		{"as duas: a nova venceu, fica calado", map[string]string{
+			CounterRetentionEnvVarNew: "10", CounterRetentionEnvVar: "20",
+		}, false},
+	}
+	original := log.Writer()
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			var buf bytes.Buffer
+			log.SetOutput(&buf)
+			CounterRetentionDays(func(k string) string { return c.vars[k] })
+			log.SetOutput(original)
+			warned := strings.Contains(buf.String(), CounterRetentionEnvVar) &&
+				strings.Contains(buf.String(), "obsoleta")
+			if warned != c.wantWarn {
+				t.Errorf("aviso = %v (log: %q), quero %v", warned, buf.String(), c.wantWarn)
+			}
+		})
 	}
 }

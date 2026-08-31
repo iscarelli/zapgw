@@ -41,6 +41,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/iscarelli/zapgw/internal/config"
 )
 
 // The TWO environment variables of this slice. They are read in `main` (and
@@ -51,11 +53,24 @@ import (
 const (
 	// VarIngressVia says where the ingress is published from: `tunel` or
 	// `encaminhamento_de_porta`.
+	//
+	// This is the OLD (Portuguese) name. T-214 (2026-08-31) added
+	// VarIngressViaNew as the English pair — this constant stays, unchanged
+	// and still read, because it is the ONLY name an already-deployed
+	// /etc/zapgw/env has; see IngressVia.
 	VarIngressVia = "ZAPGW_ENTRADA_VIA"
+	// VarIngressViaNew is the English name of VarIngressVia (T-214). The NEW
+	// name wins when both are set — see config.EnvOrOld.
+	VarIngressViaNew = "ZAPGW_INGRESS_VIA"
 	// VarConnectorReady is the URL of the `/ready` of the connector that
 	// publishes this route (the `cloudflared`). EMPTY is a legitimate state
 	// — see ConnectorNotConfigured.
+	//
+	// This is the OLD (Portuguese) name; VarConnectorReadyNew (T-214) is the
+	// English pair — see ConnectorAddress.
 	VarConnectorReady = "ZAPGW_CONECTOR_READY"
+	// VarConnectorReadyNew is the English name of VarConnectorReady (T-214).
+	VarConnectorReadyNew = "ZAPGW_CONNECTOR_READY"
 )
 
 // The possible ingress paths, plus the answer for "nobody told me".
@@ -100,18 +115,26 @@ const (
 //     they were checked configuration. Failing closed at STARTUP puts the
 //     defect in front of whoever just edited the `env` — which is the only
 //     time it is cheap.
+//
+// T-214: accepts VarIngressViaNew in addition to VarIngressVia (new wins if
+// both are set), and logs once (config.WarnOldEnvVar) when the value that
+// won came from the OLD name.
 func IngressVia(getenv func(string) string) (string, error) {
 	if getenv == nil {
 		return ViaUnknown, nil
 	}
-	switch v := getenv(VarIngressVia); v {
+	v, oldUsed := config.EnvOrOld(getenv, VarIngressViaNew, VarIngressVia)
+	switch v {
 	case "":
 		return ViaUnknown, nil
 	case ViaTunnel, ViaPortForwarding:
+		config.WarnOldEnvVar(oldUsed, VarIngressVia, VarIngressViaNew)
 		return v, nil
 	default:
-		return "", fmt.Errorf("zapgw: %s = %q nao e um caminho de entrada conhecido — use %q ou %q (vazio publica %q)",
-			VarIngressVia, v, ViaTunnel, ViaPortForwarding, ViaUnknown)
+		// Naming BOTH spellings (T-214): whichever one the operator wrote,
+		// this is the line in /etc/zapgw/env they need to find and fix.
+		return "", fmt.Errorf("zapgw: %s (ou %s) = %q nao e um caminho de entrada conhecido — use %q ou %q (vazio publica %q)",
+			VarIngressViaNew, VarIngressVia, v, ViaTunnel, ViaPortForwarding, ViaUnknown)
 	}
 }
 
@@ -127,11 +150,17 @@ func IngressVia(getenv func(string) string) (string, error) {
 // `falhando_desde` climbing: an ALARM THAT LIES, pointing at a connector
 // that is actually up. A false alarm is the fastest way to train someone to
 // ignore this block.
+// T-214: accepts VarConnectorReadyNew in addition to VarConnectorReady (new
+// wins if both are set), and logs once (config.WarnOldEnvVar) when the value
+// that won came from the OLD name.
 func ConnectorAddress(getenv func(string) string) string {
 	if getenv == nil {
 		return ""
 	}
-	return strings.TrimSpace(getenv(VarConnectorReady))
+	v, oldUsed := config.EnvOrOld(getenv, VarConnectorReadyNew, VarConnectorReady)
+	v = strings.TrimSpace(v)
+	config.WarnOldEnvVar(oldUsed && v != "", VarConnectorReady, VarConnectorReadyNew)
+	return v
 }
 
 // The THREE states of ConnectorInState.

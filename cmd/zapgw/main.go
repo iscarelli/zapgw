@@ -167,15 +167,24 @@ func routes(inboundHandler, outboundHandler, healthHandler, templatesHandler, me
 // The key lives OUTSIDE the database. Without it nothing starts up:
 // refusing loud and early is what prevents running "working" with no
 // encryption at all.
+// T-214: ZAPGW_CHAVE_CIFRA/ZAPGW_BANCO accept their English pair
+// (ZAPGW_ENCRYPTION_KEY/ZAPGW_DATABASE), new wins if both are set, and using
+// the old name is logged once — see env_aliases.go and databasePath.
 func openStore(env environment) (*config.Store, error) {
-	vault, err := config.NewVault(env("ZAPGW_CHAVE_CIFRA"))
+	keyRaw, keyOldUsed := config.EnvOrOld(env, envEncryptionKeyNew, envEncryptionKeyOld)
+	keyName := envEncryptionKeyNew
+	if keyOldUsed {
+		keyName = envEncryptionKeyOld
+	}
+	vault, err := config.NewVault(keyRaw)
 	if err != nil {
-		return nil, fmt.Errorf("zapgw: ZAPGW_CHAVE_CIFRA: %w", err)
+		return nil, fmt.Errorf("zapgw: %s: %w", keyName, err)
 	}
-	path := env("ZAPGW_BANCO")
-	if path == "" {
-		path = "zapgw.db"
-	}
+	config.WarnOldEnvVar(keyOldUsed, envEncryptionKeyOld, envEncryptionKeyNew)
+
+	path, pathOldUsed := databasePath(env)
+	config.WarnOldEnvVar(pathOldUsed, envDatabaseOld, envDatabaseNew)
+
 	store, err := config.OpenStore(path, vault)
 	if err != nil {
 		return nil, fmt.Errorf("zapgw: abrir banco: %w", err)
@@ -286,11 +295,12 @@ func main() {
 
 	// WHICH PATH INBOUND IS PUBLISHED THROUGH (T-120), resolved BEFORE
 	// opening the database and BEFORE listening on any port: an unknown
-	// value in ZAPGW_ENTRADA_VIA brings the startup down, and the cheap
-	// place to discover that is in front of whoever just edited
-	// /etc/zapgw/env — not three weeks later, in a contract field no one
-	// checked. Empty is NOT an error: it publishes `desconhecido` (see
-	// outbound.IngressVia for the two answers and why they differ).
+	// value in ZAPGW_INGRESS_VIA (old name ZAPGW_ENTRADA_VIA — T-214)
+	// brings the startup down, and the cheap place to discover that is in
+	// front of whoever just edited /etc/zapgw/env — not three weeks later,
+	// in a contract field no one checked. Empty is NOT an error: it
+	// publishes `desconhecido` (see outbound.IngressVia for the two answers
+	// and why they differ).
 	via, err := outbound.IngressVia(os.Getenv)
 	if err != nil {
 		log.Fatalf("%v", err)
@@ -315,9 +325,14 @@ func main() {
 	// forgot the variable on the pair" is the defect that sends a
 	// duplicate message — and both are invisible if no one prints them.
 	if leadership.Armed() {
-		log.Printf("zapgw: guarda de lideranca ARMADA (%s)", os.Getenv(outbound.VarLeadershipFile))
+		// T-214: whichever spelling armed the guard (old or new) is what
+		// this line prints — resolved the SAME way NewLeadership resolved
+		// it, so the two can never disagree about which file is in effect.
+		fileValue, _ := config.EnvOrOld(os.Getenv, outbound.VarLeadershipFileNew, outbound.VarLeadershipFile)
+		log.Printf("zapgw: guarda de lideranca ARMADA (%s)", fileValue)
 	} else {
-		log.Printf("zapgw: guarda de lideranca DESARMADA — no unico; defina %s para armar", outbound.VarLeadershipFile)
+		log.Printf("zapgw: guarda de lideranca DESARMADA — no unico; defina %s (ou %s) para armar",
+			outbound.VarLeadershipFileNew, outbound.VarLeadershipFile)
 	}
 
 	store, err := openStore(os.Getenv)
@@ -330,9 +345,10 @@ func main() {
 	// (consumer, key) -> id") from turning into history. Short on
 	// purpose: a DELIVERY record, not a message record.
 	ttl := 72 * time.Hour
-	if v := os.Getenv("ZAPGW_TTL_IDEMPOTENCIA_HORAS"); v != "" {
+	if v, oldUsed := config.EnvOrOld(os.Getenv, envIdempotencyTTLHoursNew, envIdempotencyTTLHoursOld); v != "" {
 		if n, err := strconv.Atoi(v); err == nil && n > 0 {
 			ttl = time.Duration(n) * time.Hour
+			config.WarnOldEnvVar(oldUsed, envIdempotencyTTLHoursOld, envIdempotencyTTLHoursNew)
 		}
 	}
 	startPeriodicPurge("idempotencia", time.Hour, func() (int, error) {
@@ -374,13 +390,15 @@ func main() {
 	transit := config.NewTransit(store)
 
 	maxBytes := 1 << 20
-	if v := os.Getenv("ZAPGW_MAX_CORPO_BYTES"); v != "" {
+	if v, oldUsed := config.EnvOrOld(os.Getenv, envMaxBodyBytesNew, envMaxBodyBytesOld); v != "" {
 		if n, err := strconv.Atoi(v); err == nil && n > 0 {
 			maxBytes = n
+			config.WarnOldEnvVar(oldUsed, envMaxBodyBytesOld, envMaxBodyBytesNew)
 		}
 	}
 
-	address := os.Getenv("ZAPGW_ENDERECO")
+	address, addressOldUsed := config.EnvOrOld(os.Getenv, envAddressNew, envAddressOld)
+	config.WarnOldEnvVar(addressOldUsed, envAddressOld, envAddressNew)
 	if address == "" {
 		address = "127.0.0.1:8080"
 	}
@@ -486,9 +504,9 @@ func main() {
 	// template — its own timer, measurement in memory, consumer read
 	// served from what has already been measured. It asks the `/ready`
 	// of the `cloudflared` that publishes this route. Without
-	// ZAPGW_CONECTOR_READY it is born inert and the block comes out
-	// `nao_configurado`, which is the honest answer for an installation
-	// with no tunnel.
+	// ZAPGW_CONNECTOR_READY (or its old name, ZAPGW_CONECTOR_READY —
+	// T-214) it is born inert and the block comes out `nao_configurado`,
+	// which is the honest answer for an installation with no tunnel.
 	//
 	// ⚠️ IT DOES NOT MEASURE, AND CANNOT START MEASURING, WHETHER THE
 	// GATEWAY IS REACHABLE FROM OUTSIDE — only the public probe answers
@@ -497,12 +515,13 @@ func main() {
 	connector.Start()
 
 	// The external probe (T-121) is the FOURTH sensor with this same
-	// template: it asks the ZAPGW_SONDA_EXTERNA_URL URL (the public
-	// verdict of the probe that measures inbound access FROM OUTSIDE the
-	// network — sonda-worker/), on its own cadence, and publishes what it
-	// has already measured in `alcance_externo`. Without the variable it
-	// is born inert and the block comes out `nao_configurado` — the same
-	// honest answer `conector` gives for an installation with no tunnel.
+	// template: it asks the ZAPGW_EXTERNAL_PROBE_URL URL (old name
+	// ZAPGW_SONDA_EXTERNA_URL — T-214; the public verdict of the probe that
+	// measures inbound access FROM OUTSIDE the network — sonda-worker/), on
+	// its own cadence, and publishes what it has already measured in
+	// `alcance_externo`. Without the variable it is born inert and the
+	// block comes out `nao_configurado` — the same honest answer `conector`
+	// gives for an installation with no tunnel.
 	externalProbe := outbound.NewExternalProbe(outbound.ExternalProbeURL(os.Getenv))
 	externalProbe.Start()
 

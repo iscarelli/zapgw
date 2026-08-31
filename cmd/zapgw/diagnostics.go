@@ -160,13 +160,15 @@ func diagnose(args []string, out io.Writer, env environment) error {
 	client := meta.NewClient(&http.Client{}, graphBase(env))
 	base := instagramRenewalBase(env)
 
-	// ZAPGW_DIAGNOSTICO_SONDAR_FOLDER (any non-empty value) turns on the
-	// probe from item 1 of T-113 — the "exercisable without recompiling"
-	// mechanism the task asked for, so the operator on the CT can run it
-	// without needing a new binary. Off by default: it is ONE extra
-	// request that only matters while MeasuredFolderResult is still
-	// FolderUnknown.
-	probeFlag := strings.TrimSpace(env("ZAPGW_DIAGNOSTICO_SONDAR_FOLDER")) != ""
+	// ZAPGW_DIAGNOSTIC_PROBE_FOLDER (old name ZAPGW_DIAGNOSTICO_SONDAR_FOLDER
+	// — T-214; any non-empty value) turns on the probe from item 1 of T-113
+	// — the "exercisable without recompiling" mechanism the task asked for,
+	// so the operator on the CT can run it without needing a new binary.
+	// Off by default: it is ONE extra request that only matters while
+	// MeasuredFolderResult is still FolderUnknown.
+	probeRaw, probeOldUsed := config.EnvOrOld(env, envDiagnosticProbeFolderNew, envDiagnosticProbeFolderOld)
+	probeFlag := strings.TrimSpace(probeRaw) != ""
+	config.WarnOldEnvVar(probeOldUsed && probeFlag, envDiagnosticProbeFolderOld, envDiagnosticProbeFolderNew)
 
 	return diagnoseInstagram(context.Background(), client, base, inst, out, probeFlag)
 }
@@ -257,7 +259,7 @@ func diagnoseInstagram(ctx context.Context, client *meta.Client, base string, in
 				fmt.Fprintln(out, verdictWarning+" todas as pastas que responderam trouxeram o MESMO numero — o filtro")
 				fmt.Fprintln(out, "      `folder` pode nao estar sendo aplicado por este endpoint. NAO conclua daqui")
 				fmt.Fprintln(out, "      em que gaveta a DM esta (medicao em producao ainda pendente — ver T-113;")
-				fmt.Fprintln(out, "      rode com ZAPGW_DIAGNOSTICO_SONDAR_FOLDER=1 para medir).")
+				fmt.Fprintln(out, "      rode com ZAPGW_DIAGNOSTIC_PROBE_FOLDER=1 para medir).")
 			}
 		}
 		if permission.TotalConversations == 0 {
@@ -293,12 +295,13 @@ func diagnoseInstagram(ctx context.Context, client *meta.Client, base string, in
 		"painel da Meta (App > Instagram > Funcoes > Testadores do Instagram).\n", verdictNotVerifiable)
 
 	// 5) the probe from item 1 of T-113 — ONLY runs when requested
-	// (ZAPGW_DIAGNOSTICO_SONDAR_FOLDER, read in `diagnose` and passed
-	// here as `probeInvalidFolder`). It is the MEASUREMENT that closes
-	// the question: a folder Meta never documented proves, by itself,
-	// which of the two hypotheses holds (meta.FolderFilterResult).
+	// (ZAPGW_DIAGNOSTIC_PROBE_FOLDER, old name ZAPGW_DIAGNOSTICO_SONDAR_FOLDER
+	// — T-214; read in `diagnose` and passed here as `probeInvalidFolder`).
+	// It is the MEASUREMENT that closes the question: a folder Meta never
+	// documented proves, by itself, which of the two hypotheses holds
+	// (meta.FolderFilterResult).
 	if probeInvalidFolder {
-		fmt.Fprintln(out, "\n5) sonda do parametro `folder` — medicao pedida (T-113, ZAPGW_DIAGNOSTICO_SONDAR_FOLDER)")
+		fmt.Fprintln(out, "\n5) sonda do parametro `folder` — medicao pedida (T-113, ZAPGW_DIAGNOSTIC_PROBE_FOLDER)")
 		probe, err := client.ProbeInvalidInstagramFolder(ctx, base, inst.SendToken)
 		if err != nil {
 			fmt.Fprintf(out, "%s a Meta RECUSOU um folder invalido — %v\n", verdictOK, err)

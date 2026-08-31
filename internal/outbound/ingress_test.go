@@ -8,8 +8,10 @@
 package outbound
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -491,5 +493,114 @@ func TestTheIngressBlockAppearsOnTheCLIScreen(t *testing.T) {
 	}
 	if v := rowValue(t, rows, "ready_connections"); v != "4" {
 		t.Errorf("linha `ready_connections` = %q, quero \"4\"", v)
+	}
+}
+
+// --- T-214: VarIngressViaNew/VarConnectorReadyNew, the English pair --------
+
+// TestIngressViaAcceptsTheNewNameAndItWins is T-214's Verify for
+// ZAPGW_INGRESS_VIA/ZAPGW_ENTRADA_VIA: both work alone, and the NEW one
+// wins when both are set.
+func TestIngressViaAcceptsTheNewNameAndItWins(t *testing.T) {
+	cases := []struct {
+		name string
+		vars map[string]string
+		want string
+	}{
+		{"so a nova", map[string]string{VarIngressViaNew: ViaTunnel}, ViaTunnel},
+		{"so a velha", map[string]string{VarIngressVia: ViaPortForwarding}, ViaPortForwarding},
+		{"as duas: a NOVA vence", map[string]string{
+			VarIngressViaNew: ViaTunnel, VarIngressVia: ViaPortForwarding,
+		}, ViaTunnel},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			via, err := IngressVia(func(k string) string { return c.vars[k] })
+			if err != nil {
+				t.Fatalf("IngressVia: %v", err)
+			}
+			if via != c.want {
+				t.Errorf("via = %q, quero %q", via, c.want)
+			}
+		})
+	}
+}
+
+// TestIngressViaWarnsOnlyWhenOldNameWins is T-214 Do item 3.
+func TestIngressViaWarnsOnlyWhenOldNameWins(t *testing.T) {
+	cases := []struct {
+		name     string
+		vars     map[string]string
+		wantWarn bool
+	}{
+		{"so a velha: avisa", map[string]string{VarIngressVia: ViaTunnel}, true},
+		{"so a nova: fica calado", map[string]string{VarIngressViaNew: ViaTunnel}, false},
+		{"nenhuma: fica calado", map[string]string{}, false},
+	}
+	original := log.Writer()
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			var buf bytes.Buffer
+			log.SetOutput(&buf)
+			if _, err := IngressVia(func(k string) string { return c.vars[k] }); err != nil {
+				log.SetOutput(original)
+				t.Fatalf("IngressVia: %v", err)
+			}
+			log.SetOutput(original)
+			warned := strings.Contains(buf.String(), VarIngressVia) && strings.Contains(buf.String(), "obsoleta")
+			if warned != c.wantWarn {
+				t.Errorf("aviso = %v (log: %q), quero %v", warned, buf.String(), c.wantWarn)
+			}
+		})
+	}
+}
+
+// TestConnectorAddressAcceptsTheNewNameAndItWins mirrors
+// TestIngressViaAcceptsTheNewNameAndItWins for
+// ZAPGW_CONNECTOR_READY/ZAPGW_CONECTOR_READY.
+func TestConnectorAddressAcceptsTheNewNameAndItWins(t *testing.T) {
+	cases := []struct {
+		name string
+		vars map[string]string
+		want string
+	}{
+		{"so a nova", map[string]string{VarConnectorReadyNew: "http://novo/ready"}, "http://novo/ready"},
+		{"so a velha", map[string]string{VarConnectorReady: "http://velho/ready"}, "http://velho/ready"},
+		{"as duas: a NOVA vence", map[string]string{
+			VarConnectorReadyNew: "http://novo/ready", VarConnectorReady: "http://velho/ready",
+		}, "http://novo/ready"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			if has := ConnectorAddress(func(k string) string { return c.vars[k] }); has != c.want {
+				t.Errorf("ConnectorAddress = %q, quero %q", has, c.want)
+			}
+		})
+	}
+}
+
+// TestConnectorAddressWarnsOnlyWhenOldNameWins is T-214 Do item 3.
+func TestConnectorAddressWarnsOnlyWhenOldNameWins(t *testing.T) {
+	cases := []struct {
+		name     string
+		vars     map[string]string
+		wantWarn bool
+	}{
+		{"so a velha: avisa", map[string]string{VarConnectorReady: "http://velho/ready"}, true},
+		{"so a nova: fica calado", map[string]string{VarConnectorReadyNew: "http://novo/ready"}, false},
+		{"nenhuma: fica calado", map[string]string{}, false},
+	}
+	original := log.Writer()
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			var buf bytes.Buffer
+			log.SetOutput(&buf)
+			ConnectorAddress(func(k string) string { return c.vars[k] })
+			log.SetOutput(original)
+			warned := strings.Contains(buf.String(), VarConnectorReady) && strings.Contains(buf.String(), "obsoleta")
+			if warned != c.wantWarn {
+				t.Errorf("aviso = %v (log: %q), quero %v", warned, buf.String(), c.wantWarn)
+			}
+		})
 	}
 }

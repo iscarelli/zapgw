@@ -39,6 +39,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/iscarelli/zapgw/internal/config"
 )
 
 const (
@@ -60,7 +62,15 @@ const (
 	// state ALSO ships in GET /v1/estado and in `zapgw estado`, which is what
 	// the panel and whoever operates it read (T-135, `lideranca` block — see
 	// LeadershipInState below).
+	//
+	// This is the OLD (Portuguese) name. T-214 (2026-08-31) added
+	// VarLeadershipFileNew as the English pair — this constant stays,
+	// unchanged and still read, because it is the ONLY name an
+	// already-deployed /etc/zapgw/env has; see NewLeadership.
 	VarLeadershipFile = "ZAPGW_LIDERANCA_ARQUIVO"
+	// VarLeadershipFileNew is the English name of VarLeadershipFile (T-214).
+	// The NEW name wins when both are set — see config.EnvOrOld.
+	VarLeadershipFileNew = "ZAPGW_LEADERSHIP_FILE"
 
 	// VarLeadershipValidity is the maximum age of the lease file.
 	//
@@ -96,7 +106,13 @@ const (
 	// measured at 1.00 s), because `ReserveIdempotency` commits locally
 	// before sending and the successor only sees that after the replica
 	// arrives.
+	//
+	// This is the OLD (Portuguese) name; VarLeadershipValidityNew (T-214) is
+	// the English pair — see NewLeadership.
 	VarLeadershipValidity = "ZAPGW_LIDERANCA_VALIDADE"
+	// VarLeadershipValidityNew is the English name of VarLeadershipValidity
+	// (T-214).
+	VarLeadershipValidityNew = "ZAPGW_LEADERSHIP_VALIDITY"
 
 	// refusalLogInterval keeps a lost leadership from turning into a
 	// flood in the journal: under refusal EVERY request refuses, and the
@@ -129,12 +145,29 @@ type Leadership struct {
 // same criterion as IngressVia: a value nobody can interpret has to bring down
 // the startup in front of whoever just edited the `env`, not turn into a
 // silent default that only shows up on failover day.
+// T-214: accepts VarLeadershipFileNew/VarLeadershipValidityNew in addition to
+// the old names (new wins if both are set, independently for each of the
+// two), and logs once per variable (config.WarnOldEnvVar) when the value
+// that armed the guard came from an OLD name.
 func NewLeadership(getenv func(string) string) (*Leadership, error) {
 	if getenv == nil {
 		return &Leadership{}, nil
 	}
-	file := strings.TrimSpace(getenv(VarLeadershipFile))
-	raw := strings.TrimSpace(getenv(VarLeadershipValidity))
+	fileRaw, fileOld := config.EnvOrOld(getenv, VarLeadershipFileNew, VarLeadershipFile)
+	file := strings.TrimSpace(fileRaw)
+	validityRaw, validityOld := config.EnvOrOld(getenv, VarLeadershipValidityNew, VarLeadershipValidity)
+	raw := strings.TrimSpace(validityRaw)
+
+	// The variable NAME to cite in an error — whichever spelling actually
+	// carried the value, old or new — so the message points at the exact
+	// line the operator needs to fix.
+	fileName, validityName := VarLeadershipFileNew, VarLeadershipValidityNew
+	if fileOld {
+		fileName = VarLeadershipFile
+	}
+	if validityOld {
+		validityName = VarLeadershipValidity
+	}
 
 	// Disarmed: the validity is not used, so it's neither required nor
 	// validated. A single-node install cannot be forced to configure a pair.
@@ -151,17 +184,19 @@ func NewLeadership(getenv func(string) string) (*Leadership, error) {
 				"    A = tempo ate uma acao ficar VISIVEL ao sucessor (aqui, o atraso da replicacao)\n"+
 				"    T = TTL da concessao no etcd\n"+
 				"  Violar a segunda faz os dois nos se acharem titulares AO MESMO TEMPO — mensagem duplicada.",
-			VarLeadershipFile, VarLeadershipValidity)
+			fileName, validityName)
 	}
 	d, err := time.ParseDuration(raw)
 	if err != nil {
 		return nil, fmt.Errorf("zapgw: %s = %q nao e uma duracao valida (ex.: %q)",
-			VarLeadershipValidity, raw, "8s")
+			validityName, raw, "8s")
 	}
 	if d <= 0 {
 		return nil, fmt.Errorf("zapgw: %s = %q tem de ser positivo — duracao zero ou negativa recusaria TODO envio",
-			VarLeadershipValidity, raw)
+			validityName, raw)
 	}
+	config.WarnOldEnvVar(fileOld, VarLeadershipFile, VarLeadershipFileNew)
+	config.WarnOldEnvVar(validityOld, VarLeadershipValidity, VarLeadershipValidityNew)
 	return &Leadership{file: file, validity: d}, nil
 }
 

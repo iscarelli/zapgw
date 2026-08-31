@@ -1,8 +1,11 @@
 package config
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
+	"log"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -595,5 +598,59 @@ func TestClearTransitByPhoneUnderConcurrencyTheCountMatchesWhatActuallyDisappear
 		}); err != nil {
 			t.Fatalf("rodada %d: limpeza de saneamento: %v", round, err)
 		}
+	}
+}
+
+// TestTransitRetentionDaysAcceptsNewNameAndItWins is T-214's Verify for
+// ZAPGW_TTL_TRANSIT_DAYS/ZAPGW_TTL_TRANSITO_DIAS: both names work alone, and
+// the NEW one wins when both are set — same idiom as
+// TestCounterRetentionDaysAcceptsNewNameAndItWins (counter_test.go).
+func TestTransitRetentionDaysAcceptsNewNameAndItWins(t *testing.T) {
+	cases := []struct {
+		name string
+		vars map[string]string
+		want int
+	}{
+		{"default sem nenhuma", map[string]string{}, DefaultTransitRetentionDays},
+		{"so a nova", map[string]string{TransitRetentionEnvVarNew: "9"}, 9},
+		{"so a velha", map[string]string{TransitRetentionEnvVar: "14"}, 14},
+		{"as duas: a NOVA vence", map[string]string{
+			TransitRetentionEnvVarNew: "9", TransitRetentionEnvVar: "14",
+		}, 9},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			if has := TransitRetentionDays(func(k string) string { return c.vars[k] }); has != c.want {
+				t.Errorf("TransitRetentionDays = %d, quero %d", has, c.want)
+			}
+		})
+	}
+}
+
+// TestTransitRetentionDaysWarnsOnlyWhenOldNameWins mirrors
+// TestCounterRetentionDaysWarnsOnlyWhenOldNameWins for the transit pair.
+func TestTransitRetentionDaysWarnsOnlyWhenOldNameWins(t *testing.T) {
+	cases := []struct {
+		name     string
+		vars     map[string]string
+		wantWarn bool
+	}{
+		{"so a velha: avisa", map[string]string{TransitRetentionEnvVar: "10"}, true},
+		{"so a nova: fica calado", map[string]string{TransitRetentionEnvVarNew: "10"}, false},
+		{"nenhuma: fica calado", map[string]string{}, false},
+	}
+	original := log.Writer()
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			var buf bytes.Buffer
+			log.SetOutput(&buf)
+			TransitRetentionDays(func(k string) string { return c.vars[k] })
+			log.SetOutput(original)
+			warned := strings.Contains(buf.String(), TransitRetentionEnvVar) &&
+				strings.Contains(buf.String(), "obsoleta")
+			if warned != c.wantWarn {
+				t.Errorf("aviso = %v (log: %q), quero %v", warned, buf.String(), c.wantWarn)
+			}
+		})
 	}
 }

@@ -10,8 +10,10 @@
 package outbound
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -224,6 +226,105 @@ func TestNewLeadershipReadsFileAndValidity(t *testing.T) {
 	}
 	if l.validity != 7*time.Second {
 		t.Errorf("validade = %v, queria 7s", l.validity)
+	}
+}
+
+// TestNewLeadershipAcceptsTheNewNamesAndTheyWin is T-214's Verify for
+// ZAPGW_LEADERSHIP_FILE/ZAPGW_LIDERANCA_ARQUIVO and
+// ZAPGW_LEADERSHIP_VALIDITY/ZAPGW_LIDERANCA_VALIDADE — each pair resolved
+// INDEPENDENTLY (one can come from the old name while the other comes from
+// the new one).
+func TestNewLeadershipAcceptsTheNewNamesAndTheyWin(t *testing.T) {
+	cases := []struct {
+		name         string
+		vars         map[string]string
+		wantFile     string
+		wantValidity time.Duration
+	}{
+		{
+			"as duas novas",
+			map[string]string{VarLeadershipFileNew: "/run/novo/lider", VarLeadershipValidityNew: "9s"},
+			"/run/novo/lider", 9 * time.Second,
+		},
+		{
+			"as duas velhas",
+			map[string]string{VarLeadershipFile: "/run/velho/lider", VarLeadershipValidity: "9s"},
+			"/run/velho/lider", 9 * time.Second,
+		},
+		{
+			"arquivo novo, validade velha: as duas vencem por conta propria",
+			map[string]string{VarLeadershipFileNew: "/run/novo/lider", VarLeadershipValidity: "9s"},
+			"/run/novo/lider", 9 * time.Second,
+		},
+		{
+			"as duas presentes em cada par: a NOVA vence nos dois",
+			map[string]string{
+				VarLeadershipFileNew: "/run/novo/lider", VarLeadershipFile: "/run/velho/lider",
+				VarLeadershipValidityNew: "9s", VarLeadershipValidity: "99s",
+			},
+			"/run/novo/lider", 9 * time.Second,
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			l, err := NewLeadership(func(k string) string { return c.vars[k] })
+			if err != nil {
+				t.Fatalf("NewLeadership: %v", err)
+			}
+			if l.file != c.wantFile {
+				t.Errorf("arquivo = %q, quero %q", l.file, c.wantFile)
+			}
+			if l.validity != c.wantValidity {
+				t.Errorf("validade = %v, quero %v", l.validity, c.wantValidity)
+			}
+		})
+	}
+}
+
+// TestNewLeadershipWarnsOnlyWhenOldNamesWin is T-214 Do item 3, checked
+// independently for each of the two variables.
+func TestNewLeadershipWarnsOnlyWhenOldNamesWin(t *testing.T) {
+	cases := []struct {
+		name                           string
+		vars                           map[string]string
+		wantFileWarn, wantValidityWarn bool
+	}{
+		{
+			"as duas novas: caladas",
+			map[string]string{VarLeadershipFileNew: "/run/lider", VarLeadershipValidityNew: "9s"},
+			false, false,
+		},
+		{
+			"as duas velhas: avisam as duas",
+			map[string]string{VarLeadershipFile: "/run/lider", VarLeadershipValidity: "9s"},
+			true, true,
+		},
+		{
+			"so o arquivo e velho",
+			map[string]string{VarLeadershipFile: "/run/lider", VarLeadershipValidityNew: "9s"},
+			true, false,
+		},
+	}
+	original := log.Writer()
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			var buf bytes.Buffer
+			log.SetOutput(&buf)
+			if _, err := NewLeadership(func(k string) string { return c.vars[k] }); err != nil {
+				log.SetOutput(original)
+				t.Fatalf("NewLeadership: %v", err)
+			}
+			log.SetOutput(original)
+			text := buf.String()
+			fileWarned := strings.Contains(text, VarLeadershipFile) && strings.Contains(text, "obsoleta")
+			validityWarned := strings.Contains(text, VarLeadershipValidity) && strings.Contains(text, "obsoleta")
+			if fileWarned != c.wantFileWarn {
+				t.Errorf("aviso do arquivo = %v (log: %q), quero %v", fileWarned, text, c.wantFileWarn)
+			}
+			if validityWarned != c.wantValidityWarn {
+				t.Errorf("aviso da validade = %v (log: %q), quero %v", validityWarned, text, c.wantValidityWarn)
+			}
+		})
 	}
 }
 

@@ -49,8 +49,9 @@
 // no TTY, the behavior is the usual one: start the server.
 //
 // SECRETS ARE NOT ASKED HERE. The instance's four secrets still come from
-// the environment (ZAPGW_APP_SECRET, ZAPGW_VERIFY_TOKEN, ZAPGW_TOKEN_ENVIO,
-// ZAPGW_SEGREDO_ENTREGA), as provision.go requires — asking on screen
+// the environment (ZAPGW_APP_SECRET, ZAPGW_VERIFY_TOKEN, ZAPGW_SEND_TOKEN
+// [old name ZAPGW_TOKEN_ENVIO — T-214], ZAPGW_DELIVERY_SECRET [old name
+// ZAPGW_SEGREDO_ENTREGA]), as provision.go requires — asking on screen
 // would put the value in the scrollback and in the transcript, which is
 // exactly how four secrets leaked on 2026-07-28 (docs/ARMADILHAS.md). The
 // menu also stores nothing to disk: there is no history, no session file,
@@ -120,7 +121,7 @@ type menuGroup struct {
 // secret from the environment. One variable, not the text written twice:
 // two copies diverge the first time someone improves one of them.
 const secretsWarning = "segredo NAO se digita aqui: ele vem do ambiente (ZAPGW_APP_SECRET, " +
-	"ZAPGW_VERIFY_TOKEN, ZAPGW_TOKEN_ENVIO, ZAPGW_SEGREDO_ENTREGA)."
+	"ZAPGW_VERIFY_TOKEN, " + envSendTokenNew + ", " + envDeliverySecretNew + ")."
 
 // zapgwMenu is the entire screen, as DATA.
 //

@@ -121,28 +121,6 @@ fizeram no `processado_em` hoje de manha.
 ## Active
 
 > A fila do periodo privado esta em `iscarelli/zapgw-dev`, congelada. Tarefa nova nasce aqui.
-## [ ] T-214  CAMADA 4: `ZAPGW_*` and the CLI accept both names, and count the old one
-After:  T-213
-Why:    **24 variaveis `ZAPGW_*`** e os verbos de CLI (`consumidor`, `estado`, `fumaca`, `instancia`).
-🔴      **O risco nao e' o rename — e' que ele NAO ALCANCA o `/etc/zapgw/env`.** O gateway sobe com o
-        default, **em silencio**: nao quebra, nao avisa, e ninguem descobre ate alguma coisa que
-        dependia da variavel nao acontecer. O `CLAUDE.md` ja marca isto como fora de escopo da T-189
-        por esse motivo.
-        **O "consumidor" desta camada e' o OPERADOR**, e o `/etc/zapgw/env` e' o escritor que precisa
-        migrar. Entao vale o mesmo jogo de quatro passos que funcionou com o contrato.
-Files:  cmd/zapgw/, internal/config/
 
-Do:
-  1. **Aceitar os dois nomes** — variavel e verbo —, com o novo tendo precedencia se ambos vierem.
-  2. **Contar o uso do nome velho**, visivel de fora (no `/v1/estado` ou no log de arranque), porque
-     e' esse numero que autoriza remover depois.
-  3. 🔴 **Se o nome velho for usado, DIGA no arranque** — uma linha por variavel, uma vez. O operador
-     precisa ver, e o arranque e' o unico lugar onde ele olha.
-  4. 🔴 **NAO remova nenhum nome velho nesta tarefa.** A remocao e' outra conversa e e' do dono.
-
-Verify:
-  - Para cada variavel e cada verbo: nome velho funciona **e conta**; nome novo funciona e nao conta.
-  - **Ambos presentes: o novo vence, e isso tem teste.**
-  - **Arranque com nome velho imprime o aviso**; sem nome velho, nao imprime nada.
-  - Verify de sempre limpo.
+(vazia)
 

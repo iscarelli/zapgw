@@ -57,6 +57,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/iscarelli/zapgw/internal/config"
 )
 
 // VarExternalProbeURL is the ONLY environment variable of this slice — read
@@ -69,7 +71,16 @@ import (
 // yet have the public probe running (or whose owner hasn't passed the URL
 // yet) boots normally and publishes `nao_configurado` — the SAME pattern as
 // `conector` in T-120.
+//
+// This is the OLD (Portuguese) name. T-214 (2026-08-31) added
+// VarExternalProbeURLNew as the English pair — this constant stays,
+// unchanged and still read, because it is the ONLY name an already-deployed
+// /etc/zapgw/env has; see ExternalProbeURL.
 const VarExternalProbeURL = "ZAPGW_SONDA_EXTERNA_URL"
+
+// VarExternalProbeURLNew is the English name of VarExternalProbeURL
+// (T-214). The NEW name wins when both are set — see config.EnvOrOld.
+const VarExternalProbeURLNew = "ZAPGW_EXTERNAL_PROBE_URL"
 
 // ExternalProbeURL reads the probe URL from the environment. Empty = not
 // configured, and that is NOT an error — see the comment on
@@ -80,11 +91,18 @@ const VarExternalProbeURL = "ZAPGW_SONDA_EXTERNA_URL"
 // break to complain against — without the trim, it would just make every
 // read fail and the block would publish `nao_consegui_verificar` forever,
 // pointing at a probe that was actually never asked correctly.
+//
+// T-214: accepts VarExternalProbeURLNew in addition to the old name (new
+// wins if both are set), and logs once (config.WarnOldEnvVar) when the value
+// that won came from the OLD name.
 func ExternalProbeURL(getenv func(string) string) string {
 	if getenv == nil {
 		return ""
 	}
-	return strings.TrimSpace(getenv(VarExternalProbeURL))
+	v, oldUsed := config.EnvOrOld(getenv, VarExternalProbeURLNew, VarExternalProbeURL)
+	v = strings.TrimSpace(v)
+	config.WarnOldEnvVar(oldUsed && v != "", VarExternalProbeURL, VarExternalProbeURLNew)
+	return v
 }
 
 // The THREE states of ExternalReachInState.

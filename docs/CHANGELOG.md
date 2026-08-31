@@ -4,6 +4,24 @@ Uma linha por versao entregue, no mesmo commit do bump. A entrada diz o **efeito
 
 ## Nao lancado
 
+- **T-214 — CAMADA 4: `ZAPGW_*` and the CLI accept both names, and count the old one** — aditivo, sem
+  remover nenhum nome velho. **16 variaveis `ZAPGW_*` ganharam par em ingles** (`BANCO`, `CHAVE_CIFRA`,
+  `CONECTOR_READY`, `DIAGNOSTICO_SONDAR_FOLDER`, `ENDERECO`, `ENTRADA_VIA`, `LIDERANCA_ARQUIVO`,
+  `LIDERANCA_VALIDADE`, `MAX_CORPO_BYTES`, `SEGREDO_ENTREGA`, `SONDA_EXTERNA_URL`, `TOKEN_ENVIO`,
+  `TTL_CONTADORES_DIAS`, `TTL_IDEMPOTENCIA_HORAS`, `TTL_TRANSITO_DIAS`, `URL_PUBLICA`) e **4 verbos de
+  CLI** (`fumaca`/`smoke`, `instancia`/`instance`, `consumidor`/`consumer`, `estado`/`state`) — as
+  outras 8 `ZAPGW_*` encontradas ja' eram em ingles ou sao so' de ferramenta local (`ZAPGW_APP_SECRET`,
+  `ZAPGW_VERIFY_TOKEN`, `ZAPGW_PIN`, `ZAPGW_GRAPH_BASE`, `ZAPGW_INSTAGRAM_REFRESH_BASE`,
+  `ZAPGW_FORBIDDEN_NAMES`, `ZAPGW_PREPUSH_NEW_SHA`, `ZAPGW_PREPUSH_OLD_SHA`), fora de escopo. O NOVO
+  nome sempre vence quando os dois vierem (testado par a par, inclusive os dois nomes da guarda de
+  lideranca resolvidos de forma independente). O aviso — "variavel de ambiente X esta obsoleta -- use Y
+  no lugar (T-214)" — sai pelo `log` padrao, uma vez por variavel por processo; **provado com o binario
+  real**: arrancado com os 12 nomes velhos que o servidor le no boot, o stderr cita os 12; arrancado com
+  os pares novos, fica mudo. Nenhum nome velho foi removido. Verify de sempre limpo (`go build`,
+  `go test -count=1 ./...`, `go vet`, `gofmt -l cmd internal`), com testes novos em
+  `internal/config/env_alias_test.go`, `cmd/zapgw/env_aliases_test.go` e nos pacotes `outbound`/`config`
+  que ja' possuiam a variavel. _Completed 2026-08-31 16:20._
+
 - **T-213 — CAMADA 3, primeira metade: measure which Portuguese strings REACH the consumer** —
   medido, nao traduzido, em `docs/INVENTARIO-STRINGS.md`. A busca so' por acento (o metodo que a
   estimativa original de 207 provavelmente usou) achou 164 strings de codigo reais — mas a maior

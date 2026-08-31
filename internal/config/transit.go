@@ -124,21 +124,34 @@ const DefaultTransitRetentionDays = 30
 
 // TransitRetentionEnvVar is the environment variable that changes the
 // deadline above. Documented in docs/IMPLANTACAO.md.
+//
+// This is the OLD (Portuguese) name. T-214 (2026-08-31) added
+// TransitRetentionEnvVarNew as the English pair — this constant stays,
+// unchanged and still read, because it is the ONLY name an already-deployed
+// /etc/zapgw/env has; see TransitRetentionDays.
 const TransitRetentionEnvVar = "ZAPGW_TTL_TRANSITO_DIAS"
+
+// TransitRetentionEnvVarNew is the English name of TransitRetentionEnvVar
+// (T-214). The NEW name wins when both are set — see config.EnvOrOld.
+const TransitRetentionEnvVarNew = "ZAPGW_TTL_TRANSIT_DAYS"
 
 // TransitRetentionDays resolves the transit log's retention deadline,
 // in DAYS, from the environment — the SAME MOLD as
 // CounterRetentionDays (counter.go): read ONCE, in `main`, and the
 // number flows down as a parameter. An invalid value (non-numeric, zero,
 // or negative) falls back to the default, without an error.
+//
+// T-214: accepts TransitRetentionEnvVarNew in addition to the old name (new
+// wins if both are set), and logs once (WarnOldEnvVar) when the value that
+// won came from the OLD name.
 func TransitRetentionDays(getenv func(string) string) int {
 	if getenv == nil {
 		return DefaultTransitRetentionDays
 	}
-	if v := getenv(TransitRetentionEnvVar); v != "" {
-		if n, err := strconv.Atoi(v); err == nil && n > 0 {
-			return n
-		}
+	v, oldUsed := EnvOrOld(getenv, TransitRetentionEnvVarNew, TransitRetentionEnvVar)
+	if n, err := strconv.Atoi(v); err == nil && n > 0 {
+		WarnOldEnvVar(oldUsed, TransitRetentionEnvVar, TransitRetentionEnvVarNew)
+		return n
 	}
 	return DefaultTransitRetentionDays
 }

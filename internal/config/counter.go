@@ -364,7 +364,16 @@ const DefaultRetentionDays = 90
 
 // CounterRetentionEnvVar is the environment variable that changes the
 // deadline above. Documented in docs/IMPLANTACAO.md.
+//
+// This is the OLD (Portuguese) name. T-214 (2026-08-31) added
+// CounterRetentionEnvVarNew as the English pair — this constant stays,
+// unchanged and still read, because it is the ONLY name an already-deployed
+// /etc/zapgw/env has; see CounterRetentionDays.
 const CounterRetentionEnvVar = "ZAPGW_TTL_CONTADORES_DIAS"
+
+// CounterRetentionEnvVarNew is the English name of CounterRetentionEnvVar
+// (T-214). The NEW name wins when both are set — see config.EnvOrOld.
+const CounterRetentionEnvVarNew = "ZAPGW_TTL_COUNTERS_DAYS"
 
 // CounterRetentionDays resolves the counters' retention deadline, in
 // DAYS, from the environment.
@@ -384,14 +393,19 @@ const CounterRetentionEnvVar = "ZAPGW_TTL_CONTADORES_DIAS"
 // DEFAULT, without an error: it's the behavior the purge already had, and
 // changing this here would make an `env` with a wrong digit bring the
 // server down on startup instead of keeping counters for longer than requested.
+//
+// T-214: accepts CounterRetentionEnvVarNew in addition to the old name (new
+// wins if both are set), and logs once (config.WarnOldEnvVar) when the value
+// that won came from the OLD name — never when it fell back to the default,
+// since then no operator wrote either variable at all.
 func CounterRetentionDays(getenv func(string) string) int {
 	if getenv == nil {
 		return DefaultRetentionDays
 	}
-	if v := getenv(CounterRetentionEnvVar); v != "" {
-		if n, err := strconv.Atoi(v); err == nil && n > 0 {
-			return n
-		}
+	v, oldUsed := EnvOrOld(getenv, CounterRetentionEnvVarNew, CounterRetentionEnvVar)
+	if n, err := strconv.Atoi(v); err == nil && n > 0 {
+		WarnOldEnvVar(oldUsed, CounterRetentionEnvVar, CounterRetentionEnvVarNew)
+		return n
 	}
 	return DefaultRetentionDays
 }

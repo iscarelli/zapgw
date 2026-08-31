@@ -10,11 +10,14 @@
 package outbound
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"log"
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -96,6 +99,55 @@ func TestExternalProbeURLTrimsSurroundingSpace(t *testing.T) {
 	}
 	if got := ExternalProbeURL(nil); got != "" {
 		t.Errorf("ExternalProbeURL(nil) = %q, quero vazio", got)
+	}
+}
+
+// TestExternalProbeURLAcceptsTheNewNameAndItWins is T-214's Verify for
+// ZAPGW_EXTERNAL_PROBE_URL/ZAPGW_SONDA_EXTERNA_URL.
+func TestExternalProbeURLAcceptsTheNewNameAndItWins(t *testing.T) {
+	cases := []struct {
+		name string
+		vars map[string]string
+		want string
+	}{
+		{"so a nova", map[string]string{VarExternalProbeURLNew: "https://novo/status"}, "https://novo/status"},
+		{"so a velha", map[string]string{VarExternalProbeURL: "https://velho/status"}, "https://velho/status"},
+		{"as duas: a NOVA vence", map[string]string{
+			VarExternalProbeURLNew: "https://novo/status", VarExternalProbeURL: "https://velho/status",
+		}, "https://novo/status"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			if got := ExternalProbeURL(func(k string) string { return c.vars[k] }); got != c.want {
+				t.Errorf("ExternalProbeURL = %q, quero %q", got, c.want)
+			}
+		})
+	}
+}
+
+// TestExternalProbeURLWarnsOnlyWhenOldNameWins is T-214 Do item 3.
+func TestExternalProbeURLWarnsOnlyWhenOldNameWins(t *testing.T) {
+	cases := []struct {
+		name     string
+		vars     map[string]string
+		wantWarn bool
+	}{
+		{"so a velha: avisa", map[string]string{VarExternalProbeURL: "https://velho/status"}, true},
+		{"so a nova: fica calado", map[string]string{VarExternalProbeURLNew: "https://novo/status"}, false},
+		{"nenhuma: fica calado", map[string]string{}, false},
+	}
+	original := log.Writer()
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			var buf bytes.Buffer
+			log.SetOutput(&buf)
+			ExternalProbeURL(func(k string) string { return c.vars[k] })
+			log.SetOutput(original)
+			warned := strings.Contains(buf.String(), VarExternalProbeURL) && strings.Contains(buf.String(), "obsoleta")
+			if warned != c.wantWarn {
+				t.Errorf("aviso = %v (log: %q), quero %v", warned, buf.String(), c.wantWarn)
+			}
+		})
 	}
 }
 
