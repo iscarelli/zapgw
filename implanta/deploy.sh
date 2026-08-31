@@ -117,7 +117,17 @@ ANTERIOR=/usr/local/bin/zapgw.anterior
 NOVO=/usr/local/bin/zapgw.novo
 UNIT=/etc/systemd/system/zapgw.service
 UNIT_ANTERIOR=/etc/systemd/system/zapgw.service.anterior
-SNAP=pre-update
+
+# T-194: cada deploy cria um snapshot com nome PROPRIO (prefixo + timestamp),
+# em vez de reaproveitar sempre o mesmo nome "pre-update". So assim faz sentido
+# "manter os 3 ultimos" — um nome fixo reescrito a cada deploy nunca teria mais
+# de um para escolher. O prefixo e o padrao abaixo sao usados tambem pela poda
+# (podar_snapshots, mais abaixo): SO um nome que bate no padrao EXATO entra na
+# selecao — um snapshot criado por humano, com outro nome, fica de fora sempre.
+SNAP_PREFIXO=pre-update
+SNAP_PADRAO="^${SNAP_PREFIXO}-[0-9]{14}\$"
+SNAP_MANTER=3
+SNAP="${SNAP_PREFIXO}-$(date -u +%Y%m%d%H%M%S)"
 
 RAIZ=$(cd "$(dirname "$0")/.." && pwd)
 TMP=$(mktemp -d)
@@ -255,6 +265,65 @@ reverter() {
 	ct "systemctl restart zapgw" || erro "o restart da reversao falhou"
 }
 
+# selecionar_poda e PURA: le por stdin uma lista de nomes de snapshot (um por
+# linha, sem mais nada em cada linha) e imprime os que sobram fora do "$SNAP_MANTER
+# mais recentes" — ou seja, os que a poda removeria. Nao toca em rede, nao apaga
+# nada. So considera nomes que batem no SNAP_PADRAO exato; qualquer outro nome
+# (snapshot manual, com outro texto) e ignorado por inteiro, nunca contado nem
+# selecionado. E a funcao que o modo de ensaio do Verify chama diretamente,
+# contra uma lista real de nomes, sem exigir acesso a producao para provar a
+# selecao (T-194).
+selecionar_poda() {
+	local batem total excedente
+	batem=$(grep -E "$SNAP_PADRAO" | sort || true)
+	[ -n "$batem" ] || return 0
+	total=$(printf '%s\n' "$batem" | grep -c .)
+	excedente=$((total - SNAP_MANTER))
+	[ "$excedente" -gt 0 ] || return 0
+	printf '%s\n' "$batem" | sed -n "1,${excedente}p"
+}
+
+# podar_snapshots so roda DEPOIS de o deploy ter dado certo (nunca antes, nunca
+# se reverteu — quem chama decide isso, esta funcao nao verifica). Le a lista
+# REAL de snapshots do CT, entrega so os nomes ao selecionar_poda() e apaga so
+# o que ela selecionar. Se a listagem falhar ou vier vazia/sem nada que bata no
+# padrao, NAO apaga nada — poda as cegas e pior que nao podar.
+podar_snapshots() {
+	passo "podando snapshots $SNAP_PREFIXO antigos (mantendo os $SNAP_MANTER mais recentes)"
+	local bruto nomes selecao removidos=0 restantes
+	if ! bruto=$(remoto "sudo /usr/sbin/pct listsnapshot $VMID" 2>&1); then
+		erro "poda pulada: nao consegui listar os snapshots do CT $VMID"
+		erro "$bruto"
+		return 0
+	fi
+	# Tokeniza por espaco (o "pct listsnapshot" desenha uma arvore com
+	# `->  antes do nome) e testa cada TOKEN INTEIRO contra SNAP_PADRAO — nunca
+	# um grep de substring. Substring pegaria um nome humano que so CONTEM o
+	# padrao, tipo "pre-update-20260830090000-testedomeuadm"; o token inteiro
+	# desse nome nao bate no padrao ancorado (^...$), entao fica de fora.
+	nomes=$(printf '%s\n' "$bruto" | tr -s '[:space:]' '\n' | grep -E "$SNAP_PADRAO" | sort -u || true)
+	if [ -z "$nomes" ]; then
+		echo "poda: nenhum snapshot com o prefixo $SNAP_PREFIXO- (nome deste script) encontrado — nada a fazer"
+		return 0
+	fi
+	selecao=$(printf '%s\n' "$nomes" | selecionar_poda)
+	if [ -z "$selecao" ]; then
+		echo "poda: $(printf '%s\n' "$nomes" | grep -c .) snapshot(s) dentro do limite de $SNAP_MANTER, nada a remover"
+		return 0
+	fi
+	while IFS= read -r nome; do
+		[ -n "$nome" ] || continue
+		if remoto "sudo /usr/sbin/pct delsnapshot $VMID $nome"; then
+			removidos=$((removidos + 1))
+			echo "poda: removido $nome"
+		else
+			erro "poda: falha ao remover $nome (deploy ja concluido, nao aborta por isso)"
+		fi
+	done <<<"$selecao"
+	restantes=$(comm -23 <(printf '%s\n' "$nomes") <(printf '%s\n' "$selecao") | tr '\n' ' ')
+	echo "poda: $removidos removido(s); ficaram: $restantes"
+}
+
 # ---------------------------------------------------------------- checagens
 
 passo "checando acesso a $HOST e ao CT $VMID"
@@ -324,9 +393,8 @@ ct "grep -qF /etc/profile.d/zapgw.sh /root/.bashrc 2>/dev/null || echo . /etc/pr
 # ---------------------------------------------------------------- snapshot
 
 passo "snapshot $SNAP do CT $VMID"
-# Snapshot de mesmo nome ja existe depois do primeiro deploy; o pct recusa sem
-# apagar antes. Falhar aqui e de proposito: sem ponto de retorno, nao troca.
-remoto "sudo /usr/sbin/pct delsnapshot $VMID $SNAP" >/dev/null 2>&1 || true
+# Nome unico por deploy (T-194): nao ha o que apagar antes de criar. Falhar
+# aqui e de proposito: sem ponto de retorno, nao troca.
 remoto "sudo /usr/sbin/pct snapshot $VMID $SNAP"
 
 # ---------------------------------------------------------------- unit
@@ -373,6 +441,9 @@ if corpo=$(esperar_saude); then
 	if [ "$veredito" -ne 1 ]; then
 		passo "DEPLOY CONCLUIDO"
 		ct "systemctl is-active zapgw"
+		# So poda com o deploy JA dado certo — nunca antes, nunca no caminho de
+		# reversao (T-194). Falha na poda nao desfaz um deploy que ja subiu.
+		podar_snapshots
 		exit 0
 	fi
 

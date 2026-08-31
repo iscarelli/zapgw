@@ -77,29 +77,6 @@ Ninguem poda. Vale virar tarefa antes de virar problema de disco.
 
 > A fila do periodo privado esta em `iscarelli/zapgw-dev`, congelada. Tarefa nova nasce aqui.
 
-## [ ] T-194  The deploy prunes its own pre-update snapshots
-Why:    **Decisao do dono, 2026-08-31:** manter os 3 ultimos e podar no proprio `deploy.sh`. Hoje um
-        snapshot `pre-update` se acumula no CT a cada deploy e ninguem poda — vira problema de disco
-        sem avisar ninguem.
-Files:  implanta/deploy.sh
-
-Do:
-  - Depois de o deploy **ter dado certo** (nunca antes, nunca se ele reverteu), remover os snapshots
-    `pre-update` mais antigos, mantendo os **3 mais recentes**.
-  - **Apagar snapshot e irreversivel: case o filtro no PREFIXO exato** dos snapshots que o proprio
-    script cria, e nunca num padrao amplo. Snapshot criado por um humano, com outro nome, **nao pode**
-    entrar na poda.
-  - Se a listagem falhar ou devolver algo inesperado, **nao apague nada** e diga isso na saida — poda
-    as cegas e pior que nao podar.
-  - Registrar na saida do deploy quantos foram removidos e quais ficaram.
-
-Verify:
-  - **Ensaio sem apagar:** rode a parte de poda em modo de listagem contra a lista real de snapshots
-    do CT e confirme que ela **seleciona exatamente os que sobram do 3-mais-recentes** e nenhum
-    outro. Cole a lista de entrada e a selecao.
-  - Confirme que um snapshot com nome fora do prefixo **nao** aparece na selecao.
-  - `bash -n implanta/deploy.sh` sem erro.
-
 ## [ ] T-189  O contrato passa a falar ingles — leitor tolerante do lado deles, apelido so' na ENTRADA
 🔴      **BLOQUEADA por terceiro:** nada aqui comeca antes do passo 1 do consumidor (leitores
         tolerantes). Ver o bloco de retomada no topo deste arquivo.
