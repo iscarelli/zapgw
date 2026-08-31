@@ -391,3 +391,17 @@ query params (`mime_do_payload`->`payload_mime`, `serie_dias`->`series_days`, ma
 ➡️ **A regra que fica, e ela e maior que estas treze linhas:** *contador que so conta o que lhe
 contaram responde uma pergunta mais estreita do que a que se faz a ele.* Antes de um numero autorizar
 qualquer coisa, pergunte o que ele NAO consegue ver.
+
+🔥 **CORRECAO 2026-08-31 — a secao 8.11 mentia.** Ela dizia que a tabela de chaves ja carregava os
+pares dos 18 contadores. Um `grep` direto pelos nomes devolve **zero** neste documento: nenhum dos
+dezoito esta aqui. A frase foi escrita pela mesma sessao que escreveu o resto da secao 8, e nunca foi
+conferida. **Quem pegou foi o implementador da T-209**, que preferiu sinalizar a confiar no doc.
+
+➡️ *Doc falso e pior que doc ausente: o ausente faz voce grepar, o falso faz voce confiar.* Este teria
+feito uma tarefa futura virar dezoito nomes de contador com base em pares que nao existem — e o
+consumidor nomeia **8 dos 18** no alarme dele, entao a quebra seria alarme silencioso, nao erro.
+
+🔴 **A verdade: os dezoito nomes de contador NAO tem par decidido e NAO viraram na T-209.** Continuam
+em portugues na saida, de proposito, ate que um par seja decidido e publicado. Decidi-los e trabalho
+a parte, e precisa do consumidor no circuito — renomear contador que ele alarma nao e cosmetico.
+**O unico com par decidido e o decimo nono**, `nome_antigo_usado` -> `old_name_used`.

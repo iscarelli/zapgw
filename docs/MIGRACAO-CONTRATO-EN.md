@@ -440,9 +440,24 @@ two different ways depending on the block would be a trap of our own making.
 
 ### 8.11 `contadores` — the counter-name vocabulary
 
-The counter names are values inside `contadores`, and the KEY table already carries their pairs.
-**`nome_antigo_usado` is the one that was missing** — it was created by T-203/T-205 and never added
-to any published table, by the exact failure this document exists to prevent. Its pair:
+🔥 **This section said "the KEY table already carries their pairs". THAT WAS FALSE, and it was
+caught by the implementer of T-209 rather than by anyone reading it.** A direct grep for the counter
+names in this document returns **zero** — not one of the eighteen is here. The sentence was written
+on 2026-08-31, by the same session that wrote the rest of section 8, and it was never checked.
+
+➡️ *A false doc is worse than a missing one: the missing one makes you grep, the false one makes you
+trust. This one would have made a future task flip eighteen counter names on the strength of pairs
+that do not exist* — and the consumer names **8 of the 18** in its own alerting, so the breakage
+would have been silent alarms, not errors.
+
+🔴 **The truth, as of 2026-08-31: the eighteen counter names have NO decided pair, and therefore
+they DID NOT flip in T-209.** They are still Portuguese in the output, on purpose, and they stay that
+way until a pair is decided and published here. Deciding them is a separate piece of work, and it
+needs the consumer in the loop, because renaming a counter it alerts on is not a cosmetic change.
+
+**The only counter with a decided pair is the nineteenth** — `nome_antigo_usado`, created by
+T-203/T-205 and never added to any published table, by the exact failure this document exists to
+prevent. Its pair:
 
 | pt | en |
 |---|---|
