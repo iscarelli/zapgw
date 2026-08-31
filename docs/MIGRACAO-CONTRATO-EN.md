@@ -196,35 +196,35 @@ not choose any of them.**
 
 | # | portuguese | english | direction | file:line |
 |---|---|---|---|---|
-| 91 | `alvo` | A DECIDIR | SAIDA-EVENTO + ENTRADA | internal/meta/types.go:68 (event); internal/outbound/mensagem.go:309 (request) |
-| 92 | `bloqueados` | A DECIDIR | SAIDA-RESPOSTA | internal/outbound/bloqueio_handler.go:173 |
-| 93 | `certificado_do_callback` | A DECIDIR | SAIDA-RESPOSTA | internal/outbound/estado.go:174 |
-| 94 | `checagem_falhando_desde` | A DECIDIR | SAIDA-RESPOSTA | internal/outbound/vigia.go:145 |
-| 95 | `classe` | A DECIDIR | SAIDA-RESPOSTA | internal/outbound/handler.go:277; internal/outbound/templates_handler.go:1205 |
-| 96 | `codigo` | A DECIDIR | SAIDA-EVENTO | internal/meta/types.go:142 |
-| 97 | `codigo_meta` | A DECIDIR | SAIDA-RESPOSTA | internal/outbound/bloqueio_handler.go:146; internal/outbound/handler.go:278; internal/outbound/templates_handler.go:1206 |
-| 98 | `componentes` | A DECIDIR | SAIDA-RESPOSTA + ENTRADA | internal/meta/templates.go:99 (response, catalog); internal/outbound/templates_handler.go:365 (entrada, creation) |
-| 99 | `detalhe_meta` | A DECIDIR | SAIDA-RESPOSTA | internal/outbound/bloqueio_handler.go:148; internal/outbound/handler.go:287 |
-| 100 | `detalhes` | A DECIDIR | SAIDA-EVENTO | internal/meta/types.go:159 |
-| 101 | `emoji` | A DECIDIR | SAIDA-EVENTO + ENTRADA | internal/meta/types.go:67 (event); internal/outbound/mensagem.go:313 (request) |
-| 102 | `endereco` | A DECIDIR | SAIDA-EVENTO + ENTRADA | internal/meta/types.go:89 (event); internal/outbound/mensagem.go:331 (request) |
-| 103 | `explicacao_meta` | A DECIDIR | SAIDA-RESPOSTA | internal/outbound/handler.go:297 |
-| 104 | `falhando_desde` | A DECIDIR | SAIDA-RESPOSTA | internal/outbound/entrada.go:201; internal/outbound/estado.go:543 |
-| 105 | `fonte` | A DECIDIR | SAIDA-RESPOSTA | internal/outbound/estado.go:443; internal/outbound/sonda_externa.go:162 |
-| 106 | `gerado_em` | A DECIDIR | SAIDA-RESPOSTA | internal/outbound/estado.go:86 |
-| 107 | `instrucao` | A DECIDIR | SAIDA-RESPOSTA | internal/outbound/estado.go:547 |
-| 108 | `legenda` | A DECIDIR | SAIDA-EVENTO + ENTRADA | internal/meta/types.go:580 (event); internal/outbound/mensagem.go:628 (request) |
-| 109 | `localizacao` | A DECIDIR | SAIDA-EVENTO + ENTRADA | internal/meta/types.go:608 (event); internal/outbound/mensagem.go:640 (request) |
-| 110 | `medido_em` | A DECIDIR | SAIDA-RESPOSTA | internal/outbound/entrada.go:194; internal/outbound/sonda_externa.go:159; internal/outbound/vigia.go:143 |
-| 111 | `processados` | A DECIDIR | SAIDA-RESPOSTA | internal/outbound/bloqueio_handler.go:158 |
-| 112 | `rastro_meta` | A DECIDIR | SAIDA-RESPOSTA | internal/outbound/handler.go:301 |
-| 113 | `reacao` | A DECIDIR | SAIDA-EVENTO + ENTRADA | internal/meta/types.go:541 (event); internal/outbound/mensagem.go:637 (request) |
-| 114 | `subcodigo_meta` | A DECIDIR | SAIDA-RESPOSTA | internal/outbound/handler.go:293 |
-| 115 | `token_instagram` | A DECIDIR | SAIDA-RESPOSTA | internal/outbound/estado.go:192 |
-| 116 | `token_meta` | A DECIDIR | SAIDA-RESPOSTA | internal/outbound/estado.go:169 |
-| 117 | `valor` | A DECIDIR | SAIDA-RESPOSTA | internal/outbound/estado.go:432 |
-| 118 | `veredito` | A DECIDIR | SAIDA-RESPOSTA | internal/outbound/estado.go:513; internal/outbound/saude_handler.go:94; internal/outbound/sonda_externa.go:152; internal/outbound/vigia.go:142 |
-| 119 | `voz` | A DECIDIR | SAIDA-EVENTO | internal/meta/types.go:575 |
+| 91 | `alvo` | `target` | SAIDA-EVENTO + ENTRADA | internal/meta/types.go:68 (event); internal/outbound/mensagem.go:309 (request) |
+| 92 | `bloqueados` | `blocked` | SAIDA-RESPOSTA | internal/outbound/bloqueio_handler.go:173 |
+| 93 | `certificado_do_callback` | `callback_certificate` | SAIDA-RESPOSTA | internal/outbound/estado.go:174 |
+| 94 | `checagem_falhando_desde` | `check_failing_since` | SAIDA-RESPOSTA | internal/outbound/vigia.go:145 |
+| 95 | `classe` | `class` | SAIDA-RESPOSTA | internal/outbound/handler.go:277; internal/outbound/templates_handler.go:1205 |
+| 96 | `codigo` | `code` | SAIDA-EVENTO | internal/meta/types.go:142 |
+| 97 | `codigo_meta` | `meta_code` | SAIDA-RESPOSTA | internal/outbound/bloqueio_handler.go:146; internal/outbound/handler.go:278; internal/outbound/templates_handler.go:1206 |
+| 98 | `componentes` | `components` | SAIDA-RESPOSTA + ENTRADA | internal/meta/templates.go:99 (response, catalog); internal/outbound/templates_handler.go:365 (entrada, creation) |
+| 99 | `detalhe_meta` | `meta_detail` | SAIDA-RESPOSTA | internal/outbound/bloqueio_handler.go:148; internal/outbound/handler.go:287 |
+| 100 | `detalhes` | `details` | SAIDA-EVENTO | internal/meta/types.go:159 |
+| 101 | `emoji` | `emoji` (unchanged) | SAIDA-EVENTO + ENTRADA | internal/meta/types.go:67 (event); internal/outbound/mensagem.go:313 (request) |
+| 102 | `endereco` | `address` | SAIDA-EVENTO + ENTRADA | internal/meta/types.go:89 (event); internal/outbound/mensagem.go:331 (request) |
+| 103 | `explicacao_meta` | `meta_explanation` | SAIDA-RESPOSTA | internal/outbound/handler.go:297 |
+| 104 | `falhando_desde` | `failing_since` | SAIDA-RESPOSTA | internal/outbound/entrada.go:201; internal/outbound/estado.go:543 |
+| 105 | `fonte` | `source` | SAIDA-RESPOSTA | internal/outbound/estado.go:443; internal/outbound/sonda_externa.go:162 |
+| 106 | `gerado_em` | `generated_at` | SAIDA-RESPOSTA | internal/outbound/estado.go:86 |
+| 107 | `instrucao` | `instruction` | SAIDA-RESPOSTA | internal/outbound/estado.go:547 |
+| 108 | `legenda` | `caption` | SAIDA-EVENTO + ENTRADA | internal/meta/types.go:580 (event); internal/outbound/mensagem.go:628 (request) |
+| 109 | `localizacao` | `location` | SAIDA-EVENTO + ENTRADA | internal/meta/types.go:608 (event); internal/outbound/mensagem.go:640 (request) |
+| 110 | `medido_em` | `measured_at` | SAIDA-RESPOSTA | internal/outbound/entrada.go:194; internal/outbound/sonda_externa.go:159; internal/outbound/vigia.go:143 |
+| 111 | `processados` | `processed` | SAIDA-RESPOSTA | internal/outbound/bloqueio_handler.go:158 |
+| 112 | `rastro_meta` | `meta_trace` | SAIDA-RESPOSTA | internal/outbound/handler.go:301 |
+| 113 | `reacao` | `reaction` | SAIDA-EVENTO + ENTRADA | internal/meta/types.go:541 (event); internal/outbound/mensagem.go:637 (request) |
+| 114 | `subcodigo_meta` | `meta_subcode` | SAIDA-RESPOSTA | internal/outbound/handler.go:293 |
+| 115 | `token_instagram` | `instagram_token` | SAIDA-RESPOSTA | internal/outbound/estado.go:192 |
+| 116 | `token_meta` | `meta_token` | SAIDA-RESPOSTA | internal/outbound/estado.go:169 |
+| 117 | `valor` | `value` | SAIDA-RESPOSTA | internal/outbound/estado.go:432 |
+| 118 | `veredito` | `verdict` | SAIDA-RESPOSTA | internal/outbound/estado.go:513; internal/outbound/saude_handler.go:94; internal/outbound/sonda_externa.go:152; internal/outbound/vigia.go:142 |
+| 119 | `voz` | `voice` | SAIDA-EVENTO | internal/meta/types.go:575 |
 
 ## 8. What does NOT change — output keys already in English
 
@@ -292,3 +292,31 @@ instead:
 - `de` — only `de_cru` and `de_canonico` exist; there is no bare `de` field.
 - `instancias` — only exists as a CLI flag (`--instancias`, `cmd/zapgw/provisionar.go:1476`), never
   as an HTTP/JSON field.
+
+## 7. The 29 names, decided on 2026-08-31 — and the collision check that came with them
+
+Table B's English column was `A DECIDIR` until 2026-08-31. The planner filled it in on that date,
+following the conventions **already present in table A**, not invented here:
+
+- `conferido_em` -> `checked_at`, so `gerado_em` -> `generated_at` and `medido_em` -> `measured_at`.
+- `carimbos_desde` -> `stamps_since`, so `falhando_desde` -> `failing_since`.
+- `alerta_de_conta` -> `account_alert` (modifier first), so `token_meta` -> `meta_token`,
+  `codigo_meta` -> `meta_code`, `certificado_do_callback` -> `callback_certificate`.
+- `emoji` is the same word in both languages and **does not change** — like `payload`, `template`,
+  `templates`, `total` and `via` already noted by the consumer.
+
+🔴 **The collision check, because this is the failure mode the consumer named.** Their rule —
+*only rename if the destination name does not already exist in that dictionary* — exists because our
+English for `texto` is `text`, and `text` is also Meta's own key inside a message object. Several of
+these 29 have English forms that Meta also uses: `components`, `location`, `caption`, `reaction`,
+`voice`, `address`, `code`.
+
+**Measured on 2026-08-31**, by reading the sibling `json` tags of every struct where these keys are
+emitted (`internal/meta/types.go:67,89,141,158,540,574,579,607`, `internal/meta/templates.go:99`):
+**every sibling in those objects is one of ours**, all still Portuguese. **No Meta key shares an
+object with any of these 29** — the Meta vocabulary that passes through untouched lives in `cru` and
+in the pass-through objects, which are not visited.
+
+⚠️ **That measurement is a snapshot, not a guarantee.** If a future change puts a raw Meta object
+alongside one of these fields, the collision becomes real and the consumer's rule is what saves it.
+The rule is the mechanism; this measurement only says the mechanism has nothing to do today.
