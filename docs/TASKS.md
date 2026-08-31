@@ -35,23 +35,20 @@ entrega segredo, entao o portao vai reprovar por "nao consegui verificar" — e 
 assim, falhando fechado, em vez de virar skip. Skip seria a cegueira que o portao existe para nao ter.
 Documentado em comentario no proprio workflow.
 
-🔴 **A `v0.61.0` ESTA NO `main` E NAO ESTA EM PRODUCAO. O consumidor foi avisado para NAO trocar os
-escritores para ingles ate a confirmacao.** Se ele trocar antes, os envios dele tomam erro: o campo em
-ingles chega e o `v0.60.1`, que e' o que atende hoje, nao reconhece.
-- **O que falta e' so' o deploy**, e ele parou **antes de tocar em rede**: exige
-  `ZAPGW_DEPLOY_VMID`, `ZAPGW_DEPLOY_HOST` e `ZAPGW_DEPLOY_SAUDE`, que sao topologia do homelab e
-  moram com o dono — nao no repositorio, por desenho. **Nao ha nada a consertar no codigo.**
-- 🙋 **O dono roda**, com as tres variaveis no ambiente. Depois do deploy, a confirmacao para o
-  consumidor sai com a **versao medida no `/v1/health` na hora** — nunca com o numero que se acha que
-  subiu, que e' a mentira que a T-184 existe para impedir.
-- **O que a `v0.61.0` carrega:** as 30 chaves de direcao ENTRADA aceitam o nome em ingles, por
-  POSICAO; a saida nao muda (o diff das tags `json` de producao entre os dois commits e' **vazio**);
-  conflito PT+EN no mesmo pedido e' `400` nomeando a chave; e a **idempotencia atravessa idiomas** —
-  traduz antes, calcula o hash depois, senao a mesma mensagem sai duas vezes para a cliente.
-- ⚠️ **Lacuna declarada:** o contador do nome velho esta ligado em **4 das 7 rotas** (envio, criacao
-  de template, leituras, fumaca). `/v1/cadastro`, `/v1/pausa` e `/v1/bloqueios` aceitam o apelido mas
-  **nao contam** — e o contador e' o numero que autoriza o passo 4.
-
+✅ **A `v0.61.0` ESTA EM PRODUCAO desde 2026-08-31 10:19, e o consumidor foi liberado as 10:21.**
+Prova medida, nao afirmada: `SAUDE OK: {"ok":true,"versao":"0.61.0"}` seguido de
+`VERSAO CONFERE: 0.61.0 (igual a construida)`, uma troca de binario atomica com o mesmo `sha256`
+conferido no no e dentro do container, saida `0`.
+- **O passo 3 (escritores deles em ingles) esta liberado.** Nao ha janela para acertar: o gateway
+  aceita os dois idiomas ao mesmo tempo, e vai aceitar ate o passo 4.
+- 📌 **O deploy roda por `~/.zapgw/deploy-zapgw.sh`**, fora do repositorio. Ele LE os cinco valores de
+  topologia do `deploy.sh` do repo privado antigo (`/c/dev/zapgw-dev/implanta/deploy.sh:53-57`), onde
+  eles ficaram como default do alvo real — o publico passou a EXIGI-los porque endereco interno nao
+  entra aqui. **Nenhum valor passa por chat, commit ou linha de comando.**
+- ⚠️ **Licao do proprio deploy:** o runner extraia o valor da chave SSH com `sed`, entao o `$HOME`
+  saia LITERAL — o ssh avisou 21 vezes que nao achava a chave, caiu no agente, **e o deploy funcionou
+  assim mesmo**. *Falha que ainda entrega o resultado certo e' a que ninguem conserta*, e 21 avisos
+  por execucao ensinam a ignorar a saida do deploy, que e' onde mora a prova. Consertado.
 ✅ **A TAG `v0.61.0` ESTA NO `origin`**, apontando para o commit do bump (`6f975f4`). O portao a
 recusava por falso positivo — tag que aponta para commit ja publicado acrescenta um *ponteiro*, nao
 commits, e ele lia zero como "medicao vazia". **T-204 consertou distinguindo as duas causas**, e
@@ -105,6 +102,48 @@ telefone real e `wamid` de producao, e este repositorio e' publico.
 ## Active
 
 > A fila do periodo privado esta em `iscarelli/zapgw-dev`, congelada. Tarefa nova nasce aqui.
+
+## [ ] T-205  The old-name counter covers ALL routes that accept an alias — and cannot be forgotten again
+Why:    A T-203 ligou o contador do nome velho em **4 das 7** rotas (envio, criacao de template,
+        leituras, fumaca). `/v1/cadastro`, `/v1/pausa` e `/v1/bloqueios` **aceitam** o apelido em
+        ingles e **nao contam**.
+🔴      **O contador nao e' telemetria: e' o numero que AUTORIZA o passo 4** — a virada da saida para
+        ingles e a remocao do apelido de entrada, que e' MAJOR. *"'se estiver ok, remover' precisa de
+        um numero, nao de uma impressao"* (dono, 2026-08-20). Um contador que cobre 4/7 rotas nao
+        responde "ninguem mais manda o nome velho": ele responde "ninguem mais manda o nome velho
+        NAS ROTAS QUE EU OLHO", que e' outra coisa — e e' a mesma forma de erro do portao que varria
+        uma lista de diretorios (T-191) e do portao que cobria so' telefone (T-193).
+Files:  internal/outbound/cadastro_handler.go, pausa_handler.go, bloqueio_handler.go
+        cmd/zapgw/main.go  (os construtores)
+        internal/outbound/entrada_apelidos_test.go  (a guarda estrutural)
+
+Do:
+  1. **Ligue o contador nas tres rotas que faltam**, do mesmo jeito das outras quatro, por instancia,
+     aparecendo no `GET /v1/estado`.
+  2. 🔴 **O parametro do contador nos construtores e' POSICIONAL E OBRIGATORIO**, como o
+     `AcceptedTypes` da T-111 (`internal/outbound/tipos.go`). **Omitir nao pode compilar.** Contador
+     opcional, ou que aceite `nil`, e' um contador que a proxima rota esquece — e o esquecimento nao
+     falha, so' devolve um numero que parece completo.
+     **Prove que nao compila:** remova o argumento de uma chamada, rode `CGO_ENABLED=0 go build ./...`,
+     cole o erro, desfaca.
+  3. 🔴 **Guarda estrutural, e ela e' o coracao da tarefa:** um teste que **le as rotas que usam os
+     dicionarios de apelido** e exige que cada uma tenha contador. Sem isso, esta tarefa conserta o
+     numero de hoje e nao impede a repeticao — *enumeracao esquece o item novo*, e a proxima rota que
+     aceitar apelido vai nascer sem contar, calada.
+     Se nao houver como derivar a lista das rotas mecanicamente, **diga isso e proponha o que da'** —
+     nao invente uma lista fixa e a chame de guarda.
+  4. **A saida nao muda.** Se voce se pegar mexendo numa tag `json` de struct de SAIDA, parou.
+
+Verify:
+  - **Um teste por rota nova** (`/v1/cadastro`, `/v1/pausa`, `/v1/bloqueios`): manda o nome VELHO,
+    o contador sobe; manda o nome NOVO, nao sobe; e o valor aparece no `GET /v1/estado`.
+  - **A prova de que nao compila sem o contador**, colada no relatorio.
+  - **A guarda estrutural reprovando de proposito:** acrescente temporariamente uma rota (ou simule)
+    que use apelido sem contador e confirme que a guarda **falha nomeando a rota**. Desfaca. *Guarda
+    que nunca reprovou nada e' indistinguivel de guarda que nao olha.*
+  - `CGO_ENABLED=0 go build ./...`, `go test ./...`, `go vet ./...`, `gofmt -l cmd internal` limpos.
+  - **Bump de PATCH** no `VERSION` (nao muda contrato: so' passa a contar o que ja acontecia) e nota
+    no `docs/CHANGELOG.md` no mesmo commit.
 
 ## [ ] T-189  O contrato passa a falar ingles — leitor tolerante do lado deles, apelido so' na ENTRADA
 Why:    **decisao do dono, 2026-08-30:** *"o projeto precisa ser em ingles, ter feito em portugues foi
