@@ -448,3 +448,44 @@ to any published table, by the exact failure this document exists to prevent. It
 |---|---|
 | `nome_antigo_usado` | `old_name_used` |
 
+
+## 9. The blind spot the counter had — and the pairs that close it (2026-08-31)
+
+🔴 **`consumer-b` measured this against production and it is a defect in OUR gate, not in their
+migration:** `nome_antigo_usado` **only sees a name that HAS a published alias**. A key with no pair
+is not "old" to the counter — it is **invisible**. They proved it by sending `titulo` in Portuguese:
+the counter did not move.
+
+**So the zero meant *"nothing the table knows is arriving in its old form"*, not *"everything is
+English"*.** Same family as `media_id`: the instrument was right about what it measured, and the
+conclusion drawn was wider than the measurement.
+
+⚠️ **What that would have cost at step 4:** deleting the input aliases on the strength of that zero
+would leave these keys still going out in Portuguese and suddenly **refused** — and the number that
+authorized the flip would never have flagged it.
+
+**The fix is to publish a pair for every one of them, even when the pair is "does not change".**
+A key with a pair is a key the counter can see.
+
+### 9.1 The four ENTRADA keys (from `docs/INVENTARIO-VALORES.md` §2)
+
+| pt | en | where |
+|---|---|---|
+| `titulo` | `title` | inside each `botoes[]` item — **not** `botao_titulo`, which is a different field |
+| `indice` | `index` | inside each `botoes_template[]` item |
+| `telefones` | `phones` | body of `POST/DELETE /v1/bloqueios` |
+| `arquivo` | `file` | **multipart part name** of `POST /v1/media` — not a JSON tag at all |
+
+### 9.2 `ENTRADA-QUERY` — the query parameters (from §3 of the same document)
+
+| pt | en | note |
+|---|---|---|
+| `instancia` | `instance` | same pair the key table already uses; 5 of the 6 routes |
+| `mime_do_payload` | `payload_mime` | `GET /v1/media/{id}` |
+| `serie_dias` | `series_days` | `GET /v1/estado` |
+| `nome` | `name` | `DELETE /v1/templates`; same pair as the key table |
+| `limit`, `after`, `before`, `status` | unchanged | already English |
+
+➡️ **The rule this leaves behind, and it is bigger than these thirteen rows:** *a counter that only
+counts what it was told about answers a narrower question than the one being asked of it.* Before a
+number authorizes anything, ask what it **cannot** see.

@@ -371,3 +371,23 @@ ingles), 8.5 `categoria` de midia (5), 8.6 `classe` de erro (4), 8.7 `estado` de
 🔴 **A regra que atravessa as tres tabelas de `veredito`:** onde a mesma palavra em portugues
 aparece em mais de um vocabulario, **a palavra em ingles e a mesma**. Valor que traduz de dois
 jeitos conforme o bloco seria uma armadilha criada por nos.
+
+## 9. O ponto cego do contador, e os pares que o fecham (2026-08-31)
+
+🔴 **O `consumer-b` mediu contra producao e o defeito e do NOSSO portao:** o `nome_antigo_usado` so
+enxerga nome que **tem apelido publicado**. Chave sem par nao e "nome antigo" para ele — e
+**invisivel**. Provaram mandando `titulo` em portugues: o contador nao se mexeu.
+
+**Entao o zero significava *"nada que a tabela conhece esta chegando velho"*, e nao *"tudo esta em
+ingles"*.** Mesma familia do `media_id`: o instrumento estava certo sobre o que media, e a conclusao
+foi maior que a medicao.
+
+**O conserto e publicar par para todas elas, mesmo quando o par e "nao muda".** Chave com par e chave
+que o contador enxerga. As tabelas estao na versao em ingles (secao 9): 9.1 as quatro chaves de
+ENTRADA (`titulo`->`title`, `indice`->`index`, `telefones`->`phones`, `arquivo`->`file`), e 9.2 os
+query params (`mime_do_payload`->`payload_mime`, `serie_dias`->`series_days`, mais `instancia` e
+`nome`, que ja tinham par; `limit`, `after`, `before` e `status` nao mudam).
+
+➡️ **A regra que fica, e ela e maior que estas treze linhas:** *contador que so conta o que lhe
+contaram responde uma pergunta mais estreita do que a que se faz a ele.* Antes de um numero autorizar
+qualquer coisa, pergunte o que ele NAO consegue ver.

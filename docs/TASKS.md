@@ -103,6 +103,47 @@ telefone real e `wamid` de producao, e este repositorio e' publico.
 
 > A fila do periodo privado esta em `iscarelli/zapgw-dev`, congelada. Tarefa nova nasce aqui.
 
+## [ ] T-208  Teach the counter to see the thirteen keys it was blind to
+Why:    🔴 **Medido pelo `consumer-b` contra producao em 2026-08-31, e o defeito e' do NOSSO portao:**
+        `nome_antigo_usado` **so' enxerga nome que TEM apelido**. Chave sem par publicado nao e' "nome
+        antigo" para ele — e' **invisivel**. Eles provaram mandando `titulo` em portugues: o contador
+        nao se mexeu.
+        **Entao o zero significava *"nada que a tabela conhece esta chegando velho"*, e nao *"tudo
+        esta em ingles"*.** Mesma familia do `media_id`: o instrumento estava certo sobre o que media,
+        e a conclusao foi maior que a medicao.
+🔴      **O que isso custaria no passo 4:** apagar o apelido de entrada com base nesse zero deixaria
+        essas chaves saindo de la em portugues e passando a ser **RECUSADAS** — e o numero que
+        autorizou a virada nunca teria acusado.
+        Os pares ja estao publicados em `docs/MIGRACAO-CONTRATO-EN.md`, **secao 9**.
+Files:  internal/outbound/entrada_apelidos.go e os handlers que leem query/multipart
+        internal/outbound/entrada_apelidos_test.go
+
+Do:
+  1. **Apelido para as quatro chaves de ENTRADA da secao 9.1**, cada uma na POSICAO certa:
+     `titulo`->`title` dentro de cada item de `botoes[]` (🔴 **nao** confundir com `botao_titulo`,
+     que e' outro campo e ja tem par), `indice`->`index` dentro de cada item de `botoes_template[]`,
+     `telefones`->`phones` no corpo de `/v1/bloqueios`, e `arquivo`->`file` que e' **nome de parte
+     multipart** no `POST /v1/media` — nao e' tag `json`, entao nao entra no mesmo mecanismo das
+     outras; trate no ponto onde o multipart e' lido.
+  2. **Query params da secao 9.2**, na leitura de `r.URL.Query()`: aceite os dois nomes.
+     `mime_do_payload`->`payload_mime`, `serie_dias`->`series_days`, e `instancia`->`instance` e
+     `nome`->`name` nas rotas onde eles sao query. `limit`, `after`, `before`, `status` ja sao ingles.
+  3. 🔴 **TODAS elas contam no `nome_antigo_usado`** quando chegarem na forma velha. **Este e' o ponto
+     da tarefa** — o apelido sem o contador nao conserta o portao, so' aceita mais grafia.
+  4. **A saida nao muda.** Nem tag `json`, nem valor emitido.
+  5. **Bump de PATCH** e nota no changelog no mesmo commit.
+
+Verify:
+  - **Para cada uma das 13:** forma velha aceita **e conta**; forma nova aceita e **nao** conta. Uma
+    por uma, nao por amostra.
+  - 🔴 **O controle que prova o conserto, e ele e' o cenario exato que o consumidor rodou:** um pedido
+    com chave em ingles e `titulo` em portugues dentro de `botoes[]` tem de **mover o contador**.
+    Hoje ele nao move — e' isso que esta sendo consertado. Cole o antes e o depois.
+  - **Query param velho conta**, e o novo nao.
+  - **Multipart:** `arquivo` conta, `file` nao. Se o mecanismo do multipart nao permitir contar sem
+    reestruturar, **pare e relate** em vez de improvisar.
+  - `CGO_ENABLED=0 go build ./...`, `go test ./...`, `go vet ./...`, `gofmt -l cmd internal` limpos.
+
 ## [ ] T-189  O contrato passa a falar ingles — leitor tolerante do lado deles, apelido so' na ENTRADA
 Why:    **decisao do dono, 2026-08-30:** *"o projeto precisa ser em ingles, ter feito em portugues foi
         errado. Se a chave chama nome, tem que passar a se chamar name."*
