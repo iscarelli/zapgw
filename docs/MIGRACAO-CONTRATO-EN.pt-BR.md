@@ -196,8 +196,8 @@ está na tabela, então deve ser português" é exatamente onde se erra.**
 ## 7. Tabela B — chaves medidas, par ainda não decidido (29 linhas)
 
 Medidas diretamente contra o código para a T-198 (`docs/INVENTARIO-CHAVES.md`): chaves que o
-`consumer-b` lê e que estavam ausentes da tabela proposta. **Coluna de inglês = `A DECIDIR` em toda
-linha — este documento não escolhe nenhuma delas.**
+`consumer-b` lê e que estavam ausentes da tabela proposta. **A coluna de inglês era `A DECIDIR` em
+toda linha até 2026-08-31 (seção 7) — a MONTAGEM deste documento não escolheu nenhuma delas.**
 
 | # | português | inglês | direção | arquivo:linha |
 |---|---|---|---|---|

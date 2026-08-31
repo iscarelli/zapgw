@@ -193,7 +193,8 @@ must be Portuguese."**
 ## 7. Table B — measured keys, pair not yet decided (29 rows)
 
 Measured against the code for T-198 (`docs/INVENTARIO-CHAVES.md`): keys `consumer-b` reads that
-were missing from table A above. **English column is `A DECIDIR` on every row — this document does
+were missing from table A above. **The English column was `A DECIDIR` on every row until 2026-08-31
+(section 7) — the ASSEMBLY of this document did
 not choose any of them.**
 
 | # | portuguese | english | direction | file:line |
