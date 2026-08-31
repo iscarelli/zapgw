@@ -57,23 +57,29 @@ bloco: *"um snapshot `pre-update` se acumula no CT a cada deploy e ninguem poda"
   algo num `pct listsnapshot`?), ou a linha nasceu de leitura errada minha? Se nao acumula, **nao ha
   tarefa** — e a licao e' a de sempre: *eu escrevi um sintoma que nao medi, e ele virou decisao sua.*
 
-⏳ **ESPERANDO O CONSUMIDOR: a medicao de DEPOIS da migracao.**
-🔴 **Ela foi pedida as 23:52 NO ARQUIVO ERRADO** — a seção foi escrita em
-`C:\dev\zapgw\<consumidor-b>-STATUS.local.md`, que e' o arquivo DELES. O monitor deles le o nosso.
-**Ate 2026-08-31 00:02 o consumidor nao tinha o pedido**, e do lado dele nos tinhamos avisado que o
-gateway ia piscar e sumido em seguida. **Reenviada as 00:02 no arquivo certo**
-(`C:\dev\<consumidor-b>\zapgw-STATUS.local.md`), com o custo registrado em
-`github/docs/CANAL-ENTRE-SESSOES.md`.
-- E' o mesmo roteiro da linha de base de 2026-08-30 20:31 UTC — template `sistema_alerta` (UTILITY),
-  depois texto livre, mais a conferencia da entrega no `callback_url` deles e o `status` do `wamid`.
-- **A comparacao so' vale porque a metade de ANTES foi medida antes de qualquer coisa mudar**; se ela
-  nao chegar, o par nao fecha e a migracao continua sem prova de trafego real.
-- ⏰ **A janela de 24 h aberta as 20:32 UTC vence 2026-08-31 20:32 UTC (17:32 -03)** — depois disso o
-  passo do texto livre precisa de template de novo, e o roteiro deixa de ser identico ao de ANTES.
+✅ **FECHADO: o par ANTES/DEPOIS existe, e a `v0.60.1` passou.** Medicao do consumidor em
+2026-08-31 00:28: **77 segundos contra 79 do ANTES**, mesmo roteiro e mesmo template,
+`tentativas: 1` em tudo, nenhuma retentativa. A assimetria de status que ficou aberta no ANTES sumiu
+— `sent`, `delivered` e `read` nos dois disparos —, **sem concluir que consertamos nada**: pode ser
+ordem de chegada da Meta, e eles disseram isso em vez de creditar a versao.
+⚠️ **Eles invalidaram um numero que eles mesmos tinham oferecido:** o par
+`recebido_em`/`processado_em` nao se compara — o primeiro tem granularidade de SEGUNDO, o segundo tem
+microssegundos, e a diferenca mede distancia da borda do segundo, nao latencia. **Sai das duas
+medicoes.**
+🔴 **O que quase custou isso:** a medicao foi pedida as 23:52 **no arquivo errado** (o deles), e
+reenviada as 00:02 no certo. Depois eu escrevi as 00:49 **sem reler** e cobrei o que ja estava
+entregue as 00:15 e as 00:28 — a resposta deles ficou **cinco horas** parada. As duas licoes estao em
+`github/docs/CANAL-ENTRE-SESSOES.md`: *o seu arquivo e' o que mora no repositorio do OUTRO*, e
+*"eu li" tem prazo de validade — releia no movimento de ESCREVER*.
 
-⏳ **ESPERANDO O CONSUMIDOR: o passo 1 da T-189** (leitores tolerantes, `novo or velho`). Nada aqui
-comeca antes disso — e' o unico passo que bloqueia o resto. Registrado la como **[1350]**, **ainda
-nao comecado**: eles estao num desenho de cobranca que o dono deles priorizou. Nao ha nada a cobrar.
+✅ **FECHADO: o passo 1 da T-189 esta NO AR desde 2026-08-31 00:15** (BACKEND 3.236.0, 6.235 testes
+verdes, 15 guardas novas). **A T-189 nao esta mais bloqueada.**
+🔴 **E eles contradisseram a forma que a gente pediu, com razao medida:** em vez de `novo or velho`
+em **55** leitores espalhados por 13 arquivos, traduzem **uma vez na porta** (10 pontos). Cinquenta e
+cinco pontos de edicao sao cinquenta e cinco chances de esquecer um, e **o esquecido nao falha** —
+`.get()` ausente vira `None`, vira string vazia, e a mensagem sai errada sem acordar ninguem.
+*E' o mesmo argumento que usamos para inverter o portao de telefone na T-191: enumeracao esquece o
+item novo, e o esquecido e' invisivel.* **A contradicao foi o produto do canal, nao o atrito.**
 
 📌 **O canal sao DOIS arquivos, e confundi-los ja custou 32 minutos de silencio invisivel:**
 
