@@ -96,47 +96,6 @@ telefone real e `wamid` de producao, e este repositorio e' publico.
 
 > A fila do periodo privado esta em `iscarelli/zapgw-dev`, congelada. Tarefa nova nasce aqui.
 
-## [ ] T-201  The pre-push gate looks inside merge commits too
-Why:    A T-199 declarou o buraco no proprio codigo (`filesChangedInCommit`): **`git diff-tree` sem
-        `-m`/`-c` devolve diff VAZIO para commit de merge**, entao conteudo introduzido **apenas numa
-        resolucao de merge** atravessa o portao sem ser olhado.
-🔴      **Buraco declarado nao e buraco coberto** — esta e' a terceira vez em 24 h que essa frase
-        aparece aqui, e nas duas anteriores ela cobrou: o nome de cliente foi para o repositorio
-        publico com o aviso escrito ao lado, e o portao de branch nova nasceu impedindo o caminho
-        legitimo. **Declarar honestamente e' o comeco do conserto, nao o conserto.**
-        E o caso nao e' teorico: resolver conflito e' exatamente o momento em que alguem cola um
-        trecho "so' para funcionar" e esquece.
-Files:  internal/config/prepush_test.go
-        .githooks/pre-push  (se precisar)
-        docs/ARMADILHAS.md, docs/ARMADILHAS.pt-BR.md
-
-Do:
-  1. **Faca o portao enxergar o conteudo introduzido por um merge.** `git diff-tree -m` (contra cada
-     pai) ou `-c`/`--cc` (so' o que difere de TODOS os pais) sao os caminhos; **`-c` e' o que responde
-     a pergunta certa** — "o que este merge introduziu que nao vinha de nenhum pai" —, porque com `-m`
-     um merge limpo repete todo o conteudo do outro ramo e a varredura explode de tamanho.
-  2. **Meça antes de escolher:** rode os dois contra um merge real deste repositorio e diga quantos
-     arquivos cada um devolve. **Escolha com o numero na mao**, e escreva o numero no comentario.
-  3. **Se `-c` puder esconder algo** (conteudo que veio de um pai mas que aquele pai ja tinha sido
-     varrido... ou nao), diga isso em voz alta em vez de assumir. **O portao pode varrer a mais; nunca
-     a menos.**
-  4. **Atualize o comentario que declara o buraco** — ele passa a descrever o que o portao faz agora.
-     Comentario que descreve limitacao ja consertada e' doc falso.
-  5. **Entrada em `docs/ARMADILHAS.md` + par pt-BR** so' se a entrada existente da T-200 nao cobrir;
-     se cobrir, **acrescente uma linha** a ela em vez de criar entrada nova.
-
-Verify:
-  - 🔴 **CONTROLE COM MERGE, e a saida tem de citar a agulha:** num bare descartavel, crie dois ramos,
-    ponha a agulha **apenas na resolucao do merge** (nao existe em nenhum dos dois pais), e confirme
-    que o push **BLOQUEIA nomeando o commit de merge e o arquivo**. Cole a saida.
-    *Se a mensagem disser "nao consegui verificar", o controle nao provou nada — foi esse exato erro
-    que o planner cometeu na T-199.*
-  - **Controle negativo:** um merge limpo (sem agulha) **passa**, e em quanto tempo. Se `-m` fizer o
-    tempo explodir, esse numero e' a justificativa da escolha do item 2.
-  - **Nunca empurre branch de controle para o `origin`; nunca use `--no-verify`.** Apague os ramos e o
-    bare no fim; `git branch` sem sobra e `git status --short` limpo.
-  - `CGO_ENABLED=0 go build ./...`, `go test ./...`, `go vet ./...`, `gofmt -l cmd internal` limpos.
-
 ## [ ] T-202  The migration table becomes a versioned document, with DIRECTION and what does NOT change
 After:  T-201
 Why:    A tabela de migracao do contrato existe **so' dentro do canal** com um consumidor. A doutrina

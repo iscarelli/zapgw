@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 // T-199's GATE, and it is a different shape from the phone and name gates
@@ -150,27 +151,88 @@ func commitsForPushedInterval(root, oldSha, newSha string) ([]string, error) {
 	return commitsIntroducedInRange(root, oldSha, newSha)
 }
 
+// commitParentCount reports how many parents `commit` has (0 for the
+// repository's own genesis commit, 1 for an ordinary commit, 2+ for a
+// merge) — the branch filesChangedInCommit needs to pick between the
+// single-parent diff and the merge-aware combined diff below.
+func commitParentCount(root, commit string) (int, error) {
+	cmd := exec.Command("git", "rev-list", "--parents", "-n", "1", commit)
+	cmd.Dir = root
+	out, err := cmd.Output()
+	if err != nil {
+		return 0, fmt.Errorf("git rev-list --parents -n 1 %s: %w", commit, err)
+	}
+	fields := strings.Fields(strings.TrimSpace(string(out)))
+	if len(fields) == 0 {
+		return 0, fmt.Errorf("git rev-list --parents -n 1 %s: saida vazia", commit)
+	}
+	return len(fields) - 1, nil // fields[0] is the commit itself
+}
+
 // filesChangedInCommit lists the files a single commit introduces new
 // content for — everything except pure deletions (`--diff-filter=d`), with
 // rename detection explicitly OFF (`--no-renames`, so behavior does not
 // depend on a `diff.renames` config a machine happens to have set): without
 // -M, git already represents a rename as a delete of the old path plus an
 // add of the new one, and the add alone is exactly the content this gate
-// needs to inspect. `--root` makes this work for a commit with no parent
-// too (the repository's own genesis commit, if it is ever inside a pushed
-// range again).
+// needs to inspect.
 //
-// 📌 KNOWN BOUNDARY, said out loud instead of assumed clean: a MERGE commit
-// shows an EMPTY diff here, because `git diff-tree` without `-m`/`-c` only
-// diffs single-parent commits. Content that a merge's conflict resolution
-// reintroduces (and that neither parent already carried past this gate)
-// would not be inspected. T-199's positive control uses two ordinary
-// sequential commits, which is the case this function does cover; a merge
-// commit carrying new personal data in its resolution is a gap for a future
-// task, not something this comment should claim is already handled.
+// For an ORDINARY commit (0 or 1 parent) this runs the plain diff-tree
+// against that parent, with `--root` covering the repository's own genesis
+// commit.
+//
+// 🔴 T-201: FOR A MERGE COMMIT (2+ parents) THIS BRANCHES TO `-c`
+// (combined diff), NOT `-m`, and the choice was MEASURED, not assumed —
+// against a real merge built in a disposable clone of this repository
+// (never `origin`; the fixture and commands are recorded in this task's
+// report, not reproduced as code here to avoid a third copy of the scan
+// logic drifting from the other two).
+//
+//   - A CLEAN merge (two branches touching disjoint files, git auto-merges,
+//     no conflict) measured `git diff-tree -m` at **12 files** — the full
+//     union of both branches' changes, because `-m` diffs the merge
+//     separately against EACH parent and concatenates. Every one of those
+//     12 files already belongs to a commit that `commitsForPushedInterval`
+//     put in the scanned list on its own (that is how those files got INTO
+//     the merge in the first place) — `-m` re-inspects content this gate
+//     already looked at, and the redundant work grows without bound as a
+//     branch's own history grows. The SAME merge measured `git diff-tree -c`
+//     at **0 files** — correctly nothing, because every file's final
+//     content trivially matches one parent or the other; there is no
+//     resolution content to inspect.
+//   - A merge that resolves a REAL conflict (both branches edit the same
+//     line of the same file, requiring a human/tool to write new text) —
+//     with the resolution text present in NEITHER parent's version —
+//     measured **1 file** for BOTH `-m` and `-c`: the one conflicted file,
+//     found either way. This is exactly the content commit-level scanning
+//     cannot see (it exists only in the merge commit's own tree), and `-c`
+//     catches it at zero extra cost over the clean case.
+//
+// **The gate must sweep at least as much as before, never less** — so the
+// question item 3 of T-201 demands an answer to is whether `-c`'s
+// "TREESAME to one parent, so omit it" rule can hide content this gate
+// still needed to see. It cannot: a file `-c` omits because it trivially
+// equals parent P was not introduced by the resolution — it was introduced
+// by whatever commit made parent P's tree look that way, and that commit is
+// either already in `commits` (scanned on its own, per the point above) or
+// it was already public on some remote-tracking ref before this push
+// existed (already past this gate when IT was pushed). Either way the
+// content already went through a sweep; `-c` only removes the REDUNDANT
+// second look `-m` would perform, never the only look.
 func filesChangedInCommit(root, commit string) ([]string, error) {
-	cmd := exec.Command("git", "diff-tree", "--no-commit-id", "--name-only", "-r",
-		"--diff-filter=d", "--no-renames", "--root", commit)
+	parents, err := commitParentCount(root, commit)
+	if err != nil {
+		return nil, err
+	}
+
+	var cmd *exec.Cmd
+	if parents >= 2 {
+		cmd = exec.Command("git", "diff-tree", "-c", "--no-commit-id", "--name-only", "-r",
+			"--diff-filter=d", "--no-renames", commit)
+	} else {
+		cmd = exec.Command("git", "diff-tree", "--no-commit-id", "--name-only", "-r",
+			"--diff-filter=d", "--no-renames", "--root", commit)
+	}
 	cmd.Dir = root
 	out, err := cmd.Output()
 	if err != nil {
@@ -242,8 +304,10 @@ func sweepCommitsForPersonalData(t *testing.T, root string, commits []string, ne
 			return "", "", fmt.Errorf("listar os arquivos alterados pelo commit %s: %w", commit, ferr)
 		}
 		if len(files) == 0 {
-			// So' delecoes (ou um commit de merge — ver o limite documentado
-			// em filesChangedInCommit): nenhum conteudo novo para inspecionar.
+			// So' delecoes, OU um merge cujo `-c` nao achou nenhum arquivo que
+			// difira de TODOS os pais (merge limpo, sem resolucao de
+			// conflito — ver filesChangedInCommit): nenhum conteudo novo
+			// para inspecionar.
 			continue
 		}
 
@@ -527,4 +591,171 @@ func TestPrePushGateNewRefNoRemoteAtAllSweepsEverything(t *testing.T) {
 	if !strings.Contains(message, needle) || !strings.Contains(message, "leak.txt") {
 		t.Fatalf("mensagem de bloqueio nao cita a agulha e o arquivo esperados: %s", message)
 	}
+}
+
+// --- T-201's own tests: the pre-push gate's blindness to merge commits ---
+
+// TestPrePushGateCleanMergeOnMainPasses is T-201's negative control: two
+// branches that touch DISJOINT files, merged with no conflict, must push —
+// and fast. This is also what the report's measurement (12 files via `-m`,
+// 0 via `-c`, see filesChangedInCommit) is proving in test form: `-c`
+// finding zero files for a clean merge is not "the gate got quieter", it is
+// "there was nothing here that a per-commit scan had not already seen".
+func TestPrePushGateCleanMergeOnMainPasses(t *testing.T) {
+	cloneDir := newDisposableRemoteAndClone(t)
+
+	mustGit(t, cloneDir, "checkout", "-q", "-b", "clean-a")
+	if err := os.WriteFile(filepath.Join(cloneDir, "clean_a.txt"), []byte("branch A file, no needle\n"), 0o644); err != nil {
+		t.Fatalf("escrever clean_a.txt: %v", err)
+	}
+	mustGit(t, cloneDir, "add", "clean_a.txt")
+	mustGit(t, cloneDir, "commit", "-q", "-m", "branch A: adds its own file")
+
+	mustGit(t, cloneDir, "checkout", "-q", "main")
+	mustGit(t, cloneDir, "checkout", "-q", "-b", "clean-b")
+	if err := os.WriteFile(filepath.Join(cloneDir, "clean_b.txt"), []byte("branch B file, no needle\n"), 0o644); err != nil {
+		t.Fatalf("escrever clean_b.txt: %v", err)
+	}
+	mustGit(t, cloneDir, "add", "clean_b.txt")
+	mustGit(t, cloneDir, "commit", "-q", "-m", "branch B: adds a different file")
+
+	mustGit(t, cloneDir, "checkout", "-q", "clean-a")
+	mustGit(t, cloneDir, "merge", "-q", "--no-edit", "clean-b")
+	mergeSha := mustGit(t, cloneDir, "rev-parse", "HEAD")
+
+	commits, err := commitsForPushedInterval(cloneDir, zeroSha, mergeSha)
+	if err != nil {
+		t.Fatalf("commitsForPushedInterval: %v", err)
+	}
+	if len(commits) != 3 {
+		t.Fatalf("esperava 3 commits novos (A, B e o merge; 'base' ja esta em origin/main), obtive %d: %v",
+			len(commits), commits)
+	}
+
+	start := time.Now()
+	badCommit, message, err := sweepCommitsForPersonalData(t, cloneDir, commits, []string{"NomeQueNaoAparece1201"})
+	elapsed := time.Since(start)
+	t.Logf("merge limpo (3 commits, sem conflito): sweep levou %s", elapsed)
+	if err != nil {
+		t.Fatalf("sweepCommitsForPersonalData: %v", err)
+	}
+	if badCommit != "" {
+		t.Fatalf("merge limpo nao deveria bloquear, mas bloqueou no commit %s: %s", badCommit, message)
+	}
+}
+
+// TestPrePushGateBlocksNeedleOnlyInMergeResolution is T-201's positive
+// control, and the one the task's Verify step demands in exactly this
+// shape: a needle that exists in NEITHER parent of a merge, only in the
+// text a human/tool wrote while resolving a REAL conflict (both branches
+// edit the same line of the same file). Before this task filesChangedInCommit
+// returned an EMPTY diff for any merge commit (no `-m`/`-c`), so this needle
+// would have crossed the gate unseen even though it is INSIDE the pushed
+// range. A green run here proves the opposite: the block names the merge
+// commit itself and the file, not a commit that merely "looks blocked".
+func TestPrePushGateBlocksNeedleOnlyInMergeResolution(t *testing.T) {
+	cloneDir := newDisposableRemoteAndClone(t)
+	const needle = "AgulhaDeMergeQueSoExisteNaResolucao1201"
+
+	// A shared file both branches will edit on the SAME line, guaranteeing
+	// a real conflict instead of git auto-merging disjoint hunks.
+	if err := os.WriteFile(filepath.Join(cloneDir, "shared.txt"), []byte("linha original\n"), 0o644); err != nil {
+		t.Fatalf("escrever shared.txt: %v", err)
+	}
+	mustGit(t, cloneDir, "add", "shared.txt")
+	mustGit(t, cloneDir, "commit", "-q", "-m", "adds shared.txt")
+	mustGit(t, cloneDir, "push", "-q", "origin", "main")
+
+	mustGit(t, cloneDir, "checkout", "-q", "-b", "conflict-a")
+	if err := os.WriteFile(filepath.Join(cloneDir, "shared.txt"), []byte("linha da branch A\n"), 0o644); err != nil {
+		t.Fatalf("escrever shared.txt (A): %v", err)
+	}
+	mustGit(t, cloneDir, "add", "shared.txt")
+	mustGit(t, cloneDir, "commit", "-q", "-m", "conflict-a: edita shared.txt")
+	commitA := mustGit(t, cloneDir, "rev-parse", "HEAD")
+
+	mustGit(t, cloneDir, "checkout", "-q", "main")
+	mustGit(t, cloneDir, "checkout", "-q", "-b", "conflict-b")
+	if err := os.WriteFile(filepath.Join(cloneDir, "shared.txt"), []byte("linha da branch B\n"), 0o644); err != nil {
+		t.Fatalf("escrever shared.txt (B): %v", err)
+	}
+	mustGit(t, cloneDir, "add", "shared.txt")
+	mustGit(t, cloneDir, "commit", "-q", "-m", "conflict-b: edita shared.txt (diferente)")
+	commitB := mustGit(t, cloneDir, "rev-parse", "HEAD")
+
+	mustGit(t, cloneDir, "checkout", "-q", "conflict-a")
+	mergeCmd := exec.Command("git", "merge", "--no-edit", "conflict-b")
+	mergeCmd.Dir = cloneDir
+	_ = mergeCmd.Run() // esperado sair com erro: conflito de verdade em shared.txt
+
+	if !strings.Contains(mustGit(t, cloneDir, "status", "--short"), "UU shared.txt") {
+		t.Fatalf("fixture invalida: esperava conflito UU em shared.txt, git status: %s",
+			mustGit(t, cloneDir, "status", "--short"))
+	}
+
+	// Resolve o conflito escrevendo um texto que NAO existe em nenhum dos
+	// dois pais — a agulha so' passa a existir na resolucao do merge.
+	resolved := "resolvido no merge, contem a agulha: " + needle + "\n"
+	if err := os.WriteFile(filepath.Join(cloneDir, "shared.txt"), []byte(resolved), 0o644); err != nil {
+		t.Fatalf("escrever a resolucao: %v", err)
+	}
+	mustGit(t, cloneDir, "add", "shared.txt")
+	mustGit(t, cloneDir, "commit", "-q", "-m", "resolve o conflito (introduz a agulha so' aqui)")
+	mergeSha := mustGit(t, cloneDir, "rev-parse", "HEAD")
+
+	// Confirma a premissa do teste: a agulha nao esta em nenhum dos pais.
+	forA := mustGitAllowingContent(t, cloneDir, "show", commitA+":shared.txt")
+	forB := mustGitAllowingContent(t, cloneDir, "show", commitB+":shared.txt")
+	if strings.Contains(forA, needle) || strings.Contains(forB, needle) {
+		t.Fatalf("fixture invalida: a agulha ja aparece num dos pais (A=%q B=%q)", forA, forB)
+	}
+
+	commits, err := commitsForPushedInterval(cloneDir, zeroSha, mergeSha)
+	if err != nil {
+		t.Fatalf("commitsForPushedInterval: %v", err)
+	}
+	// commitA, commitB, e o commit de merge — nao o "adds shared.txt", que
+	// ja foi empurrado para origin/main acima.
+	if len(commits) != 3 {
+		t.Fatalf("esperava 3 commits novos (A, B, merge), obtive %d: %v", len(commits), commits)
+	}
+
+	badCommit, message, err := sweepCommitsForPersonalData(t, cloneDir, commits, []string{needle})
+	if err != nil {
+		t.Fatalf("sweepCommitsForPersonalData: %v", err)
+	}
+	if badCommit == "" {
+		t.Fatalf("esperava bloqueio: a agulha so' existe na resolucao do merge, e antes do T-201 " +
+			"filesChangedInCommit devolvia diff VAZIO para commit de merge — exatamente o buraco que " +
+			"esta tarefa fecha; se isto passar em branco, o gate voltou a nao olhar dentro de merges")
+	}
+	if badCommit != mergeSha {
+		t.Fatalf("bloqueou no commit errado: esperava o commit de MERGE (%s) — a agulha nao esta em "+
+			"nenhum dos pais (%s, %s) —, bloqueou em %s", mergeSha, commitA, commitB, badCommit)
+	}
+	if !strings.Contains(message, needle) {
+		t.Fatalf("a mensagem de bloqueio nao cita a agulha %q: %s", needle, message)
+	}
+	if !strings.Contains(message, "shared.txt") {
+		t.Fatalf("a mensagem de bloqueio nao cita o arquivo shared.txt: %s", message)
+	}
+	if !strings.Contains(message, mergeSha) {
+		t.Fatalf("a mensagem de bloqueio nao cita o commit de merge %s: %s", mergeSha, message)
+	}
+}
+
+// mustGitAllowingContent is mustGit's twin for reading blob content: same
+// loud-failure contract, but it does not TrimSpace the output — a fixture
+// file's exact bytes (including its trailing newline) matter when the
+// assertion is "does this needle appear in this parent's version", not
+// "what did this git subcommand print".
+func mustGitAllowingContent(t *testing.T, dir string, args ...string) string {
+	t.Helper()
+	cmd := exec.Command("git", args...)
+	cmd.Dir = dir
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("git %s (dir=%s): %v\n%s", strings.Join(args, " "), dir, err, out)
+	}
+	return string(out)
 }

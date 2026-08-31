@@ -4384,3 +4384,55 @@ e o arquivo, não só "bloqueado" (`internal/config/prepush_test.go`,
 está mal dimensionado, não apenas rigoroso — rigor sem caminho legítimo nenhum é, na prática, indistinguível de
 portão nenhum, porque a disciplina de usar a saída de emergência apodrece no instante em que ela vira rotina.
 
+---
+
+### 🔥 Um portão que lê o diff de um commit pode ficar cego para uma classe inteira de commit — e ficou, para merges (2026-08-31)
+
+O portão de pre-push da T-199 materializa exatamente o que CADA commit no intervalo empurrado introduz, via `git
+diff-tree`, e varre esse conteúdo atrás de telefone ou nome de cliente. O comentário da própria função já
+nomeava o limite: `git diff-tree` sem `-m`/`-c` só calcula diff para commit de UM pai — passe um commit de merge
+e ele devolve diff VAZIO, incondicionalmente, independente do que a árvore daquele merge realmente contém.
+**Conteúdo que existe só na resolução de conflito de um merge — presente em nenhum dos dois pais — atravessava
+o portão completamente sem ser olhado**, porque a função que lista "o que este commit mudou" reportava que nada
+tinha mudado.
+
+**Declarar o buraco num comentário não é o mesmo que fechá-lo**, e este projeto já tinha pago exatamente por
+isso uma vez (o portão de telefone da T-193 cobria `docs/` no nome, mas não no código que decidia quais arquivos
+varrer — ver a entrada acima desta). Escrever "esta é uma limitação conhecida" lê como diligência devida até o
+momento em que alguém resolve um conflito colando um valor direto de um chamado de suporte — e é exatamente
+nesse momento que um merge existe.
+
+**Medido antes de escolher entre `-m` e `-c` (T-201, item 2 do Do), contra um merge REAL construído num clone
+descartável deste repositório, nunca o `origin`:**
+
+- Um merge limpo (duas branches tocando arquivos disjuntos, git resolve sozinho, sem conflito): `git diff-tree
+  -m` reportou **12 arquivos** — a concatenação de tudo que QUALQUER uma das duas branches tocou, porque `-m`
+  compara o commit de merge com cada pai SEPARADAMENTE e inclui os dois resultados. `git diff-tree -c` (diff
+  combinado) reportou **0 arquivos** — corretamente, porque o conteúdo final de cada arquivo bate trivialmente
+  com um dos dois pais, e o commit que produziu aquele pai já está em `commits` e é varrido por conta própria.
+- Um merge que resolve um conflito DE VERDADE (as duas branches editam a mesma linha do mesmo arquivo; o texto
+  da resolução não existe em NENHUM dos dois pais): tanto `-m` quanto `-c` reportaram o mesmo **1 arquivo** — o
+  único que realmente precisava de resolução.
+
+**`-m` não cobre mais do que `-c` aqui — ele reinspeciona conteúdo que a varredura por commit já tinha olhado,
+e o trabalho redundante escala com o TAMANHO das duas branches, não com o tamanho da resolução.** A regra do
+`-c` para omitir um arquivo ("idêntico a um dos pais, logo trivial") não consegue esconder uma agulha deste
+portão: um arquivo que o `-c` pula porque bate com o pai P foi introduzido por qualquer commit que construiu a
+árvore de P, e esse commit ou já está na lista varrida (como mais ele seria pai dentro deste push?) ou já
+estava público antes deste push existir. De um jeito ou de outro, algo já olhou para ele — o `-c` nunca remove
+o ÚNICO olhar, só um segundo olhar redundante.
+
+**O conserto (T-201) faz `filesChangedInCommit` decidir pelo número de pais**: 0 ou 1 pai mantém o diff
+original de pai único (com `--root` para o commit genesis); 2+ pais muda para `git diff-tree -c`. Provado contra
+dado real, não afirmado: `TestPrePushGateBlocksNeedleOnlyInMergeResolution` constrói um merge com conflito de
+verdade, com uma agulha que provadamente não existe em nenhum dos dois pais, e o bloqueio nomeia o próprio
+commit de merge e o arquivo — não um commit que só "parece bloqueado", do jeito que o post-mortem da própria
+T-200 (a entrada acima desta) alertou. `TestPrePushGateCleanMergeOnMainPasses` é o controle negativo
+correspondente: um merge limpo continua passando, em bem menos de um segundo.
+
+**A regra que generaliza:** um comentário que nomeia um buraco com precisão não é uma mitigação — é uma
+descrição de exposição sem data de vencimento marcada por ninguém. O buraco fecha quando o código muda, não
+quando o risco é escrito; e quando duas flags do git poderiam responder "o que este commit introduziu",
+meça as duas contra um fixture construído a partir de uma operação REAL (um `git merge` de verdade, não um diff
+sintético) antes de escolher a que parece mais barata.
+

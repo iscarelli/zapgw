@@ -4127,3 +4127,53 @@ A and the file, not just "blocked" (`internal/config/prepush_test.go`,
 **The rule that generalizes:** when a fail-closed gate's only escape hatch is "turn the gate off," the gate is
 mis-scoped, not merely strict — rigor that has no legitimate path left is indistinguishable, in practice, from no
 gate at all, because the discipline of using the escape hatch decays the moment it becomes routine.
+
+---
+
+### 🔥 A gate that reads a commit's diff can be blind to a whole class of commit — and it was, for merges (2026-08-31)
+
+T-199's pre-push gate materializes exactly what EACH commit in the pushed range introduces, via `git diff-tree`,
+and sweeps that content for a phone number or a customer name. The function's own comment already named the
+limit: `git diff-tree` with no `-m`/`-c` flag only computes a diff for a SINGLE-parent commit — pass it a merge
+commit and it returns an EMPTY diff, unconditionally, regardless of what that merge's tree actually contains.
+**Content that exists only in a merge's conflict resolution — present in neither parent — crossed the gate
+completely unseen**, because the function that lists "what this commit changed" reported nothing changed at all.
+
+**Declaring the hole in a comment is not the same as closing it**, and this project had already paid for that
+exact gap once (T-193's phone gate covered `docs/` in name but not in the code that decided which files to
+scan — see the entry above this one). Writing "this is a known limitation" reads as due diligence right up until
+someone resolves a conflict by pasting a value straight from a support ticket, which is precisely the moment a
+merge exists.
+
+**Measured before choosing between `-m` and `-c` (T-201's Do item 2), against a REAL merge built in a disposable
+clone of this repository, never `origin`:**
+
+- A clean merge (two branches touching disjoint files, git auto-merges without a conflict): `git diff-tree -m`
+  reported **12 files** — the concatenation of every file EITHER branch touched, because `-m` diffs the merge
+  commit against each parent SEPARATELY and includes both results. `git diff-tree -c` (combined diff) reported
+  **0 files** — correctly, because every file's final content trivially equals one parent or the other, and
+  whatever commit produced that parent already sits in `commits` and gets scanned on its own.
+- A merge that resolves a REAL conflict (both branches edit the same line of the same file; the resolution text
+  exists in NEITHER parent): both `-m` and `-c` reported the same **1 file** — the one that actually needed
+  resolving.
+
+**`-m` does not cover more than `-c` here — it re-inspects content the per-commit scan already looked at, and
+the redundant work scales with the SIZE of both branches, not with the size of the resolution.** `-c`'s rule for
+omitting a file ("identical to one parent, so trivial") cannot hide a needle from this gate: a file `-c` skips
+because it matches parent P was introduced by whatever commit built P's tree, and that commit is either already
+in the scanned list (how else would it be a parent inside this push) or was already public before this push
+existed. Either way something already looked at it — `-c` never removes the ONLY look, only a redundant second
+one.
+
+**The fix (T-201) branches `filesChangedInCommit` on parent count**: 0 or 1 parent keeps the original
+single-parent diff (with `--root` for the genesis commit); 2+ parents switches to `git diff-tree -c`. Proven
+against real data, not asserted: `TestPrePushGateBlocksNeedleOnlyInMergeResolution` builds an actual conflicting
+merge with a needle that provably exists in NEITHER parent, and the block names the merge commit itself and the
+file — not a commit that merely "looks blocked" the way T-200's own postmortem (the entry above this one) warned
+against. `TestPrePushGateCleanMergeOnMainPasses` is the matching negative control: a clean merge still pushes,
+in well under a second.
+
+**The rule that generalizes:** a comment that names a gap accurately is not a mitigation — it is a description of
+exposure with a due date nobody set. The gap closes when the code changes, not when the risk is written down; and
+when two git flags could plausibly answer "what did this commit introduce," measure both against a fixture built
+from a REAL operation (a real `git merge`, not a synthetic diff) before picking the cheaper-looking one.

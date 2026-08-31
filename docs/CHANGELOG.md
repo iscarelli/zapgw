@@ -4,6 +4,25 @@ Uma linha por versao entregue, no mesmo commit do bump. A entrada diz o **efeito
 
 ## Nao lancado
 
+- **The pre-push gate looks inside merge commits too** (T-201) — `filesChangedInCommit`
+  (`internal/config/prepush_test.go`) passou a decidir pelo numero de pais do commit: 0/1 pai
+  mantem o diff de sempre (com `--root` para o genesis), 2+ pais (merge) muda para
+  `git diff-tree -c`. Escolhido com numero na mao, nao por suposicao: contra um merge real
+  construido num clone descartavel deste repositorio (nunca `origin`), um merge LIMPO mediu **12
+  arquivos com `-m`** (reinspeciona tudo que as duas branches ja tinham, redundante com o que a
+  varredura por commit ja olhou) contra **0 com `-c`** (nada de novo — tudo bate trivialmente com
+  um dos pais); um merge com CONFLITO DE VERDADE (agulha so' existe na resolucao, em nenhum dos
+  dois pais) mediu **1 arquivo em ambos** — `-c` acha tudo que `-m` acha, ao custo de zero
+  redundancia no caso limpo. Prova de que `-c` nao esconde nada: um arquivo que ele omite bate
+  com um pai cujo commit ja esta na lista varrida (ou ja estava publico antes deste push), entao
+  o conteudo ja passou por um olhar — `-c` so' remove o SEGUNDO olhar redundante, nunca o unico.
+  Dois testes novos contra repo descartavel: `TestPrePushGateBlocksNeedleOnlyInMergeResolution`
+  (agulha so' na resolucao de um conflito real; bloqueio nomeia o commit de MERGE e o arquivo, nao
+  "nao consegui verificar") e `TestPrePushGateCleanMergeOnMainPasses` (merge limpo passa, sweep em
+  ~160ms). Entrada em `docs/ARMADILHAS.md` (par pt-BR): o comentario que declarava o buraco em
+  `filesChangedInCommit` foi atualizado — descrevia limitacao ja consertada, doc falso. Verify:
+  `CGO_ENABLED=0 go build ./...`, `go test ./...`, `go vet ./...`, `gofmt -l cmd internal` limpos.
+  _Completed 2026-08-31 07:55._
 - **The pre-push gate must not make the legitimate path impossible** (T-200) — o primeiro push de
   QUALQUER ref nova (sha remoto = zeros) parava de ser recusado de saida e passou a ter o intervalo
   calculado por `git rev-list <sha-novo> --not --remotes` (`commitsForPushedInterval`, em
