@@ -52,10 +52,11 @@ ingles chega e o `v0.60.1`, que e' o que atende hoje, nao reconhece.
   de template, leituras, fumaca). `/v1/cadastro`, `/v1/pausa` e `/v1/bloqueios` aceitam o apelido mas
   **nao contam** — e o contador e' o numero que autoriza o passo 4.
 
-🔴 **A TAG `v0.61.0` EXISTE LOCAL E NAO FOI EMPURRADA** — o portao de pre-push a recusou, e e' falso
-positivo: a tag aponta para um commit que **ja esta no `origin`**, entao o intervalo dela tem zero
-commits novos, e o portao trata zero como "medicao vazia". **T-204 conserta.** Empurrar a tag antes
-disso exigiria `--no-verify`, que e' exatamente o habito que nao se cria.
+✅ **A TAG `v0.61.0` ESTA NO `origin`**, apontando para o commit do bump (`6f975f4`). O portao a
+recusava por falso positivo — tag que aponta para commit ja publicado acrescenta um *ponteiro*, nao
+commits, e ele lia zero como "medicao vazia". **T-204 consertou distinguindo as duas causas**, e
+acrescentou o que faltava: a **MENSAGEM da tag anotada e' varrida**, sempre. Provado com agulha real
+na mensagem — bloqueia citando `mensagem da tag, linha 1`.
 
 📌 **O passo 4 e' MAJOR e PARA PARA PERGUNTAR AO DONO.** Ele vira a saida para ingles e depois apaga o
 apelido de entrada. Nao acontece sozinho, aconteca o que acontecer com a fila.
