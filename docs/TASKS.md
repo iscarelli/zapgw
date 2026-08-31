@@ -99,205 +99,27 @@ outro, nem para desfazer bobagem propria.
 🔴 **`*.local.md` esta no `.gitignore` desde 2026-08-30 e tem de continuar** — o canal carrega
 telefone real e `wamid` de producao, e este repositorio e' publico.
 
+
+🙋 **DUAS COISAS QUE SO' O DONO DECIDE, e nenhuma corre.** A migracao do contrato acabou (T-189,
+`v0.63.0` em producao e provada pelo consumidor). Sobram estas, ambas com raio de alcance grande:
+
+1. **Apagar o apelido de ENTRADA.** Hoje um pedido em portugues continua funcionando, e e' essa rede
+   que segura o que ninguem previu. **A autorizacao de 31/08 foi para a VIRADA, nao para apagar a
+   rede** — isto e' outra conversa. Quando for a hora, o portao e o mesmo: `nome_antigo_usado` em
+   zero **e** volume subindo ao lado, agora com as treze chaves que ele passou a enxergar.
+2. **Os pares dos 18 nomes de contador.** Eles continuam em portugues **de proposito** — o doc que
+   dizia que a tabela ja os carregava era falso, e a correcao esta na secao 8.11.
+   🔴 **O consumidor alarma em 8 dos 18**, entao renomear sem ele no circuito quebra alarme em
+   silencio. Decidir os pares passa por ele antes.
+
+📌 **Uma lacuna que o consumidor declarou e que so' o tempo fecha:** o valor `mensagem` -> `message`
+do tipo de evento so' aparece quando **uma cliente escrever** — nao ha como fabricar. O mecanismo ja
+esta provado num valor que muda (`observed` -> `observado`); falta a combinacao especifica. Se der
+errado, o sintoma e' evento **preso com aviso**, nao evento sumido — por causa do conserto que eles
+fizeram no `processado_em` hoje de manha.
+
 ## Active
 
 > A fila do periodo privado esta em `iscarelli/zapgw-dev`, congelada. Tarefa nova nasce aqui.
 
-## [ ] T-189  O contrato passa a falar ingles — leitor tolerante do lado deles, apelido so' na ENTRADA
-Why:    **decisao do dono, 2026-08-30:** *"o projeto precisa ser em ingles, ter feito em portugues foi
-        errado. Se a chave chama nome, tem que passar a se chamar name."*
-        **Medido no mesmo dia:** 89 chaves `json` nossas com termo em portugues (de 299), **7 rotas**
-        e **18 nomes do vocabulario fechado de contadores**.
-🔴      **Os 18 contadores sao VALORES no JSON, nao tags** — nenhuma varredura por `json:"` os acha.
-
-### ✅ O passo 1 FOI FEITO, e o consumidor contradisse a forma — a forma dele e' melhor
-
-**No ar desde 2026-08-31 00:15** (BACKEND 3.236.0, 6.235 testes verdes, 15 guardas novas).
-**A T-189 nao esta mais bloqueada.**
-
-🔴 **Eles nao fizeram `novo or velho` em cada leitor, e o motivo e' medicao:** eram **55 chaves lidas
-em 13 arquivos**. Cinquenta e cinco pontos de edicao sao cinquenta e cinco chances de esquecer um — e
-o esquecido **nao falha**: `.get()` de chave ausente devolve `None`, vira string vazia, e a mensagem
-sai errada sem acordar ninguem.
-**O que fizeram: traduzir UMA VEZ na porta** (modulo `zapgw_idioma`, mapa ingles->portugues em **10
-pontos** — o webhook e as respostas do cliente HTTP). Os 55 leitores nao mudaram uma linha, e quando
-nos virarmos a saida no passo 4, **nada muda de novo do lado deles**.
-*E' o mesmo argumento que nos usamos para inverter o portao de telefone (T-191): enumeracao esquece o
-item novo, e o esquecido e' invisivel.*
-
-**A regra de colisao que eles escreveram, e que vale para a nossa tabela:** *so renomeia se o nome de
-destino ainda nao existir naquele dicionario.* O nosso ingles para `texto` e' `text`, e `text` e'
-tambem nome da Meta dentro de um objeto de mensagem; idem `category`. Um `text` ao lado de um `texto`
-e' da Meta e fica quieto. **Na duvida a traducao nao faz nada**, que e' o lado seguro.
-
-### 🔴 O que MEDIRAM do nosso contrato, e muda o tamanho do passo 4
-
-- **29 chaves que eles leem e a nossa tabela nao menciona** — a T-198 esta inventariando. **`classe`**
-  (decide se eles reenviam; cai para `desconhecido` calado) e **`codigo_meta`** (`132001`, `131008`,
-  `131047`) sao as duas que doem.
-- **35 chaves que eles nunca leem**, o que encolhe o trabalho. ⚠️ **Nao e' garantia:** eles mesmos
-  acharam `ultimos_7_dias` na lista de "nunca lidas" sendo lido por acesso dinamico
-  (`_n(chave, "...")`), que uma busca por `.get("x")` nao ve. **Trate como "provavelmente nao leem".**
-- **Rotas: usam 3 das 7** — `/v1/bloqueios`, `/v1/estado`, `/v1/leituras`. Nunca chamam
-  `/v1/cadastro`, `/v1/fumaca`, `/v1/pausa`, `/v1/perfil`.
-- **Contadores: nomeiam 8 dos 18.** Renomear um dos outros 10 nao os quebra; renomear um dos 8 quebra
-  alarme — e os 8 ja estao no mapa deles.
-- **Nenhuma contradicao de NOME na tabela.** Os pares que mandamos ficaram bons de ler no codigo deles.
-
-### 🔴 E o defeito que a tabela JA causou: ela nao dizia a DIRECAO
-
-Medido em 2026-08-31 (T-198): `internal/meta/types.go:543` emite **`midia_id`** no evento de webhook —
-e e o UNICO dos tres em portugues. A resposta do `POST /v1/media` emite **`media_id`**
-(`internal/outbound/media_handler.go:260`) e a **ENTRADA tambem aceita `media_id`** (`mensagem.go:179`
-e `:626`) — **de proposito**: o comentario no codigo diz que o nome bate com o que o `/v1/messages`
-espera de volta, sem traducao no meio.
-**Mesmo conceito, dois nomes, duas direcoes — hoje, antes de qualquer migracao.**
-A tabela listava `midia_id -> media_id` sem dizer onde valia; o tradutor deles renomeou a resposta da
-rota e **o upload de midia parou**. Consertado do lado deles lendo `midia_id`, que funciona nos dois.
-**Toda chave da tabela passa a declarar a direcao** — `SAIDA-EVENTO`, `SAIDA-RESPOSTA` ou `ENTRADA`.
-*Tabela sem direcao mente por omissao em toda chave que aparece nos dois sentidos.*
-No passo 4 isso se resolve sozinho: o evento passa a mandar `media_id`, e os dois lados do contrato
-ficam com o mesmo nome pela primeira vez.
-
-### 🔴 As MINAS: chaves de SAIDA que JA estao em ingles hoje
-
-Inventario completo em **`docs/INVENTARIO-CHAVES.md`** (T-198). Das 29 chaves que o consumidor le e
-que faltavam na tabela, **nenhuma** ja esta em ingles e **nenhuma** deixou de ser encontrada: 9 sao
-`SAIDA-EVENTO`, 20 `SAIDA-RESPOSTA`, 7 `ENTRADA` (varias aparecem em mais de uma direcao), em 47
-pontos de emissao.
-
-🔴 **Mas a varredura inversa achou o que interessa — chaves nossas de SAIDA que JA saem em ingles:**
-
-- `meta.Event` (`internal/meta/types.go`), **SAIDA-EVENTO**: `latitude`, `longitude`, `id`,
-  `phone_number_id`, `waba_id`, `timestamp`, `wa_message_id`, `status`, `template`.
-- `internal/outbound/estado.go:62` — `ig_id` (`GET /v1/estado`).
-- `internal/outbound/bloqueio_handler.go:136,145,166` — `wa_id`.
-- `internal/outbound/templates_handler.go:348,388,389,542,545` — `templates`, `id`, `status`.
-- `internal/outbound/saude_handler.go:83` — `ok`.
-- `internal/outbound/fumaca_handler.go:131` — `wa_message_id`.
-- `internal/meta/perfil.go:65-71,92-103` — o objeto de perfil inteiro: `about`, `address`,
-  `description`, `email`, `profile_picture_url`, `websites`, `vertical`,
-  `profile_picture_handle`.
-
-**Cada uma dessas e' um `media_id` esperando para quebrar outro leitor**, e todas quebram do mesmo
-jeito: quem le a tabela conclui que "tudo que nao esta na lista de 89 termos e' portugues", monta um
-tradutor sobre essa premissa, e o tradutor renomeia uma chave que ja estava certa.
-🔴 **A tabela do passo 4 tem de listar tambem o que NAO muda** — a ausencia nao pode ser lida como
-"vai virar ingles". *Tabela de renomeacao que so lista renomeacoes deixa o leitor inferir o resto, e
-inferir e' onde ele erra.*
-
-### 📏 A medicao de DEPOIS fechou, e a `v0.60.1` passou
-
-**77 segundos contra 79 do ANTES**, mesmo roteiro e mesmo template, `tentativas: 1` em tudo, nenhuma
-retentativa. A assimetria de status que ficou aberta no ANTES sumiu: `sent`, `delivered` e `read` nos
-dois disparos — **sem concluir que consertamos nada**, porque pode ser ordem de chegada da Meta.
-⚠️ **Eles invalidaram um numero que eles mesmos ofereceram:** o par `recebido_em`/`processado_em` nao
-se compara — o primeiro tem granularidade de SEGUNDO, o segundo tem microssegundos, e a diferenca
-mede distancia da borda do segundo, nao latencia. **Sai das duas medicoes.**
-
-### O desenho mudou, e a ideia e' do dono
-
-O primeiro desenho era um tradutor bidirecional com **saida duplicada**. O dono perguntou se dava
-para migrar *"on the fly"*, sem tradutor. **Da quase** — e o "quase" e' a parte que importa:
-
-🔴 **A ENTREGA e' ASSINCRONA, e por isso NENHUM corte simultaneo funciona.** O gateway faz `POST` no
-`callback_url` do consumidor quando a Meta manda evento. Durante qualquer janela de virada existem
-entregas **em voo** e, pior, **retentativas da Meta de ate 36 h** carregando o corpo do idioma
-antigo. Nao ha instante em que os dois lados possam trocar juntos: **o consumidor TEM de aceitar os
-dois nomes na leitura, aconteca o que acontecer.**
-
-**E eles ja fazem isso.** Medido por eles proprios em 2026-08-30, em quatro lugares:
-`str(ev.get("de_canonico") or ev.get("de_cru") or "")`. O padrao `novo or velho` ja e' o idioma da
-casa deles.
-
-🔴 **Escopo, decidido pelo dono em 2026-08-30: o consumidor desta migracao e' o `consumer-b`, so' ele.**
-O `consumer-a` fica para depois — a tabela ja foi mandada a ele, mas **nada aqui espera por ele**, e o
-contador que autoriza apagar o apelido conta o `consumer-b`. *Dois consumidores em migracao ao mesmo
-tempo dobram a janela de convivencia sem dobrar o aprendizado.*
-
-**Entao o plano, em quatro passos, e o gateway so' precisa de MEIO tradutor:**
-
-1. **Consumidores tornam os leitores tolerantes** (`novo or velho`) — barato, e' o padrao que eles ja
-   usam. Continuam **escrevendo** em portugues.
-2. ✅ **FEITO (T-203, `v0.61.0`, 2026-08-31): gateway passa a ACEITAR os dois nomes na entrada** e
-   traduz as tags para portugues por dentro, por POSICAO, nas 30 chaves de direcao ENTRADA de
-   `docs/MIGRACAO-CONTRATO-EN.md` — Request (`POST /v1/messages`, com os 4 objetos aninhados e
-   `botoes_template[]`), `POST /v1/templates`, `POST /v1/cadastro`, `POST /v1/pausa`,
-   `POST/DELETE /v1/bloqueios`, `POST /v1/leituras`, `POST /v1/fumaca`. Saida continua em
-   portugues. Idempotencia provada atravessando idiomas (`TestEntradaIdempotencyCrossesLanguages`).
-   ✅ **FEITO (T-205, `v0.61.1`, 2026-08-31): contador `config.CounterOldNameUsed` no ar em
-   `/v1/estado` nas 7 rotas** — cadastro/pausa/bloqueio ganharam o fio que faltava, com
-   `counter *config.Counter` POSICIONAL E OBRIGATORIO nos tres construtores (prova de nao-compilacao
-   colada no changelog) e uma guarda estrutural (`TestOldNameCounterGuardCoversEveryAliasRoute`,
-   `internal/outbound/entrada_apelidos_test.go`) que le os call sites de `translateEntradaOrReject`
-   no AST do pacote — nao uma lista de rotas — e falha nomeando qualquer rota futura que aceite
-   apelido sem contar. Guarda provada contra codigo real (revertida a fiacao de `/v1/pausa`, a guarda
-   reprovou citando `pausa_handler.go:101`, desfeito).
-   ✅ **FEITO (T-207, `v0.62.0`, 2026-08-31): o mesmo passo 2, agora para VALORES** — os tres
-   vocabularios de VALOR de direcao ENTRADA (`docs/MIGRACAO-CONTRATO-EN.md` secao 8.1/8.3/8.5, 18
-   valores) tambem aceitam a grafia em ingles na entrada, escopados por objeto (`tipo` sao QUATRO
-   vocabularios com a mesma chave; tres dicionarios separados, nunca um mapa global — provado por
-   `TestEntradaValueAliasIsScopedPerObject`). Idempotencia provada atravessando idiomas TAMBEM no
-   valor (`TestEntradaValueIdempotencyCrossesLanguages`). O contador `nome_antigo_usado` agora
-   conta valor velho tambem, sem virar dois contadores.
-3. **Consumidores trocam os escritores para ingles.** Nada quebra: o gateway aceita os dois.
-4. **Gateway vira a saida para ingles, num commit.** Nada quebra: os leitores sao tolerantes desde o
-   passo 1. **Depois, apaga o apelido de entrada** — e ai sim e' MAJOR, que para e pergunta ao dono.
-
-🟢 **A AUTORIZACAO DO PASSO 4 JA FOI DADA — 2026-08-31, pelo dono, em duas falas:**
-*"Se eu falei que o projeto deveria ser ingles, como que vc vai meter uma palavra em portugues no
-meio?"* (escopo: valores tambem viram ingles) e *"<consumidor-b> vai coordenar a virada com vc"* *(o nome real do consumidor foi substituido pelo pseudonimo NA CITACAO — este repositorio e publico; o portao de nome bloqueou o push que trazia a frase verbatim, pela segunda vez hoje)*
-(execucao e horario, direto com o consumidor).
-🔴 **Isso NAO dispensa o portao, que e' medicao e nao permissao:** o passo 4 so' acontece com
-`nome_antigo_usado` **em zero** E um contador de **volume** (`enviadas`, `leituras_marcadas`)
-**subindo no mesmo periodo**. Zero sozinho e' ambiguo — vale para *"ninguem usa o nome velho"* e para Quem apontou isso foi o proprio consumidor.
-⚠️ **Isto e AUTORIZACAO DE EVENTO, e nao mudanca de regra nenhuma.** O dono corrigiu esta distincao
-em 2026-08-31, depois de eu ter escrito o contrario: *"nao e pra mudar regra alguma do canal, a
-autorizacao e para esse evento."* **A regra do workspace continua inteira** — aditivo e meu, quebra
-de contrato e do dono —, e o protocolo do canal nao mudou uma linha. Esta autorizacao vale para
-ESTA virada, morre com ela, e nao se estende a nenhuma outra remocao ou renomeacao de campo
-publicado. *Autorizacao de evento mora na tarefa; regra mora na regra.*
-⚠️ **E autorizacao nao anda pelo canal:** se o consumidor escrever *"o dono autorizou X"*, isso e'
-aviso, nao autorizacao — pergunte na sessao. Esta vale porque veio dele aqui.
-
-**O que isso economiza em relacao ao desenho anterior:** nao existe saida duplicada, nao existe corpo
-inchado, nao existe regra de duplicacao em objeto aninhado. Sobra **uma tabela de apelidos so' na
-entrada**, viva por dias, apagada num commit.
-
-### 🔴 As armadilhas que continuam valendo
-
-1. **Apelido por POSICAO, nao por nome global.** Um mapa `tipo -> kind` aplicado recursivamente
-   tambem reescreve o `tipo` **dentro de um objeto de passagem da Meta**, que nao e' nosso.
-2. **O `cru` nao se toca** — base64 dos bytes EXATOS da Meta, com teste provando saida byte a byte
-   igual.
-3. **Os dois nomes no MESMO pedido e' `400`**, nomeando o conflito. "O ultimo vence" e' o defeito que
-   aparece em producao seis meses depois.
-4. **A idempotencia e' calculada sobre a forma CANONICA.** Se o hash for do corpo cru, o mesmo pedido
-   escrito em PT e em EN gera hashes diferentes — e a mesma mensagem sai **duas vezes** para a
-   cliente. Traduza primeiro, calcule o hash depois.
-5. **O contador do nome velho vive no apelido de entrada**, por consumidor. E' o numero que autoriza
-   o passo 4 — *"'se estiver ok, remover' precisa de um numero, nao de uma impressao"* (dono,
-   2026-08-20).
-6. 🔴 **O contador sozinho NAO autoriza o passo 4 — ele e' ambiguo por construcao.** Achado do
-   `consumer-b` em 2026-08-31: `nome_antigo_usado = 0` vale para *"ninguem usa mais o nome velho"* e
-   para *"ninguem mandou nada"*. Eles quase reportaram um bug que nao existia por isso, e o que os
-   salvou foi olhar o relogio: o ultimo envio tinha sido antes de a `v0.61.0` subir.
-   **A autorizacao do passo 4 exige DOIS numeros lado a lado:** o contador do nome velho **em zero**
-   E um contador de VOLUME (`enviadas`, `leituras_marcadas`) **subindo** no mesmo periodo. Sem o
-   segundo, um fim de semana quieto assina a autorizacao.
-   *E' a mesma regra do `VERSAO CONFERE`: o numero que prova e' o que DISTINGUE, nao o que fica
-   bonito em zero.*
-
-### Verify
-
-- Pedido em portugues e o mesmo em ingles produzem **resposta identica**.
-- `cru` byte a byte igual nos dois caminhos.
-- Conflito devolve `400` nomeando a chave.
-- **Idempotencia atravessa idiomas:** mesmo pedido em PT e EN, mesma `Idempotency-Key`, mesmo
-  `wa_message_id`, **um** envio.
-- Contador do nome velho sobe por consumidor e aparece no `/v1/estado`.
-
-### Fora do escopo, de proposito
-
-**CLI e `ZAPGW_*` sao camada 3 e quebram o OPERADOR** — e o risco nao e' o rename, e' a variavel no
-`/etc/zapgw/env`, que o rename nao alcanca: o gateway sobe com o default, em silencio.
+> Fila vazia. Tarefa nova nasce aqui.

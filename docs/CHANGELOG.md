@@ -4,6 +4,15 @@ Uma linha por versao entregue, no mesmo commit do bump. A entrada diz o **efeito
 
 ## v0.63.0 — 2026-08-31
 
+- **O contrato passa a falar ingles — leitor tolerante do lado deles, apelido so na ENTRADA** (T-189)
+  — a migracao inteira do contrato, em quatro passos e sem uma mensagem perdida: leitores tolerantes
+  do lado do consumidor, o gateway aceitando os dois idiomas na entrada (chave e valor), os
+  escritores do consumidor em ingles, e a virada da saida. **Provada contra producao pelo
+  consumidor:** `"observed"` chega e vira `"observado"` nos 7 pontos de leitura dele **sem uma linha
+  de codigo dele ter mudado**, 80 templates lidos, zero evento preso. Ficam de fora, nomeados: o
+  apelido de entrada (que continua no ar, e cuja remocao e decisao do dono) e os 18 nomes de
+  contador (sem par decidido — o doc que dizia o contrario era falso). _Completed 2026-08-31 14:16._
+
 - **T-210 — The output sweep is BLIND to the webhook event — fix it before v0.63.0 ships** — root
   cause found: `TestOutputContractHasNoPortugueseKeyOrValue` checks `forbiddenOutputTokens` with a
   flat substring search over the whole marshaled blob, which has no notion of WHERE a key sits; to
