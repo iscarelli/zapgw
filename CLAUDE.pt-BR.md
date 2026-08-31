@@ -32,7 +32,7 @@ em `zapgw-dev:docs/DECISAO-ABERTURA-PUBLICA-2026-08-20.md`; aqui fica so o que v
 | | decisao | consequencia pratica |
 |---|---|---|
 | **Licenca** | **AGPL-3.0-or-later** (`LICENSE`) | o produto e servidor: a clausula de rede e o ponto. O dono e titular unico, entao relicenciar depois continua possivel — o caminho AGPL -> permissiva existe, o inverso nao. MIT foi recusado por ser irreversivel. |
-| **Idioma** | o codigo vai para **ingles**; documentacao em **PT-BR e EN** | os documentos deste repositorio ganharam par `NOME.md` (EN) + `NOME.pt-BR.md` (PT) em 2026-08-30. O codigo ainda nao chegou aqui: a traducao dele entra na mesma passada mecanica do primeiro codigo, nunca depois de publicado. |
+| **Idioma** | o codigo vai para **ingles**; documentacao em **PT-BR e EN** | os documentos deste repositorio ganharam par `NOME.md` (EN) + `NOME.pt-BR.md` (PT) em 2026-08-30. ✅ **O código chegou em 2026-08-30, já em inglês** — 3818 declarações renomeadas numa única passada mecânica no repositório privado, ANTES de migrar, de modo que nenhum identificador em português chegou a ser commitado aqui. |
 | **Terceiros** | **nada de consumidor** vai ao publico | e a razao de este repo existir em vez de o antigo virar publico. |
 | **Nome** | **continua `zapgw`** | foi para isso que o repo antigo virou `zapgw-dev`: liberar o nome. |
 
@@ -51,9 +51,13 @@ chegar aqui** — a higienizacao e a traducao acontecem no `zapgw-dev`, ANTES da
 primeiro commit de codigo daqui ja nasce limpo. *Aqui nao existe "corrigir no proximo commit": o
 commit errado fica.*
 
-**Estado hoje: so o scaffold, sem codigo, e ainda privado.** A stack decidida e Go (binario estatico, `CGO_ENABLED=0`),
-herdada do `zapgw-dev`; os comandos de verify entram na secao abaixo **junto com o primeiro codigo**,
-nao antes.
+**Estado hoje, medido em 2026-08-31: o código está aqui, o repositório é PÚBLICO, a `v0.60.1` está
+lançada, e a CI roda verde aqui.** A stack é Go (binário estático, `CGO_ENABLED=0`), herdada do
+`zapgw-dev`.
+🔴 **O histórico que você vê começa em 2026-08-31, e isso é proposital:** o primeiro histórico
+publicado carregava o nome real de um cliente, então o repositório foi **apagado e recriado** em vez
+de receber um `push --force` — apagar é a única coisa que leva junto também os objetos inalcançáveis.
+O motivo está escrito no commit de gênese, não escondido.
 
 ## Regras duras — e o que faz cada uma FALHAR
 
@@ -71,50 +75,56 @@ real, e isso precisa estar registrado.**
 
 | regra | o que a faz falhar | estado |
 |---|---|---|
-| Nenhum dado que identifique pessoa real (telefone, nome de cliente, id da Meta de terceiro, endereço interno) | teste de **allowlist** que varre `cmd/`, `internal/` e `testdata/`, **decodifica base64** dentro de `wamid.` e reprova número não declarado | existe no `zapgw-dev` (`internal/config/telefones_allowlist_test.go`) — **migra com o código**. ⚠️ **Ele NÃO olha `docs/`, `README.md` nem `implanta/`** (medido em 2026-08-30: os três subdiretórios estão escritos no próprio teste), e é ali que um número não declarado ainda vive. **Cobre só telefone** — nome de cliente e id de terceiro não têm portão nenhum |
-| TLS não tem modo desligado, em nenhum sentido | teste que varre toda a árvore atrás da opção, com a agulha montada por concatenação para não acusar a si mesmo | existe no `zapgw-dev` (`internal/inbound/deliver_test.go`) — **migra com o código** |
-| Rota nova declara isolamento por inquilino | tabela de isolamento que lê os `mux.HandleFunc` do pacote e exige literal declarado | existe no `zapgw-dev` — **migra com o código** |
-| Handler declara quais tipos de instância aceita | parâmetro **posicional obrigatório**: omitir **não compila**, e o valor zero é o mais restritivo | existe no `zapgw-dev` — **migra com o código** |
-| O verify roda antes de todo merge | **CI** com os quatro comandos em passos separados, `timeout-minutes: 10`, e nenhum passo usando cano para `grep` | 🔴 **não existe em lugar nenhum hoje, e volta em 2026-09-01.** 🔴 **Este repositório é o ÚNICO lugar onde ela volta a existir**, e nasce junto com o primeiro código — o relato completo está em *As três que não têm mecanismo em lugar nenhum*, abaixo |
+| Nenhum dado que identifique pessoa real (telefone, nome de cliente, id da Meta de terceiro, endereço interno) | **dois portões de allowlist** que varrem **todo arquivo que o `git` enxerga** a partir da raiz do módulo (rastreados **mais** não-rastreados-e-não-ignorados, T-191), um para telefone — **decodificando o base64** dentro de todo `wamid.` — e outro para nome de cliente (T-193) | ✅ **aqui, e a lista de isenções de telefone está VAZIA** (`internal/config/telefones_allowlist_test.go`, `internal/config/nomes_allowlist_test.go`). O de telefone já reprovou contra dado real **três** vezes — duas em 2026-08-30 (número num arquivo temporário; outro escondido em base64 dentro de um bloco de código markdown) e uma em 2026-08-31 (arquivo criado na raiz do repositório, o controle positivo da T-191). O de nome nasceu reprovando: encontrou **25 ocorrências em 6 arquivos** na própria árvore. ⚠️ **Falta portão para id da Meta de terceiro** |
+| TLS não tem modo desligado, em nenhum sentido | teste que varre toda a árvore atrás da opção, com a agulha montada por concatenação para não acusar a si mesmo | ✅ **aqui** (`internal/inbound/deliver_test.go`, 24 testes) e roda na CI em passo próprio (`portao de TLS`). O código migrou em 2026-08-30; esta célula dizia "migra com o código" até 2026-08-31, que é a família de afirmação envelhecida descrita no item 1 abaixo |
+| Rota nova declara isolamento por inquilino | tabela de isolamento que lê os `mux.HandleFunc` do pacote e exige literal declarado | ✅ **aqui** — `internal/outbound/isolamento_test.go:407` lê por regexp os registros `mux.HandleFunc(...)` dos arquivos não-teste do pacote e exige que cada rota carregue um literal declarado |
+| Handler declara quais tipos de instância aceita | parâmetro **posicional obrigatório**: omitir **não compila**, e o valor zero é o mais restritivo | 🔴 **NÃO LOCALIZADO aqui.** O código já migrou, então "migra com o código" morreu de qualquer forma; uma varredura em 2026-08-31 não achou esse parâmetro. Ou ele não veio junto, ou esta descrição nunca bateu com o código. **A T-197 decide qual** — até lá, esta linha é afirmação, não estado |
+| O verify roda antes de todo merge | **CI** com os quatro comandos em passos separados, `timeout-minutes: 10`, e nenhum passo usando cano para `grep` | ✅ **existe** (`.github/workflows/verify.yml`), carrega os dois portões irreversíveis, cada um em passo próprio, com `ZAPGW_FORBIDDEN_NAMES` declarado como `env:` no nível do JOB para que tanto o passo do portão quanto o `go test ./...` inteiro o enxerguem (T-195). 🔴 **E ela JÁ RODOU aqui, medido em 2026-08-31:** quatro execuções no repositório recriado — as três primeiras **falharam** no portão de nome ("não consegui verificar", sem fonte de agulha) e a quarta passou com os quatro portões verdes (run `33355320803`). ⚠️ **A história de que a cota de Actions estava esgotada até 2026-09-01 morreu:** as execuções aconteceram em 08-31 |
 | Segredo nunca no repositório | `.gitignore` desde o commit inicial; hook por projeto | parcial — o `.gitignore` está aqui; o hook não |
 | Doc de subsistema começa com `Código:` | **nada** | 🔴 **não existe** |
 | O estado publicado (versão no ar, o que está em voo) não mente | **nada** | 🔴 **não existe** — a linha equivalente no `zapgw-dev` mentiu **duas vezes em dezesseis horas**, a segunda depois do aviso escrito logo abaixo dela |
 
-### As três que não têm mecanismo em lugar nenhum
+### As três fundações — duas delas já têm mecanismo, e uma continua sem
 
-Elas são o trabalho de fundação deste repositório, e vêm **antes** de o código chegar:
-
-1. **CI — escrita, provada, desligada por cota, e com data de volta: 2026-09-01.**
-   Ela existiu no `zapgw-dev` de 2026-08-21 a 2026-08-29: quatro passos separados, versão do Go
-   lida do `go.mod`, e o passo do `gofmt` transformando saída não-vazia em erro — ele sozinho
-   imprime e sai `0`. Saiu porque **a franquia de minutos de Actions da conta acabou**, consumida
-   pela CI de **outro projeto privado** do dono. A franquia reseta em 01/09, mas **ela não volta
-   para o `zapgw-dev`**: o dono decidiu em 2026-08-30 que aquele repositório é só a base deste e
-   congela depois da migração. **Este repositório é o único lugar onde a CI volta a existir**, e
-   isso torna a T-181 de lá o único caminho — não há plano B rodando em paralelo.
-   ⚠️ **A consequência aceita, dita com nome:** a passada mecânica inteira (rename de identificador
-   na árvore toda) acontece **sem CI nenhuma**, com o verify rodando só numa máquina Windows. A
-   classe de defeito que a CI pegava — `CGO_ENABLED`, permissão de arquivo, caminho — fica
-   descoberta até o primeiro run verde aqui.
-   **Aqui ela nasce junto com o primeiro código**, repondo o arquivo de 47 linhas a partir de
-   `git show 709e915:.github/workflows/verify.yml` no `zapgw-dev`.
-   🔥 **Este parágrafo já mentiu duas vezes seguidas, e as duas mentiras são de tipos diferentes —
-   por isso ficam registradas.** (1) Dizia *"feito no `zapgw-dev` e migra com o código"* depois de o
-   arquivo já ter sido apagado de lá: **afirmação sobre o estado de OUTRO repositório, que envelhece
-   sem avisar ninguém**. (2) A correção seguinte trocou isso por *"repo privado paga Actions; regra
-   do dono: CI só em projeto público"* — **causa inventada com cara de regra**, que sustentou uma
-   recomendação de antecipar a abertura pública para "ter CI de graça". O dono corrigiu em
-   2026-08-30: foi cota estourada por outro projeto, com data de reset. *Falha com prazo não vira
-   doutrina; quando a causa não estiver medida, escreva o sintoma e a data.*
-   *Vale registrar por que quase não foi feita:* uma tentativa anterior de Actions nesta conta
-   (2026-08-06) morreu duas vezes — job `cancelled`, campo `runner` vazio e **905 segundos cravados**
-   nas duas. Os dois runs de 2026-08-21 terminaram em ~2 minutos. 🔴 **O que destravou não foi
-   descoberto; foi apenas medido que naquele dia funcionava.**
-2. **O gate de dado pessoal como parte do CI**, não só como teste local — porque o custo aqui é
-   irreversível: publicado uma vez, não há como despublicar.
-3. **Um estado que se prova sozinho.** Qualquer linha deste repositório que afirme "a versão X está
-   no ar" precisa ou ser medida na hora, ou não ser escrita. *Bloco de retomada mentindo é pior que
-   bloco nenhum: é o primeiro texto que a próxima sessão lê.*
+1. **CI — ela existe aqui, ela roda aqui, e já reprovou contra dado real.**
+   Quatro execuções em 2026-08-31, no repositório recriado: as três primeiras **falharam** no portão
+   de nome (*"não consegui verificar"* — nenhuma fonte de agulha chegou ao runner), e a quarta passou
+   com os quatro portões verdes (run `33355320803`, ~1m30s). Essa ordem importa mais que o verde: um
+   portão que nunca recusou nada é indistinguível de um portão que não olha, e o mesmo vale para a
+   esteira que o carrega.
+   Ela existiu primeiro no `zapgw-dev`, de 2026-08-21 a 2026-08-29 — quatro passos separados, a
+   versão do Go lida do `go.mod`, e um passo de `gofmt` que transforma saída não-vazia em erro, já
+   que sozinho o `gofmt -l` imprime e sai `0`. Voltou aqui restaurada de
+   `git show 709e915:.github/workflows/verify.yml`, e ganhou os dois passos de portão.
+   🔥 **Este parágrafo já mentiu três vezes, cada uma de um jeito, e é por isso que o registro fica.**
+   (1) Disse *"feito no `zapgw-dev` e migra com o código"* depois de o arquivo já ter sido apagado
+   lá — **afirmação sobre o estado de OUTRO repositório, que envelhece sem avisar ninguém**.
+   (2) A correção trocou isso por *"repo privado paga Actions; regra do dono: CI só em projeto
+   público"* — **causa inventada com fantasia de regra**, que ainda sustentou uma recomendação de
+   antecipar a abertura pública para "ganhar CI de graça". O dono corrigiu em 2026-08-30: era cota
+   estourada por outro projeto, com data de reset.
+   (3) E essa data de reset foi escrita aqui como fato — *"volta em 2026-09-01"* — e repetida no
+   `docs/TASKS.md` em 2026-08-31 como *"a cota só reseta em 09-01"*. **As execuções aconteceram em
+   08-31.** Ninguém re-mediu a capacidade; a data veio da explicação do dono e endureceu em estado.
+   ➡️ *A família é uma só: **afirmação sobre coisa que você não controla envelhece calada.** Estado de
+   outro repositório, causa inventada, janela de cota — nenhuma delas falha alto quando deixa de ser
+   verdade. Escreva o sintoma, a data, e como foi medido.*
+   *Vale guardar, porque nunca foi explicado:* uma tentativa anterior de Actions nesta conta
+   (2026-08-06) morreu duas vezes — job `cancelled`, campo `runner` vazio e **exatamente 905
+   segundos** nas duas. As execuções de 2026-08-21 terminaram em ~2 minutos. 🔴 **O que destravou
+   nunca foi descoberto; só foi medido que funcionou naquele dia.**
+2. **Os portões de dado pessoal rodam na CI**, e não apenas como teste local — porque aqui o custo é
+   irreversível: publicado uma vez, não existe despublicar. Cada um tem passo próprio
+   (`portao de dado pessoal`, `portao de nome`), e as agulhas do portão de nome chegam ao runner como
+   o segredo de repositório `ZAPGW_FORBIDDEN_NAMES`, declarado como `env:` no nível do **job** para
+   que o `go test ./...` inteiro também o enxergue.
+   ⚠️ **PR vindo de fork não recebe segredo**, então o portão de nome falha lá dizendo que não
+   conseguiu verificar. Isso é proposital, e o workflow diz isso em comentário: transformar em skip
+   compraria um sinal verde com exatamente a cegueira que o portão existe para impedir.
+3. **Um estado que se prova.** 🔴 **Continua sem mecanismo.** Qualquer linha deste repositório que
+   afirme "a versão X está no ar" ou tem de ser medida na hora, ou não deve ser escrita. *Bloco de
+   retomada que mente é pior que bloco nenhum: é o primeiro texto que a próxima sessão lê.* O item
+   acima é o argumento deste — três mentiras, todas em texto que parecia assentado.
 
 ### O que NÃO é regra dura, e por que dizer isso importa
 
@@ -151,20 +161,30 @@ certificado valido no hostname publico, webhook chegando de fato, token aceito p
 **estruturalmente inverificavel** por esta suite. **A suite verde nao substitui essas provas**, e a
 unica coisa que as produz e' trafego real.
 
-### 🔴 Os dois testes que sao PORTAO, e o que os torna diferentes dos outros
+### 🔴 Os três testes que são um PORTÃO, e o que os torna diferentes dos outros
 
-Eles nao provam que o codigo funciona: provam que uma decisao irreversivel nao foi violada. Os dois
-**ja reprovaram contra dado real**, e por isso valem como mecanismo.
+Eles não provam que o código funciona: provam que uma decisão irreversível não foi violada. Os três
+**já reprovaram contra dado real**, e é por isso que valem como mecanismo.
 
-- **`internal/config/telefones_allowlist_test.go`** — varre `cmd/`, `internal/`, `testdata/`, `docs/`
-  e o `README.md` atras de telefone nao declarado, **decodificando o base64 de todo `wamid.`**,
-  porque o `wamid` carrega o telefone do destinatario dentro dele e um `grep` pelo numero como um
-  humano o escreve passa limpo por cima.
-  🔴 **A lista de isencoes deste repositorio esta VAZIA, e tem de continuar assim.** No repositorio
-  privado de onde este codigo veio havia cinco, todas de documentos de registro que ficaram la. Aqui
-  nao ha caso combinado: uma isencao e' um telefone real na internet, para sempre.
-- **`internal/inbound/deliver_test.go`** — varre a arvore atras de qualquer forma de desligar a
-  verificacao de TLS, com a agulha montada por concatenacao para o teste nao acusar a si mesmo.
+- **`internal/config/telefones_allowlist_test.go`** — varre **todo arquivo que o `git` enxerga** a
+  partir da raiz do módulo (todos os rastreados, mais todos os não-rastreados-e-não-ignorados —
+  T-191, de modo que arquivo novo em qualquer lugar, inclusive na raiz do repositório, entra sem
+  ninguém editar este teste) atrás de telefone não declarado, **decodificando o base64 de todo
+  `wamid.`**, porque o `wamid` carrega o telefone do destinatário dentro dele e um `grep` pelo número
+  como um humano o escreve passa limpo por cima.
+  🔴 **A lista de isenções deste repositório está VAZIA, e tem de continuar assim.** No repositório
+  privado de onde este código veio havia cinco, todas de documentos de registro que ficaram lá. Aqui
+  não há caso combinado: uma isenção é um telefone real na internet, para sempre.
+- **`internal/config/nomes_allowlist_test.go`** (T-193) — varre o mesmo conjunto de arquivos atrás de
+  nome de cliente, sem distinção de caixa e em fronteira de palavra. Ele **não tem allowlist nem
+  isenção por arquivo**: qualquer casamento é achado, ponto. A lista de agulhas **nunca mora no
+  repositório** — este repositório é público, e escrever a lista de nomes proibidos dentro dele
+  publicaria exatamente o que o portão existe para manter fora. Ela vem da variável de ambiente
+  `ZAPGW_FORBIDDEN_NAMES`, ou de `~/.zapgw/forbidden-names.txt`, fora da árvore; se nenhuma das duas
+  produzir ao menos uma agulha, o teste **falha dizendo que não conseguiu verificar** — mensagem
+  deliberadamente diferente da de achado, para que os dois desfechos nunca virem a mesma cor.
+- **`internal/inbound/deliver_test.go`** — varre a árvore atrás de qualquer forma de desligar a
+  verificação de TLS, com a agulha montada por concatenação para o teste não acusar a si mesmo.
 
 Duas propriedades que o verify precisa ter, e que so aparecem quando alguem tenta usar:
 

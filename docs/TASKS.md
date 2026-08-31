@@ -77,36 +77,33 @@ Ninguem poda. Vale virar tarefa antes de virar problema de disco.
 
 > A fila do periodo privado esta em `iscarelli/zapgw-dev`, congelada. Tarefa nova nasce aqui.
 
-## [ ] T-196  The PT-BR pair of CLAUDE.md stops describing a repository that no longer exists
-Why:    `CLAUDE.pt-BR.md` e' o par em portugues do `CLAUDE.md`, e **doc que diverge do par e' doc que
-        mente** — com o agravante de que este e' o arquivo que descreve as regras duras.
-        **Ja apontado por um implementador em 2026-08-31** e confirmado por mim: ele ainda descreve o
-        portao de telefone varrendo uma lista fixa de diretorios (a T-191 trocou por "tudo que o git
-        ve"), ainda diz que portoes "existem em `zapgw-dev` e migram com o codigo" (o codigo ja
-        migrou), nao conhece o portao de nome (T-193) e nao conhece a CI que existe e roda (T-195).
-Files:  CLAUDE.pt-BR.md
+## [ ] T-197  Settle whether the instance-type gate exists, and make the row say what is true
+Why:    A tabela de regras duras do `CLAUDE.md` afirma que "handler declara quais tipos de instancia
+        aceita" por um **parametro posicional obrigatorio** que **nao compila** se omitido, com o
+        valor zero sendo o mais restritivo. A celula de estado dizia "existe no `zapgw-dev`, migra com
+        o codigo" — **o codigo ja migrou**, e uma varredura em 2026-08-31 nao achou esse parametro.
+        **Doc errado e' pior que doc nenhum:** ou o mecanismo existe e a linha precisa de ponteiro, ou
+        ele nao veio e a linha esta mentindo sobre uma protecao que ninguem tem.
+Files:  CLAUDE.md, CLAUDE.pt-BR.md  (a linha da tabela, nos dois)
 
 Do:
-  - **Sincronize com o `CLAUDE.md` atual**, secao por secao. O `CLAUDE.md` e' a fonte: onde os dois
-    discordarem, o ingles manda.
-  - 🔴 **Isto NAO e' traducao mecanica.** O `CLAUDE.md` mudou de estado varias vezes hoje; leia o que
-    ele diz **agora** e escreva o portugues equivalente. Traduzir frase a frase um texto que voce nao
-    conferiu contra o codigo reproduz o erro em outro idioma.
-  - **Confira cada afirmacao contra o codigo, nao contra o par antigo.** As que mais importam: o que
-    cada portao varre, o que faz cada um falhar, e onde mora a agulha do portao de nome.
-  - **Nao invente historia.** Os relatos de custo (as tres mentiras do paragrafo da CI, os controles
-    positivos que reprovaram) ja estao no `CLAUDE.md` com data; traga-os, nao os reescreva.
-  - Se achar afirmacao no `CLAUDE.md` que **voce** nao consegue confirmar no codigo, **nao traduza:
-    relate**. Doc errado e' bug, e o par nao e' lugar de propagar duvida.
+  1. **Meça.** Procure, no codigo de producao (nao em teste), a assinatura que obriga um handler a
+     declarar os tipos de instancia que aceita. Pontos de partida: `internal/inbound/handler.go`,
+     `internal/outbound/`, `ValidateInstanceType` em `internal/config/`, e o registro de rotas que
+     `internal/outbound/isolamento_test.go:407` le.
+  2. **Se existir:** corrija a celula de estado nos DOIS arquivos com `arquivo:linha` e uma frase
+     dizendo o que exatamente deixa de compilar quando alguem omite. **Prove** que deixa de compilar:
+     remova o argumento numa copia, rode `go build ./...`, cole o erro, desfaca.
+  3. **Se NAO existir:** 🔴 **nao invente e nao conserte por conta propria.** Escreva na celula que o
+     mecanismo nao existe (o formato da tabela ja tem esse estado: 🔴 **nao existe**) e **relate ao
+     planner**, porque recriar uma protecao de isolamento e' decisao de desenho, nao de doc.
+  4. Os dois arquivos mudam **juntos**.
 
 Verify:
-  - `diff <(grep -c '^#' CLAUDE.md) <(grep -c '^#' CLAUDE.pt-BR.md)` — mesma quantidade de secoes, ou
-    a diferenca explicada no relatorio.
-  - **Percorra a tabela de regras duras dos dois lado a lado** e confirme, linha por linha, que os
-    dois dizem a mesma coisa sobre: o que varre, o que falha, e o estado. Relate a tabela conferida.
-  - `go test ./...` verde (o portao de nome varre `CLAUDE.pt-BR.md` tambem — se voce escrever uma
-    agulha la, ele reprova).
-  - `gofmt -l cmd internal` sem saida.
+  - Se o mecanismo existir: a saida do `go build` falhando com o argumento removido, colada no
+    relatorio, e restaurado depois (`git diff` vazio no codigo).
+  - Se nao existir: a lista de lugares onde voce procurou, para o proximo nao repetir a busca.
+  - `go test ./...` verde e `gofmt -l cmd internal` sem saida nos dois casos.
 
 ## [ ] T-194  The deploy prunes its own pre-update snapshots
 Why:    **Decisao do dono, 2026-08-31:** manter os 3 ultimos e podar no proprio `deploy.sh`. Hoje um

@@ -4,6 +4,15 @@ Uma linha por versao entregue, no mesmo commit do bump. A entrada diz o **efeito
 
 ## Nao lancado
 
+- **The PT-BR pair of CLAUDE.md stops describing a repository that no longer exists** (T-196) —
+  o par em portugues voltou a bater com o `CLAUDE.md`: a tabela de regras duras (os dois portoes de
+  dado pessoal, TLS, isolamento de rota), a secao das tres fundacoes reescrita, a dos portoes
+  passando de dois para tres, e o "Estado hoje" que ainda dizia *"so o scaffold, sem codigo, e ainda
+  privado"*. **Tres afirmacoes falsas foram achadas TAMBEM no lado ingles** ao conferir contra o
+  codigo — tres portoes marcados como "existe no zapgw-dev, migra com o codigo" depois de o codigo
+  ter migrado. Dois deles foram localizados aqui e ganharam ponteiro; o terceiro nao foi encontrado
+  e virou a T-197 em vez de virar afirmacao. _Completed 2026-08-31 01:03._
+
 - **CI carries the name gate, and says so when it cannot verify** (T-195) — `ZAPGW_FORBIDDEN_NAMES`
   entregue como `env:` no nivel do JOB em `.github/workflows/verify.yml`, alcancando tanto o
   `go test ./...` quanto um passo proprio novo (`-run TestNoCustomerNameOutsideTheGateInTheRepo`),

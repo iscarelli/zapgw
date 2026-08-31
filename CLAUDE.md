@@ -32,7 +32,7 @@ None of them is mine to reopen. The full reasoning and the measured cost of each
 | | decision | practical consequence |
 |---|---|---|
 | **License** | **AGPL-3.0-or-later** (`LICENSE`) | the product is a server: the network clause is the point. The owner is the sole holder, so relicensing later remains possible — the AGPL -> permissive path exists, the reverse does not. MIT was refused for being irreversible. |
-| **Language** | the code goes to **English**; documentation in **PT-BR and EN** | this repository's documents got their `NAME.md` (EN) + `NAME.pt-BR.md` (PT) pair on 2026-08-30. The code has not arrived yet: translating it goes in the same single mechanical pass as the first code, never after publication. |
+| **Language** | the code goes to **English**; documentation in **PT-BR and EN** | this repository's documents got their `NAME.md` (EN) + `NAME.pt-BR.md` (PT) pair on 2026-08-30. ✅ **The code arrived on 2026-08-30, already in English** — 3818 declarations renamed in a single mechanical pass in the private repository, BEFORE migrating, so no Portuguese identifier was ever committed here. |
 | **Third parties** | **nothing from a consumer** goes public | it is the reason this repo exists instead of the old one being made public. |
 | **Name** | **stays `zapgw`** | that is what the old repo became `zapgw-dev` for: to free up the name. |
 
@@ -52,9 +52,13 @@ arrive here** — the sanitization and the translation happen in `zapgw-dev`, BE
 the first code commit here is born clean. *There is no "fix it in the next commit" here: the wrong
 commit stays.*
 
-**State today: the code is here, the repository is PUBLIC, and `v0.60.1` is released.** The chosen stack is Go (static
-binary, `CGO_ENABLED=0`), inherited from `zapgw-dev`; the verify commands go into the section below
-**together with the first code**, not before.
+**State today, measured on 2026-08-31: the code is here, the repository is PUBLIC, `v0.60.1` is
+released, and CI runs green here.** The stack is Go (static binary, `CGO_ENABLED=0`), inherited from
+`zapgw-dev`.
+🔴 **The history you see starts on 2026-08-31, and that is deliberate:** the first published history
+carried a real customer's name, so the repository was **deleted and recreated** instead of
+force-pushed — deleting is the only thing that also takes the unreachable objects with it. The
+reason is written in the genesis commit, not hidden.
 
 ## Hard rules — and what makes each one FAIL
 
@@ -75,9 +79,9 @@ that has to be on the record.**
 | rule | what makes it fail | state |
 |---|---|---|
 | No data identifying a real person (phone number, customer name, third party's Meta id, internal address) | a **phone-number allowlist** test (`internal/config/telefones_allowlist_test.go`, T-191) plus a **customer-name deny-scan** (`internal/config/nomes_allowlist_test.go`, T-193) — both sweep every file `git` sees from the module root (tracked + untracked-and-not-ignored) | ✅ **the phone gate's exemption list is EMPTY**. It has failed against real data three times — twice on 2026-08-30 (a number in a temporary file, one hidden in base64 inside a markdown code block) and once on 2026-08-31 (a number in a file created at the repository root, T-191's positive control). ✅ **the name gate has NO allowlist at all** — its needle list lives OUTSIDE the repository (`ZAPGW_FORBIDDEN_NAMES` or `~/.zapgw/forbidden-names.txt`), and it FAILS (never skips) if neither source is loadable. It has already failed against real data once, on 2026-08-31, against the tree this same commit cleans (T-193). ⚠️ **A third party's Meta id (`waba_id`, `ig_id`, `phone_number_id`) still has no gate** |
-| TLS has no off switch, in either direction | a test that sweeps the whole tree for the option, with the needle assembled by concatenation so it does not flag itself | exists in `zapgw-dev` (`internal/inbound/deliver_test.go`) — **migrates with the code** |
-| A new route declares per-tenant isolation | an isolation table that reads the package's `mux.HandleFunc` calls and requires a declared literal | exists in `zapgw-dev` — **migrates with the code** |
-| A handler declares which instance types it accepts | a **mandatory positional** parameter: omitting it **does not compile**, and the zero value is the most restrictive one | exists in `zapgw-dev` — **migrates with the code** |
+| TLS has no off switch, in either direction | a test that sweeps the whole tree for the option, with the needle assembled by concatenation so it does not flag itself | ✅ **here** (`internal/inbound/deliver_test.go`, 24 tests) and it runs in CI in its own step (`portao de TLS`). The code migrated on 2026-08-30; this cell said "migrates with the code" until 2026-08-31, which is the stale-claim family described in item 1 below |
+| A new route declares per-tenant isolation | an isolation table that reads the package's `mux.HandleFunc` calls and requires a declared literal | ✅ **here** — `internal/outbound/isolamento_test.go:407` reads the `mux.HandleFunc(...)` registrations of the package's non-test files with a regexp and requires each route to carry a declared literal |
+| A handler declares which instance types it accepts | a **mandatory positional** parameter: omitting it **does not compile**, and the zero value is the most restrictive one | 🔴 **NOT LOCATED here.** The code has migrated, so "migrates with the code" is dead either way; a sweep on 2026-08-31 did not find this parameter. Either it did not come across, or this description never matched the code. **T-197 settles which** — and until it does, this row is a claim, not a state |
 | The verify runs before every merge | **CI** with the four commands in separate steps, `timeout-minutes: 10`, and no step piping into `grep` | ✅ **exists** (`.github/workflows/verify.yml`), born together with the first code — carries both irreversible gates, phone and name, each in its own step, with `ZAPGW_FORBIDDEN_NAMES` declared as an `env:` at the JOB level so both the name gate's own step and the whole-package `go test ./...` see it (T-195). 🔴 **And it has RUN here, measured on 2026-08-31:** four runs on the recreated repository — the first three **failed** on the name gate ("could not verify", no needle source) and the fourth passed with all four gates green (run `33355320803`). So the CI itself has now failed against real data before being trusted. ⚠️ **The story that the Actions quota was exhausted until 2026-09-01 is dead:** the runs executed on 08-31. That account had already been wrong twice; this is the third correction, and the lesson repeats — *a claim about capacity that nobody re-measured is a claim, not a state* |
 | A secret never in the repository | `.gitignore` since the initial commit; a per-project hook | partial — the `.gitignore` is here; the hook is not |
 | A subsystem doc starts with `Código:` | **nothing** | 🔴 **does not exist** |
