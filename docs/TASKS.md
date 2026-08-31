@@ -97,13 +97,96 @@ telefone real e `wamid` de producao, e este repositorio e' publico.
 > A fila do periodo privado esta em `iscarelli/zapgw-dev`, congelada. Tarefa nova nasce aqui.
 
 ## [ ] T-189  O contrato passa a falar ingles — leitor tolerante do lado deles, apelido so' na ENTRADA
-🔴      **BLOQUEADA por terceiro:** nada aqui comeca antes do passo 1 do consumidor (leitores
-        tolerantes). Ver o bloco de retomada no topo deste arquivo.
 Why:    **decisao do dono, 2026-08-30:** *"o projeto precisa ser em ingles, ter feito em portugues foi
         errado. Se a chave chama nome, tem que passar a se chamar name."*
         **Medido no mesmo dia:** 89 chaves `json` nossas com termo em portugues (de 299), **7 rotas**
         e **18 nomes do vocabulario fechado de contadores**.
 🔴      **Os 18 contadores sao VALORES no JSON, nao tags** — nenhuma varredura por `json:"` os acha.
+
+### ✅ O passo 1 FOI FEITO, e o consumidor contradisse a forma — a forma dele e' melhor
+
+**No ar desde 2026-08-31 00:15** (BACKEND 3.236.0, 6.235 testes verdes, 15 guardas novas).
+**A T-189 nao esta mais bloqueada.**
+
+🔴 **Eles nao fizeram `novo or velho` em cada leitor, e o motivo e' medicao:** eram **55 chaves lidas
+em 13 arquivos**. Cinquenta e cinco pontos de edicao sao cinquenta e cinco chances de esquecer um — e
+o esquecido **nao falha**: `.get()` de chave ausente devolve `None`, vira string vazia, e a mensagem
+sai errada sem acordar ninguem.
+**O que fizeram: traduzir UMA VEZ na porta** (modulo `zapgw_idioma`, mapa ingles->portugues em **10
+pontos** — o webhook e as respostas do cliente HTTP). Os 55 leitores nao mudaram uma linha, e quando
+nos virarmos a saida no passo 4, **nada muda de novo do lado deles**.
+*E' o mesmo argumento que nos usamos para inverter o portao de telefone (T-191): enumeracao esquece o
+item novo, e o esquecido e' invisivel.*
+
+**A regra de colisao que eles escreveram, e que vale para a nossa tabela:** *so renomeia se o nome de
+destino ainda nao existir naquele dicionario.* O nosso ingles para `texto` e' `text`, e `text` e'
+tambem nome da Meta dentro de um objeto de mensagem; idem `category`. Um `text` ao lado de um `texto`
+e' da Meta e fica quieto. **Na duvida a traducao nao faz nada**, que e' o lado seguro.
+
+### 🔴 O que MEDIRAM do nosso contrato, e muda o tamanho do passo 4
+
+- **29 chaves que eles leem e a nossa tabela nao menciona** — a T-198 esta inventariando. **`classe`**
+  (decide se eles reenviam; cai para `desconhecido` calado) e **`codigo_meta`** (`132001`, `131008`,
+  `131047`) sao as duas que doem.
+- **35 chaves que eles nunca leem**, o que encolhe o trabalho. ⚠️ **Nao e' garantia:** eles mesmos
+  acharam `ultimos_7_dias` na lista de "nunca lidas" sendo lido por acesso dinamico
+  (`_n(chave, "...")`), que uma busca por `.get("x")` nao ve. **Trate como "provavelmente nao leem".**
+- **Rotas: usam 3 das 7** — `/v1/bloqueios`, `/v1/estado`, `/v1/leituras`. Nunca chamam
+  `/v1/cadastro`, `/v1/fumaca`, `/v1/pausa`, `/v1/perfil`.
+- **Contadores: nomeiam 8 dos 18.** Renomear um dos outros 10 nao os quebra; renomear um dos 8 quebra
+  alarme — e os 8 ja estao no mapa deles.
+- **Nenhuma contradicao de NOME na tabela.** Os pares que mandamos ficaram bons de ler no codigo deles.
+
+### 🔴 E o defeito que a tabela JA causou: ela nao dizia a DIRECAO
+
+Medido em 2026-08-31 (T-198): `internal/meta/types.go:543` emite **`midia_id`** no evento de webhook —
+e e o UNICO dos tres em portugues. A resposta do `POST /v1/media` emite **`media_id`**
+(`internal/outbound/media_handler.go:260`) e a **ENTRADA tambem aceita `media_id`** (`mensagem.go:179`
+e `:626`) — **de proposito**: o comentario no codigo diz que o nome bate com o que o `/v1/messages`
+espera de volta, sem traducao no meio.
+**Mesmo conceito, dois nomes, duas direcoes — hoje, antes de qualquer migracao.**
+A tabela listava `midia_id -> media_id` sem dizer onde valia; o tradutor deles renomeou a resposta da
+rota e **o upload de midia parou**. Consertado do lado deles lendo `midia_id`, que funciona nos dois.
+**Toda chave da tabela passa a declarar a direcao** — `SAIDA-EVENTO`, `SAIDA-RESPOSTA` ou `ENTRADA`.
+*Tabela sem direcao mente por omissao em toda chave que aparece nos dois sentidos.*
+No passo 4 isso se resolve sozinho: o evento passa a mandar `media_id`, e os dois lados do contrato
+ficam com o mesmo nome pela primeira vez.
+
+### 🔴 As MINAS: chaves de SAIDA que JA estao em ingles hoje
+
+Inventario completo em **`docs/INVENTARIO-CHAVES.md`** (T-198). Das 29 chaves que o consumidor le e
+que faltavam na tabela, **nenhuma** ja esta em ingles e **nenhuma** deixou de ser encontrada: 9 sao
+`SAIDA-EVENTO`, 20 `SAIDA-RESPOSTA`, 7 `ENTRADA` (varias aparecem em mais de uma direcao), em 47
+pontos de emissao.
+
+🔴 **Mas a varredura inversa achou o que interessa — chaves nossas de SAIDA que JA saem em ingles:**
+
+- `meta.Event` (`internal/meta/types.go`), **SAIDA-EVENTO**: `latitude`, `longitude`, `id`,
+  `phone_number_id`, `waba_id`, `timestamp`, `wa_message_id`, `status`, `template`.
+- `internal/outbound/estado.go:62` — `ig_id` (`GET /v1/estado`).
+- `internal/outbound/bloqueio_handler.go:136,145,166` — `wa_id`.
+- `internal/outbound/templates_handler.go:348,388,389,542,545` — `templates`, `id`, `status`.
+- `internal/outbound/saude_handler.go:83` — `ok`.
+- `internal/outbound/fumaca_handler.go:131` — `wa_message_id`.
+- `internal/meta/perfil.go:65-71,92-103` — o objeto de perfil inteiro: `about`, `address`,
+  `description`, `email`, `profile_picture_url`, `websites`, `vertical`,
+  `profile_picture_handle`.
+
+**Cada uma dessas e' um `media_id` esperando para quebrar outro leitor**, e todas quebram do mesmo
+jeito: quem le a tabela conclui que "tudo que nao esta na lista de 89 termos e' portugues", monta um
+tradutor sobre essa premissa, e o tradutor renomeia uma chave que ja estava certa.
+🔴 **A tabela do passo 4 tem de listar tambem o que NAO muda** — a ausencia nao pode ser lida como
+"vai virar ingles". *Tabela de renomeacao que so lista renomeacoes deixa o leitor inferir o resto, e
+inferir e' onde ele erra.*
+
+### 📏 A medicao de DEPOIS fechou, e a `v0.60.1` passou
+
+**77 segundos contra 79 do ANTES**, mesmo roteiro e mesmo template, `tentativas: 1` em tudo, nenhuma
+retentativa. A assimetria de status que ficou aberta no ANTES sumiu: `sent`, `delivered` e `read` nos
+dois disparos — **sem concluir que consertamos nada**, porque pode ser ordem de chegada da Meta.
+⚠️ **Eles invalidaram um numero que eles mesmos ofereceram:** o par `recebido_em`/`processado_em` nao
+se compara — o primeiro tem granularidade de SEGUNDO, o segundo tem microssegundos, e a diferenca
+mede distancia da borda do segundo, nao latencia. **Sai das duas medicoes.**
 
 ### O desenho mudou, e a ideia e' do dono
 
