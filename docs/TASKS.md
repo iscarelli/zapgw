@@ -6,28 +6,26 @@
 > Escrito ao fim de 2026-08-30, o dia em que o repositorio virou publico. Bloco de retomada
 > mentindo e' pior que bloco nenhum: e' o primeiro texto que a proxima sessao le.
 
-🔴 **DECIDIDO PELO DONO (2026-08-31): o repositorio publico vai ser APAGADO E RECRIADO, e a arvore
-tem de estar limpa ANTES.** Ele lembrou, com razao, que ja tinha pedido cuidado com dado de cliente
-varias vezes — isto nao era menu aberto.
-- **Por que apagar e nao reescrever:** so o apagar leva embora tambem os objetos soltos, que um
-  `push --force` deixa alcancaveis por SHA. Publico ha ~1 dia, **0 forks, 0 estrelas** — nao ha
-  colateral de terceiro.
-- **A ORDEM importa, e o repositorio novo nasce de UM commit:** o que nao estiver limpo na hora fica.
-  1. **T-193** constroi o portao de NOME e limpa a arvore no mesmo commit.
-  2. **T-194** poda de snapshot.
-  3. **So entao** apagar e recriar o repositorio.
-- 🔴 **O que a recriacao leva junto, e nao volta:** o release `v0.60.1` e os binarios anexados, as
-  tags, as issues, e **os segredos de repositorio da CI**. O segredo `ZAPGW_FORBIDDEN_NAMES` tem de
-  ser recriado DEPOIS, no repositorio novo — antes disso a CI nao consegue rodar o portao de nome, e
-  o portao **falha dizendo que nao conseguiu verificar**, que e o comportamento certo.
-- **Portao de nome: opcao (a), decidida pelo dono.** A agulha mora fora do repositorio, em
-  `~/.zapgw/forbidden-names.txt` (ja criado e preenchido) ou na variavel `ZAPGW_FORBIDDEN_NAMES`.
-  Sem uma das duas, o teste **falha** — nunca pula.
-- ⚠️ **Medido em 2026-08-31: a arvore NAO estava limpa** mesmo depois da T-192. Nome de cliente
-  seguia em `docs/META-CAMPOS-DE-WEBHOOK.md` (+ par), `docs/ARMADILHAS.md` (+ par),
-  `cmd/zapgw/perdidas_test.go` e `internal/config/forense_test.go`. **O que achou foi um `git grep`
-  manual, nao um teste** — e e por isso que a T-193 existe.
+✅ **FEITO EM 2026-08-31 00:4x: o repositorio publico foi APAGADO E RECRIADO, e o historico comeca
+num commit so.** Medido, nao afirmado:
+- `git rev-list --count origin/main` = **1**. A arvore do commit genesis e' **identica** a que passou
+  no verify (`git diff` entre a antiga HEAD e o genesis: vazio).
+- **As 8 agulhas dao zero** na arvore e no `origin`. O portao de nome (T-193) e' o que mede isso
+  agora — nao mais um `git grep` de quem lembrou.
+- **Release `v0.60.1` reposto e PROVADO byte a byte:** baixei de volta do release novo e o `sha256`
+  dos dois binarios bate com o do release original (`a48a031d…` amd64, `a32a78e4…` arm64).
+- **Segredo `ZAPGW_FORBIDDEN_NAMES` criado** no repositorio novo, entregue por `stdin` a partir de
+  `~/.zapgw/forbidden-names.txt` — nunca em linha de comando.
+- **O que a recriacao levou e nao volta:** o historico anterior (15 commits), as issues e as
+  estrelas (eram zero). Nada funcional apontava para o GitHub — varri `implanta/` e `.github/`: so' um
+  `Documentation=` na unit do systemd, e a URL nao mudou.
 
+🔴 **A CI nasce VERMELHA ate a T-195.** O `go test ./...` do workflow roda o portao de nome, e la nao
+existe nem a variavel nem o arquivo de agulhas — entao ele falha dizendo que **nao conseguiu
+verificar**, que e' o comportamento certo e nao um defeito. A T-195 entrega o segredo ao workflow.
+⚠️ **Decisao que eu tomei e que voce pode querer rever:** num PR vindo de **fork**, o GitHub nao
+entrega segredo, entao o portao vai reprovar por "nao consegui verificar" — e eu escolhi manter
+assim, falhando fechado, em vez de virar skip. Skip seria a cegueira que o portao existe para nao ter.
 
 ⏳ **ESPERANDO O CONSUMIDOR: a medicao de DEPOIS da migracao.**
 🔴 **Ela foi pedida as 23:52 NO ARQUIVO ERRADO** — a seção foi escrita em
@@ -70,6 +68,43 @@ Ninguem poda. Vale virar tarefa antes de virar problema de disco.
 ## Active
 
 > A fila do periodo privado esta em `iscarelli/zapgw-dev`, congelada. Tarefa nova nasce aqui.
+
+## [ ] T-195  CI carries the name gate, and says so when it cannot verify
+Why:    O portao de nome (T-193) le as agulhas de `ZAPGW_FORBIDDEN_NAMES` ou de
+        `~/.zapgw/forbidden-names.txt`. **Na CI nao existe nenhum dos dois hoje**, entao o
+        `go test ./...` do workflow vai falhar com "NAO CONSEGUI VERIFICAR". O segredo
+        `ZAPGW_FORBIDDEN_NAMES` **ja foi criado** no repositorio; falta o workflow entrega-lo.
+        Sem isto a CI nasce vermelha no repositorio recriado.
+Files:  .github/workflows/verify.yml
+        CLAUDE.md  (a linha da CI na tabela de regras duras)
+
+Do:
+  1. **Entregar o segredo ao teste** com `env:` no nivel do JOB (nao so' de um passo), para que tanto
+     o `go test ./...` quanto o passo proprio do portao enxerguem:
+     `ZAPGW_FORBIDDEN_NAMES: ${{ secrets.ZAPGW_FORBIDDEN_NAMES }}`
+  2. **Passo proprio para o portao de nome**, espelhando o que ja existe para o portao de telefone
+     (`-run TestNoCustomerNameOutsideTheGateInTheRepo -v`), pelo mesmo motivo escrito no comentario
+     daquele passo. **Nenhum passo canaliza saida para `grep`.**
+  3. 🔴 **Escreva no proprio workflow, em comentario, a consequencia que eu decidi e que o dono
+     precisa poder rever:** num PR vindo de **fork**, o GitHub nao entrega segredo, entao o portao vai
+     falhar dizendo que **nao conseguiu verificar**. Isso e **correto e proposital** — a CI realmente
+     nao consegue verificar ali, e falhar fechado e' a regra desta casa. O comentario tem de dizer
+     isso, senao o proximo a ver vermelho vai "consertar" transformando em skip, que e' exatamente a
+     cegueira que o portao existe para nao ter.
+  4. **CLAUDE.md:** a linha da CI na tabela de regras duras diz que ela "does not exist anywhere
+     today, and comes back on 2026-09-01" — **isso ja e falso**, o workflow existe. Corrija a linha
+     para o estado real, incluindo que ela carrega os dois portoes em passos proprios.
+     Nao toque em `docs/CHANGELOG.md` alem da entrada de aposentadoria.
+
+Verify:
+  - `yq` ou leitura direta: confirme que o `env:` esta no nivel do job e que o passo novo existe.
+  - **Rode localmente o que a CI vai rodar, com a agulha vindo SO' da variavel** (renomeie
+    `~/.zapgw/forbidden-names.txt` temporariamente, exporte `ZAPGW_FORBIDDEN_NAMES` com o conteudo
+    dele, rode o portao) e confirme **verde**. Devolva o arquivo ao lugar depois e confirme que ele
+    voltou (contagem de linhas).
+  - **Controle:** com o arquivo escondido **e** a variavel ausente, o portao tem de **falhar dizendo
+    que nao conseguiu verificar** — cole a mensagem.
+  - `CGO_ENABLED=0 go build ./...`, `go test ./...`, `go vet ./...`, `gofmt -l cmd internal` limpos.
 
 ## [ ] T-194  The deploy prunes its own pre-update snapshots
 Why:    **Decisao do dono, 2026-08-31:** manter os 3 ultimos e podar no proprio `deploy.sh`. Hoje um
