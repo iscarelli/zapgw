@@ -41,3 +41,32 @@ profile_picture_url
 websites
 vertical
 profile_picture_handle
+
+# ---------------------------------------------------------------------------
+# ACRESCENTADO EM 2026-08-31, depois de o consumer-b perguntar ao contrario:
+# "para cada um dos 29, a forma inglesa JA e' emitida em algum lugar?"
+#
+# A pergunta achou DOIS casos reais, e nenhum dos dois aparecia cruzando as
+# duas listas — so' medindo contra o codigo. As outras oito formas inglesas
+# que existem no codigo (`code`, `details`, `caption`, `location`, `reaction`,
+# `value`, `voice`, e `components` em internal/meta/templates.go) estao em
+# DECODIFICADORES do formato CRU da Meta (internal/meta/parse.go,
+# bloqueio.go): morrem por dentro, nunca chegam ao consumidor, e por isso nao
+# entram nesta lista.
+#
+# `address` — ja estava aqui, e o motivo agora esta escrito: ele e' ingles no
+#   objeto de perfil (GET/POST /v1/perfil) E e' o destino de `endereco` no
+#   passo 4. Depois da virada, os dois sao `address` em objetos DIFERENTES, e
+#   nenhum dos dois precisa de traducao nunca.
+#
+# `components` — ele existe na ENTRADA do POST /v1/messages
+#   (internal/outbound/mensagem.go:576) **para ser RECUSADO**: a uniao
+#   discriminada existe para tornar INEXPRESSIVEL o que a Meta rejeita, e
+#   deixar `components` cru passar devolveria essa classe de erro inteira para
+#   producao. Mapear `components` -> `componentes` faz esse campo-armadilha
+#   deixar de ser reconhecido. Note que `componentes` (portugues) TAMBEM
+#   existe, noutra rota (criacao de template) — sao dicionarios diferentes, e
+#   e' por isso que a regra do consumer-b e' POR DICIONARIO, nunca global.
+# ---------------------------------------------------------------------------
+
+components
