@@ -436,7 +436,7 @@ func main() {
 	// T-111: WhatsAppOnly — this route records waba_id/phone_number_id/
 	// numero_exibido; Instagram has no cadastro by API in this slice
 	// (see "Desenho preservado" in docs/TASKS.md).
-	enrollment := outbound.NewRegistrationHandler(store, authenticator, maxBytes, outbound.WhatsAppOnly)
+	enrollment := outbound.NewRegistrationHandler(store, authenticator, maxBytes, counter, outbound.WhatsAppOnly)
 	// POST /v1/fumaca and POST /v1/pausa (T-084): step 4 of the model
 	// (docs/MODELO-DE-USO.md, "O fluxo, e quem faz cada passo" — the
 	// consumer "Prova o canal (`fumaca`)") becomes executable by a
@@ -452,12 +452,12 @@ func main() {
 	// only toggles `ativo`.
 	smokeRoute := outbound.NewSmokeHandlerWithInstagramBase(store, authenticator, metaClient, counter, maxBytes,
 		instagramRenewalBase(os.Getenv), outbound.AllTypes)
-	pauseRoute := outbound.NewPauseHandler(store, authenticator, maxBytes, outbound.AllTypes)
+	pauseRoute := outbound.NewPauseHandler(store, authenticator, maxBytes, counter, outbound.AllTypes)
 	// POST/DELETE/GET /v1/bloqueios (T-148): the Cloud API's user-blocking
 	// endpoint. T-111: WhatsAppOnly — blocking uses inst.PhoneNumberID, a
 	// field exclusive to WhatsApp; there is no Instagram equivalent in
 	// this slice.
-	blockingRoute := outbound.NewBlockHandler(store, authenticator, metaClient, maxBytes, outbound.WhatsAppOnly)
+	blockingRoute := outbound.NewBlockHandler(store, authenticator, metaClient, maxBytes, counter, outbound.WhatsAppOnly)
 	// GET/POST /v1/perfil (T-155): the whatsapp_business_profile. T-111:
 	// WhatsAppOnly — profileNode (internal/outbound/perfil_handler.go)
 	// uses inst.PhoneNumberID, a field exclusive to WhatsApp; there is no

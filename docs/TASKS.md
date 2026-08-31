@@ -103,48 +103,6 @@ telefone real e `wamid` de producao, e este repositorio e' publico.
 
 > A fila do periodo privado esta em `iscarelli/zapgw-dev`, congelada. Tarefa nova nasce aqui.
 
-## [ ] T-205  The old-name counter covers ALL routes that accept an alias — and cannot be forgotten again
-Why:    A T-203 ligou o contador do nome velho em **4 das 7** rotas (envio, criacao de template,
-        leituras, fumaca). `/v1/cadastro`, `/v1/pausa` e `/v1/bloqueios` **aceitam** o apelido em
-        ingles e **nao contam**.
-🔴      **O contador nao e' telemetria: e' o numero que AUTORIZA o passo 4** — a virada da saida para
-        ingles e a remocao do apelido de entrada, que e' MAJOR. *"'se estiver ok, remover' precisa de
-        um numero, nao de uma impressao"* (dono, 2026-08-20). Um contador que cobre 4/7 rotas nao
-        responde "ninguem mais manda o nome velho": ele responde "ninguem mais manda o nome velho
-        NAS ROTAS QUE EU OLHO", que e' outra coisa — e e' a mesma forma de erro do portao que varria
-        uma lista de diretorios (T-191) e do portao que cobria so' telefone (T-193).
-Files:  internal/outbound/cadastro_handler.go, pausa_handler.go, bloqueio_handler.go
-        cmd/zapgw/main.go  (os construtores)
-        internal/outbound/entrada_apelidos_test.go  (a guarda estrutural)
-
-Do:
-  1. **Ligue o contador nas tres rotas que faltam**, do mesmo jeito das outras quatro, por instancia,
-     aparecendo no `GET /v1/estado`.
-  2. 🔴 **O parametro do contador nos construtores e' POSICIONAL E OBRIGATORIO**, como o
-     `AcceptedTypes` da T-111 (`internal/outbound/tipos.go`). **Omitir nao pode compilar.** Contador
-     opcional, ou que aceite `nil`, e' um contador que a proxima rota esquece — e o esquecimento nao
-     falha, so' devolve um numero que parece completo.
-     **Prove que nao compila:** remova o argumento de uma chamada, rode `CGO_ENABLED=0 go build ./...`,
-     cole o erro, desfaca.
-  3. 🔴 **Guarda estrutural, e ela e' o coracao da tarefa:** um teste que **le as rotas que usam os
-     dicionarios de apelido** e exige que cada uma tenha contador. Sem isso, esta tarefa conserta o
-     numero de hoje e nao impede a repeticao — *enumeracao esquece o item novo*, e a proxima rota que
-     aceitar apelido vai nascer sem contar, calada.
-     Se nao houver como derivar a lista das rotas mecanicamente, **diga isso e proponha o que da'** —
-     nao invente uma lista fixa e a chame de guarda.
-  4. **A saida nao muda.** Se voce se pegar mexendo numa tag `json` de struct de SAIDA, parou.
-
-Verify:
-  - **Um teste por rota nova** (`/v1/cadastro`, `/v1/pausa`, `/v1/bloqueios`): manda o nome VELHO,
-    o contador sobe; manda o nome NOVO, nao sobe; e o valor aparece no `GET /v1/estado`.
-  - **A prova de que nao compila sem o contador**, colada no relatorio.
-  - **A guarda estrutural reprovando de proposito:** acrescente temporariamente uma rota (ou simule)
-    que use apelido sem contador e confirme que a guarda **falha nomeando a rota**. Desfaca. *Guarda
-    que nunca reprovou nada e' indistinguivel de guarda que nao olha.*
-  - `CGO_ENABLED=0 go build ./...`, `go test ./...`, `go vet ./...`, `gofmt -l cmd internal` limpos.
-  - **Bump de PATCH** no `VERSION` (nao muda contrato: so' passa a contar o que ja acontecia) e nota
-    no `docs/CHANGELOG.md` no mesmo commit.
-
 ## [ ] T-189  O contrato passa a falar ingles — leitor tolerante do lado deles, apelido so' na ENTRADA
 Why:    **decisao do dono, 2026-08-30:** *"o projeto precisa ser em ingles, ter feito em portugues foi
         errado. Se a chave chama nome, tem que passar a se chamar name."*
@@ -267,9 +225,14 @@ tempo dobram a janela de convivencia sem dobrar o aprendizado.*
    `botoes_template[]`), `POST /v1/templates`, `POST /v1/cadastro`, `POST /v1/pausa`,
    `POST/DELETE /v1/bloqueios`, `POST /v1/leituras`, `POST /v1/fumaca`. Saida continua em
    portugues. Idempotencia provada atravessando idiomas (`TestEntradaIdempotencyCrossesLanguages`).
-   Contador `config.CounterOldNameUsed` no ar em `/v1/estado` — mas so' em 4 das 7 rotas
-   (send/templates/leituras/fumaca ja tinham `*config.Counter` plugado; cadastro/pausa/bloqueio
-   aceitam o apelido em ingles e ainda NAO contam, por falta desse fio — ver `docs/CHANGELOG.md`).
+   ✅ **FEITO (T-205, `v0.61.1`, 2026-08-31): contador `config.CounterOldNameUsed` no ar em
+   `/v1/estado` nas 7 rotas** — cadastro/pausa/bloqueio ganharam o fio que faltava, com
+   `counter *config.Counter` POSICIONAL E OBRIGATORIO nos tres construtores (prova de nao-compilacao
+   colada no changelog) e uma guarda estrutural (`TestOldNameCounterGuardCoversEveryAliasRoute`,
+   `internal/outbound/entrada_apelidos_test.go`) que le os call sites de `translateEntradaOrReject`
+   no AST do pacote — nao uma lista de rotas — e falha nomeando qualquer rota futura que aceite
+   apelido sem contar. Guarda provada contra codigo real (revertida a fiacao de `/v1/pausa`, a guarda
+   reprovou citando `pausa_handler.go:101`, desfeito).
 3. **Consumidores trocam os escritores para ingles.** Nada quebra: o gateway aceita os dois.
 4. **Gateway vira a saida para ingles, num commit.** Nada quebra: os leitores sao tolerantes desde o
    passo 1. **Depois, apaga o apelido de entrada** — e ai sim e' MAJOR, que para e pergunta ao dono.

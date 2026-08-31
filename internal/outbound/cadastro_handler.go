@@ -49,6 +49,9 @@ type RegistrationHandler struct {
 	// throttleLog suppresses repeated VALIDATION-refusal logging (T-037) — see
 	// logThrottle and logRejection in handler.go.
 	throttleLog *logThrottle
+	// counter is the old-name migration metric (T-205, config.CounterOldNameUsed)
+	// — see the comment where it is recorded, below.
+	counter *config.Counter
 	// types declares which instance types this route serves (T-111) — see
 	// the AcceptedTypes comment in types.go.
 	types AcceptedTypes
@@ -63,14 +66,23 @@ type RegistrationHandler struct {
 // numero_exibido, fields exclusive to config.TypeWhatsApp (T-111). An
 // Instagram instance has no registration via API in this slice — see the
 // "Desenho preservado" in docs/TASKS.md for the day it gets one.
-func NewRegistrationHandler(store *config.Store, auth *Authenticator, maxBytes int, types AcceptedTypes) http.Handler {
-	return newRegistrationHandlerAt(store, auth, maxBytes, time.Now, types)
+//
+// `counter` is POSITIONAL AND MANDATORY (T-205, the same discipline as
+// AcceptedTypes, T-111): the old-name migration metric
+// (config.CounterOldNameUsed) is the number that authorizes step 4 of
+// T-189, and a route that could omit its counter is a route the NEXT
+// migration silently forgets to count — see the structural guard in
+// entrada_apelidos_test.go, which reads every route's wiring instead of a
+// hand-written list of routes.
+func NewRegistrationHandler(store *config.Store, auth *Authenticator, maxBytes int, counter *config.Counter, types AcceptedTypes) http.Handler {
+	return newRegistrationHandlerAt(store, auth, maxBytes, counter, time.Now, types)
 }
 
-func newRegistrationHandlerAt(store *config.Store, auth *Authenticator, maxBytes int, now func() time.Time, types AcceptedTypes) http.Handler {
+func newRegistrationHandlerAt(store *config.Store, auth *Authenticator, maxBytes int, counter *config.Counter, now func() time.Time, types AcceptedTypes) http.Handler {
 	h := &RegistrationHandler{
 		store: store, auth: auth, maxBytes: maxBytes, now: now,
 		throttleLog: newLogThrottle(logSuppressionWindow),
+		counter:     counter,
 		types:       types,
 	}
 	mux := http.NewServeMux()
@@ -185,14 +197,7 @@ func (h *RegistrationHandler) register(w http.ResponseWriter, r *http.Request) {
 	// only the FIELD (`instancia`/`instance`, `numero_exibido`/
 	// `display_number`, `token_envio`/`send_token`), never a value — this
 	// body carries app_secret and token_envio.
-	//
-	// THE OLD-NAME COUNTER (config.CounterOldNameUsed) IS NOT WIRED HERE:
-	// this handler has no *config.Counter today, and adding one is a
-	// separate, wider change (a new constructor parameter, and every
-	// caller of NewRegistrationHandler with it) than this route's slice of
-	// T-203. The English alias itself IS accepted below — only the
-	// migration metric is missing on this one route.
-	translated, _, ok := translateEntradaOrReject(
+	translated, oldNames, ok := translateEntradaOrReject(
 		w, h.throttleLog, registrationRoute, consumer.Name, raw, registrationAlias)
 	if !ok {
 		return
@@ -210,6 +215,13 @@ func (h *RegistrationHandler) register(w http.ResponseWriter, r *http.Request) {
 		logRejection(h.throttleLog, registrationRoute, "", consumer.Name, ErrRegistrationNoInstance.Error())
 		respondError(w, http.StatusBadRequest, "permanente", ErrRegistrationNoInstance.Error(), 0)
 		return
+	}
+	// T-205 (the counter T-203 left unwired on this route): a request that
+	// still used the OLD (Portuguese) spelling of at least one field counts
+	// into config.CounterOldNameUsed, the metric that authorizes step 4 of
+	// T-189 (flipping the gateway's OUTPUT to English).
+	if len(oldNames) > 0 {
+		h.counter.Record(p.Instance, config.CounterOldNameUsed)
 	}
 
 	// THE LINK BEFORE ANYTHING ELSE, and also before saying whether the

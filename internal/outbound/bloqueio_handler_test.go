@@ -54,7 +54,7 @@ func testBlock(t *testing.T, g *blockGraph) (http.Handler, *config.Store) {
 	store, path := storeWithConsumer(t)
 	activateInstance(t, path, "lojinha")
 	h := NewBlockHandler(store, NewAuthenticator(store),
-		meta.NewClient(g.srv.Client(), g.srv.URL), 1<<20, WhatsAppOnly)
+		meta.NewClient(g.srv.Client(), g.srv.URL), 1<<20, config.NewCounter(store), WhatsAppOnly)
 	return h, store
 }
 
@@ -253,7 +253,7 @@ func TestBlockRefusesInstagramInstanceWith400WithoutCallingMeta(t *testing.T) {
 	store, path := storeWithInstagramConsumer(t)
 	activateInstance(t, path, "insta-loja")
 	srv := uncallableMeta(t)
-	h := NewBlockHandler(store, NewAuthenticator(store), meta.NewClient(srv.Client(), srv.URL), 1<<20, WhatsAppOnly)
+	h := NewBlockHandler(store, NewAuthenticator(store), meta.NewClient(srv.Client(), srv.URL), 1<<20, config.NewCounter(store), WhatsAppOnly)
 
 	body := `{"instancia":"insta-loja","telefones":["5511999990000"]}`
 	rec := askBlock(t, h, http.MethodPost, "token-do-a", body)
@@ -276,7 +276,7 @@ func TestBlockListRefusesInstagramInstanceWith400WithoutCallingMeta(t *testing.T
 	store, path := storeWithInstagramConsumer(t)
 	activateInstance(t, path, "insta-loja")
 	srv := uncallableMeta(t)
-	h := NewBlockHandler(store, NewAuthenticator(store), meta.NewClient(srv.Client(), srv.URL), 1<<20, WhatsAppOnly)
+	h := NewBlockHandler(store, NewAuthenticator(store), meta.NewClient(srv.Client(), srv.URL), 1<<20, config.NewCounter(store), WhatsAppOnly)
 
 	rec := listBlocks(t, h, "token-do-a", url.Values{"instancia": {"insta-loja"}})
 	if rec.Code != http.StatusBadRequest {
@@ -387,7 +387,7 @@ func TestBlockRefusesInvalidBody(t *testing.T) {
 func TestBlockPausedInstanceGives503(t *testing.T) {
 	g := respondingBlockGraph(t, http.StatusOK, `{"messaging_product":"whatsapp","block_users":{}}`)
 	store, _ := storeWithConsumer(t) // without activateInstance: born paused
-	h := NewBlockHandler(store, NewAuthenticator(store), meta.NewClient(g.srv.Client(), g.srv.URL), 1<<20, WhatsAppOnly)
+	h := NewBlockHandler(store, NewAuthenticator(store), meta.NewClient(g.srv.Client(), g.srv.URL), 1<<20, config.NewCounter(store), WhatsAppOnly)
 
 	body := `{"instancia":"lojinha","telefones":["5511999990000"]}`
 	rec := askBlock(t, h, http.MethodPost, "token-do-a", body)

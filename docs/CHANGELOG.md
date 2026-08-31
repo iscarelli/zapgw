@@ -4,6 +4,27 @@ Uma linha por versao entregue, no mesmo commit do bump. A entrada diz o **efeito
 
 ## Nao lancado
 
+## v0.61.1 — 2026-08-31
+
+- **The old-name counter now covers every route that accepts an alias, and a structural guard makes
+  the omission fail the build's own test suite** (T-205) — T-203 wired
+  `config.CounterOldNameUsed` on 4 of the 7 alias-accepting routes (send, templates, leituras,
+  fumaca) and left `POST /v1/cadastro`, `POST /v1/pausa` and `POST/DELETE /v1/bloqueios` accepting
+  the English alias WITHOUT counting it. All three now record the counter the same way the other
+  four already did. `counter *config.Counter` is a POSITIONAL, MANDATORY constructor parameter on
+  `NewRegistrationHandler`, `NewPauseHandler` and `NewBlockHandler` (same discipline as
+  `AcceptedTypes`, T-111) — proved not to compile without it (removed the argument from
+  `cmd/zapgw/main.go`, `CGO_ENABLED=0 go build ./...` failed naming the missing parameter, restored).
+  The heart of the task is the STRUCTURAL GUARD (`TestOldNameCounterGuardCoversEveryAliasRoute`,
+  `internal/outbound/entrada_apelidos_test.go`): it does not enumerate the 7 routes by hand — it
+  walks the package's AST for every call site of `translateEntradaOrReject` and requires the
+  enclosing function to both capture `oldNames` and reference `config.CounterOldNameUsed`, so a
+  route born tomorrow that forgets the counter fails this test by name, with zero edits to the
+  guard. Proved against REAL production code, not only a synthetic fixture: temporarily reverted
+  `pausa_handler.go`'s wiring back to discarding `oldNames`, the guard failed citing
+  `pauseRoute (chamada em pausa_handler.go:101:23)`, then the wiring was restored and the guard went
+  green again. `CGO_ENABLED=0 go build ./...`, `go test ./...`, `go vet ./...`,
+  `gofmt -l cmd internal` clean. _Completed 2026-08-31 10:54._
 - **The pre-push gate must not refuse a TAG that points at an already-pushed commit** (T-204) — an
   empty pushed interval is no longer an automatic `t.Fatalf`: `objectAlreadyReachableFromRemotes`
   checks whether the pushed object (peeled past any tag) is already an ancestor of some

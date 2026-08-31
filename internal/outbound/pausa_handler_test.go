@@ -15,7 +15,7 @@ import (
 func testPause(t *testing.T) (http.Handler, *config.Store) {
 	t.Helper()
 	store, _ := storeWithConsumer(t)
-	h := NewPauseHandler(store, NewAuthenticator(store), 1<<20, AllTypes)
+	h := NewPauseHandler(store, NewAuthenticator(store), 1<<20, config.NewCounter(store), AllTypes)
 	return h, store
 }
 
@@ -72,7 +72,7 @@ func TestPauseRouteFollowedBySmokeActivatesAgain(t *testing.T) {
 		t.Fatalf("ActivateInstance (preparo do teste): %v", err)
 	}
 
-	pause := NewPauseHandler(store, NewAuthenticator(store), 1<<20, AllTypes)
+	pause := NewPauseHandler(store, NewAuthenticator(store), 1<<20, config.NewCounter(store), AllTypes)
 	if rec := askPause(t, pause, "token-do-a", pauseBody("lojinha")); rec.Code != http.StatusOK {
 		t.Fatalf("pausar: status = %d, corpo = %s", rec.Code, rec.Body.String())
 	}
@@ -151,7 +151,7 @@ func TestPauseRouteUnknownInstanceGives404(t *testing.T) {
 		t.Fatalf("apagar instancia clinica: %v", err)
 	}
 
-	h := NewPauseHandler(store, NewAuthenticator(store), 1<<20, AllTypes)
+	h := NewPauseHandler(store, NewAuthenticator(store), 1<<20, config.NewCounter(store), AllTypes)
 	rec := askPause(t, h, "token-do-c", pauseBody("clinica"))
 	if rec.Code != http.StatusNotFound {
 		t.Errorf("status = %d, quero 404 (corpo = %s)", rec.Code, rec.Body.String())

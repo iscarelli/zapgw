@@ -29,6 +29,9 @@ type PauseHandler struct {
 	auth        *Authenticator
 	maxBytes    int
 	throttleLog *logThrottle
+	// counter is the old-name migration metric (T-205, config.CounterOldNameUsed)
+	// — see the comment where it is recorded, below.
+	counter *config.Counter
 	// types declares which instance types this route serves (T-111) — see
 	// the comment on AcceptedTypes in types.go. It GATES nothing here: pausing
 	// only changes the `ativo` field, which isn't specific to any type — the
@@ -40,10 +43,15 @@ type PauseHandler struct {
 // NewPauseHandler builds the route. `types` is AllTypes: pause()
 // never reads a WhatsApp-specific or Instagram-specific field — see the
 // comment on the `types` field, above.
-func NewPauseHandler(store *config.Store, auth *Authenticator, maxBytes int, types AcceptedTypes) http.Handler {
+//
+// `counter` is POSITIONAL AND MANDATORY (T-205, same discipline as
+// AcceptedTypes) — see the comment on NewRegistrationHandler for why an
+// optional counter is the exact defect this task exists to close.
+func NewPauseHandler(store *config.Store, auth *Authenticator, maxBytes int, counter *config.Counter, types AcceptedTypes) http.Handler {
 	h := &PauseHandler{
 		store: store, auth: auth, maxBytes: maxBytes, throttleLog: newLogThrottle(logSuppressionWindow),
-		types: types,
+		counter: counter,
+		types:   types,
 	}
 	mux := http.NewServeMux()
 	mux.HandleFunc(pauseRoute, h.pause)
@@ -90,9 +98,7 @@ func (h *PauseHandler) pause(w http.ResponseWriter, r *http.Request) {
 
 	// T-203 (step 2 of T-189): accept `instance` as an alias of `instancia`
 	// (docs/MIGRACAO-CONTRATO-EN.md) — the only ENTRADA key this route has.
-	// No *config.Counter is wired on this route (see the same note in
-	// cadastro_handler.go), so the old-name metric is not recorded here yet.
-	translated, _, ok := translateEntradaOrReject(
+	translated, oldNames, ok := translateEntradaOrReject(
 		w, h.throttleLog, pauseRoute, consumer.Name, raw, instanceOnlyAlias)
 	if !ok {
 		return
@@ -109,6 +115,11 @@ func (h *PauseHandler) pause(w http.ResponseWriter, r *http.Request) {
 		logRejection(h.throttleLog, pauseRoute, "", consumer.Name, ErrPauseNoInstance.Error())
 		respondError(w, http.StatusBadRequest, "permanente", ErrPauseNoInstance.Error(), 0)
 		return
+	}
+	// T-205 (the counter T-203 left unwired on this route): see the same
+	// comment in cadastro_handler.go.
+	if len(oldNames) > 0 {
+		h.counter.Record(p.Instance, config.CounterOldNameUsed)
 	}
 
 	// THE BOND BEFORE ANYTHING ELSE — 403 before 404, like the sibling

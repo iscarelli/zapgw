@@ -57,6 +57,9 @@ type BlockHandler struct {
 	// throttleLog suppresses repeated logging of VALIDATION refusal (T-037) —
 	// see logThrottle and logRejection in handler.go.
 	throttleLog *logThrottle
+	// counter is the old-name migration metric (T-205, config.CounterOldNameUsed)
+	// — see the comment where it is recorded, below.
+	counter *config.Counter
 	// types declares which instance types this route serves (T-111) — see
 	// the comment on AcceptedTypes in types.go.
 	types AcceptedTypes
@@ -67,12 +70,18 @@ type BlockHandler struct {
 // config.TypeWhatsApp — empty in any Instagram instance (T-111/T-097). User
 // blocking is exclusive to the WhatsApp Cloud API; there is no Instagram
 // equivalent.
+//
+// `counter` is POSITIONAL AND MANDATORY (T-205, same discipline as
+// AcceptedTypes) — see the comment on NewRegistrationHandler
+// (cadastro_handler.go) for why an optional counter is the exact defect
+// this task exists to close.
 func NewBlockHandler(
-	store *config.Store, auth *Authenticator, client *meta.Client, maxBytes int, types AcceptedTypes,
+	store *config.Store, auth *Authenticator, client *meta.Client, maxBytes int, counter *config.Counter, types AcceptedTypes,
 ) http.Handler {
 	h := &BlockHandler{
 		store: store, auth: auth, client: client, maxBytes: maxBytes,
 		throttleLog: newLogThrottle(logSuppressionWindow),
+		counter:     counter,
 		types:       types,
 	}
 	mux := http.NewServeMux()
@@ -222,10 +231,8 @@ func (h *BlockHandler) process(
 
 	// T-203 (step 2 of T-189): accept `instance` as an alias of `instancia`
 	// (docs/MIGRACAO-CONTRATO-EN.md) — the only ENTRADA key this route has
-	// (`telefones` is not in the migration table). No *config.Counter is
-	// wired on this route (see the same note in cadastro_handler.go), so
-	// the old-name metric is not recorded here yet.
-	translated, _, ok := translateEntradaOrReject(
+	// (`telefones` is not in the migration table).
+	translated, oldNames, ok := translateEntradaOrReject(
 		w, h.throttleLog, route, consumer.Name, raw, instanceOnlyAlias)
 	if !ok {
 		return
@@ -241,6 +248,14 @@ func (h *BlockHandler) process(
 		logRejection(h.throttleLog, route, p.Instance, consumer.Name, err.Error())
 		respondError(w, http.StatusBadRequest, "permanente", err.Error(), 0)
 		return
+	}
+	// T-205 (the counter T-203 left unwired on this route): see the same
+	// comment in cadastro_handler.go. `process` serves BOTH block and
+	// unblock (h.block/h.unblock above) — the counter has to live here,
+	// not in either caller, or one of the two verbs would silently stop
+	// counting.
+	if len(oldNames) > 0 {
+		h.counter.Record(p.Instance, config.CounterOldNameUsed)
 	}
 
 	if !CanUse(consumer, p.Instance) {

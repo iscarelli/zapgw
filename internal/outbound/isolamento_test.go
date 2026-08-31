@@ -252,10 +252,10 @@ func allOutboundRoutes(t *testing.T, srv *httptest.Server) http.Handler {
 	mux.Handle("/v1/instances/", NewHealthHandler(store, auth, client, AllTypes))
 	mux.Handle("/v1/estado", NewStateHandler(store, auth, NewWatchdog(store, client), nil,
 		IngressSource{}, nil, nil, testVersion, config.DefaultRetentionDays, AllTypes))
-	mux.Handle("/v1/cadastro", NewRegistrationHandler(store, auth, maxBytes, WhatsAppOnly))
+	mux.Handle("/v1/cadastro", NewRegistrationHandler(store, auth, maxBytes, counter, WhatsAppOnly))
 	mux.Handle("/v1/fumaca", NewSmokeHandler(store, auth, client, counter, maxBytes, AllTypes))
-	mux.Handle("/v1/pausa", NewPauseHandler(store, auth, maxBytes, AllTypes))
-	mux.Handle("/v1/bloqueios", NewBlockHandler(store, auth, client, maxBytes, WhatsAppOnly))
+	mux.Handle("/v1/pausa", NewPauseHandler(store, auth, maxBytes, counter, AllTypes))
+	mux.Handle("/v1/bloqueios", NewBlockHandler(store, auth, client, maxBytes, counter, WhatsAppOnly))
 	mux.Handle("/v1/perfil", NewProfileHandler(store, auth, client, maxBytes, WhatsAppOnly))
 	return mux
 }

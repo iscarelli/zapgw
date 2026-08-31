@@ -65,7 +65,7 @@ func testRegistration(t *testing.T) (http.Handler, *config.Store, func() time.Ti
 
 	clock := time.Date(2026, 7, 20, 9, 0, 0, 0, time.UTC)
 	now := func() time.Time { return clock }
-	h := newRegistrationHandlerAt(store, NewAuthenticator(store), 1<<20, func() time.Time { return now() }, WhatsAppOnly)
+	h := newRegistrationHandlerAt(store, NewAuthenticator(store), 1<<20, config.NewCounter(store), func() time.Time { return now() }, WhatsAppOnly)
 	return h, store, now, &clock
 }
 

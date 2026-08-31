@@ -140,7 +140,7 @@ func TestTemplatesCreateRefusesInstagramInstanceWith400WithoutCallingMeta(t *tes
 // belongs to whoever operates the gateway.
 func TestRegistrationRefusesInstagramInstanceWith400AndGuidance(t *testing.T) {
 	store, _ := storeWithInstagramConsumer(t) // does NOT need to be active: cadastro does not require it
-	h := newRegistrationHandlerAt(store, NewAuthenticator(store), 1<<20, time.Now, WhatsAppOnly)
+	h := newRegistrationHandlerAt(store, NewAuthenticator(store), 1<<20, config.NewCounter(store), time.Now, WhatsAppOnly)
 
 	rec := register(t, h, "token-do-a", registrationBody("insta-loja", nil))
 
@@ -236,7 +236,7 @@ func TestFourWriteRoutesAndHealthStay403ForForeignInstagramBeforeTheType(t *test
 					`"componentes":[{"type":"BODY","text":"oi"}]}`)
 		},
 		"cadastro": func(t *testing.T) *httptest.ResponseRecorder {
-			h := newRegistrationHandlerAt(store, NewAuthenticator(store), 1<<20, time.Now, WhatsAppOnly)
+			h := newRegistrationHandlerAt(store, NewAuthenticator(store), 1<<20, config.NewCounter(store), time.Now, WhatsAppOnly)
 			return register(t, h, "token-outsider", registrationBody("insta-loja", nil))
 		},
 		"health": func(t *testing.T) *httptest.ResponseRecorder {

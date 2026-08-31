@@ -2,8 +2,14 @@ package outbound
 
 import (
 	"encoding/json"
+	"fmt"
+	"go/ast"
+	"go/parser"
+	"go/token"
+	"go/types"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"sync"
 	"testing"
@@ -327,7 +333,7 @@ func TestEntradaAcceptsEnglishInstanceAliasOnBlock(t *testing.T) {
 	defer srv.Close()
 	store, path := storeWithConsumer(t)
 	activateInstance(t, path, "lojinha")
-	h := NewBlockHandler(store, NewAuthenticator(store), meta.NewClient(srv.Client(), srv.URL), 1<<20, WhatsAppOnly)
+	h := NewBlockHandler(store, NewAuthenticator(store), meta.NewClient(srv.Client(), srv.URL), 1<<20, config.NewCounter(store), WhatsAppOnly)
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/bloqueios",
 		strings.NewReader(`{"instance":"lojinha","telefones":["5511999990000"]}`))
@@ -426,5 +432,368 @@ func TestEntradaOldNameCounterCountsAndAppearsInEstado(t *testing.T) {
 	if c.Today != 1 {
 		t.Errorf("contadores[%q].hoje = %d, quero 1 (so o pedido em portugues conta)",
 			config.CounterOldNameUsed, c.Today)
+	}
+}
+
+// --- T-205: the three routes T-203 left uncounted --------------------------
+//
+// T-203 wired config.CounterOldNameUsed on send, templates, leituras and
+// fumaca — and left /v1/cadastro, /v1/pausa and /v1/bloqueios ACCEPTING the
+// English alias without counting it (docs/TASKS.md, T-205's Why). Each test
+// below proves, per route: the OLD spelling counts, the SAME request in the
+// NEW spelling does not count again, and the number surfaces on
+// GET /v1/estado — the same three requirements
+// TestEntradaOldNameCounterCountsAndAppearsInEstado already proves for the
+// send route, above.
+
+// stateHandlerFor builds a minimal GET /v1/estado handler over an EXISTING
+// store, for tests that only care whether a counter surfaces there — not
+// about health, which needs its own Meta fixture per test.
+func stateHandlerFor(t *testing.T, store *config.Store) http.Handler {
+	t.Helper()
+	m := tokenAcceptingMeta()
+	srv := m.server(t)
+	watchdog := NewWatchdog(store, meta.NewClient(srv.Client(), srv.URL))
+	return NewStateHandler(store, NewAuthenticator(store), watchdog, nil, IngressSource{}, nil, nil,
+		testVersion, config.DefaultRetentionDays, AllTypes)
+}
+
+// oldNameCounterTodayInEstado reads config.CounterOldNameUsed for `slug`
+// through the REAL GET /v1/estado route — never a direct store read — so
+// the test proves the SAME thing a consumer watching that endpoint would
+// see, not just that a row exists in the counter table.
+func oldNameCounterTodayInEstado(t *testing.T, store *config.Store, slug string) int {
+	t.Helper()
+	rec := askState(t, stateHandlerFor(t, store), "token-do-a", slug)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("GET /v1/estado: status = %d, corpo = %s", rec.Code, rec.Body)
+	}
+	var r testStateResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &r); err != nil {
+		t.Fatalf("decodificar /v1/estado: %v", err)
+	}
+	return r.Counters[config.CounterOldNameUsed].Today
+}
+
+func TestEntradaOldNameCounterOnRegistration(t *testing.T) {
+	h, store, _, _ := testRegistration(t)
+
+	// registrationBody (cadastro_handler_test.go) writes `instancia`,
+	// `numero_exibido` and `token_envio` — all THREE are the OLD spelling
+	// of registrationAlias's keys.
+	pt := register(t, h, "token-do-a", registrationBody("terceiro", nil))
+	if pt.Code != http.StatusOK {
+		t.Fatalf("PT: status = %d, corpo = %s", pt.Code, pt.Body)
+	}
+	if got := oldNameCounterTodayInEstado(t, store, "terceiro"); got != 1 {
+		t.Fatalf("apos o pedido em PORTUGUES: contador = %d, quero 1", got)
+	}
+
+	// The SAME re-registration, fully in English (T-079: re-registering
+	// REPLACES, it does not conflict with the first call).
+	enBody := `{"instance":"terceiro","waba_id":"WABA-DO-CONSUMIDOR","phone_number_id":"PNID-DO-CONSUMIDOR",` +
+		`"display_number":"5511999990000","app_secret":"` + testEncryptedValue["app_secret"] + `",` +
+		`"send_token":"` + testEncryptedValue["token_envio"] + `","callback_url":"` + testEncryptedValue["callback_url"] + `"}`
+	en := register(t, h, "token-do-a", enBody)
+	if en.Code != http.StatusOK {
+		t.Fatalf("EN: status = %d, corpo = %s", en.Code, en.Body)
+	}
+	if got := oldNameCounterTodayInEstado(t, store, "terceiro"); got != 1 {
+		t.Fatalf("apos o pedido em INGLES: contador = %d, quero 1 (nao pode subir de novo)", got)
+	}
+}
+
+func TestEntradaOldNameCounterOnPause(t *testing.T) {
+	h, store := testPause(t)
+	if err := store.ActivateInstance("lojinha"); err != nil {
+		t.Fatalf("ActivateInstance: %v", err)
+	}
+
+	pt := askPause(t, h, "token-do-a", `{"instancia":"lojinha"}`)
+	if pt.Code != http.StatusOK {
+		t.Fatalf("PT: status = %d, corpo = %s", pt.Code, pt.Body)
+	}
+	if got := oldNameCounterTodayInEstado(t, store, "lojinha"); got != 1 {
+		t.Fatalf("apos o pedido em PORTUGUES: contador = %d, quero 1", got)
+	}
+
+	en := askPause(t, h, "token-do-a", `{"instance":"lojinha"}`)
+	if en.Code != http.StatusOK {
+		t.Fatalf("EN: status = %d, corpo = %s", en.Code, en.Body)
+	}
+	if got := oldNameCounterTodayInEstado(t, store, "lojinha"); got != 1 {
+		t.Fatalf("apos o pedido em INGLES: contador = %d, quero 1 (nao pode subir de novo)", got)
+	}
+}
+
+func TestEntradaOldNameCounterOnBlock(t *testing.T) {
+	g := respondingBlockGraph(t, http.StatusOK, `{"messaging_product":"whatsapp","block_users":{"added_users":[{"input":"5511999990000","wa_id":"5511999990000"}]}}`)
+	h, store := testBlock(t, g)
+
+	pt := askBlock(t, h, http.MethodPost, "token-do-a", `{"instancia":"lojinha","telefones":["5511999990000"]}`)
+	if pt.Code != http.StatusOK {
+		t.Fatalf("PT: status = %d, corpo = %s", pt.Code, pt.Body)
+	}
+	if got := oldNameCounterTodayInEstado(t, store, "lojinha"); got != 1 {
+		t.Fatalf("apos o pedido em PORTUGUES: contador = %d, quero 1", got)
+	}
+
+	en := askBlock(t, h, http.MethodPost, "token-do-a", `{"instance":"lojinha","telefones":["5511999990000"]}`)
+	if en.Code != http.StatusOK {
+		t.Fatalf("EN: status = %d, corpo = %s", en.Code, en.Body)
+	}
+	if got := oldNameCounterTodayInEstado(t, store, "lojinha"); got != 1 {
+		t.Fatalf("apos o pedido em INGLES: contador = %d, quero 1 (nao pode subir de novo)", got)
+	}
+}
+
+// --- T-205 Do item 3: the STRUCTURAL GUARD ----------------------------------
+//
+// T-205 exists because T-203 wired the counter on 4 of 7 routes and nobody
+// noticed the other 3 — a hand-written list of "the 7 routes that accept an
+// alias" would have the EXACT SAME blind spot on route #8: enumeration
+// forgets the new item, and the forgotten one does not fail, it just
+// answers with a number that looks complete (docs/TASKS.md, T-205's Why).
+//
+// So this guard does not enumerate routes. It reads every call site of
+// translateEntradaOrReject in the outbound package's SOURCE — the one
+// function every alias-decoding route goes through (see its doc comment,
+// above in this file) — and requires, for the enclosing function, BOTH:
+//
+//  1. the returned `oldNames` is CAPTURED (not discarded as `_`);
+//  2. that function's body references config.CounterOldNameUsed somewhere.
+//
+// A route born tomorrow that calls translateEntradaOrReject and discards
+// (or never records) its oldNames fails THIS test, NAMING the route — with
+// zero edits to this file. That is what makes it a guard instead of a
+// snapshot of today's 7 routes.
+
+// oldNameCounterViolation is one call site of translateEntradaOrReject
+// whose enclosing function does not wire config.CounterOldNameUsed.
+type oldNameCounterViolation struct {
+	route string // the `route` argument's source text (identifier or literal)
+	pos   string // file:line of the call, for a human to go straight to it
+}
+
+// findOldNameCounterViolations is the guard's MECHANISM — see the section
+// header above for why it walks call sites instead of a route list.
+func findOldNameCounterViolations(fset *token.FileSet, files []*ast.File) []oldNameCounterViolation {
+	var out []oldNameCounterViolation
+	for _, f := range files {
+		for _, decl := range f.Decls {
+			fn, ok := decl.(*ast.FuncDecl)
+			if !ok || fn.Body == nil {
+				continue
+			}
+			out = append(out, oldNameCounterViolationsInFunc(fset, fn)...)
+		}
+	}
+	return out
+}
+
+func oldNameCounterViolationsInFunc(fset *token.FileSet, fn *ast.FuncDecl) []oldNameCounterViolation {
+	// Does THIS function reference config.CounterOldNameUsed anywhere in its
+	// body? A route may call translateEntradaOrReject and record the
+	// counter through a shared helper it calls (like process(), in
+	// bloqueio_handler.go, which serves both block AND unblock) — as long
+	// as the reference lives in the SAME function that runs the
+	// translation, which is the case for every route in this package today.
+	recordsCounter := false
+	ast.Inspect(fn.Body, func(n ast.Node) bool {
+		sel, ok := n.(*ast.SelectorExpr)
+		if !ok {
+			return true
+		}
+		pkgIdent, ok := sel.X.(*ast.Ident)
+		if ok && pkgIdent.Name == "config" && sel.Sel.Name == "CounterOldNameUsed" {
+			recordsCounter = true
+		}
+		return true
+	})
+
+	var out []oldNameCounterViolation
+	ast.Inspect(fn.Body, func(n ast.Node) bool {
+		assign, ok := n.(*ast.AssignStmt)
+		if !ok || len(assign.Rhs) != 1 {
+			return true
+		}
+		call, ok := assign.Rhs[0].(*ast.CallExpr)
+		if !ok {
+			return true
+		}
+		callee, ok := call.Fun.(*ast.Ident)
+		if !ok || callee.Name != "translateEntradaOrReject" {
+			return true
+		}
+
+		route := "?"
+		if len(call.Args) > 2 {
+			route = types.ExprString(call.Args[2])
+		}
+
+		// translateEntradaOrReject returns (translated, oldNames, ok) —
+		// discarding the SECOND value (`_`) means this call site never
+		// even LOOKS at whether an old name arrived.
+		discarded := len(assign.Lhs) < 2
+		if !discarded {
+			if id, ok := assign.Lhs[1].(*ast.Ident); ok && id.Name == "_" {
+				discarded = true
+			}
+		}
+
+		if discarded || !recordsCounter {
+			out = append(out, oldNameCounterViolation{
+				route: route,
+				pos:   fset.Position(call.Pos()).String(),
+			})
+		}
+		return true
+	})
+	return out
+}
+
+// parseOutboundPackageForGuard parses every non-test .go file in THIS
+// package (the test runs with its working directory set to the package
+// directory, like every Go test) — production source only, so the guard
+// checks what actually ships, not the tests that exercise it.
+func parseOutboundPackageForGuard(t *testing.T) (*token.FileSet, []*ast.File) {
+	t.Helper()
+	fset := token.NewFileSet()
+	pkgs, err := parser.ParseDir(fset, ".", func(fi os.FileInfo) bool {
+		return !strings.HasSuffix(fi.Name(), "_test.go")
+	}, 0)
+	if err != nil {
+		t.Fatalf("parser.ParseDir(\".\"): %v", err)
+	}
+	pkg, ok := pkgs["outbound"]
+	if !ok {
+		names := make([]string, 0, len(pkgs))
+		for name := range pkgs {
+			names = append(names, name)
+		}
+		t.Fatalf("pacote \"outbound\" nao encontrado em . — pacotes vistos: %v", names)
+	}
+	files := make([]*ast.File, 0, len(pkg.Files))
+	for _, f := range pkg.Files {
+		files = append(files, f)
+	}
+	if len(files) == 0 {
+		t.Fatal("nenhum arquivo .go de producao encontrado — este teste nao verificaria nada")
+	}
+	return fset, files
+}
+
+// TestOldNameCounterGuardCoversEveryAliasRoute is T-205 Do item 3: the
+// structural guard. It fails NAMING the route(s) that accept an alias
+// without counting it — see the section header above.
+func TestOldNameCounterGuardCoversEveryAliasRoute(t *testing.T) {
+	fset, files := parseOutboundPackageForGuard(t)
+	violations := findOldNameCounterViolations(fset, files)
+	if len(violations) == 0 {
+		return
+	}
+	msgs := make([]string, 0, len(violations))
+	for _, v := range violations {
+		msgs = append(msgs, fmt.Sprintf("%s (chamada em %s)", v.route, v.pos))
+	}
+	t.Fatalf("rota(s) aceitam apelido de entrada e NAO contam config.CounterOldNameUsed: %s",
+		strings.Join(msgs, "; "))
+}
+
+// TestOldNameCounterGuardCatchesAForgottenRoute is the proof the doctrine
+// demands (docs/ARMADILHAS.md, "guarda que nunca reprovou nada e
+// indistinguivel de guarda que nao olha"): a guard that could never fail is
+// not a mechanism. This feeds the exact shape of the T-205 defect — a
+// route that decodes an alias and discards oldNames — into the SAME
+// analysis the real guard runs, as a SYNTHETIC source file (never a change
+// to a real production file), and requires it to fail, NAMING the route.
+func TestOldNameCounterGuardCatchesAForgottenRoute(t *testing.T) {
+	const forgotten = `package outbound
+
+import "net/http"
+
+func (h *FakeHandler) fake(w http.ResponseWriter, r *http.Request) {
+	translated, _, ok := translateEntradaOrReject(
+		w, h.throttleLog, "POST /v1/rota-nova-esquecida", consumerName, raw, someAlias)
+	if !ok {
+		return
+	}
+	_ = translated
+}
+`
+	fset := token.NewFileSet()
+	f, err := parser.ParseFile(fset, "sintetico_esquecida.go", forgotten, 0)
+	if err != nil {
+		t.Fatalf("parser.ParseFile do fixture sintetico: %v", err)
+	}
+	violations := findOldNameCounterViolations(fset, []*ast.File{f})
+	if len(violations) != 1 {
+		t.Fatalf("a guarda nao pegou a rota sintetica sem contador: %d violacoes, queria exatamente 1", len(violations))
+	}
+	if !strings.Contains(violations[0].route, "rota-nova-esquecida") {
+		t.Errorf("a guarda pegou a violacao mas NAO NOMEIA a rota: %q", violations[0].route)
+	}
+	t.Logf("guarda reprovou como esperado, nomeando a rota: %q (em %s)", violations[0].route, violations[0].pos)
+
+	// A SECOND fixture, same shape, but capturing oldNames WITHOUT ever
+	// referencing config.CounterOldNameUsed — the other half of Do item 3
+	// ("le as rotas... exige que cada uma tenha contador", not just
+	// "captura o retorno").
+	const capturedButNeverRecorded = `package outbound
+
+import "net/http"
+
+func (h *FakeHandler) fake(w http.ResponseWriter, r *http.Request) {
+	translated, oldNames, ok := translateEntradaOrReject(
+		w, h.throttleLog, "POST /v1/rota-capturada-sem-contar", consumerName, raw, someAlias)
+	if !ok {
+		return
+	}
+	_ = translated
+	_ = oldNames // captured, but never turned into a counter
+}
+`
+	f2, err := parser.ParseFile(fset, "sintetico_capturada.go", capturedButNeverRecorded, 0)
+	if err != nil {
+		t.Fatalf("parser.ParseFile do segundo fixture sintetico: %v", err)
+	}
+	v2 := findOldNameCounterViolations(fset, []*ast.File{f2})
+	if len(v2) != 1 {
+		t.Fatalf("a guarda nao pegou a rota que CAPTURA oldNames mas nunca conta: %d violacoes, queria exatamente 1", len(v2))
+	}
+	if !strings.Contains(v2[0].route, "rota-capturada-sem-contar") {
+		t.Errorf("a guarda pegou a violacao mas NAO NOMEIA a rota: %q", v2[0].route)
+	}
+}
+
+// TestOldNameCounterGuardAcceptsAWiredRoute is the guard's OWN negative
+// control: the same shape as the two fixtures above, but wired correctly,
+// must produce ZERO violations — otherwise the guard would be flagging
+// every route regardless of whether it counts, which is as useless as
+// never failing.
+func TestOldNameCounterGuardAcceptsAWiredRoute(t *testing.T) {
+	const wired = `package outbound
+
+import "net/http"
+
+func (h *FakeHandler) fake(w http.ResponseWriter, r *http.Request) {
+	translated, oldNames, ok := translateEntradaOrReject(
+		w, h.throttleLog, "POST /v1/rota-nova-correta", consumerName, raw, someAlias)
+	if !ok {
+		return
+	}
+	_ = translated
+	if len(oldNames) > 0 {
+		h.counter.Record(p.Instance, config.CounterOldNameUsed)
+	}
+}
+`
+	fset := token.NewFileSet()
+	f, err := parser.ParseFile(fset, "sintetico_correta.go", wired, 0)
+	if err != nil {
+		t.Fatalf("parser.ParseFile do fixture sintetico: %v", err)
+	}
+	if v := findOldNameCounterViolations(fset, []*ast.File{f}); len(v) != 0 {
+		t.Fatalf("a guarda reprovou uma rota CORRETAMENTE ligada ao contador: %+v", v)
 	}
 }
