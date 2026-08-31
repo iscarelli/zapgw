@@ -77,34 +77,6 @@ Ninguem poda. Vale virar tarefa antes de virar problema de disco.
 
 > A fila do periodo privado esta em `iscarelli/zapgw-dev`, congelada. Tarefa nova nasce aqui.
 
-## [ ] T-197  Settle whether the instance-type gate exists, and make the row say what is true
-Why:    A tabela de regras duras do `CLAUDE.md` afirma que "handler declara quais tipos de instancia
-        aceita" por um **parametro posicional obrigatorio** que **nao compila** se omitido, com o
-        valor zero sendo o mais restritivo. A celula de estado dizia "existe no `zapgw-dev`, migra com
-        o codigo" — **o codigo ja migrou**, e uma varredura em 2026-08-31 nao achou esse parametro.
-        **Doc errado e' pior que doc nenhum:** ou o mecanismo existe e a linha precisa de ponteiro, ou
-        ele nao veio e a linha esta mentindo sobre uma protecao que ninguem tem.
-Files:  CLAUDE.md, CLAUDE.pt-BR.md  (a linha da tabela, nos dois)
-
-Do:
-  1. **Meça.** Procure, no codigo de producao (nao em teste), a assinatura que obriga um handler a
-     declarar os tipos de instancia que aceita. Pontos de partida: `internal/inbound/handler.go`,
-     `internal/outbound/`, `ValidateInstanceType` em `internal/config/`, e o registro de rotas que
-     `internal/outbound/isolamento_test.go:407` le.
-  2. **Se existir:** corrija a celula de estado nos DOIS arquivos com `arquivo:linha` e uma frase
-     dizendo o que exatamente deixa de compilar quando alguem omite. **Prove** que deixa de compilar:
-     remova o argumento numa copia, rode `go build ./...`, cole o erro, desfaca.
-  3. **Se NAO existir:** 🔴 **nao invente e nao conserte por conta propria.** Escreva na celula que o
-     mecanismo nao existe (o formato da tabela ja tem esse estado: 🔴 **nao existe**) e **relate ao
-     planner**, porque recriar uma protecao de isolamento e' decisao de desenho, nao de doc.
-  4. Os dois arquivos mudam **juntos**.
-
-Verify:
-  - Se o mecanismo existir: a saida do `go build` falhando com o argumento removido, colada no
-    relatorio, e restaurado depois (`git diff` vazio no codigo).
-  - Se nao existir: a lista de lugares onde voce procurou, para o proximo nao repetir a busca.
-  - `go test ./...` verde e `gofmt -l cmd internal` sem saida nos dois casos.
-
 ## [ ] T-194  The deploy prunes its own pre-update snapshots
 Why:    **Decisao do dono, 2026-08-31:** manter os 3 ultimos e podar no proprio `deploy.sh`. Hoje um
         snapshot `pre-update` se acumula no CT a cada deploy e ninguem poda — vira problema de disco

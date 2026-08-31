@@ -4,6 +4,13 @@ Uma linha por versao entregue, no mesmo commit do bump. A entrada diz o **efeito
 
 ## Nao lancado
 
+- **Settle whether the instance-type gate exists, and make the row say what is true** (T-197) — o
+  mecanismo EXISTE: `internal/outbound/tipos.go` (`AcceptedTypes`, T-111), parametro posicional
+  obrigatorio no ultimo lugar de todo construtor `outbound.New*Handler`. Provado removendo
+  `outbound.WhatsAppOnly` da chamada de `NewReadsHandler` em `cmd/zapgw/main.go:430` e rodando
+  `go build ./...`: `not enough arguments in call to outbound.NewReadsHandler`; restaurado, `git
+  diff` vazio. A varredura anterior (T-196) tinha olhado no lugar errado. `CLAUDE.md` e
+  `CLAUDE.pt-BR.md` corrigidos juntos, com ponteiro e evidencia. _Completed 2026-08-31 01:07._
 - **The PT-BR pair of CLAUDE.md stops describing a repository that no longer exists** (T-196) —
   o par em portugues voltou a bater com o `CLAUDE.md`: a tabela de regras duras (os dois portoes de
   dado pessoal, TLS, isolamento de rota), a secao das tres fundacoes reescrita, a dos portoes
