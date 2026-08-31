@@ -1,0 +1,1 @@
+{"object":"whatsapp_business_account","entry":[{"id":"WABA_TESTE","time":1769000020,"changes":[{"field":"message_template_status_update","value":{"event":"APPROVED","message_template_id":1384121316897444,"message_template_name":"aguardando_peca_v2","message_template_language":"pt_BR","reason":"NONE","message_template_category":"UTILITY"}}]}]}

@@ -1,0 +1,44 @@
+[Unit]
+Description=zapgw — gateway da WhatsApp Cloud API
+Documentation=https://github.com/iscarelli/zapgw
+# O servico faz bind num IP FIXO (ZAPGW_ENDERECO=<ip-interno-do-gateway>:8080).
+# Sem esperar a rede, o ListenAndServe morre com "cannot assign requested address",
+# o Restart=always entra em laco e o StartLimit desliga o servico de vez — o CT
+# sobe "normal" e o gateway simplesmente nao esta la.
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=zapgw
+Group=zapgw
+ExecStart=/usr/local/bin/zapgw
+WorkingDirectory=/var/lib/zapgw
+
+# A chave de cifra (ZAPGW_CHAVE_CIFRA) mora AQUI, fora do banco e fora do repo.
+# O arquivo e 0600 zapgw:zapgw; quem le e o PID 1, antes de largar privilegio.
+# O deploy.sh NAO copia nem toca neste arquivo.
+EnvironmentFile=/etc/zapgw/env
+
+Restart=always
+RestartSec=2s
+
+# Log no journald (spec §9): sem arquivo de log proprio, sem rotacao para
+# esquecer de configurar.
+StandardOutput=journal
+StandardError=journal
+
+# Travas que o systemd da de graca. ProtectSystem=strict deixa TODO o sistema de
+# arquivos somente-leitura, inclusive /usr/local/bin — por isso o deploy troca o
+# binario de fora do servico (via pct exec), nunca de dentro dele.
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+# O unico caminho gravavel: o banco e os vizinhos do WAL (zapgw.db-wal,
+# zapgw.db-shm). Sem esta linha o SQLite falha na primeira escrita, nao na
+# subida — o servico sobe "ok" e so o primeiro envio acusa.
+ReadWritePaths=/var/lib/zapgw
+
+[Install]
+WantedBy=multi-user.target

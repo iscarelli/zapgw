@@ -1,0 +1,45 @@
+# Segredos — nunca no Git
+.env
+.env.*
+!.env.example
+secrets.*
+*.key
+*.pem
+.gh_token
+
+# Binarios do Go
+/zapgw
+/zapgw.exe
+/zapgw-linux-*
+*.exe
+*.test
+*.out
+
+# Cobertura e perfis
+coverage.*
+*.prof
+
+# Estado local de ferramenta
+.claude/
+.agents/
+skills-lock.json
+
+# Sistema operacional / editor
+Thumbs.db
+Desktop.ini
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Canal entre sessoes — NUNCA versionado
+#
+# 🔴 Estes arquivos carregam transcricao de conversa entre projetos: telefone
+# real, wamid de producao (que tem o telefone dentro, em base64), medicao de
+# cliente. Num repositorio PUBLICO, um deles commitado e' irreversivel.
+#
+# Faltou aqui ate 2026-08-30: o `.gitignore` veio do scaffold de 20/08, quando
+# nao havia canal, e a migracao trouxe o codigo sem trazer esta linha. O
+# consumidor escreveu no caminho novo, o arquivo caiu como UNTRACKED num repo
+# publico, e so' nao vazou porque nenhum `git add -A` rodou nesse intervalo.
+*.local.md

@@ -1,0 +1,1 @@
+{"entry": [{"id": "WABA_TESTE", "time": 1787305767, "changes": [{"value": {"message_template_id": 1563912508540305, "message_template_name": "instrucoes_download_app_v6", "message_template_language": "pt_BR", "previous_category": "MARKETING", "new_category": "UTILITY"}, "field": "template_category_update"}]}], "object": "whatsapp_business_account"}

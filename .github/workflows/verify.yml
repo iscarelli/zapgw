@@ -1,0 +1,59 @@
+name: verify
+
+# CI do zapgw — roda os quatro comandos do verify (ver CLAUDE.md) a cada push e
+# a cada pull request, cada um como passo próprio para a saída dizer qual quebrou.
+#
+# Histórico obrigatório: T-117 (2026-08-06) tentou uma sonda aqui e morreu duas
+# vezes como `cancelled`, runner vazio, ~15min, causa nunca estabelecida. Por
+# isso o timeout-minutes abaixo fica bem abaixo de 15 — travar vira um vermelho
+# nomeado em vez de silêncio.
+on:
+  push:
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+
+      - name: setup go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: go build
+        run: CGO_ENABLED=0 go build ./...
+
+      - name: go test
+        run: go test ./...
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: gofmt
+        # gofmt -l não falha sozinho: ele imprime os arquivos desalinhados e sai 0.
+        # É preciso transformar saída não-vazia em erro explícito — e é
+        # `cmd internal`, nunca `.`: worktrees de agente ficam em `.claude/`,
+        # dentro do repo, e o gofmt não ignora diretório oculto como o `go` ignora.
+        run: |
+          desalinhados="$(gofmt -l cmd internal)"
+          if [ -n "$desalinhados" ]; then
+            echo "gofmt encontrou arquivos desalinhados:"
+            echo "$desalinhados"
+            exit 1
+          fi
+
+      - name: portao de dado pessoal
+        # Passo PROPRIO, e nao "vem junto no go test", porque aqui o custo e'
+        # irreversivel: publicado uma vez, nao ha como despublicar. Quando este
+        # passo fica vermelho, a saida diz exatamente isso, em vez de o leitor
+        # ter de achar a linha no meio de uma suite inteira.
+        run: go test ./internal/config/ -run TestNoPhoneNumberOutsideTheAllowlistInTheRepo -v
+
+      - name: portao de TLS
+        # Mesmo motivo: TLS nao tem modo desligado, e o teste que garante isso
+        # merece nome proprio no painel.
+        run: go test ./internal/inbound/ -run TLS -v

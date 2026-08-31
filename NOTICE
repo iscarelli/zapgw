@@ -1,0 +1,22 @@
+zapgw - gateway for Meta's messaging APIs (WhatsApp Cloud API, Instagram DM)
+Copyright (C) 2026  Ismael Carelli
+
+This program is free software: you can redistribute it and/or modify it under the
+terms of the GNU Affero General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later version.
+
+SPDX-License-Identifier: AGPL-3.0-or-later
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License along
+with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+--------------------------------------------------------------------------------
+
+Por que este arquivo existe separado do LICENSE: o detector de licenca do GitHub
+compara o LICENSE com o texto oficial e qualquer linha acrescentada no topo faz o
+repositorio aparecer como "NOASSERTION" — medido em 2026-08-20, com o preambulo
+que estava aqui antes. O LICENSE ficou verbatim; o aviso de titularidade mora aqui.

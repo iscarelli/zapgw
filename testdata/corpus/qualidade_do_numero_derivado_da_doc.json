@@ -1,0 +1,1 @@
+{"object":"whatsapp_business_account","entry":[{"id":"WABA_TESTE","time":1769000080,"changes":[{"field":"phone_number_quality_update","value":{"display_phone_number":"16505551111","event":"ONBOARDING","current_limit":"TIER_250","old_limit":"TIER_NOT_SET","max_daily_conversations_per_business":"TIER_250"}}]}]}

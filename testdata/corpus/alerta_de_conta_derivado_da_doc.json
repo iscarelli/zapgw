@@ -1,0 +1,1 @@
+{"object":"whatsapp_business_account","entry":[{"id":"WABA_TESTE","time":1769000084,"changes":[{"field":"account_alerts","value":{"entity_type":"WABA","entity_id":123456,"alert_severity":"INFORMATIONAL","alert_status":"NONE","alert_type":"OBA_APPROVED","alert_description":"Sample alert description, informational in nature with no status"}}]}]}

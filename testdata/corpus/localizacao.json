@@ -1,0 +1,1 @@
+{"object":"whatsapp_business_account","entry":[{"id":"WABA_TESTE","changes":[{"field":"messages","value":{"messaging_product":"whatsapp","metadata":{"phone_number_id":"PNID_TESTE"},"messages":[{"from":"5511999990000","id":"wamid.TESTE008","timestamp":"1769000007","type":"location","location":{"latitude":-21.229,"longitude":-43.7892}}]}}]}]}

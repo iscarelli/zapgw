@@ -1,0 +1,14 @@
+{
+  "_o_que_e_isto": "Vetor de teste CONGELADO da assinatura de entrega do zapgw. Serve para quem reimplementar a conta em outra linguagem (Python, PHP, Node) conferir a propria implementacao: se ela produzir 'assinatura_esperada' a partir de 'segredo_entrega', 'timestamp' e 'corpo', esta certa. Se nao produzir, o problema e dela, nao do gateway. Especificacao em prosa: docs/CONTRATO-CONSUMIDOR.md, obrigacao 3.",
+
+  "_este_segredo_e_de_BRINQUEDO": "NAO E CREDENCIAL. Valor inventado, publico, versionado de proposito, e nao abre nada em lugar nenhum. O segredo de entrega de verdade e sorteado por instancia, mora cifrado no banco e NUNCA entra no repositorio.",
+
+  "_o_corpo_aqui_e_OPACO": "Estes bytes NAO sao o esquema do envelope e nao devem ser lidos como tal — campo novo no envelope nao muda nada aqui. O que este vetor prende e a CONTA da assinatura sobre bytes arbitrarios. Ele carrega de proposito um acento ('a' com til, 'a' com acento agudo), um travessao (fora do BMP baixo, 3 bytes em UTF-8) e barras invertidas ESCAPADAS como o JSON manda: e onde reimplementacao quebra, e um vetor so-ASCII passaria verde numa implementacao errada.",
+
+  "formula": "\"sha256=\" + hex_minusculo(HMAC_SHA256(chave = segredo_entrega, dados = timestamp_em_ASCII + \".\" + bytes_do_corpo))",
+
+  "segredo_entrega": "segredo-de-brinquedo-do-vetor-de-teste-NAO-E-CREDENCIAL",
+  "timestamp": "1769000000",
+  "corpo": "{\"instancia\":\"lojinha\",\"recebido_em\":\"2026-07-26T12:00:00Z\",\"texto\":\"Olá, João — 50% de ação no caminho C:\\\\tmp\\\\nota.pdf\"}",
+  "assinatura_esperada": "sha256=f685419474eed78cfd0458e16057a70317556c154d1d78f06d28f47c87fe35d3"
+}
