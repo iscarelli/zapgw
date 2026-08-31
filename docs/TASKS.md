@@ -121,31 +121,6 @@ fizeram no `processado_em` hoje de manha.
 ## Active
 
 > A fila do periodo privado esta em `iscarelli/zapgw-dev`, congelada. Tarefa nova nasce aqui.
-## [ ] T-211  The CI is flaky on a wall-clock test — a gate that cries wolf trains people to ignore it
-Why:    **Medido em 2026-08-31:** o run `33418293310` reprovou em
-        `TestHandlerRespectsTheInstanceTimeoutMs` — *"o handler esperou 294.064535ms — mais que o
-        TimeoutMs=50ms configurado"*. **O MESMO commit passou** quando empurrado como tag, e o
-        seguinte tambem.
-🔴      **Intermitencia e' pior que falha:** ela ensina a apertar "re-run", e quem aprende isso
-        aprende a ignorar vermelho. Este projeto acabou de gastar o dia inteiro construindo portoes;
-        um portao que mente por carga de maquina contamina a confianca em todos os outros.
-Files:  internal/outbound/handler_test.go
-
-Do:
-  - **Pare de medir relogio de parede.** O que o teste quer provar e' que o `TimeoutMs` da instancia
-    **chega ao cliente HTTP** — nao quanto tempo a maquina levou. Prove a PASSAGEM do valor (o
-    `http.Client.Timeout` recebido, ou o `context` com deadline), nao a duracao observada.
-  - Se alguma parte precisar mesmo de tempo real, dê folga generosa e **diga no comentario que o
-    numero e' folga contra carga de CI, nao requisito** — para ninguem "apertar" depois.
-  - **Varra os outros testes por medida de relogio de parede** (`time.Since`, `elapsed`, `Sub(`) e
-    diga no relatorio quantos existem e quais tem o mesmo risco. *Um flake que voce conserta sozinho
-    volta pelo irmao.*
-
-Verify:
-  - `go test -count=20 ./internal/outbound/ -run TestHandlerRespectsTheInstanceTimeoutMs` verde nas
-    20 — flake nao se prova com uma rodada.
-  - `go test -count=1 ./...`, `CGO_ENABLED=0 go build ./...`, `go vet ./...`, `gofmt -l cmd internal`.
-
 ## [ ] T-212  CAMADA 1: file names and identifiers stop speaking Portuguese
 After:  T-211
 Why:    **Decisao do dono, 2026-08-31: limpar o sistema de tudo em PT-BR.** Esta e' a camada que **nao

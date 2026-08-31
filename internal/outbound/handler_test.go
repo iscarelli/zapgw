@@ -603,36 +603,84 @@ func TestHandlerAnswersConfigWhenPhoneNumberIDIsInvalid(t *testing.T) {
 	}
 }
 
+// T-211: this test USED TO measure wall-clock elapsed time against a tight
+// (250ms) bound, and that is exactly what made it flaky — CI run 33418293310
+// failed with an observed 294ms on a loaded runner, on the SAME commit that
+// passed both right before (as a tag push) and right after. A loaded
+// scheduler can delay a goroutine by hundreds of milliseconds without the
+// deadline logic being wrong at all.
+//
+// The first replacement tried here read the deadline off a REAL mock
+// server's r.Context() — and that does not work AT ALL: context.WithTimeout
+// is a purely local, client-side Go value. It is never serialized onto the
+// wire, so the server side can never see it; that version deadlocked
+// (proven with `go test -c` + `-test.timeout=10s`, goroutine dump showed the
+// server handler stuck forever on `<-r.Context().Done()` because that
+// context had no deadline to ever expire).
+//
+// The value is only observable in ONE place, in-process: the
+// http.RoundTripper the client is about to invoke. So this test swaps in a
+// fake RoundTripper that touches NO network at all — it just records
+// req.Context().Deadline() and returns an error — and asserts that recorded
+// deadline falls inside [before+50ms, after+50ms]. That window is exact
+// regardless of runner speed, because before/after bracket the very call
+// that produced it, and it only holds if TimeoutMs=50 genuinely flowed from
+// the instance's row, through InstanceDeadline, into context.WithTimeout,
+// into the request the client was about to send. Zero sleeping, zero clock
+// racing, zero network.
 func TestHandlerRespectsTheInstanceTimeoutMs(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		time.Sleep(300 * time.Millisecond) // more than the TimeoutMs=50 configured below
-		_, _ = w.Write([]byte(`{"messages":[{"id":"wamid.TARDE-DEMAIS"}]}`))
-	}))
-	defer srv.Close()
+	const timeoutMs = 50
+
+	rt := &deadlineCapturingTransport{}
+	client := &http.Client{Transport: rt}
 
 	store, path := storeWithConsumer(t)
 	activateInstance(t, path, "lojinha")
 	if _, err := store.DB().Exec(
-		`UPDATE instancia SET timeout_ms = ? WHERE slug = ?`, 50, "lojinha"); err != nil {
+		`UPDATE instancia SET timeout_ms = ? WHERE slug = ?`, timeoutMs, "lojinha"); err != nil {
 		t.Fatalf("ajustar timeout_ms de teste: %v", err)
 	}
 
-	h := NewHandler(store, NewAuthenticator(store), meta.NewClient(srv.Client(), srv.URL), 1<<20, config.NewCounter(store), config.NewTransit(store), AllTypes)
+	h := NewHandler(store, NewAuthenticator(store), meta.NewClient(client, "http://meta.invalid"), 1<<20, config.NewCounter(store), config.NewTransit(store), AllTypes)
 
-	start := time.Now()
+	before := time.Now()
 	rec := ask(t, h, "token-do-a", "k-timeout", textBody)
-	elapsed := time.Since(start)
+	after := time.Now()
 
-	// 502/desconhecido, not 503/retentavel: the deadline blew up in the MIDDLE of the
-	// call, so the message may have gone out — it's the same transport
-	// outcome, just by timeout instead of a refused connection.
+	if !rt.hasDeadline {
+		t.Fatal("a chamada ao cliente HTTP saiu SEM deadline no contexto — TimeoutMs nao chegou ate o cliente")
+	}
+	// The deadline the TRANSPORT SAW has to land inside [before+timeoutMs,
+	// after+timeoutMs] — the proof it came FROM TimeoutMs=50ms and not from
+	// defaultTimeout (30s) nor from no deadline at all.
+	wantMin := before.Add(timeoutMs * time.Millisecond)
+	wantMax := after.Add(timeoutMs * time.Millisecond)
+	if rt.deadline.Before(wantMin) || rt.deadline.After(wantMax) {
+		t.Fatalf("deadline do contexto = %v, esperava entre %v e %v (TimeoutMs=%dms nao foi respeitado)",
+			rt.deadline, wantMin, wantMax, timeoutMs)
+	}
+
+	// 502/desconhecido, not 503/retentavel: the transport failed without a
+	// response from Meta, so the message's outcome is UNKNOWN — the same
+	// treatment as a real timeout blowing up mid-call.
 	if rec.Code != http.StatusBadGateway {
-		t.Fatalf("status = %d, corpo = %s — quero 502: o TimeoutMs=50ms da instancia nao foi respeitado (esperou %v)",
-			rec.Code, rec.Body.String(), elapsed)
+		t.Fatalf("status = %d, corpo = %s — quero 502: falha de transporte (simulada) sem resposta da Meta",
+			rec.Code, rec.Body.String())
 	}
-	if elapsed >= 250*time.Millisecond {
-		t.Fatalf("o handler esperou %v — mais que o TimeoutMs=50ms configurado", elapsed)
-	}
+}
+
+// deadlineCapturingTransport never touches the network: it exists only so a
+// test can read the deadline the CALLER attached to the request's context —
+// the one signal that proves TimeoutMs reached the HTTP client, without
+// needing the deadline to actually fire and without any real I/O.
+type deadlineCapturingTransport struct {
+	deadline    time.Time
+	hasDeadline bool
+}
+
+func (rt *deadlineCapturingTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	rt.deadline, rt.hasDeadline = req.Context().Deadline()
+	return nil, errors.New("deadlineCapturingTransport: proposital — este teste nunca faz I/O de rede de verdade")
 }
 
 // A-4: the deadline for how long to wait for Meta belongs to the INSTANCE, not to the HTTP

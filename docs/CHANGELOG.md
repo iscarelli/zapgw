@@ -2,6 +2,21 @@
 
 Uma linha por versao entregue, no mesmo commit do bump. A entrada diz o **efeito**, nao o diff.
 
+## Nao lancado
+
+- **T-211 — The CI is flaky on a wall-clock test** — `TestHandlerRespectsTheInstanceTimeoutMs`
+  media agora a PASSAGEM do valor, nao a duracao: um `http.RoundTripper` falso que nunca toca a
+  rede captura `req.Context().Deadline()` e confere que ela cai na janela `[antes+50ms,
+  depois+50ms]`. A primeira tentativa (ler o deadline no `r.Context()` de um servidor mock real)
+  nao funciona — `context.WithTimeout` e' um valor local do cliente, nunca vai para a rede — e
+  travou (`go test -c` + `-test.timeout=10s` mostrou o goroutine do servidor preso para sempre em
+  `<-r.Context().Done()`). Verde 20/20 em ~2.5s, sem sono e sem corrida de relogio. Achados dois
+  irmaos do mesmo risco (medidos, nao consertados — fora do escopo desta tarefa):
+  `TestWaitWithContextStopsEarlyIfTheContextIsCancelled`
+  (`internal/outbound/templates_handler_test.go:1362`, margem de 135ms) e
+  `TestStateRouteDoesNotHangWithTheExternalProbeStuck`
+  (`internal/outbound/sonda_externa_test.go:368`, margem de 500ms). _Completed 2026-08-31 14:50._
+
 ## v0.63.0 — 2026-08-31
 
 - **O contrato passa a falar ingles — leitor tolerante do lado deles, apelido so na ENTRADA** (T-189)
