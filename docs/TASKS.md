@@ -121,5 +121,101 @@ fizeram no `processado_em` hoje de manha.
 ## Active
 
 > A fila do periodo privado esta em `iscarelli/zapgw-dev`, congelada. Tarefa nova nasce aqui.
+## [ ] T-211  The CI is flaky on a wall-clock test — a gate that cries wolf trains people to ignore it
+Why:    **Medido em 2026-08-31:** o run `33418293310` reprovou em
+        `TestHandlerRespectsTheInstanceTimeoutMs` — *"o handler esperou 294.064535ms — mais que o
+        TimeoutMs=50ms configurado"*. **O MESMO commit passou** quando empurrado como tag, e o
+        seguinte tambem.
+🔴      **Intermitencia e' pior que falha:** ela ensina a apertar "re-run", e quem aprende isso
+        aprende a ignorar vermelho. Este projeto acabou de gastar o dia inteiro construindo portoes;
+        um portao que mente por carga de maquina contamina a confianca em todos os outros.
+Files:  internal/outbound/handler_test.go
 
-> Fila vazia. Tarefa nova nasce aqui.
+Do:
+  - **Pare de medir relogio de parede.** O que o teste quer provar e' que o `TimeoutMs` da instancia
+    **chega ao cliente HTTP** — nao quanto tempo a maquina levou. Prove a PASSAGEM do valor (o
+    `http.Client.Timeout` recebido, ou o `context` com deadline), nao a duracao observada.
+  - Se alguma parte precisar mesmo de tempo real, dê folga generosa e **diga no comentario que o
+    numero e' folga contra carga de CI, nao requisito** — para ninguem "apertar" depois.
+  - **Varra os outros testes por medida de relogio de parede** (`time.Since`, `elapsed`, `Sub(`) e
+    diga no relatorio quantos existem e quais tem o mesmo risco. *Um flake que voce conserta sozinho
+    volta pelo irmao.*
+
+Verify:
+  - `go test -count=20 ./internal/outbound/ -run TestHandlerRespectsTheInstanceTimeoutMs` verde nas
+    20 — flake nao se prova com uma rodada.
+  - `go test -count=1 ./...`, `CGO_ENABLED=0 go build ./...`, `go vet ./...`, `gofmt -l cmd internal`.
+
+## [ ] T-212  CAMADA 1: file names and identifiers stop speaking Portuguese
+After:  T-211
+Why:    **Decisao do dono, 2026-08-31: limpar o sistema de tudo em PT-BR.** Esta e' a camada que **nao
+        toca contrato nenhum** e que o compilador confere: **69 arquivos `.go`** com nome em portugues
+        e **38 identificadores** medidos. E' a maior em volume e a de menor risco — por isso vem
+        primeiro.
+Files:  os 69 arquivos e quem os referencia
+
+Do:
+  1. **Renomeie arquivo e identificador para ingles.** `git mv` para os arquivos, para o historico
+     seguir o arquivo.
+  2. 🔴 **NAO toque em tag `json`, valor emitido, nome de variavel de ambiente, verbo de CLI, nem
+     string de mensagem.** Esta camada e' **interna**. Se voce se pegar editando uma dessas, parou:
+     sao as camadas 2, 3 e 4, e cada uma tem risco proprio.
+  3. **Nome de teste tambem** — eles descrevem comportamento e sao lidos por quem investiga.
+  4. Faca em lotes, com o verify entre eles.
+
+Verify:
+  - `CGO_ENABLED=0 go build ./...` e `go test -count=1 ./...` verdes — o compilador e' o portao desta
+    camada.
+  - 🔴 **`git diff --stat` nao pode conter mudanca em tag `json`.** Confira com
+    `git diff -U0 | grep 'json:"'` — tem de sair vazio.
+  - **A varredura do contrato (`TestOutputContractHasNoPortugueseKeyOrValue`) continua verde sem
+    edicao.**
+  - Diga quantos arquivos e quantos identificadores mudaram.
+
+## [ ] T-213  CAMADA 3, primeira metade: measure which Portuguese strings REACH the consumer
+After:  T-212
+Why:    Ha **207 strings de producao em portugues** medidas. Parte e' log interno — grátis de trocar.
+        Parte viaja no corpo da resposta, dentro de `erro`, `motivo`, `explicacao_meta`, e **o
+        consumidor pode estar comparando com ela**.
+🔴      **Ninguem sabe hoje qual e' qual**, e trocar as 207 sem separar e' mudar contrato as cegas.
+Files:  docs/INVENTARIO-STRINGS.md (novo)
+
+Do:
+  🔴 **NAO traduza nada nesta tarefa. Ela MEDE.**
+  - Para cada string de producao em portugues: `arquivo:linha`, e a **classificacao**:
+    **SAIDA-CONSUMIDOR** (chega no corpo de uma resposta ou evento), **LOG** (só stderr/arquivo), ou
+    **AMBOS**.
+  - **Meça, nao deduza:** siga o caminho da string ate um `w.Write`/`json.Encode` ou ate um `log.`.
+    Se nao conseguir decidir, escreva `A MEDIR` e diga o que faltou.
+  - Diga quantas sao de cada tipo. **O numero de SAIDA-CONSUMIDOR e' o tamanho real do problema.**
+
+Verify:
+  - Amostra de 6 ponteiros conferida com `sed -n`.
+  - Total bate com as 207 (ou a diferenca explicada).
+  - Verify de sempre limpo.
+
+## [ ] T-214  CAMADA 4: `ZAPGW_*` and the CLI accept both names, and count the old one
+After:  T-213
+Why:    **24 variaveis `ZAPGW_*`** e os verbos de CLI (`consumidor`, `estado`, `fumaca`, `instancia`).
+🔴      **O risco nao e' o rename — e' que ele NAO ALCANCA o `/etc/zapgw/env`.** O gateway sobe com o
+        default, **em silencio**: nao quebra, nao avisa, e ninguem descobre ate alguma coisa que
+        dependia da variavel nao acontecer. O `CLAUDE.md` ja marca isto como fora de escopo da T-189
+        por esse motivo.
+        **O "consumidor" desta camada e' o OPERADOR**, e o `/etc/zapgw/env` e' o escritor que precisa
+        migrar. Entao vale o mesmo jogo de quatro passos que funcionou com o contrato.
+Files:  cmd/zapgw/, internal/config/
+
+Do:
+  1. **Aceitar os dois nomes** — variavel e verbo —, com o novo tendo precedencia se ambos vierem.
+  2. **Contar o uso do nome velho**, visivel de fora (no `/v1/estado` ou no log de arranque), porque
+     e' esse numero que autoriza remover depois.
+  3. 🔴 **Se o nome velho for usado, DIGA no arranque** — uma linha por variavel, uma vez. O operador
+     precisa ver, e o arranque e' o unico lugar onde ele olha.
+  4. 🔴 **NAO remova nenhum nome velho nesta tarefa.** A remocao e' outra conversa e e' do dono.
+
+Verify:
+  - Para cada variavel e cada verbo: nome velho funciona **e conta**; nome novo funciona e nao conta.
+  - **Ambos presentes: o novo vence, e isso tem teste.**
+  - **Arranque com nome velho imprime o aviso**; sem nome velho, nao imprime nada.
+  - Verify de sempre limpo.
+
