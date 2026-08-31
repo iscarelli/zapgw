@@ -2,8 +2,33 @@
 
 Uma linha por versao entregue, no mesmo commit do bump. A entrada diz o **efeito**, nao o diff.
 
-## Nao lancado
+## v0.62.0 — 2026-08-31
 
+- **Step 2 of the ENTRADA migration, for VALUES this time: the gateway accepts the English value on
+  input too** (T-207) — the three ENTRADA value vocabularies of
+  `docs/MIGRACAO-CONTRATO-EN.md` section 8 (8.1 `Request.Type`, 11 values; 8.3
+  `TemplateButtonUnion.Type` inside `botoes_template[]`, 2 values; 8.5 `Request.Category`, 5
+  values — 18 in total) now also accept their English spelling on input, translated to the
+  canonical Portuguese value BEFORE `json.Unmarshal` and BEFORE `RequestHash`, same ordering
+  requirement and same reason as the key alias: hashing before translation would make
+  `{"tipo":"texto"}` and `{"tipo":"text"}` — the same request — hash differently, and the same
+  message would go out twice to the customer
+  (`TestEntradaValueIdempotencyCrossesLanguages`, green). Output is untouched: the eight SAIDA
+  value vocabularies (8.2, 8.6, 8.7, 8.8-8.10, 8.11) were not touched. `tipo` is FOUR
+  vocabularies sharing one JSON key — `requestTypeValueAlias`, `templateButtonTypeValueAlias` and
+  `requestCategoryValueAlias` are three SEPARATE dicts, each scoped to the one object section 8
+  names for it, proved by `TestEntradaValueAliasIsScopedPerObject` (a valid top-level value used
+  inside `botoes_template`, and a valid button value used at the top level, both stay `400`). A
+  value has no conflict case — no `ErrConflictingAlias` equivalent was added. An invented value
+  keeps being refused with today's exact message (`TestEntradaInventedValueStillRejected`).
+  `config.CounterOldNameUsed` now also counts an old VALUE, not only an old KEY — a request whose
+  key is already English but whose value is still Portuguese counts too, the exact scenario the
+  task's own Why names; the counter stays a SINGLE one, and an old-value marker is formatted
+  `"valor:<field>=<value>"` (an old-key marker stays the bare field name) so the two are
+  distinguishable without a second counter. 11 of the 18 values needed an alias (`template`,
+  `cta_url`, `flow`, `url`, `video`, `audio`, `sticker` are the 7 that are the same word in both
+  languages already). `CGO_ENABLED=0 go build ./...`, `go test ./...`, `go vet ./...`,
+  `gofmt -l cmd internal` clean. _Completed 2026-08-31 11:44._
 - **The migration table is INCOMPLETE for step 4 — inventory what a `json:` sweep cannot see**
   (T-206) — new `docs/INVENTARIO-VALORES.md`: 11 closed value-vocabularies (`tipo` alone is FOUR
   separate vocabularies under the same JSON key, 11+6+2+2 values — the `Why`'s six examples covered

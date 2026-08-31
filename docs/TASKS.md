@@ -103,53 +103,6 @@ telefone real e `wamid` de producao, e este repositorio e' publico.
 
 > A fila do periodo privado esta em `iscarelli/zapgw-dev`, congelada. Tarefa nova nasce aqui.
 
-## [ ] T-207  Step 2 for VALUES: the gateway accepts the English value on input too
-Why:    **Decisao do dono, 2026-08-31:** os valores viram ingles junto com as chaves — a decisao de
-        30/08 (*"o projeto precisa ser em ingles"*) nunca parou na chave. Os 67 pares estao
-        publicados em `docs/MIGRACAO-CONTRATO-EN.md`, secao 8.
-        Este e' o **passo 2 dos valores**, e e' o mesmo desenho que funcionou para as chaves:
-        **aditivo, MINOR** — a entrada passa a aceitar os dois, a saida nao muda.
-        O consumidor ja esta fazendo os leitores tolerantes de valor; **ele so' pode trocar os
-        ESCRITORES depois desta tarefa subir.**
-Files:  internal/outbound/entrada_apelidos.go (ou vizinho), e os handlers de entrada
-        docs/MIGRACAO-CONTRATO-EN.md + par pt-BR (marcar que o passo 2 de valores subiu)
-
-Do:
-  1. **So' os vocabularios de direcao ENTRADA ganham apelido de valor.** Sao tres, e a fonte e' a
-     secao 8: **8.1** `tipo` de mensagem (11 valores), **8.3** `tipo` de botao dentro de
-     `botoes_template[]` (2), **8.5** `categoria` de midia (5).
-     🔴 **8.2, 8.6, 8.7, 8.8-8.10 e 8.11 sao SAIDA — nao entram.** Aceitar valor de saida na entrada
-     nao significa nada e cria superficie por engano.
-  2. 🔴 **Escopo por OBJETO, nunca global.** `tipo` sao quatro vocabularios com o mesmo nome de chave;
-     um mapa global reescreveria objeto que nao esta na conversa. O apelido do `tipo` do topo **nao
-     vale** dentro de `botoes_template`, e vice-versa. Se voce escrever uma funcao que anda o JSON
-     trocando valores, o desenho esta errado.
-  3. **Valor nao tem conflito possivel** (um campo tem um valor), entao **nao ha regra de `400` de
-     conflito** como houve para chave. Nao invente uma.
-  4. **Valor desconhecido continua sendo erro**, com a mesma mensagem de hoje. O apelido acrescenta
-     grafias validas; ele nao afrouxa a validacao. **Teste que um valor inventado continua recusado.**
-  5. **O contador `nome_antigo_usado` conta valor velho tambem.** E' o mesmo numero que autoriza o
-     passo 4, e o criterio e' "nada velho esta chegando" — se ele contasse so' chave, um consumidor
-     mandando `"tipo":"texto"` com chave `kind` apareceria como zero. **Um numero so'; o log diz
-     qual foi** (chave ou valor), para diagnosticar sem precisar de dois contadores.
-  6. **A saida nao muda.** Tag `json` de struct de SAIDA e valor emitido continuam como estao — isso
-     e' o passo 4, e' MAJOR, e nao e' seu.
-  7. **Bump de MINOR** no `VERSION` e nota no `docs/CHANGELOG.md` no mesmo commit.
-
-Verify:
-  - **Pedido com valor em portugues e o mesmo com valor em ingles produzem resposta IDENTICA**, nos
-    tres vocabularios. Teste valor por valor, nao por amostra — sao 18 valores no total.
-  - 🔴 **Idempotencia atravessa idiomas TAMBEM no valor:** mesmo pedido com `"tipo":"texto"` e com
-    `"tipo":"text"`, mesma `Idempotency-Key`, **um** envio e o mesmo `wa_message_id`. Mesmo motivo de
-    antes: traduz primeiro, calcula o hash depois. **Se so' um teste desta tarefa puder existir, e'
-    este** — sem ele, a mesma mensagem sai duas vezes para uma cliente.
-  - **Escopo por objeto, provado:** um valor valido do `tipo` do TOPO usado dentro de
-    `botoes_template` continua sendo **recusado**, e vice-versa. *Isto e' o que prova que o apelido
-    nao vazou entre dicionarios.*
-  - **Valor inventado continua recusado**, com a mensagem de hoje.
-  - **O contador sobe com valor velho** e aparece no `/v1/estado`.
-  - `CGO_ENABLED=0 go build ./...`, `go test ./...`, `go vet ./...`, `gofmt -l cmd internal` limpos.
-
 ## [ ] T-189  O contrato passa a falar ingles — leitor tolerante do lado deles, apelido so' na ENTRADA
 Why:    **decisao do dono, 2026-08-30:** *"o projeto precisa ser em ingles, ter feito em portugues foi
         errado. Se a chave chama nome, tem que passar a se chamar name."*
@@ -280,6 +233,13 @@ tempo dobram a janela de convivencia sem dobrar o aprendizado.*
    no AST do pacote — nao uma lista de rotas — e falha nomeando qualquer rota futura que aceite
    apelido sem contar. Guarda provada contra codigo real (revertida a fiacao de `/v1/pausa`, a guarda
    reprovou citando `pausa_handler.go:101`, desfeito).
+   ✅ **FEITO (T-207, `v0.62.0`, 2026-08-31): o mesmo passo 2, agora para VALORES** — os tres
+   vocabularios de VALOR de direcao ENTRADA (`docs/MIGRACAO-CONTRATO-EN.md` secao 8.1/8.3/8.5, 18
+   valores) tambem aceitam a grafia em ingles na entrada, escopados por objeto (`tipo` sao QUATRO
+   vocabularios com a mesma chave; tres dicionarios separados, nunca um mapa global — provado por
+   `TestEntradaValueAliasIsScopedPerObject`). Idempotencia provada atravessando idiomas TAMBEM no
+   valor (`TestEntradaValueIdempotencyCrossesLanguages`). O contador `nome_antigo_usado` agora
+   conta valor velho tambem, sem virar dois contadores.
 3. **Consumidores trocam os escritores para ingles.** Nada quebra: o gateway aceita os dois.
 4. **Gateway vira a saida para ingles, num commit.** Nada quebra: os leitores sao tolerantes desde o
    passo 1. **Depois, apaga o apelido de entrada** — e ai sim e' MAJOR, que para e pergunta ao dono.

@@ -1,11 +1,16 @@
-// entrada_apelidos.go — T-203 (step 2 of T-189, docs/MIGRACAO-CONTRATO-EN.md).
+// entrada_apelidos.go — T-203 (step 2 of T-189, docs/MIGRACAO-CONTRATO-EN.md)
+// for KEYS, and T-207 (the same step 2, docs/MIGRACAO-CONTRATO-EN.md
+// section 8) for VALUES.
 //
 // The gateway starts ACCEPTING the English name of every ENTRADA-direction
 // key in the migration table, in ADDITION to the Portuguese one it already
-// accepted — never instead of it. Output is untouched: a consumer who has
-// not moved a single field keeps getting exactly the response they get
-// today (see the file header of docs/MIGRACAO-CONTRATO-EN.md — step 4 is
-// the one that flips output, and it is MAJOR, and it is not this one).
+// accepted — never instead of it. T-207 does the same for the three
+// ENTRADA value vocabularies (section 8.1, 8.3, 8.5 — see the block
+// comment above requestTypeValueAlias, further down this file). Output is
+// untouched: a consumer who has not moved a single field or value keeps
+// getting exactly the response they get today (see the file header of
+// docs/MIGRACAO-CONTRATO-EN.md — step 4 is the one that flips output, and
+// it is MAJOR, and it is not this one).
 //
 // THE ALIAS IS POSITIONAL, NEVER GLOBAL (T-203 Do item 2). Each dictionary
 // below applies at EXACTLY the nesting level the migration table names for
@@ -208,6 +213,21 @@ func translateRequestBody(raw []byte) ([]byte, []string, error) {
 	}
 	oldNames = append(oldNames, top...)
 
+	// T-207: value aliases run AFTER the key alias above — so they read
+	// "tipo"/"categoria" under their canonical name regardless of which
+	// spelling the consumer used for the KEY — and BEFORE json.Unmarshal /
+	// RequestHash below, same ordering requirement and same reason as the
+	// key alias: hashing before translation would make {"tipo":"texto"}
+	// and {"tipo":"text"} — the SAME request — produce two different
+	// hashes, and the same message would go out twice to the customer
+	// (see this file's header comment).
+	if old := translateValueAliasInPlace(m, "tipo", requestTypeValueAlias); old != "" {
+		oldNames = append(oldNames, old)
+	}
+	if old := translateValueAliasInPlace(m, "categoria", requestCategoryValueAlias); old != "" {
+		oldNames = append(oldNames, old)
+	}
+
 	nested := []struct {
 		key  string
 		dict map[string]string
@@ -233,11 +253,15 @@ func translateRequestBody(raw []byte) ([]byte, []string, error) {
 	// botoes_template is a LIST of TemplateButtonUnion — each item gets its
 	// own translation, positionally, never the list's key itself (that one
 	// is already handled by requestAliasAtTopLevel above).
+	// translateTemplateButtonItem (T-207) does BOTH the key alias
+	// (templateButtonAlias) and the value alias of "tipo"
+	// (templateButtonTypeValueAlias, section 8.3) for each item, in that
+	// order — see its own comment for why the order matters.
 	if sub, ok := m["botoes_template"]; ok {
 		var arr []json.RawMessage
 		if err := json.Unmarshal(sub, &arr); err == nil {
 			for i := range arr {
-				translated, old, err := translateSubObject(arr[i], templateButtonAlias)
+				translated, old, err := translateTemplateButtonItem(arr[i])
 				if err != nil {
 					return nil, nil, err
 				}
@@ -287,6 +311,135 @@ var registrationAlias = map[string]string{
 // there).
 var instanceOnlyAlias = map[string]string{
 	"instance": "instancia",
+}
+
+// --- T-207 (step 2 of T-189, for VALUES): docs/MIGRACAO-CONTRATO-EN.md
+// section 8. Only the three ENTRADA value vocabularies get an alias here —
+// sections 8.2, 8.6, 8.7, 8.8-8.10 and 8.11 are SAIDA and are not touched
+// (Do item 1): accepting an output value on input means nothing and would
+// only be surface added by mistake.
+//
+// `tipo` IS FOUR VOCABULARIES SHARING ONE JSON KEY (Do item 2), same trap
+// as the key alias above: requestTypeValueAlias, templateButtonTypeValueAlias
+// and (the fourth, `tipo` of TemplateHeader/section 8.4-adjacent, already
+// English and out of section 8 entirely) are kept in SEPARATE dicts, each
+// scoped to the ONE object the migration table names for it. A value from
+// one dict means nothing in another object — `media` at the top level and
+// `quick_reply` inside a template button do not share a vocabulary just
+// because both keys are spelled "tipo".
+//
+// `*`-marked values in docs/MIGRACAO-CONTRATO-EN.md section 8 (the same
+// word in both languages) are deliberately ABSENT from every dict below:
+// there is nothing to alias, and an absent entry can never be misread by
+// the counter as either "old" or "new" spelling — see
+// translateValueAliasInPlace.
+//
+// A value has NO conflict case (Do item 3): a field carries exactly one
+// value, so there is nothing analogous to ErrConflictingAlias for values —
+// don't invent one.
+
+// requestTypeValueAlias: `Request.Type` ("tipo" at the top level of
+// POST /v1/messages), section 8.1. `template`, `cta_url` and `flow` are
+// absent — same word in both languages, nothing to alias.
+var requestTypeValueAlias = map[string]string{
+	"text":             "texto",
+	"buttons":          "botoes",
+	"list":             "lista",
+	"request_location": "pedir_localizacao",
+	"reaction":         "reacao",
+	"location":         "localizacao",
+	"contacts":         "contatos",
+	"media":            "midia",
+}
+
+// requestCategoryValueAlias: `Request.Category` ("categoria" at the top
+// level of POST /v1/messages), section 8.5. `video`, `audio` and `sticker`
+// are absent — same word in both languages, nothing to alias.
+var requestCategoryValueAlias = map[string]string{
+	"image":    "imagem",
+	"document": "documento",
+}
+
+// templateButtonTypeValueAlias: `TemplateButtonUnion.Type` ("tipo" inside
+// EACH item of `botoes_template`), section 8.3. `url` is absent — same
+// word in both languages, nothing to alias. Deliberately its OWN dict, not
+// merged with requestTypeValueAlias — see the block comment above.
+var templateButtonTypeValueAlias = map[string]string{
+	"quick_reply": "resposta_rapida",
+}
+
+// translateValueAliasInPlace looks at ONE field's value inside an already
+// key-canonicalized JSON object `m`. If the value is the ENGLISH spelling
+// present in `dict` (english -> portuguese), it is rewritten in place to
+// the canonical Portuguese spelling the rest of this package already
+// expects, and "" comes back — this is the NEW spelling, nothing to count.
+// If the value is already the OLD (Portuguese) spelling of a word that HAS
+// an English alternative in `dict`, the marker "valor:<field>=<value>"
+// comes back for the old-name counter (Do item 5) — the "valor:" prefix is
+// what lets a reader of the counter's raw markers tell a value apart from
+// a key (which are bare canonical field names, see translateAliasesInPlace)
+// without needing a second counter. Any other value — a "same word in both
+// languages" value that is absent from `dict` on purpose, or a value this
+// vocabulary does not recognize at all — passes through untouched:
+// recognizing what is a VALID value stays Validate()'s job, never this
+// function's (Do item 4 — the alias adds spellings, it never loosens
+// validation).
+func translateValueAliasInPlace(m map[string]json.RawMessage, field string, dict map[string]string) (oldName string) {
+	raw, ok := m[field]
+	if !ok {
+		return ""
+	}
+	var v string
+	if err := json.Unmarshal(raw, &v); err != nil {
+		// Not a JSON string at all (wrong shape) — the real json.Unmarshal
+		// into the request struct, right after this call, reports that
+		// error itself.
+		return ""
+	}
+	if pt, hasEN := dict[v]; hasEN {
+		out, err := json.Marshal(pt)
+		if err != nil {
+			return ""
+		}
+		m[field] = out
+		return ""
+	}
+	for _, pt := range dict {
+		if v == pt {
+			return "valor:" + field + "=" + v
+		}
+	}
+	return ""
+}
+
+// translateTemplateButtonItem applies BOTH the key alias
+// (templateButtonAlias) and the value alias (templateButtonTypeValueAlias,
+// on "tipo") to ONE item of `botoes_template` — key first, always, so the
+// value step finds the field under its canonical name regardless of which
+// spelling the consumer used for the key itself. Same fallback rule as
+// translateSubObject: an item that is not a JSON object comes back
+// unchanged, and the real json.Unmarshal into TemplateButtonUnion is what
+// reports the shape error.
+func translateTemplateButtonItem(raw json.RawMessage) (json.RawMessage, []string, error) {
+	if len(raw) == 0 {
+		return raw, nil, nil
+	}
+	var m map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &m); err != nil || m == nil {
+		return raw, nil, nil
+	}
+	oldNames, err := translateAliasesInPlace(m, templateButtonAlias)
+	if err != nil {
+		return nil, nil, err
+	}
+	if old := translateValueAliasInPlace(m, "tipo", templateButtonTypeValueAlias); old != "" {
+		oldNames = append(oldNames, old)
+	}
+	out, merr := json.Marshal(m)
+	if merr != nil {
+		return raw, nil, nil
+	}
+	return out, oldNames, nil
 }
 
 // translateEntradaOrReject runs translateTopLevel(raw, dict) and, on a

@@ -25,6 +25,16 @@ Output is untouched: this is step 2 of the four-step plan in `docs/TASKS.md`
 (`config.CounterOldNameUsed`, exposed per instance in `GET /v1/estado`) is
 what will authorize step 4.
 
+✅ **Step 2 for VALUES (T-207) is LIVE since 2026-08-31, same file.** The three
+ENTRADA value vocabularies of section 8 — 8.1 (`Request.Type`), 8.3
+(`TemplateButtonUnion.Type`, inside `botoes_template[]`) and 8.5
+(`Request.Category`) — now also accept their English spelling on input, at
+the SAME position and scoped to the SAME object section 8 names for each.
+The eight SAIDA value vocabularies (8.2, 8.6, 8.7, 8.8-8.10, 8.11) are
+untouched: an output value has no reason to be accepted on input. The
+old-name counter now counts an old VALUE the same way it already counted an
+old KEY — one request with either counts once, not twice.
+
 This is the durable table behind T-189 step 4 (the day the gateway's output flips to English).
 It exists because the table only lived inside a private per-consumer channel until now, and this
 workspace's channel doctrine is explicit: *what holds for every consumer belongs in a durable

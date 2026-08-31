@@ -20,11 +20,22 @@ import (
 
 // --- T-203 (step 2 of T-189): English aliases on ENTRADA --------------------
 
-// enTextBody is textBody (handler_test.go), same request, English key names.
-// The VALUE of `kind` stays "texto" — this migration step renames JSON
-// KEYS, never the discriminator VALUES (docs/MIGRACAO-CONTRATO-EN.md only
-// has rows for keys).
+// enTextBody is textBody (handler_test.go), same request, English key
+// names. The VALUE of `kind` stays "texto" ON PURPOSE — this const exists
+// to test the KEY alias in isolation. Since T-207 (step 2 of T-189, for
+// VALUES) that no longer makes this body "fully in English": `kind` is
+// English but its value is still the OLD Portuguese spelling, so this body
+// now counts on config.CounterOldNameUsed too — see
+// TestEntradaOldNameCounterCountsAndAppearsInEstado, updated by T-207, and
+// enTextBodyFullyEnglish below for the body that carries NEITHER old
+// spelling.
 const enTextBody = `{"instance":"lojinha","to":"5511999990000","kind":"texto","text":"oi"}`
+
+// enTextBodyFullyEnglish is enTextBody with the discriminator VALUE also
+// translated ("texto" -> "text", section 8.1) — T-207's addition. This is
+// the body that must NOT count on config.CounterOldNameUsed: neither its
+// keys nor this one value carry an old spelling.
+const enTextBodyFullyEnglish = `{"instance":"lojinha","to":"5511999990000","kind":"text","text":"oi"}`
 
 // TestEntradaAcceptsEnglishAliasWithIdenticalResponse is the FIRST Verify
 // item: the same request, written once in Portuguese and once in English,
@@ -388,9 +399,18 @@ func TestEntradaAcceptsEnglishInstanceAliasOnSmoke(t *testing.T) {
 
 // TestEntradaOldNameCounterCountsAndAppearsInEstado is the last mandatory
 // Verify item: the counter that authorizes step 4 has to (a) go up when a
-// request still uses the Portuguese spelling, (b) NOT go up when it does
-// not, and (c) actually surface in GET /v1/estado — the same store, read
-// through the same route the consumer will watch.
+// request still uses the Portuguese spelling — of a KEY, or (T-207) of a
+// VALUE — (b) NOT go up when NEITHER is Portuguese anymore, and (c)
+// actually surface in GET /v1/estado — the same store, read through the
+// same route the consumer will watch.
+//
+// 🔴 T-207 changed the expected count from 1 to 2, and that is the whole
+// point of Do item 5's own justification example: "a consumer sending
+// `kind` (English key) with `tipo` still `\"texto\"` (Portuguese VALUE)
+// would read as zero if the counter only looked at keys". enTextBody IS
+// exactly that consumer — English key, Portuguese value — so it now counts
+// too. enTextBodyFullyEnglish (T-207) is what proves the counter still
+// stops incrementing once BOTH the key and the value are migrated.
 func TestEntradaOldNameCounterCountsAndAppearsInEstado(t *testing.T) {
 	store, path := storeWithConsumer(t)
 	activateInstance(t, path, "lojinha")
@@ -406,15 +426,21 @@ func TestEntradaOldNameCounterCountsAndAppearsInEstado(t *testing.T) {
 	state := NewStateHandler(store, NewAuthenticator(store), watchdog, nil, IngressSource{}, nil, nil,
 		testVersion, config.DefaultRetentionDays, AllTypes)
 
-	// A request in the OLD (Portuguese) spelling counts.
+	// A request in the OLD (Portuguese) spelling — key AND value — counts.
 	pt := ask(t, send, "token-do-a", "chave-pt-contador", textBody)
 	if pt.Code != http.StatusOK {
 		t.Fatalf("PT: status = %d, corpo = %s", pt.Code, pt.Body)
 	}
-	// The SAME request, fully in English, must NOT count again.
+	// English KEY, but the discriminator VALUE is still Portuguese — this
+	// is the scenario Do item 5 names by hand, and it counts too (T-207).
 	en := ask(t, send, "token-do-a", "chave-en-contador", enTextBody)
 	if en.Code != http.StatusOK {
-		t.Fatalf("EN: status = %d, corpo = %s", en.Code, en.Body)
+		t.Fatalf("EN (chave em ingles, valor em portugues): status = %d, corpo = %s", en.Code, en.Body)
+	}
+	// English key AND English value — fully migrated — must NOT count.
+	enFull := ask(t, send, "token-do-a", "chave-en-completo-contador", enTextBodyFullyEnglish)
+	if enFull.Code != http.StatusOK {
+		t.Fatalf("EN completo: status = %d, corpo = %s", enFull.Code, enFull.Body)
 	}
 
 	recState := askState(t, state, "token-do-a", "lojinha")
@@ -429,9 +455,9 @@ func TestEntradaOldNameCounterCountsAndAppearsInEstado(t *testing.T) {
 	if !has {
 		t.Fatalf("contador %q nao aparece em /v1/estado", config.CounterOldNameUsed)
 	}
-	if c.Today != 1 {
-		t.Errorf("contadores[%q].hoje = %d, quero 1 (so o pedido em portugues conta)",
-			config.CounterOldNameUsed, c.Today)
+	if c.Today != 2 {
+		t.Errorf("contadores[%q].hoje = %d, quero 2 (PT conta, EN-chave/PT-valor conta, "+
+			"EN completo NAO conta)", config.CounterOldNameUsed, c.Today)
 	}
 }
 
@@ -795,5 +821,282 @@ func (h *FakeHandler) fake(w http.ResponseWriter, r *http.Request) {
 	}
 	if v := findOldNameCounterViolations(fset, []*ast.File{f}); len(v) != 0 {
 		t.Fatalf("a guarda reprovou uma rota CORRETAMENTE ligada ao contador: %+v", v)
+	}
+}
+
+// --- T-207 (step 2 of T-189, for VALUES) ------------------------------------
+//
+// docs/MIGRACAO-CONTRATO-EN.md section 8 — the three ENTRADA value
+// vocabularies: 8.1 (Request.Type, top level), 8.3 (TemplateButtonUnion.Type,
+// inside botoes_template[]) and 8.5 (Request.Category, top level).
+
+// topLevelValueBody builds a minimal POST /v1/messages body carrying ONLY
+// `tipo` at the value under test. Validate() will very likely still reject
+// it - a real "texto" message also needs `texto`, a real "midia" needs
+// `media_id`, and so on - and that is fine: the parity this proves is "PT
+// and EN produce the SAME response", never "the message is deliverable".
+// After translateValueAliasInPlace runs, the PT and EN bodies below become
+// byte-for-byte the SAME map before json.Unmarshal - identical output is
+// what correct translation predicts, whatever that output turns out to be.
+func topLevelValueBody(value string) string {
+	return `{"instancia":"lojinha","para":"5511999990000","tipo":"` + value + `"}`
+}
+
+// categoryValueBody needs `tipo` to resolve to "midia" to reach Category
+// validation at all (mensagem.go, case "midia") and a non-empty `media_id`
+// so the switch reaches `meta.KnownCategory(p.Category)` instead of
+// stopping one line earlier on the media_id check (mensagem.go:869-882).
+// EVERY key here (`instance`, `to`, `kind`, `category`, `media_id`) is
+// written in ENGLISH, and `kind` is set to "media" (the ENGLISH spelling
+// of `tipo`) — the only thing this body leaves in Portuguese, deliberately,
+// is the `category` VALUE under test. Any Portuguese KEY (including
+// "categoria" itself — it is an aliasable KEY, not just the name of the
+// field carrying an aliasable VALUE) or any other old-spelling value in
+// this body would count on config.CounterOldNameUsed for a reason
+// unrelated to the category value, and defeat the isolation
+// TestEntradaOldNameCounterCountsOldValueUsage relies on.
+func categoryValueBody(value string) string {
+	return `{"instance":"lojinha","to":"5511999990000","kind":"media","media_id":"m1",` +
+		`"category":"` + value + `"}`
+}
+
+// templateButtonValueBody needs `tipo:"template"` plus `template`/`idioma`
+// (case "template" requires both, mensagem.go:753-759) to reach
+// validateTemplateButtons at all.
+func templateButtonValueBody(value string) string {
+	return `{"instancia":"lojinha","para":"5511999990000","tipo":"template","template":"promo",` +
+		`"idioma":"pt_BR","botoes_template":[{"indice":0,"tipo":"` + value + `"}]}`
+}
+
+// valueAliasCase is one (pt, en) pair from one of the three ENTRADA value
+// vocabularies, plus enough of a request body to reach the field that
+// carries it.
+type valueAliasCase struct {
+	name   string
+	ptBody string
+	enBody string
+}
+
+// allValueAliasCases is EVERY value of the three ENTRADA vocabularies - 18
+// in total (11 + 2 + 5, docs/MIGRACAO-CONTRATO-EN.md section 8.1/8.3/8.5)
+// - including the ones already spelled the same word in both languages
+// (`template`, `cta_url`, `flow`, `url`, `video`, `audio`, `sticker`):
+// Verify asks for "valor por valor, nao por amostra", and for a same-word
+// value the parity is trivial but still MEASURED, not assumed.
+func allValueAliasCases() []valueAliasCase {
+	var cases []valueAliasCase
+	add := func(vocab string, bodyFn func(string) string, pt, en string) {
+		cases = append(cases, valueAliasCase{
+			name:   vocab + "-" + pt,
+			ptBody: bodyFn(pt),
+			enBody: bodyFn(en),
+		})
+	}
+	// 8.1 - Request.Type, top level (11 values).
+	top := map[string]string{
+		"texto":             "text",
+		"template":          "template",
+		"botoes":            "buttons",
+		"cta_url":           "cta_url",
+		"lista":             "list",
+		"pedir_localizacao": "request_location",
+		"reacao":            "reaction",
+		"localizacao":       "location",
+		"contatos":          "contacts",
+		"flow":              "flow",
+		"midia":             "media",
+	}
+	for pt, en := range top {
+		add("8.1-tipo", topLevelValueBody, pt, en)
+	}
+	// 8.3 - TemplateButtonUnion.Type, inside botoes_template[] (2 values).
+	btn := map[string]string{
+		"url":             "url",
+		"resposta_rapida": "quick_reply",
+	}
+	for pt, en := range btn {
+		add("8.3-tipo-botao", templateButtonValueBody, pt, en)
+	}
+	// 8.5 - Request.Category, top level (5 values).
+	cat := map[string]string{
+		"imagem":    "image",
+		"video":     "video",
+		"audio":     "audio",
+		"documento": "document",
+		"sticker":   "sticker",
+	}
+	for pt, en := range cat {
+		add("8.5-categoria", categoryValueBody, pt, en)
+	}
+	return cases
+}
+
+// TestEntradaValueAliasWithIdenticalResponse is Verify item 1: PT and EN
+// spellings of EVERY value of the three ENTRADA vocabularies produce an
+// IDENTICAL response - value by value, not by sample (18 cases).
+func TestEntradaValueAliasWithIdenticalResponse(t *testing.T) {
+	srv := acceptingMeta("wamid.VALORPARIDADE")
+	defer srv.Close()
+	h, _ := testHandler(t, srv)
+
+	cases := allValueAliasCases()
+	if len(cases) != 18 {
+		t.Fatalf("montei %d casos, queria 18 (11 + 2 + 5, secao 8.1/8.3/8.5)", len(cases))
+	}
+	for _, c := range cases {
+		c := c
+		t.Run(c.name, func(t *testing.T) {
+			pt := ask(t, h, "token-do-a", "valor-pt-"+c.name, c.ptBody)
+			en := ask(t, h, "token-do-a", "valor-en-"+c.name, c.enBody)
+			if pt.Code != en.Code {
+				t.Fatalf("status PT=%d EN=%d - corpo PT=%s EN=%s", pt.Code, en.Code, pt.Body, en.Body)
+			}
+			if pt.Body.String() != en.Body.String() {
+				t.Errorf("respostas diferentes:\nPT: %s\nEN: %s", pt.Body, en.Body)
+			}
+		})
+	}
+}
+
+// TestEntradaValueIdempotencyCrossesLanguages is T-207's central test - Do
+// item 5's cross-language idempotency rule, spelled out in the Why line:
+// mirrors TestEntradaIdempotencyCrossesLanguages, but the ONLY thing that
+// differs between the two requests here is the VALUE of `tipo` ("texto" vs
+// "text"), never a key. If the hash were computed BEFORE value
+// translation, this would look like two DIFFERENT requests under the SAME
+// Idempotency-Key - and the SAME message would go out TWICE to the
+// customer. "Se so' um teste desta tarefa puder existir, e' este" (Do item
+// 5's own words).
+func TestEntradaValueIdempotencyCrossesLanguages(t *testing.T) {
+	var sends int
+	var mu sync.Mutex
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		sends++
+		mu.Unlock()
+		_, _ = w.Write([]byte(`{"messages":[{"id":"wamid.VALORIDIOMAS"}]}`))
+	}))
+	defer srv.Close()
+	h, _ := testHandler(t, srv)
+
+	enValueBody := `{"instancia":"lojinha","para":"5511999990000","tipo":"text","texto":"oi"}`
+
+	first := ask(t, h, "token-do-a", "mesma-chave-valor-dois-idiomas", textBody)
+	second := ask(t, h, "token-do-a", "mesma-chave-valor-dois-idiomas", enValueBody)
+
+	if sends != 1 {
+		t.Fatalf("a Meta recebeu %d envios para o MESMO pedido com o MESMO valor escrito em dois "+
+			"idiomas sob a MESMA Idempotency-Key - quero 1: acima disso e a mesma mensagem saindo "+
+			"duas vezes para a cliente", sends)
+	}
+	if first.Code != http.StatusOK || second.Code != http.StatusOK {
+		t.Fatalf("status = %d (PT) e %d (EN), quero 200 nos dois - corpo PT=%s EN=%s",
+			first.Code, second.Code, first.Body, second.Body)
+	}
+	if first.Body.String() != second.Body.String() {
+		t.Errorf("respostas diferentes entre PT e EN sob a mesma chave:\nPT: %s\nEN: %s",
+			first.Body, second.Body)
+	}
+	var r1, r2 struct {
+		WaMessageID string `json:"wa_message_id"`
+	}
+	_ = json.Unmarshal(first.Body.Bytes(), &r1)
+	_ = json.Unmarshal(second.Body.Bytes(), &r2)
+	if r1.WaMessageID != "wamid.VALORIDIOMAS" || r2.WaMessageID != "wamid.VALORIDIOMAS" {
+		t.Fatalf("wa_message_id PT=%q EN=%q, quero os dois iguais a wamid.VALORIDIOMAS",
+			r1.WaMessageID, r2.WaMessageID)
+	}
+}
+
+// TestEntradaValueAliasIsScopedPerObject is Verify item 3 ("escopo por
+// objeto, provado"): a valid EN value of the TOP-LEVEL `tipo` vocabulary
+// used inside `botoes_template` stays REJECTED, and a valid EN value of
+// the BUTTON `tipo` vocabulary used at the top level stays REJECTED too -
+// proof the alias never leaked from one dictionary into the other's
+// object, even though both share the JSON key name "tipo".
+func TestEntradaValueAliasIsScopedPerObject(t *testing.T) {
+	metaSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Error("a Meta foi CHAMADA com um pedido que deveria ter sido recusado")
+		_, _ = w.Write([]byte(`{"messages":[{"id":"wamid.NUNCA"}]}`))
+	}))
+	defer metaSrv.Close()
+	h, _ := testHandler(t, metaSrv)
+
+	// "media" is a VALID top-level value (8.1: midia -> media). Used
+	// inside a template button, it means nothing:
+	// templateButtonTypeValueAlias has no "media" entry, and
+	// TemplateButtonUnion's own vocabulary ("url"/"resposta_rapida")
+	// doesn't know it either.
+	rec := ask(t, h, "token-do-a", "escopo-media-no-botao", templateButtonValueBody("media"))
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, quero 400 (\"media\" do vocabulario do topo nao deveria valer "+
+			"dentro de botoes_template) - corpo: %s", rec.Code, rec.Body)
+	}
+	if !strings.Contains(rec.Body.String(), "media") {
+		t.Errorf("a mensagem de erro deveria citar o valor recusado \"media\": %s", rec.Body)
+	}
+
+	// "quick_reply" is a VALID button-scope value (8.3:
+	// resposta_rapida -> quick_reply). Used as the TOP-LEVEL `tipo`, it
+	// means nothing: requestTypeValueAlias has no "quick_reply" entry.
+	rec2 := ask(t, h, "token-do-a", "escopo-quickreply-no-topo", topLevelValueBody("quick_reply"))
+	if rec2.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, quero 400 (\"quick_reply\" do vocabulario do botao nao deveria "+
+			"valer no topo) - corpo: %s", rec2.Code, rec2.Body)
+	}
+	if !strings.Contains(rec2.Body.String(), "quick_reply") {
+		t.Errorf("a mensagem de erro deveria citar o valor recusado \"quick_reply\": %s", rec2.Body)
+	}
+}
+
+// TestEntradaInventedValueStillRejected is Verify item 4 (Do item 4): the
+// value alias ADDS spellings, it never loosens validation - a value nobody
+// published (not the Portuguese one, not its English alias) is rejected
+// with the EXACT SAME message today's (pre-T-207) gateway already gives.
+func TestEntradaInventedValueStillRejected(t *testing.T) {
+	srv := acceptingMeta("wamid.NUNCA")
+	defer srv.Close()
+	h, _ := testHandler(t, srv)
+
+	rec := ask(t, h, "token-do-a", "valor-inventado", topLevelValueBody("bugigangue"))
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, quero 400 - corpo: %s", rec.Code, rec.Body)
+	}
+	if !strings.Contains(rec.Body.String(), ErrUnknownType.Error()) {
+		t.Errorf("a mensagem de erro nao e a de ErrUnknownType (%q): %s", ErrUnknownType.Error(), rec.Body)
+	}
+	if !strings.Contains(rec.Body.String(), "bugigangue") {
+		t.Errorf("a mensagem de erro deveria citar o valor recusado: %s", rec.Body)
+	}
+}
+
+// TestEntradaOldNameCounterCountsOldValueUsage is Do item 5, isolated from
+// the key alias entirely: a request whose KEYS are already the CANONICAL
+// Portuguese ones (nothing to translate there) but whose `categoria` VALUE
+// is still Portuguese, with a "categoria" key that has an English
+// alternative (`imagem` -> `image`), counts on config.CounterOldNameUsed -
+// and the SAME request with the value already in English does not count
+// again.
+func TestEntradaOldNameCounterCountsOldValueUsage(t *testing.T) {
+	store, path := storeWithConsumer(t)
+	activateInstance(t, path, "lojinha")
+
+	sendSrv := acceptingMeta("wamid.VALORCONTADOR")
+	defer sendSrv.Close()
+	send := NewHandler(store, NewAuthenticator(store),
+		meta.NewClient(sendSrv.Client(), sendSrv.URL), 1<<20, config.NewCounter(store), config.NewTransit(store), AllTypes)
+
+	oldValue := ask(t, send, "token-do-a", "valor-velho-contador", categoryValueBody("imagem"))
+	if oldValue.Code != http.StatusOK {
+		t.Fatalf("valor velho: status = %d, corpo = %s", oldValue.Code, oldValue.Body)
+	}
+	newValue := ask(t, send, "token-do-a", "valor-novo-contador", categoryValueBody("image"))
+	if newValue.Code != http.StatusOK {
+		t.Fatalf("valor novo: status = %d, corpo = %s", newValue.Code, newValue.Body)
+	}
+
+	if got := oldNameCounterTodayInEstado(t, store, "lojinha"); got != 1 {
+		t.Errorf("contadores[%q].hoje = %d, quero 1 (so o valor velho conta)",
+			config.CounterOldNameUsed, got)
 	}
 }

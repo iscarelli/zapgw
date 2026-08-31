@@ -23,6 +23,15 @@ não o passo 4. Os dicionários moram em `internal/outbound/entrada_apelidos.go`
 velho (`config.CounterOldNameUsed`, exposto por instância em `GET /v1/estado`) é o que vai
 autorizar o passo 4.
 
+✅ **O passo 2 para VALORES (T-207) está NO AR desde 2026-08-31, no mesmo arquivo.** Os três
+vocabulários de VALOR de direção ENTRADA da seção 8 — 8.1 (`Request.Type`), 8.3
+(`TemplateButtonUnion.Type`, dentro de `botoes_template[]`) e 8.5 (`Request.Category`) — agora
+também aceitam a grafia em inglês na entrada, na MESMA posição e escopados ao MESMO objeto que a
+seção 8 nomeia para cada um. Os oito vocabulários de VALOR de SAIDA (8.2, 8.6, 8.7, 8.8-8.10, 8.11)
+não foram tocados: um valor de saída não tem por que ser aceito na entrada. O contador do nome
+velho agora conta um VALOR velho do mesmo jeito que já contava uma CHAVE velha — um pedido com
+qualquer um dos dois conta uma vez, não duas.
+
 Esta é a tabela duradoura por trás do passo 4 da T-189 (o dia em que a saída do gateway vira
 inglês). Ela existe porque a tabela só vivia dentro de um canal privado por consumidor até agora, e
 a doutrina de canal deste workspace é explícita: *o que vale para TODOS sai do canal para o
