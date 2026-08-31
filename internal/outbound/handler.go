@@ -399,8 +399,23 @@ func (h *Handler) send(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// T-203 (step 2 of T-189): accept the English name of every ENTRADA key
+	// this route has, translated to the CANONICAL (Portuguese) form BEFORE
+	// unmarshaling — so p.Validate(), RequestHash and every downstream
+	// consumer of Request see the SAME struct regardless of which language
+	// the consumer wrote the body in. Must run before json.Unmarshal below:
+	// see the header comment on entrada_apelidos.go for why the ORDER is
+	// the whole point (idempotency has to hash the canonical form, or the
+	// same message written in PT and in EN would send twice).
+	translated, oldNames, err := translateRequestBody(raw)
+	if err != nil {
+		logRejection(h.throttleLog, "POST /v1/messages", "", consumer.Name, err.Error())
+		respondError(w, http.StatusBadRequest, "permanente", err.Error(), 0)
+		return
+	}
+
 	var p Request
-	if err := json.Unmarshal(raw, &p); err != nil {
+	if err := json.Unmarshal(translated, &p); err != nil {
 		logRejection(h.throttleLog, "POST /v1/messages", "", consumer.Name, "corpo nao e JSON valido")
 		respondError(w, http.StatusBadRequest, "permanente", "corpo nao e JSON valido", 0)
 		return
@@ -429,6 +444,15 @@ func (h *Handler) send(w http.ResponseWriter, r *http.Request) {
 	// raw request would make " 5511..." and "5511..." — the SAME request —
 	// collide as different requests.
 	requestHash := RequestHash(p)
+
+	// T-203 Do item 6: the number that authorizes step 4 (flipping OUTPUT
+	// to English) is "how many requests still use the old contract",
+	// measured — not assumed. Counted once per request, not once per old
+	// key, so a request using three old names does not read as three times
+	// the traffic of one using a single old name.
+	if len(oldNames) > 0 {
+		h.count(p.Instance, config.CounterOldNameUsed)
+	}
 
 	if !CanUse(consumer, p.Instance) {
 		log.Printf("zapgw: consumidor %q pediu a instancia %q, que nao e dele",

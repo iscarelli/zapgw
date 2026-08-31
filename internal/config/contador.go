@@ -120,6 +120,21 @@ const (
 	// reconstruct afterward is how many actually went through.
 	CounterTemplatesDeleted = "templates_apagados"
 
+	// CounterOldNameUsed (T-203, step 2 of T-189, 2026-08-31): an
+	// ENTRADA-decoding route (POST /v1/messages, /v1/templates, /v1/cadastro,
+	// /v1/leituras, /v1/fumaca) parsed a request that used the OLD
+	// (Portuguese) spelling of at least one key the migration table
+	// (docs/MIGRACAO-CONTRATO-EN.md) now also accepts in English.
+	//
+	// WHY THIS ONE EXISTS, when the rule at the top of this file is "don't
+	// invent a metric nobody is going to look at": it is not a traffic
+	// number, it is the GATE for step 4 (T-189's Do item 6) — flipping the
+	// gateway's OUTPUT to English is only safe once nobody is still writing
+	// the old contract in on the INPUT side, and "probably nobody" is an
+	// impression, not a number. This counter is what turns that impression
+	// into "zero, measured, on this date".
+	CounterOldNameUsed = "nome_antigo_usado"
+
 	// --- BILLING (T-063, 2026-07-28) ---
 	//
 	// Meta says, in the status webhook, under which CATEGORY it billed that
@@ -272,6 +287,7 @@ var KeysInDisplayOrder = []string{
 	CounterReadsMarked,
 	CounterReadFailures,
 	CounterTemplatesDeleted,
+	CounterOldNameUsed,
 	CounterBillingMarketing,
 	CounterBillingUtility,
 	CounterBillingAuthentication,

@@ -1,17 +1,27 @@
 Código: internal/meta/types.go, internal/meta/templates.go, internal/meta/perfil.go,
 internal/outbound/mensagem.go, internal/outbound/handler.go, internal/outbound/estado.go,
 internal/outbound/vigia.go, internal/outbound/sonda_externa.go, internal/outbound/entrada.go,
-internal/outbound/bloqueio_handler.go, internal/outbound/templates_handler.go,
-internal/outbound/saude_handler.go, internal/outbound/fumaca_handler.go,
-internal/outbound/media_handler.go, internal/outbound/perfil_handler.go,
-internal/outbound/pausa_handler.go, internal/outbound/cadastro_handler.go,
-internal/outbound/leituras_handler.go, internal/outbound/lideranca.go,
+internal/outbound/entrada_apelidos.go, internal/outbound/bloqueio_handler.go,
+internal/outbound/templates_handler.go, internal/outbound/saude_handler.go,
+internal/outbound/fumaca_handler.go, internal/outbound/media_handler.go,
+internal/outbound/perfil_handler.go, internal/outbound/pausa_handler.go,
+internal/outbound/cadastro_handler.go, internal/outbound/leituras_handler.go,
+internal/outbound/lideranca.go, internal/config/contador.go,
 internal/inbound/deliver.go, internal/inbound/deliver_test.go, cmd/zapgw/provisionar.go,
 docs/INVENTARIO-CHAVES.md
 
 *[Read in English](MIGRACAO-CONTRATO-EN.md)*
 
 # A tabela de migração do contrato para inglês
+
+✅ **O passo 2 (T-203) está NO AR desde 2026-08-31.** Toda linha ENTRADA abaixo agora também é
+aceita na grafia em inglês, na entrada, na MESMA posição que a tabela nomeia — o gateway traduz
+para a forma canônica (português) antes de validar e antes de calcular o hash de idempotência, de
+modo que o mesmo pedido escrito nos dois idiomas produz o mesmo resultado e o mesmo
+`wa_message_id`. A saída não muda: isto é o passo 2 do plano de quatro (T-189, `docs/TASKS.md`),
+não o passo 4. Os dicionários moram em `internal/outbound/entrada_apelidos.go`; o contador do nome
+velho (`config.CounterOldNameUsed`, exposto por instância em `GET /v1/estado`) é o que vai
+autorizar o passo 4.
 
 Esta é a tabela duradoura por trás do passo 4 da T-189 (o dia em que a saída do gateway vira
 inglês). Ela existe porque a tabela só vivia dentro de um canal privado por consumidor até agora, e

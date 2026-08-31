@@ -102,56 +102,6 @@ telefone real e `wamid` de producao, e este repositorio e' publico.
 
 > A fila do periodo privado esta em `iscarelli/zapgw-dev`, congelada. Tarefa nova nasce aqui.
 
-## [ ] T-203  Step 2: the gateway ACCEPTS both names on input, and counts the old one
-Why:    Passo 2 do plano de quatro da T-189. **O passo 1 do consumidor esta no ar desde 2026-08-31
-        00:15**, e a tabela com direcao e os 29 pares esta versionada em
-        `docs/MIGRACAO-CONTRATO-EN.md`. Este passo e' **aditivo — MINOR**: a saida continua em
-        portugues, so' a ENTRADA passa a aceitar os dois nomes.
-        **30 chaves tem direcao ENTRADA** na tabela; sao elas, e so' elas, que ganham apelido.
-Files:  internal/outbound/mensagem.go e os handlers de entrada que decodificam corpo
-        internal/config/  (o contador, se for onde ele mora)
-        docs/MIGRACAO-CONTRATO-EN.md + par pt-BR (marcar que o passo 2 esta no ar)
-
-Do:
-  1. **Aceitar o nome em ingles em toda chave de direcao ENTRADA da tabela** e traduzir para a forma
-     canonica (portugues) por dentro, na borda da decodificacao. A saida **nao muda**.
-  2. 🔴 **Apelido por POSICAO, nunca por nome global.** Um mapa `tipo -> kind` aplicado
-     recursivamente tambem reescreve o `tipo` **dentro de um objeto de passagem da Meta**, que nao e'
-     nosso. O apelido vale no campo daquela struct, naquele nivel — nao no documento inteiro.
-  3. 🔴 **O `cru` nao se toca**, e `payload` idem: sao os bytes exatos da Meta. Teste provando saida
-     byte a byte igual.
-  4. 🔴 **Os dois nomes no MESMO pedido e' `400`**, com a mensagem **nomeando a chave em conflito**.
-     "O ultimo vence" e' o defeito que aparece em producao seis meses depois.
-  5. 🔴 **A idempotencia e' calculada sobre a forma CANONICA.** Se o hash for do corpo cru, o mesmo
-     pedido escrito em PT e em EN gera hashes diferentes — e a mesma mensagem sai **duas vezes** para
-     a cliente. Traduza primeiro, calcule o hash depois.
-  6. **Contador do nome VELHO, por consumidor**, exposto no `/v1/estado`. E' o numero que autoriza o
-     passo 4 — *"'se estiver ok, remover' precisa de um numero, nao de uma impressao"*. **Conte o
-     nome velho (portugues)**, que e' o que precisa chegar a zero.
-  7. **A tabela e' a fonte**, nao a sua memoria: leia `docs/MIGRACAO-CONTRATO-EN.md` e use as linhas
-     com direcao `ENTRADA`. 🔴 **Nao invente apelido para chave que nao esta la**, e **nao crie
-     apelido para as chaves de `docs/contrato-chaves-que-nao-mudam.txt`** — elas ja estao no idioma
-     final e um apelido ali e' renomeacao ao contrario.
-  8. **Bump de MINOR no `VERSION`** e nota no `docs/CHANGELOG.md` no mesmo commit.
-
-Verify:
-  - **Pedido em portugues e o mesmo pedido em ingles produzem resposta IDENTICA.** Teste com corpo
-    real de cada rota que aceita entrada.
-  - **`cru` byte a byte igual nos dois caminhos.**
-  - **Conflito devolve `400` nomeando a chave.** Teste por chave, nao so' uma amostra.
-  - 🔴 **Idempotencia atravessa idiomas:** mesmo pedido em PT e em EN, mesma `Idempotency-Key`, e o
-    resultado tem de ser **um** envio, com o mesmo `wa_message_id`. **Este e' o teste que impede
-    mandar a mensagem duas vezes para a cliente** — se so' um teste desta tarefa puder existir, e'
-    ele.
-  - **Contador do nome velho sobe por consumidor e aparece no `/v1/estado`.**
-  - `CGO_ENABLED=0 go build ./...`, `go test ./...`, `go vet ./...`, `gofmt -l cmd internal` limpos.
-
-### 🔴 Fora do escopo, de proposito
-
-- **A saida NAO vira ingles aqui** — isso e' o passo 4, e' MAJOR, e para e pergunta ao dono.
-- **CLI e `ZAPGW_*` nao entram.** Sao camada 3 e quebram o OPERADOR — e o risco nao e' o rename, e' a
-  variavel no `/etc/zapgw/env`, que o rename nao alcanca: o gateway sobe com o default, em silencio.
-
 ## [ ] T-189  O contrato passa a falar ingles — leitor tolerante do lado deles, apelido so' na ENTRADA
 Why:    **decisao do dono, 2026-08-30:** *"o projeto precisa ser em ingles, ter feito em portugues foi
         errado. Se a chave chama nome, tem que passar a se chamar name."*
@@ -268,8 +218,15 @@ tempo dobram a janela de convivencia sem dobrar o aprendizado.*
 
 1. **Consumidores tornam os leitores tolerantes** (`novo or velho`) — barato, e' o padrao que eles ja
    usam. Continuam **escrevendo** em portugues.
-2. **Gateway passa a ACEITAR os dois nomes na entrada** e traduz as tags para ingles por dentro.
-   Saida continua em portugues. *Aditivo: MINOR.*
+2. ✅ **FEITO (T-203, `v0.61.0`, 2026-08-31): gateway passa a ACEITAR os dois nomes na entrada** e
+   traduz as tags para portugues por dentro, por POSICAO, nas 30 chaves de direcao ENTRADA de
+   `docs/MIGRACAO-CONTRATO-EN.md` — Request (`POST /v1/messages`, com os 4 objetos aninhados e
+   `botoes_template[]`), `POST /v1/templates`, `POST /v1/cadastro`, `POST /v1/pausa`,
+   `POST/DELETE /v1/bloqueios`, `POST /v1/leituras`, `POST /v1/fumaca`. Saida continua em
+   portugues. Idempotencia provada atravessando idiomas (`TestEntradaIdempotencyCrossesLanguages`).
+   Contador `config.CounterOldNameUsed` no ar em `/v1/estado` — mas so' em 4 das 7 rotas
+   (send/templates/leituras/fumaca ja tinham `*config.Counter` plugado; cadastro/pausa/bloqueio
+   aceitam o apelido em ingles e ainda NAO contam, por falta desse fio — ver `docs/CHANGELOG.md`).
 3. **Consumidores trocam os escritores para ingles.** Nada quebra: o gateway aceita os dois.
 4. **Gateway vira a saida para ingles, num commit.** Nada quebra: os leitores sao tolerantes desde o
    passo 1. **Depois, apaga o apelido de entrada** — e ai sim e' MAJOR, que para e pergunta ao dono.

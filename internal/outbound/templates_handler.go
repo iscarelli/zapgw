@@ -476,8 +476,17 @@ func (h *TemplatesHandler) create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// T-203 (step 2 of T-189): accept the English name of every ENTRADA key
+	// this route has (docs/MIGRACAO-CONTRATO-EN.md), translated to the
+	// canonical (Portuguese) form BEFORE unmarshaling.
+	translated, oldNames, ok := translateEntradaOrReject(
+		w, h.throttleLog, "POST /v1/templates", consumer.Name, raw, createTemplateAlias)
+	if !ok {
+		return
+	}
+
 	var p CreateTemplateRequest
-	if err := json.Unmarshal(raw, &p); err != nil {
+	if err := json.Unmarshal(translated, &p); err != nil {
 		logRejection(h.throttleLog, "POST /v1/templates", "", consumer.Name, "corpo nao e JSON valido")
 		respondError(w, http.StatusBadRequest, "permanente", "corpo nao e JSON valido", 0)
 		return
@@ -493,6 +502,9 @@ func (h *TemplatesHandler) create(w http.ResponseWriter, r *http.Request) {
 		logRejection(h.throttleLog, "POST /v1/templates", p.Instance, consumer.Name, err.Error())
 		respondError(w, http.StatusBadRequest, "permanente", err.Error(), 0)
 		return
+	}
+	if len(oldNames) > 0 {
+		h.counter.Record(p.Instance, config.CounterOldNameUsed)
 	}
 
 	inst, ok := h.instanceActive(w, consumer, p.Instance, "POST /v1/templates")

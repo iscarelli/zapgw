@@ -1,17 +1,29 @@
 Código: internal/meta/types.go, internal/meta/templates.go, internal/meta/perfil.go,
 internal/outbound/mensagem.go, internal/outbound/handler.go, internal/outbound/estado.go,
 internal/outbound/vigia.go, internal/outbound/sonda_externa.go, internal/outbound/entrada.go,
-internal/outbound/bloqueio_handler.go, internal/outbound/templates_handler.go,
-internal/outbound/saude_handler.go, internal/outbound/fumaca_handler.go,
-internal/outbound/media_handler.go, internal/outbound/perfil_handler.go,
-internal/outbound/pausa_handler.go, internal/outbound/cadastro_handler.go,
-internal/outbound/leituras_handler.go, internal/outbound/lideranca.go,
+internal/outbound/entrada_apelidos.go, internal/outbound/bloqueio_handler.go,
+internal/outbound/templates_handler.go, internal/outbound/saude_handler.go,
+internal/outbound/fumaca_handler.go, internal/outbound/media_handler.go,
+internal/outbound/perfil_handler.go, internal/outbound/pausa_handler.go,
+internal/outbound/cadastro_handler.go, internal/outbound/leituras_handler.go,
+internal/outbound/lideranca.go, internal/config/contador.go,
 internal/inbound/deliver.go, internal/inbound/deliver_test.go, cmd/zapgw/provisionar.go,
 docs/INVENTARIO-CHAVES.md
 
 *[Leia em português](MIGRACAO-CONTRATO-EN.pt-BR.md)*
 
 # The contract's English migration table
+
+✅ **Step 2 (T-203) is LIVE since 2026-08-31.** Every ENTRADA row below is now
+also accepted under its English spelling, on input, at the SAME position the
+table names — the gateway translates to the canonical (Portuguese) form
+before validating and before hashing for idempotency, so a request written
+in either language produces the same outcome and the same `wa_message_id`.
+Output is untouched: this is step 2 of the four-step plan in `docs/TASKS.md`
+(T-189), not step 4. The dictionaries live in
+`internal/outbound/entrada_apelidos.go`; the old-name counter
+(`config.CounterOldNameUsed`, exposed per instance in `GET /v1/estado`) is
+what will authorize step 4.
 
 This is the durable table behind T-189 step 4 (the day the gateway's output flips to English).
 It exists because the table only lived inside a private per-consumer channel until now, and this

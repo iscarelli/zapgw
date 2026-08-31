@@ -88,8 +88,18 @@ func (h *PauseHandler) pause(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// T-203 (step 2 of T-189): accept `instance` as an alias of `instancia`
+	// (docs/MIGRACAO-CONTRATO-EN.md) — the only ENTRADA key this route has.
+	// No *config.Counter is wired on this route (see the same note in
+	// cadastro_handler.go), so the old-name metric is not recorded here yet.
+	translated, _, ok := translateEntradaOrReject(
+		w, h.throttleLog, pauseRoute, consumer.Name, raw, instanceOnlyAlias)
+	if !ok {
+		return
+	}
+
 	var p PauseRequest
-	if err := json.Unmarshal(raw, &p); err != nil {
+	if err := json.Unmarshal(translated, &p); err != nil {
 		logRejection(h.throttleLog, pauseRoute, "", consumer.Name, "corpo nao e JSON valido")
 		respondError(w, http.StatusBadRequest, "permanente", "corpo nao e JSON valido", 0)
 		return

@@ -170,8 +170,17 @@ func (h *ReadsHandler) mark(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// T-203 (step 2 of T-189): accept the English name of every ENTRADA key
+	// this route has (docs/MIGRACAO-CONTRATO-EN.md), translated to the
+	// canonical (Portuguese) form BEFORE unmarshaling.
+	translated, oldNames, ok := translateEntradaOrReject(
+		w, h.throttleLog, readsRoute, consumer.Name, raw, instanceOnlyAlias)
+	if !ok {
+		return
+	}
+
 	var p ReadRequest
-	if err := json.Unmarshal(raw, &p); err != nil {
+	if err := json.Unmarshal(translated, &p); err != nil {
 		logRejection(h.throttleLog, readsRoute, "", consumer.Name, "corpo nao e JSON valido")
 		respondError(w, http.StatusBadRequest, "permanente", "corpo nao e JSON valido", 0)
 		return
@@ -184,6 +193,9 @@ func (h *ReadsHandler) mark(w http.ResponseWriter, r *http.Request) {
 		logRejection(h.throttleLog, readsRoute, p.Instance, consumer.Name, err.Error())
 		respondError(w, http.StatusBadRequest, "permanente", err.Error(), 0)
 		return
+	}
+	if len(oldNames) > 0 {
+		h.count(p.Instance, config.CounterOldNameUsed)
 	}
 
 	if !CanUse(consumer, p.Instance) {

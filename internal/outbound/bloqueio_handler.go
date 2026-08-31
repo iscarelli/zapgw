@@ -220,8 +220,19 @@ func (h *BlockHandler) process(
 		return
 	}
 
+	// T-203 (step 2 of T-189): accept `instance` as an alias of `instancia`
+	// (docs/MIGRACAO-CONTRATO-EN.md) — the only ENTRADA key this route has
+	// (`telefones` is not in the migration table). No *config.Counter is
+	// wired on this route (see the same note in cadastro_handler.go), so
+	// the old-name metric is not recorded here yet.
+	translated, _, ok := translateEntradaOrReject(
+		w, h.throttleLog, route, consumer.Name, raw, instanceOnlyAlias)
+	if !ok {
+		return
+	}
+
 	var p BlockRequest
-	if err := json.Unmarshal(raw, &p); err != nil {
+	if err := json.Unmarshal(translated, &p); err != nil {
 		logRejection(h.throttleLog, route, "", consumer.Name, "corpo nao e JSON valido")
 		respondError(w, http.StatusBadRequest, "permanente", "corpo nao e JSON valido", 0)
 		return

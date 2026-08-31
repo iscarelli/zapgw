@@ -4,6 +4,30 @@ Uma linha por versao entregue, no mesmo commit do bump. A entrada diz o **efeito
 
 ## Nao lancado
 
+## v0.61.0 — 2026-08-31
+
+- **The gateway accepts English key names on ENTRADA input, and counts the old ones** (T-203, passo
+  2 de 4 da T-189) — as 30 chaves de direcao ENTRADA de `docs/MIGRACAO-CONTRATO-EN.md` ganharam
+  apelido em ingles, POR POSICAO (`internal/outbound/entrada_apelidos.go`), nas 7 rotas que
+  decodificam corpo: `POST /v1/messages` (com descida nos 4 objetos aninhados —
+  `cabecalho`/`reacao`/`localizacao`/`fluxo` — e em cada item de `botoes_template`),
+  `POST /v1/templates`, `POST /v1/cadastro`, `POST /v1/pausa`, `POST/DELETE /v1/bloqueios`,
+  `POST /v1/leituras`, `POST /v1/fumaca`. A saida NAO muda. A traducao roda ANTES do
+  `json.Unmarshal` e ANTES do `RequestHash`, entao o hash de idempotencia ve a forma CANONICA —
+  provado com um teste que manda o MESMO pedido em PT e em EN sob a MESMA `Idempotency-Key` e exige
+  UM envio a Meta com o MESMO `wa_message_id` (`TestEntradaIdempotencyCrossesLanguages`). Os dois
+  nomes juntos no mesmo pedido viram `400` nomeando as duas chaves — testado chave por chave, nao
+  por amostra, nas 30 linhas ENTRADA (incluindo os 4 objetos aninhados e o item de
+  `botoes_template`). Nenhuma chave de `docs/contrato-chaves-que-nao-mudam.txt` ganhou apelido, e
+  nenhuma chave fora da tabela foi inventada. Contador `config.CounterOldNameUsed`
+  (`nome_antigo_usado`) sobe por instancia quando o pedido ainda usa a grafia velha e aparece em
+  `GET /v1/estado` — e' o numero que vai autorizar o passo 4. ⚠️ **Nao esta em toda rota:**
+  `/v1/cadastro`, `/v1/pausa` e `POST/DELETE /v1/bloqueios` aceitam o apelido em ingles mas ainda
+  NAO tem `*config.Counter` plugado (mudanca estrutural maior, fora do escopo desta tarefa) — nelas
+  o apelido funciona e o contador fica de fora por enquanto. Verify: `CGO_ENABLED=0 go build ./...`,
+  `go test ./...`, `go vet ./...`, `gofmt -l cmd internal` limpos; suite inteira (`internal/inbound`
+  incluido, onde vive o teste do `cru` byte a byte) verde sem alteracao nenhuma la.
+  _Completed 2026-08-31 09:17._
 - **The migration table becomes a versioned document, with DIRECTION and what does NOT change**
   (T-202) — `docs/MIGRACAO-CONTRATO-EN.md` (par `docs/MIGRACAO-CONTRATO-EN.pt-BR.md`) nasceram
   juntos, montando 119 linhas de chave a partir de duas fontes ja existentes: 90 pares ja propostos

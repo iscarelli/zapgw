@@ -178,8 +178,28 @@ func (h *RegistrationHandler) register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// T-203 (step 2 of T-189): accept the English name of every ENTRADA key
+	// this route has (docs/MIGRACAO-CONTRATO-EN.md), translated to the
+	// canonical (Portuguese) form BEFORE unmarshaling. Same secret-safety
+	// guarantee as the real Unmarshal below: on a conflict the error names
+	// only the FIELD (`instancia`/`instance`, `numero_exibido`/
+	// `display_number`, `token_envio`/`send_token`), never a value — this
+	// body carries app_secret and token_envio.
+	//
+	// THE OLD-NAME COUNTER (config.CounterOldNameUsed) IS NOT WIRED HERE:
+	// this handler has no *config.Counter today, and adding one is a
+	// separate, wider change (a new constructor parameter, and every
+	// caller of NewRegistrationHandler with it) than this route's slice of
+	// T-203. The English alias itself IS accepted below — only the
+	// migration metric is missing on this one route.
+	translated, _, ok := translateEntradaOrReject(
+		w, h.throttleLog, registrationRoute, consumer.Name, raw, registrationAlias)
+	if !ok {
+		return
+	}
+
 	var p RegistrationRequest
-	if err := json.Unmarshal(raw, &p); err != nil {
+	if err := json.Unmarshal(translated, &p); err != nil {
 		// THE json ERROR DOES NOT GO into the response or the log: it quotes the piece of
 		// the body that didn't match, and this body carries app_secret and token_envio.
 		logRejection(h.throttleLog, registrationRoute, "", consumer.Name, "corpo nao e JSON valido")
