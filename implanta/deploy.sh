@@ -228,6 +228,36 @@ conferir_versao() {
 	return 1
 }
 
+# avisos_nome_obsoleto le o journal do arranque e mostra, so' no caminho de
+# SUCESSO, as linhas que internal/config/env_alias.go:WarnOldEnvVar emite
+# quando uma variavel ZAPGW_* com nome antigo (PT) foi usada em vez do nome
+# novo (EN) — T-216. E' o unico jeito do operador descobrir que precisa
+# migrar /etc/zapgw/env sem entrar no CT a mao: o caminho de FALHA ja despeja
+# o journal inteiro de proposito e nao muda aqui.
+#
+# Filtra pela mesma substring que o log emite ("esta obsoleta -- use"), nunca
+# o journal inteiro: despejo vira ruido, e ruido treina a ignorar a saida do
+# deploy — que e' onde mora a prova de versao (T-184).
+#
+# Tres saidas, e elas tem de ser DISTINGUIVEIS (a mesma exigencia da T-184
+# para a conferencia de versao): havia aviso -> mostra as linhas; nao havia
+# -> diz que nao havia; nao deu para ler o journal -> diz isso, nunca "nao
+# havia". Silencio nao pode virar "estava limpo".
+avisos_nome_obsoleto() {
+	local jornal avisos
+	if ! jornal=$(ct "journalctl -u zapgw -n 200 --no-pager" 2>&1); then
+		erro "NAO CONSEGUI LER o journal para conferir nomes de variavel obsoletos"
+		return
+	fi
+	avisos=$(printf '%s\n' "$jornal" | grep -F 'esta obsoleta -- use' || true)
+	if [ -n "$avisos" ]; then
+		echo "AVISO: variavel(is) de ambiente com nome obsoleto em uso no arranque:"
+		printf '%s\n' "$avisos" | sed 's/^/  /'
+	else
+		echo "nenhuma variavel com nome obsoleto em uso"
+	fi
+}
+
 # reverter desfaz a troca e devolve o servico ao binario anterior.
 #
 # O reset-failed nao e enfeite: com Restart=always, um binario que morre na hora
@@ -371,6 +401,7 @@ if corpo=$(esperar_saude); then
 	conferir_versao "$corpo" "$VERSAO_DO_BUILD" || veredito=$?
 
 	if [ "$veredito" -ne 1 ]; then
+		avisos_nome_obsoleto
 		passo "DEPLOY CONCLUIDO"
 		ct "systemctl is-active zapgw"
 		exit 0

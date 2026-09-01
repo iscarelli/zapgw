@@ -4,6 +4,18 @@ Uma linha por versao entregue, no mesmo commit do bump. A entrada diz o **efeito
 
 ## Nao lancado
 
+- **T-216 — The obsolete-name warning never reaches the operator — surface it on a SUCCESSFUL
+  deploy** — `implanta/deploy.sh` so' mostrava o journal do arranque quando o `/v1/health` FALHAVA;
+  no caminho de sucesso (o caso normal) o aviso da T-214 sobre variavel de ambiente com nome velho
+  ficava invisivel. Nova funcao `avisos_nome_obsoleto()`, chamada logo apos o `VERSAO CONFERE`, le o
+  journal e filtra so' pela linha do aviso ("esta obsoleta -- use") — nunca despeja o journal
+  inteiro. Tres saidas distinguiveis: havia aviso -> mostra as linhas; nao havia -> "nenhuma
+  variavel com nome obsoleto em uso"; nao deu para ler o journal -> "NAO CONSEGUI LER". Provado sem
+  producao extraindo a funcao verbatim de `implanta/deploy.sh` (`sed -n '246,259p'`) e exercitando
+  com um `ct()` simulado nos tres casos (journal com aviso, journal limpo, leitura falhando). O
+  caminho de FALHA nao foi tocado. `bash -n implanta/deploy.sh` e o verify de sempre (`go build`,
+  `go test -count=1 ./...`, `go vet`, `gofmt -l cmd internal`) limpos. _Completed 2026-08-31 23:07._
+
 - **T-217 — Half the doc pointers are dead after the rename — fix them, and build the gate that
   stops it recurring** — dos 113 ponteiros `.go` em `docs/*.md`, 50 apontavam para arquivo que a
   T-212 tinha renomeado; cada mapeamento foi confirmado por `git log --follow` (nunca por nome
