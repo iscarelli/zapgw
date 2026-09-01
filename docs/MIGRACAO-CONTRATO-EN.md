@@ -504,3 +504,33 @@ A key with a pair is a key the counter can see.
 ➡️ **The rule this leaves behind, and it is bigger than these thirteen rows:** *a counter that only
 counts what it was told about answers a narrower question than the one being asked of it.* Before a
 number authorizes anything, ask what it **cannot** see.
+
+## 10. "A Meta's field keeps Meta's name" applies to SUBSTRUCTURE — the third time this pattern charged
+
+🔴 **Reported by `consumer-b` on 2026-08-31, with production damage on their side.** Their key map
+renamed `buttons` → `botoes` **inside a Meta template component**. The component is Meta's own
+vocabulary passing through this gateway (`{"type": "BUTTONS", "buttons": [...]}`), and the collision
+rule does not protect there: inside a Meta component there is no `botoes` sitting next to `buttons`
+for the destination to "already exist".
+
+**What it cost them, and both halves were silent:**
+- their catalog sync looked for `comp["BUTTONS"]["buttons"]`, did not find it, and stored an empty
+  list — **76 approved templates lost their buttons**. Because free text reproduces what is stored,
+  **a charge message went to a real customer without the button to request the Pix key**;
+- `comp["BODY"].get("text")` returned `None`, fell into an `or old_body`, and **the body stopped
+  updating with nothing failing**.
+
+➡️ **The rule, stated the way it should have been from the start:** *a Meta field keeps Meta's name
+— and that holds for SUBSTRUCTURE, not only for a field sitting loose in the envelope.* Here it was
+applied to `cru` and to `payload`, and the template component slipped through because nobody thought
+of it as "a Meta field". **It is a whole object of Meta's, nested inside one of ours.**
+
+⚠️ **This table cannot warn about it, and that is the point.** The component is not one of our keys,
+so it has no row here — and a reader building a key map from this document will not be told to leave
+it alone. **`consumer-a` will hit exactly this** when it builds its map, which is why the rule is
+written here instead of staying in a channel.
+
+*Third appearance of the same shape:* `media_id` (already English, renamed backwards), `address`
+(true in two documents, and together they authorized the error), and now a Meta object nested inside
+ours. **The family is always the same — the map was right about what it knew, and what it did not
+know was not marked as unknown.**

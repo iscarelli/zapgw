@@ -405,3 +405,28 @@ consumidor nomeia **8 dos 18** no alarme dele, entao a quebra seria alarme silen
 em portugues na saida, de proposito, ate que um par seja decidido e publicado. Decidi-los e trabalho
 a parte, e precisa do consumidor no circuito — renomear contador que ele alarma nao e cosmetico.
 **O unico com par decidido e o decimo nono**, `nome_antigo_usado` -> `old_name_used`.
+
+## 10. "Campo da Meta continua com o nome da Meta" vale para SUBESTRUTURA — terceira vez que o padrao cobra
+
+🔴 **Relatado pelo `consumer-b` em 2026-08-31, com estrago em producao do lado dele.** O mapa de
+chaves dele renomeava `buttons` -> `botoes` **dentro de um componente de template da Meta**. O
+componente e vocabulario da propria Meta atravessando este gateway, e a regra de colisao nao protege
+ali: num componente da Meta nao existe um `botoes` ao lado do `buttons` para o destino "ja existir".
+
+**O que custou, e as duas metades foram silenciosas:** o sync procurava `comp["BUTTONS"]["buttons"]`,
+nao achava, e gravava lista vazia — **76 templates aprovados ficaram sem botao**, e uma cobranca saiu
+para uma cliente real **sem o botao de pedir a chave Pix**; e `comp["BODY"].get("text")` devolvia
+`None`, caia num `or corpo_antigo`, e o corpo **parou de atualizar sem nada falhar**.
+
+➡️ **A regra, escrita como deveria estar desde o inicio:** *campo da Meta continua com o nome da Meta
+— e isso vale para SUBESTRUTURA, nao so para campo solto no envelope.* Aqui ela estava aplicada ao
+`cru` e ao `payload`, e o componente de template passou porque ninguem pensou nele como "campo da
+Meta". **E um objeto inteiro dela, aninhado dentro de um nosso.**
+
+⚠️ **Esta tabela nao tem como avisar, e e esse o ponto.** O componente nao e uma chave nossa, entao
+nao tem linha aqui — e quem montar um mapa a partir deste documento nao vai ser avisado. **O
+`consumer-a` vai bater exatamente nisto.** Por isso a regra esta aqui, e nao so num canal.
+
+*Terceira aparicao da mesma forma:* `media_id`, `address`, e agora um objeto da Meta aninhado no
+nosso. **A familia e sempre a mesma — o mapa estava certo sobre o que conhecia, e o que ele nao
+conhecia nao estava marcado como desconhecido.**
