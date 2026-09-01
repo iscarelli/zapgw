@@ -261,8 +261,8 @@ evento em `docs/CONTRATO-CONSUMIDOR.md`.
 **E desde a T-080 (2026-07-28) ele é a SEGUNDA FONTE de um bloco do estado.** O `current_limit` é
 gravado em `numero_na_meta.limite_de_mensagens` com `fonte: "webhook"`
 (`internal/inbound/handler.go`, `recordNumberLimit`); a outra fonte é a medição da vigia
-(`internal/outbound/vigia.go`). Quem desempata é `config.UpdateNumberAtMeta`
-(`internal/config/numero.go`), pela regra **"vence a observação mais recente, qualquer que seja a
+(`internal/outbound/watchdog.go`). Quem desempata é `config.UpdateNumberAtMeta`
+(`internal/config/number.go`), pela regra **"vence a observação mais recente, qualquer que seja a
 fonte"** — e o carimbo comparado é o **nosso** relógio, não o `entry.time`, porque comparar dois
 relógios não sincronizados decidiria o desempate em silêncio.
 

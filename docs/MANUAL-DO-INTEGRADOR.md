@@ -2,10 +2,10 @@
 
 *[Leia em português](MANUAL-DO-INTEGRADOR.pt-BR.md)*
 
-**Code:** `internal/outbound/cadastro_handler.go`, `internal/outbound/fumaca.go`,
-`internal/outbound/fumaca_handler.go`, `internal/outbound/pausa_handler.go`,
-`internal/inbound/handler.go`, `cmd/zapgw/provisionar.go`, `internal/config/store.go`,
-`internal/meta/instagram.go`, `internal/outbound/renovador_instagram.go`.
+**Code:** `internal/outbound/registration_handler.go`, `internal/outbound/smoke.go`,
+`internal/outbound/smoke_handler.go`, `internal/outbound/pause_handler.go`,
+`internal/inbound/handler.go`, `cmd/zapgw/provision.go`, `internal/config/store.go`,
+`internal/meta/instagram.go`, `internal/outbound/instagram_renewer.go`.
 
 *(That block is gateway maintenance metadata — it answers "which doc did this code change break?".
 **You do not need it**, and nothing below depends on you having those files.)*

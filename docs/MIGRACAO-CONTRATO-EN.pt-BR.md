@@ -1,13 +1,13 @@
-Código: internal/meta/types.go, internal/meta/templates.go, internal/meta/perfil.go,
-internal/outbound/mensagem.go, internal/outbound/handler.go, internal/outbound/estado.go,
-internal/outbound/vigia.go, internal/outbound/sonda_externa.go, internal/outbound/entrada.go,
-internal/outbound/entrada_apelidos.go, internal/outbound/bloqueio_handler.go,
-internal/outbound/templates_handler.go, internal/outbound/saude_handler.go,
-internal/outbound/fumaca_handler.go, internal/outbound/media_handler.go,
-internal/outbound/perfil_handler.go, internal/outbound/pausa_handler.go,
-internal/outbound/cadastro_handler.go, internal/outbound/leituras_handler.go,
-internal/outbound/lideranca.go, internal/config/contador.go,
-internal/inbound/deliver.go, internal/inbound/deliver_test.go, cmd/zapgw/provisionar.go,
+Código: internal/meta/types.go, internal/meta/templates.go, internal/meta/profile.go,
+internal/outbound/message.go, internal/outbound/handler.go, internal/outbound/state.go,
+internal/outbound/watchdog.go, internal/outbound/external_probe.go, internal/outbound/ingress.go,
+internal/outbound/input_aliases.go, internal/outbound/block_handler.go,
+internal/outbound/templates_handler.go, internal/outbound/health_handler.go,
+internal/outbound/smoke_handler.go, internal/outbound/media_handler.go,
+internal/outbound/profile_handler.go, internal/outbound/pause_handler.go,
+internal/outbound/registration_handler.go, internal/outbound/reads_handler.go,
+internal/outbound/leadership.go, internal/config/counter.go,
+internal/inbound/deliver.go, internal/inbound/deliver_test.go, cmd/zapgw/provision.go,
 docs/INVENTARIO-CHAVES.md
 
 *[Read in English](MIGRACAO-CONTRATO-EN.md)*
@@ -19,7 +19,7 @@ aceita na grafia em inglês, na entrada, na MESMA posição que a tabela nomeia 
 para a forma canônica (português) antes de validar e antes de calcular o hash de idempotência, de
 modo que o mesmo pedido escrito nos dois idiomas produz o mesmo resultado e o mesmo
 `wa_message_id`. A saída não muda: isto é o passo 2 do plano de quatro (T-189, `docs/TASKS.md`),
-não o passo 4. Os dicionários moram em `internal/outbound/entrada_apelidos.go`; o contador do nome
+não o passo 4. Os dicionários moram em `internal/outbound/input_aliases.go`; o contador do nome
 velho (`config.CounterOldNameUsed`, exposto por instância em `GET /v1/estado`) é o que vai
 autorizar o passo 4.
 
@@ -105,7 +105,7 @@ rege como a tabela abaixo é aplicada do lado deles.
 `internal/meta/types.go:543` emite **`midia_id`** no evento de webhook — o único dos três pontos de
 emissão ainda em português. A resposta do `POST /v1/media`
 (`internal/outbound/media_handler.go:260`) e o **corpo de entrada** que a rota `/v1/messages`
-também aceita (`internal/outbound/mensagem.go:179` e `:626`) já emitem/aceitam **`media_id`**, de
+também aceita (`internal/outbound/message.go:179` e `:626`) já emitem/aceitam **`media_id`**, de
 propósito — o comentário no código diz que o nome bate com o que `/v1/messages` espera de volta,
 sem tradução no meio.
 
@@ -121,96 +121,96 @@ está na tabela, então deve ser português" é exatamente onde se erra.**
 
 | # | português | inglês | direção | arquivo:linha |
 |---|---|---|---|---|
-| 1 | `aberta` | `open` | SAIDA-RESPOSTA | internal/outbound/cadastro_handler.go:120 |
-| 2 | `alcance_externo` | `external_reach` | SAIDA-RESPOSTA | internal/outbound/estado.go:216 |
+| 1 | `aberta` | `open` | SAIDA-RESPOSTA | internal/outbound/registration_handler.go:120 |
+| 2 | `alcance_externo` | `external_reach` | SAIDA-RESPOSTA | internal/outbound/state.go:216 |
 | 3 | `alerta_de_conta` | `account_alert` | SAIDA-EVENTO | internal/meta/types.go:639 |
 | 4 | `assinatura_esperada` | `expected_signature` | A MEDIR | não é chave do contrato hoje — só aparece em vetor de teste interno (internal/inbound/deliver_test.go:245, testdata/assinatura-entrega.json) |
 | 5 | `botao_payload` | `button_payload` | SAIDA-EVENTO | internal/meta/types.go:536 |
 | 6 | `botao_texto` | `button_text` | SAIDA-EVENTO | internal/meta/types.go:537 |
-| 7 | `botao_titulo` | `button_title` | ENTRADA | internal/outbound/mensagem.go:587 |
-| 8 | `botao_url` | `button_url` | ENTRADA | internal/outbound/mensagem.go:588 |
-| 9 | `botoes` | `buttons` | ENTRADA | internal/outbound/mensagem.go:579 |
-| 10 | `botoes_template` | `template_buttons` | ENTRADA | internal/outbound/mensagem.go:559 |
-| 11 | `botoes_url` | `url_buttons` | ENTRADA | internal/outbound/mensagem.go:549 (campo mantido só para ser RECUSADO, T-045) |
-| 12 | `cabecalho` | `header` | ENTRADA | internal/outbound/mensagem.go:527 |
-| 13 | `cabecalho_texto` | `header_text` | ENTRADA | internal/outbound/mensagem.go:622 |
-| 14 | `carimbos_desde` | `stamps_since` | SAIDA-RESPOSTA | internal/outbound/estado.go:105 |
-| 15 | `categoria` | `category` | SAIDA-EVENTO + ENTRADA + SAIDA-RESPOSTA | internal/meta/types.go:181,235 (evento); internal/outbound/mensagem.go:627 (entrada); internal/outbound/templates_handler.go:363,390 (resposta) |
+| 7 | `botao_titulo` | `button_title` | ENTRADA | internal/outbound/message.go:587 |
+| 8 | `botao_url` | `button_url` | ENTRADA | internal/outbound/message.go:588 |
+| 9 | `botoes` | `buttons` | ENTRADA | internal/outbound/message.go:579 |
+| 10 | `botoes_template` | `template_buttons` | ENTRADA | internal/outbound/message.go:559 |
+| 11 | `botoes_url` | `url_buttons` | ENTRADA | internal/outbound/message.go:549 (campo mantido só para ser RECUSADO, T-045) |
+| 12 | `cabecalho` | `header` | ENTRADA | internal/outbound/message.go:527 |
+| 13 | `cabecalho_texto` | `header_text` | ENTRADA | internal/outbound/message.go:622 |
+| 14 | `carimbos_desde` | `stamps_since` | SAIDA-RESPOSTA | internal/outbound/state.go:105 |
+| 15 | `categoria` | `category` | SAIDA-EVENTO + ENTRADA + SAIDA-RESPOSTA | internal/meta/types.go:181,235 (evento); internal/outbound/message.go:627 (entrada); internal/outbound/templates_handler.go:363,390 (resposta) |
 | 16 | `categoria_anterior` | `previous_category` | SAIDA-EVENTO | internal/meta/types.go:304 |
 | 17 | `categoria_correta` | `correct_category` | SAIDA-EVENTO | internal/meta/types.go:312 |
 | 18 | `categoria_nova` | `new_category` | SAIDA-EVENTO | internal/meta/types.go:305 |
 | 19 | `categoria_pedida` | `requested_category` | SAIDA-RESPOSTA | internal/outbound/templates_handler.go:399 |
-| 20 | `cifrados` | `encrypted` | SAIDA-RESPOSTA | internal/outbound/cadastro_handler.go:146 |
+| 20 | `cifrados` | `encrypted` | SAIDA-RESPOSTA | internal/outbound/registration_handler.go:146 |
 | 21 | `cobranca` | `pricing` | SAIDA-EVENTO | internal/meta/types.go:605 |
-| 22 | `conector` | `connector` | SAIDA-RESPOSTA | internal/outbound/entrada.go:213 |
-| 23 | `conexoes_prontas` | `ready_connections` | SAIDA-RESPOSTA | internal/outbound/entrada.go:188 |
-| 24 | `conferido_em` | `checked_at` | SAIDA-RESPOSTA | internal/outbound/vigia.go:144; internal/outbound/estado.go:412 |
-| 25 | `contadores` | `counters` | SAIDA-RESPOSTA | internal/outbound/estado.go:111,276 |
+| 22 | `conector` | `connector` | SAIDA-RESPOSTA | internal/outbound/ingress.go:213 |
+| 23 | `conexoes_prontas` | `ready_connections` | SAIDA-RESPOSTA | internal/outbound/ingress.go:188 |
+| 24 | `conferido_em` | `checked_at` | SAIDA-RESPOSTA | internal/outbound/watchdog.go:144; internal/outbound/state.go:412 |
+| 25 | `contadores` | `counters` | SAIDA-RESPOSTA | internal/outbound/state.go:111,276 |
 | 26 | `corpo` | `body` | A MEDIR | não é chave do contrato hoje — só aparece em vetor de teste interno (internal/inbound/deliver_test.go:244, testdata/assinatura-entrega.json) |
 | 27 | `cru` | `raw` | SAIDA-EVENTO | internal/inbound/deliver.go:47 |
-| 28 | `data` | `date` | A MEDIR | não é chave do contrato hoje — as únicas ocorrências de "data" no código são o envelope de paginação da própria API da Meta (ex.: internal/meta/perfil.go:151), nunca uma chave nossa |
+| 28 | `data` | `date` | A MEDIR | não é chave do contrato hoje — as únicas ocorrências de "data" no código são o envelope de paginação da própria API da Meta (ex.: internal/meta/profile.go:151), nunca uma chave nossa |
 | 29 | `de` | `from` | A MEDIR | não é chave do contrato hoje — só existem `de_cru` e `de_canonico`, nunca um "de" isolado |
 | 30 | `de_canonico` | `from_canonical` | SAIDA-EVENTO | internal/meta/types.go:444 |
 | 31 | `de_cru` | `from_raw` | SAIDA-EVENTO | internal/meta/types.go:443 |
 | 32 | `desfecho` | `outcome` | SAIDA-RESPOSTA | internal/outbound/templates_handler.go:555 |
-| 33 | `dia` | `day` | SAIDA-RESPOSTA | internal/outbound/estado.go:272 |
-| 34 | `dia_utc` | `day_utc` | SAIDA-RESPOSTA | internal/outbound/estado.go:275 |
-| 35 | `dias_restantes` | `days_left` | SAIDA-RESPOSTA | internal/outbound/estado.go:526 |
+| 33 | `dia` | `day` | SAIDA-RESPOSTA | internal/outbound/state.go:272 |
+| 34 | `dia_utc` | `day_utc` | SAIDA-RESPOSTA | internal/outbound/state.go:275 |
+| 35 | `dias_restantes` | `days_left` | SAIDA-RESPOSTA | internal/outbound/state.go:526 |
 | 36 | `encaminhada` | `forwarded` | SAIDA-EVENTO | internal/meta/types.go:529 |
 | 37 | `encaminhada_muitas_vezes` | `frequently_forwarded` | SAIDA-EVENTO | internal/meta/types.go:530 |
-| 38 | `entrada` | `ingress` | SAIDA-RESPOSTA | internal/outbound/estado.go:207 |
+| 38 | `entrada` | `ingress` | SAIDA-RESPOSTA | internal/outbound/state.go:207 |
 | 39 | `erro` | `error` | SAIDA-EVENTO + SAIDA-RESPOSTA | internal/meta/types.go:599 (evento); internal/outbound/handler.go:302 (resposta, erro compartilhado) |
-| 40 | `estado` | `state` | SAIDA-EVENTO + SAIDA-RESPOSTA | internal/meta/types.go:242,352,398 (evento); internal/outbound/estado.go:66 e outros (resposta) |
+| 40 | `estado` | `state` | SAIDA-EVENTO + SAIDA-RESPOSTA | internal/meta/types.go:242,352,398 (evento); internal/outbound/state.go:66 e outros (resposta) |
 | 41 | `eventos` | `events` | SAIDA-EVENTO | internal/inbound/deliver.go:48 |
-| 42 | `expira_em` | `expires_at` | SAIDA-RESPOSTA | internal/outbound/estado.go:360,519 |
-| 43 | `falhas` | `failures` | SAIDA-RESPOSTA | internal/outbound/bloqueio_handler.go:159 |
-| 44 | `idioma` | `language` | SAIDA-EVENTO + ENTRADA + SAIDA-RESPOSTA | internal/meta/types.go:230,295 (evento); internal/outbound/mensagem.go:522 (entrada); internal/outbound/templates_handler.go:364,543 (resposta) |
-| 45 | `instancia` | `instance` | ENTRADA + SAIDA-RESPOSTA + SAIDA-EVENTO | internal/outbound/mensagem.go:512 (entrada); internal/outbound/estado.go:44 (resposta); internal/inbound/deliver.go:45 (evento, envelope) |
-| 46 | `instancias` | `instances` | A MEDIR | não é chave JSON do contrato hoje — só existe como flag de CLI (`--instancias`), fora do HTTP (cmd/zapgw/provisionar.go:1476) |
-| 47 | `janela_de_cadastro` | `registration_window` | SAIDA-RESPOSTA | internal/outbound/cadastro_handler.go:145 |
+| 42 | `expira_em` | `expires_at` | SAIDA-RESPOSTA | internal/outbound/state.go:360,519 |
+| 43 | `falhas` | `failures` | SAIDA-RESPOSTA | internal/outbound/block_handler.go:159 |
+| 44 | `idioma` | `language` | SAIDA-EVENTO + ENTRADA + SAIDA-RESPOSTA | internal/meta/types.go:230,295 (evento); internal/outbound/message.go:522 (entrada); internal/outbound/templates_handler.go:364,543 (resposta) |
+| 45 | `instancia` | `instance` | ENTRADA + SAIDA-RESPOSTA + SAIDA-EVENTO | internal/outbound/message.go:512 (entrada); internal/outbound/state.go:44 (resposta); internal/inbound/deliver.go:45 (evento, envelope) |
+| 46 | `instancias` | `instances` | A MEDIR | não é chave JSON do contrato hoje — só existe como flag de CLI (`--instancias`), fora do HTTP (cmd/zapgw/provision.go:1476) |
+| 47 | `janela_de_cadastro` | `registration_window` | SAIDA-RESPOSTA | internal/outbound/registration_handler.go:145 |
 | 48 | `limite_anterior` | `previous_limit` | SAIDA-EVENTO | internal/meta/types.go:359 |
 | 49 | `limite_atual` | `current_limit` | SAIDA-EVENTO | internal/meta/types.go:358 |
-| 50 | `limite_de_mensagens` | `message_limit` | SAIDA-RESPOSTA | internal/outbound/estado.go:402 |
+| 50 | `limite_de_mensagens` | `message_limit` | SAIDA-RESPOSTA | internal/outbound/state.go:402 |
 | 51 | `limite_diario_maximo` | `max_daily_limit` | SAIDA-EVENTO | internal/meta/types.go:366 |
 | 52 | `mensagem` | `message` | SAIDA-EVENTO + SAIDA-RESPOSTA | internal/meta/types.go:143 (evento); internal/outbound/handler.go:279 (resposta, erro compartilhado) |
 | 53 | `midia_id` | `media_id` | SAIDA-EVENTO | internal/meta/types.go:543 — 🔴 ver seção 5: colide com `media_id`, já ENTRADA + SAIDA-RESPOSTA em inglês |
 | 54 | `midia_mime_payload` | `media_mime_payload` | SAIDA-EVENTO | internal/meta/types.go:547 |
-| 55 | `motivo` | `reason` | SAIDA-EVENTO + SAIDA-RESPOSTA | internal/meta/types.go:251 (evento); internal/outbound/lideranca.go:231 (resposta) |
-| 56 | `nome` | `name` | SAIDA-EVENTO + ENTRADA + SAIDA-RESPOSTA | internal/meta/types.go:229,294 (evento); internal/outbound/mensagem.go:330,485 (entrada); internal/outbound/templates_handler.go:362,552 (resposta) |
-| 57 | `nome_arquivo` | `file_name` | SAIDA-EVENTO + ENTRADA | internal/meta/types.go:581 (evento); internal/outbound/mensagem.go:181,629 (entrada) |
+| 55 | `motivo` | `reason` | SAIDA-EVENTO + SAIDA-RESPOSTA | internal/meta/types.go:251 (evento); internal/outbound/leadership.go:231 (resposta) |
+| 56 | `nome` | `name` | SAIDA-EVENTO + ENTRADA + SAIDA-RESPOSTA | internal/meta/types.go:229,294 (evento); internal/outbound/message.go:330,485 (entrada); internal/outbound/templates_handler.go:362,552 (resposta) |
+| 57 | `nome_arquivo` | `file_name` | SAIDA-EVENTO + ENTRADA | internal/meta/types.go:581 (evento); internal/outbound/message.go:181,629 (entrada) |
 | 58 | `nome_contato` | `contact_name` | SAIDA-EVENTO | internal/meta/types.go:445 |
-| 59 | `numero_exibido` | `display_number` | SAIDA-EVENTO + ENTRADA + SAIDA-RESPOSTA | internal/meta/types.go:345 (evento); internal/outbound/cadastro_handler.go:96 (entrada); internal/outbound/saude_handler.go:84 (resposta) |
-| 60 | `numero_na_meta` | `number_at_meta` | SAIDA-RESPOSTA | internal/outbound/estado.go:187 |
-| 61 | `observado_em` | `observed_at` | SAIDA-RESPOSTA | internal/outbound/estado.go:363,436 |
-| 62 | `para` | `to` | ENTRADA | internal/outbound/mensagem.go:513 |
+| 59 | `numero_exibido` | `display_number` | SAIDA-EVENTO + ENTRADA + SAIDA-RESPOSTA | internal/meta/types.go:345 (evento); internal/outbound/registration_handler.go:96 (entrada); internal/outbound/health_handler.go:84 (resposta) |
+| 60 | `numero_na_meta` | `number_at_meta` | SAIDA-RESPOSTA | internal/outbound/state.go:187 |
+| 61 | `observado_em` | `observed_at` | SAIDA-RESPOSTA | internal/outbound/state.go:363,436 |
+| 62 | `para` | `to` | ENTRADA | internal/outbound/message.go:513 |
 | 63 | `para_canonico` | `to_canonical` | SAIDA-EVENTO | internal/meta/types.go:586 |
 | 64 | `para_cru` | `to_raw` | SAIDA-EVENTO | internal/meta/types.go:585 |
-| 65 | `pausada` | `paused` | SAIDA-RESPOSTA | internal/outbound/estado.go:77; internal/outbound/pausa_handler.go:64 |
-| 66 | `payload` | `payload` | ENTRADA | internal/outbound/mensagem.go:241 |
-| 67 | `qualidade` | `quality` | SAIDA-RESPOSTA | internal/outbound/estado.go:393 |
+| 65 | `pausada` | `paused` | SAIDA-RESPOSTA | internal/outbound/state.go:77; internal/outbound/pause_handler.go:64 |
+| 66 | `payload` | `payload` | ENTRADA | internal/outbound/message.go:241 |
+| 67 | `qualidade` | `quality` | SAIDA-RESPOSTA | internal/outbound/state.go:393 |
 | 68 | `qualidade_do_numero` | `number_quality` | SAIDA-EVENTO | internal/meta/types.go:636 |
 | 69 | `recebido_em` | `received_at` | SAIDA-EVENTO | internal/inbound/deliver.go:46 |
-| 70 | `renovado_em` | `renewed_at` | SAIDA-RESPOSTA | internal/outbound/estado.go:535 |
-| 71 | `responder_a` | `reply_to` | SAIDA-EVENTO + ENTRADA | internal/meta/types.go:479 (evento); internal/outbound/mensagem.go:515 (entrada) |
-| 72 | `rodape` | `footer` | ENTRADA | internal/outbound/mensagem.go:623 |
+| 70 | `renovado_em` | `renewed_at` | SAIDA-RESPOSTA | internal/outbound/state.go:535 |
+| 71 | `responder_a` | `reply_to` | SAIDA-EVENTO + ENTRADA | internal/meta/types.go:479 (evento); internal/outbound/message.go:515 (entrada) |
+| 72 | `rodape` | `footer` | ENTRADA | internal/outbound/message.go:623 |
 | 73 | `segredo_entrega` | `delivery_secret` | A MEDIR | não é chave do contrato hoje — só aparece em vetor de teste interno (internal/inbound/deliver_test.go:242, testdata/assinatura-entrega.json) |
-| 74 | `serie_7_dias` | `last_7_days_series` | SAIDA-RESPOSTA | internal/outbound/estado.go:129 |
-| 75 | `serie_diaria` | `daily_series` | SAIDA-RESPOSTA | internal/outbound/estado.go:152 |
+| 74 | `serie_7_dias` | `last_7_days_series` | SAIDA-RESPOSTA | internal/outbound/state.go:129 |
+| 75 | `serie_diaria` | `daily_series` | SAIDA-RESPOSTA | internal/outbound/state.go:152 |
 | 76 | `sub_tipo` | `sub_kind` | SAIDA-EVENTO | internal/meta/types.go:431 |
-| 77 | `template` | `template` | SAIDA-EVENTO + ENTRADA | internal/meta/types.go:617 (evento); internal/outbound/mensagem.go:521 (entrada) — mesma grafia nos dois idiomas, sem renomeação |
+| 77 | `template` | `template` | SAIDA-EVENTO + ENTRADA | internal/meta/types.go:617 (evento); internal/outbound/message.go:521 (entrada) — mesma grafia nos dois idiomas, sem renomeação |
 | 78 | `template_categoria` | `template_category` | SAIDA-EVENTO | internal/meta/types.go:627 |
 | 79 | `templates` | `templates` | SAIDA-RESPOSTA | internal/outbound/templates_handler.go:348 — mesma grafia; ver também "O que NÃO muda" (seção 7) |
-| 80 | `texto` | `text` | SAIDA-EVENTO + ENTRADA | internal/meta/types.go:446 (evento); internal/outbound/mensagem.go:177,239,518 (entrada) |
-| 81 | `tipo` | `kind` | SAIDA-EVENTO + ENTRADA + SAIDA-RESPOSTA | internal/meta/types.go:413 (evento); internal/outbound/mensagem.go:514 (entrada); internal/outbound/estado.go:51 (resposta) |
+| 80 | `texto` | `text` | SAIDA-EVENTO + ENTRADA | internal/meta/types.go:446 (evento); internal/outbound/message.go:177,239,518 (entrada) |
+| 81 | `tipo` | `kind` | SAIDA-EVENTO + ENTRADA + SAIDA-RESPOSTA | internal/meta/types.go:413 (evento); internal/outbound/message.go:514 (entrada); internal/outbound/state.go:51 (resposta) |
 | 82 | `tipo_da_entidade` | `entity_kind` | SAIDA-EVENTO | internal/meta/types.go:391 |
-| 83 | `token_envio` | `send_token` | ENTRADA | internal/outbound/cadastro_handler.go:98 |
-| 84 | `total` | `total` | SAIDA-RESPOSTA | internal/outbound/bloqueio_handler.go:172; internal/outbound/templates_handler.go:347 |
-| 85 | `ultimo_em` | `last_at` | SAIDA-RESPOSTA | internal/outbound/estado.go:241 |
-| 86 | `ultimo_webhook_em` | `last_webhook_at` | SAIDA-RESPOSTA | internal/outbound/entrada.go:225 |
-| 87 | `ultimos_7_dias` | `last_7_days` | SAIDA-RESPOSTA | internal/outbound/estado.go:237 |
-| 88 | `variaveis` | `variables` | ENTRADA | internal/outbound/mensagem.go:523 |
-| 89 | `versao` | `version` | SAIDA-RESPOSTA | internal/outbound/estado.go:82 |
-| 90 | `via` | `via` | SAIDA-RESPOSTA | internal/outbound/entrada.go:212 — mesma grafia nos dois idiomas |
+| 83 | `token_envio` | `send_token` | ENTRADA | internal/outbound/registration_handler.go:98 |
+| 84 | `total` | `total` | SAIDA-RESPOSTA | internal/outbound/block_handler.go:172; internal/outbound/templates_handler.go:347 |
+| 85 | `ultimo_em` | `last_at` | SAIDA-RESPOSTA | internal/outbound/state.go:241 |
+| 86 | `ultimo_webhook_em` | `last_webhook_at` | SAIDA-RESPOSTA | internal/outbound/ingress.go:225 |
+| 87 | `ultimos_7_dias` | `last_7_days` | SAIDA-RESPOSTA | internal/outbound/state.go:237 |
+| 88 | `variaveis` | `variables` | ENTRADA | internal/outbound/message.go:523 |
+| 89 | `versao` | `version` | SAIDA-RESPOSTA | internal/outbound/state.go:82 |
+| 90 | `via` | `via` | SAIDA-RESPOSTA | internal/outbound/ingress.go:212 — mesma grafia nos dois idiomas |
 
 ## 7. Tabela B — chaves medidas, par ainda não decidido (29 linhas)
 
@@ -220,34 +220,34 @@ toda linha até 2026-08-31 (seção 7) — a MONTAGEM deste documento não escol
 
 | # | português | inglês | direção | arquivo:linha |
 |---|---|---|---|---|
-| 91 | `alvo` | `target` | SAIDA-EVENTO + ENTRADA | internal/meta/types.go:68 (evento); internal/outbound/mensagem.go:309 (entrada) |
-| 92 | `bloqueados` | `blocked` | SAIDA-RESPOSTA | internal/outbound/bloqueio_handler.go:173 |
-| 93 | `certificado_do_callback` | `callback_certificate` | SAIDA-RESPOSTA | internal/outbound/estado.go:174 |
-| 94 | `checagem_falhando_desde` | `check_failing_since` | SAIDA-RESPOSTA | internal/outbound/vigia.go:145 |
+| 91 | `alvo` | `target` | SAIDA-EVENTO + ENTRADA | internal/meta/types.go:68 (evento); internal/outbound/message.go:309 (entrada) |
+| 92 | `bloqueados` | `blocked` | SAIDA-RESPOSTA | internal/outbound/block_handler.go:173 |
+| 93 | `certificado_do_callback` | `callback_certificate` | SAIDA-RESPOSTA | internal/outbound/state.go:174 |
+| 94 | `checagem_falhando_desde` | `check_failing_since` | SAIDA-RESPOSTA | internal/outbound/watchdog.go:145 |
 | 95 | `classe` | `class` | SAIDA-RESPOSTA | internal/outbound/handler.go:277; internal/outbound/templates_handler.go:1205 |
 | 96 | `codigo` | `code` | SAIDA-EVENTO | internal/meta/types.go:142 |
-| 97 | `codigo_meta` | `meta_code` | SAIDA-RESPOSTA | internal/outbound/bloqueio_handler.go:146; internal/outbound/handler.go:278; internal/outbound/templates_handler.go:1206 |
+| 97 | `codigo_meta` | `meta_code` | SAIDA-RESPOSTA | internal/outbound/block_handler.go:146; internal/outbound/handler.go:278; internal/outbound/templates_handler.go:1206 |
 | 98 | `componentes` | `components` | SAIDA-RESPOSTA + ENTRADA | internal/meta/templates.go:99 (resposta, catálogo); internal/outbound/templates_handler.go:365 (entrada, criação) |
-| 99 | `detalhe_meta` | `meta_detail` | SAIDA-RESPOSTA | internal/outbound/bloqueio_handler.go:148; internal/outbound/handler.go:287 |
+| 99 | `detalhe_meta` | `meta_detail` | SAIDA-RESPOSTA | internal/outbound/block_handler.go:148; internal/outbound/handler.go:287 |
 | 100 | `detalhes` | `details` | SAIDA-EVENTO | internal/meta/types.go:159 |
-| 101 | `emoji` | `emoji` (não muda) | SAIDA-EVENTO + ENTRADA | internal/meta/types.go:67 (evento); internal/outbound/mensagem.go:313 (entrada) |
-| 102 | `endereco` | `address` | SAIDA-EVENTO + ENTRADA | internal/meta/types.go:89 (evento); internal/outbound/mensagem.go:331 (entrada) |
+| 101 | `emoji` | `emoji` (não muda) | SAIDA-EVENTO + ENTRADA | internal/meta/types.go:67 (evento); internal/outbound/message.go:313 (entrada) |
+| 102 | `endereco` | `address` | SAIDA-EVENTO + ENTRADA | internal/meta/types.go:89 (evento); internal/outbound/message.go:331 (entrada) |
 | 103 | `explicacao_meta` | `meta_explanation` | SAIDA-RESPOSTA | internal/outbound/handler.go:297 |
-| 104 | `falhando_desde` | `failing_since` | SAIDA-RESPOSTA | internal/outbound/entrada.go:201; internal/outbound/estado.go:543 |
-| 105 | `fonte` | `source` | SAIDA-RESPOSTA | internal/outbound/estado.go:443; internal/outbound/sonda_externa.go:162 |
-| 106 | `gerado_em` | `generated_at` | SAIDA-RESPOSTA | internal/outbound/estado.go:86 |
-| 107 | `instrucao` | `instruction` | SAIDA-RESPOSTA | internal/outbound/estado.go:547 |
-| 108 | `legenda` | `caption` | SAIDA-EVENTO + ENTRADA | internal/meta/types.go:580 (evento); internal/outbound/mensagem.go:628 (entrada) |
-| 109 | `localizacao` | `location` | SAIDA-EVENTO + ENTRADA | internal/meta/types.go:608 (evento); internal/outbound/mensagem.go:640 (entrada) |
-| 110 | `medido_em` | `measured_at` | SAIDA-RESPOSTA | internal/outbound/entrada.go:194; internal/outbound/sonda_externa.go:159; internal/outbound/vigia.go:143 |
-| 111 | `processados` | `processed` | SAIDA-RESPOSTA | internal/outbound/bloqueio_handler.go:158 |
+| 104 | `falhando_desde` | `failing_since` | SAIDA-RESPOSTA | internal/outbound/ingress.go:201; internal/outbound/state.go:543 |
+| 105 | `fonte` | `source` | SAIDA-RESPOSTA | internal/outbound/state.go:443; internal/outbound/external_probe.go:162 |
+| 106 | `gerado_em` | `generated_at` | SAIDA-RESPOSTA | internal/outbound/state.go:86 |
+| 107 | `instrucao` | `instruction` | SAIDA-RESPOSTA | internal/outbound/state.go:547 |
+| 108 | `legenda` | `caption` | SAIDA-EVENTO + ENTRADA | internal/meta/types.go:580 (evento); internal/outbound/message.go:628 (entrada) |
+| 109 | `localizacao` | `location` | SAIDA-EVENTO + ENTRADA | internal/meta/types.go:608 (evento); internal/outbound/message.go:640 (entrada) |
+| 110 | `medido_em` | `measured_at` | SAIDA-RESPOSTA | internal/outbound/ingress.go:194; internal/outbound/external_probe.go:159; internal/outbound/watchdog.go:143 |
+| 111 | `processados` | `processed` | SAIDA-RESPOSTA | internal/outbound/block_handler.go:158 |
 | 112 | `rastro_meta` | `meta_trace` | SAIDA-RESPOSTA | internal/outbound/handler.go:301 |
-| 113 | `reacao` | `reaction` | SAIDA-EVENTO + ENTRADA | internal/meta/types.go:541 (evento); internal/outbound/mensagem.go:637 (entrada) |
+| 113 | `reacao` | `reaction` | SAIDA-EVENTO + ENTRADA | internal/meta/types.go:541 (evento); internal/outbound/message.go:637 (entrada) |
 | 114 | `subcodigo_meta` | `meta_subcode` | SAIDA-RESPOSTA | internal/outbound/handler.go:293 |
-| 115 | `token_instagram` | `instagram_token` | SAIDA-RESPOSTA | internal/outbound/estado.go:192 |
-| 116 | `token_meta` | `meta_token` | SAIDA-RESPOSTA | internal/outbound/estado.go:169 |
-| 117 | `valor` | `value` | SAIDA-RESPOSTA | internal/outbound/estado.go:432 |
-| 118 | `veredito` | `verdict` | SAIDA-RESPOSTA | internal/outbound/estado.go:513; internal/outbound/saude_handler.go:94; internal/outbound/sonda_externa.go:152; internal/outbound/vigia.go:142 |
+| 115 | `token_instagram` | `instagram_token` | SAIDA-RESPOSTA | internal/outbound/state.go:192 |
+| 116 | `token_meta` | `meta_token` | SAIDA-RESPOSTA | internal/outbound/state.go:169 |
+| 117 | `valor` | `value` | SAIDA-RESPOSTA | internal/outbound/state.go:432 |
+| 118 | `veredito` | `verdict` | SAIDA-RESPOSTA | internal/outbound/state.go:513; internal/outbound/health_handler.go:94; internal/outbound/external_probe.go:152; internal/outbound/watchdog.go:142 |
 | 119 | `voz` | `voice` | SAIDA-EVENTO | internal/meta/types.go:575 |
 
 ## 8. O que NÃO muda — chaves de saída que já estão em inglês
@@ -270,19 +270,19 @@ simplesmente continuam como estão. Medido varrendo toda tag `json:"…"` de tod
 | `wa_message_id` | `internal/meta/types.go:430` | `Event` | SAIDA-EVENTO | webhook |
 | `status` | `internal/meta/types.go:584` | `Event` | SAIDA-EVENTO | webhook |
 | `template` | `internal/meta/types.go:617` | `Event` (chave do campo, guarda `TemplateStatus`) | SAIDA-EVENTO | webhook |
-| `ig_id` | `internal/outbound/estado.go:62` | `State` | SAIDA-RESPOSTA | `GET /v1/estado` |
-| `wa_id` | `internal/outbound/bloqueio_handler.go:136` | `blockItemResponse` | SAIDA-RESPOSTA | `POST/DELETE /v1/bloqueios` |
-| `wa_id` | `internal/outbound/bloqueio_handler.go:145` | `blockFailureResponse` | SAIDA-RESPOSTA | `POST/DELETE /v1/bloqueios` |
-| `wa_id` | `internal/outbound/bloqueio_handler.go:166` | `blockListItem` | SAIDA-RESPOSTA | `GET /v1/bloqueios` |
+| `ig_id` | `internal/outbound/state.go:62` | `State` | SAIDA-RESPOSTA | `GET /v1/estado` |
+| `wa_id` | `internal/outbound/block_handler.go:136` | `blockItemResponse` | SAIDA-RESPOSTA | `POST/DELETE /v1/bloqueios` |
+| `wa_id` | `internal/outbound/block_handler.go:145` | `blockFailureResponse` | SAIDA-RESPOSTA | `POST/DELETE /v1/bloqueios` |
+| `wa_id` | `internal/outbound/block_handler.go:166` | `blockListItem` | SAIDA-RESPOSTA | `GET /v1/bloqueios` |
 | `templates` | `internal/outbound/templates_handler.go:348` | `templatesResponse` | SAIDA-RESPOSTA | `GET /v1/templates` |
 | `id` | `internal/outbound/templates_handler.go:388` | `templateCreatedResponse` | SAIDA-RESPOSTA | `POST /v1/templates` |
 | `status` | `internal/outbound/templates_handler.go:389` | `templateCreatedResponse` | SAIDA-RESPOSTA | `POST /v1/templates` |
 | `id` | `internal/outbound/templates_handler.go:542` | `templateEntry` | SAIDA-RESPOSTA | `DELETE /v1/templates` (desfecho ambíguo) |
 | `status` | `internal/outbound/templates_handler.go:545` | `templateEntry` | SAIDA-RESPOSTA | `DELETE /v1/templates` (desfecho ambíguo) |
-| `ok` | `internal/outbound/saude_handler.go:83` | `healthResponse` | SAIDA-RESPOSTA | `GET /v1/instances/{slug}/health` |
-| `wa_message_id` | `internal/outbound/fumaca_handler.go:131` | `SmokeResponse` | SAIDA-RESPOSTA | `POST /v1/fumaca` |
-| `about`,`address`,`description`,`email`,`profile_picture_url`,`websites`,`vertical` | `internal/meta/perfil.go:65-71` | `Profile` | SAIDA-RESPOSTA | `GET /v1/perfil` |
-| `about`,`address`,`description`,`email`,`websites`,`vertical`,`profile_picture_handle` | `internal/meta/perfil.go:92-103` | `ProfilePatch` (ecoado em `profileWriteResponse.gravado`) | SAIDA-RESPOSTA **e** ENTRADA | `POST /v1/perfil` |
+| `ok` | `internal/outbound/health_handler.go:83` | `healthResponse` | SAIDA-RESPOSTA | `GET /v1/instances/{slug}/health` |
+| `wa_message_id` | `internal/outbound/smoke_handler.go:131` | `SmokeResponse` | SAIDA-RESPOSTA | `POST /v1/fumaca` |
+| `about`,`address`,`description`,`email`,`profile_picture_url`,`websites`,`vertical` | `internal/meta/profile.go:65-71` | `Profile` | SAIDA-RESPOSTA | `GET /v1/perfil` |
+| `about`,`address`,`description`,`email`,`websites`,`vertical`,`profile_picture_handle` | `internal/meta/profile.go:92-103` | `ProfilePatch` (ecoado em `profileWriteResponse.gravado`) | SAIDA-RESPOSTA **e** ENTRADA | `POST /v1/perfil` |
 
 ## 9. Chaves multi-direção — as perigosas
 
@@ -298,7 +298,7 @@ exatamente como na seção 5. Lista, por tabela:
 
 Seis das sete da tabela B (`alvo`, `emoji`, `endereco`, `legenda`, `localizacao`, `reacao`)
 compartilham o mesmo motivo: o vocabulário de reação/localização é deliberadamente idêntico no
-envio e no recebimento (`internal/outbound/mensagem.go:271-274`), então a mesma palavra é um campo
+envio e no recebimento (`internal/outbound/message.go:271-274`), então a mesma palavra é um campo
 real tanto num `Event` de saída quanto num `Request` de entrada.
 
 ## 10. Linhas onde não existe chave de contrato mensurável (`A MEDIR`)
@@ -314,7 +314,7 @@ no lugar:
 - `data` — as únicas ocorrências de `"data"` no código são o envelope de paginação da própria API
   do Graph da Meta (`{"data": [...]}`), decodificado internamente e nunca reexposto sob esse nome.
 - `de` — só existem `de_cru` e `de_canonico`; não há um campo `de` isolado.
-- `instancias` — só existe como flag de CLI (`--instancias`, `cmd/zapgw/provisionar.go:1476`),
+- `instancias` — só existe como flag de CLI (`--instancias`, `cmd/zapgw/provision.go:1476`),
   nunca como campo HTTP/JSON.
 
 ## 7. Os 29 nomes, decididos em 2026-08-31 — e a conferência de colisão que veio junto

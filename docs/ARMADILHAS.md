@@ -77,7 +77,7 @@ a fourth on the same day, found by a FIFTH way:**
 | here, Go | envelope of the **message** event (T-023) | the **status** event, which lost the failure reason (T-028) |
 | consumer, Python | `503` for a credential on the bilateral channel | the **contract**, which every future consumer would read (moved in PR #34) |
 | consumer, Python | incrementing the idempotency series in the **worker** | the admin's **"resend" button**, which rewrote the phone number without changing the key → `422` → the customer never received it |
-| here, Go | closed counter vocabulary (`internal/config/contador.go`) | the printout of `zapgw estado` (`cmd/zapgw/estado.go`), which repeated the list by hand and did not know about the new key (T-038/T-039) |
+| here, Go | closed counter vocabulary (`internal/config/counter.go`) | the printout of `zapgw estado` (`cmd/zapgw/state.go`), which repeated the list by hand and did not know about the new key (T-038/T-039) |
 
 In the first three, whoever wrote the rule was the one who left the hole, and in all three the suite was
 green. **What found the three was the same question, not the same person** — which suggests it works as
@@ -94,19 +94,19 @@ the paths. **A well-aimed and wrong guess still finds the bug next door.***
 review, real traffic capture, experiment with a physical device, rereading what had already been
 captured with the right question — see the "Meta / WhatsApp Cloud API" entries, above). T-038 added
 `config.CounterAccountDiscarded` to the closed vocabulary and — with no external review, no new test, no
-new traffic — the T-038 implementer THEMSELVES declared, on closing the task, that `cmd/zapgw/estado.go`
+new traffic — the T-038 implementer THEMSELVES declared, on closing the task, that `cmd/zapgw/state.go`
 had a list of its own and did not know about the new key. It was not "where else should this rule hold?"
 asked by an outside reviewer: it was the person who had just written the code noticing, right then, that
 the problem they were creating was an instance of this file's pattern, and recording it as the next task
 instead of leaving it for someone to find later.
 *Cost: zero in production so far — `CounterAccountDiscarded` never had its real value looked at by anyone
 before the fix (T-039), but it also never gave a WRONG result, only an invisible one. Fix:
-`config.KeysInDisplayOrder` (`internal/config/contador.go`) becomes the single source — both the
-validation set (`counterKeys`, derived from it) and the printout in `cmd/zapgw/estado.go` (which now
+`config.KeysInDisplayOrder` (`internal/config/counter.go`) becomes the single source — both the
+validation set (`counterKeys`, derived from it) and the printout in `cmd/zapgw/state.go` (which now
 walks it, with no list of its own) read from the SAME place. Mandatory mutation, done and reverted before
-the commit: restoring the old list in `estado.go` (without touching `contador.go`) leaves
-`TestStateCommandShowsEveryVocabularyKey` (`cmd/zapgw/estado_test.go`) red, missing `conta_descartada`;
-adding a new key only to `KeysInDisplayOrder` (without touching `estado.go`) leaves the same test green,
+the commit: restoring the old list in `state.go` (without touching `counter.go`) leaves
+`TestStateCommandShowsEveryVocabularyKey` (`cmd/zapgw/state_test.go`) red, missing `conta_descartada`;
+adding a new key only to `KeysInDisplayOrder` (without touching `state.go`) leaves the same test green,
 with the new key showing up on its own.* **The question that generalizes: when you yourself have just
 created the "the rule holds here, not there" asymmetry, the fifth way to find it is simply to say so out
 loud before closing the task — not to wait for a review, a capture or a future test to find it for you.**
@@ -143,8 +143,8 @@ stayed OPEN for a day, and the reason is recorded because it is the right decisi
 T-042 was a task to EXERCISE, with the `Files:` list closed on the step-5 comment — fixing it there
 would have mixed, in the same commit, what was measured with what was changed. **Closed in T-047:**
 `config.CounterNumberDiscarded` (`numero_descartado`) joins the closed vocabulary in
-`internal/config/contador.go` and is recorded in step 5a of `internal/inbound/handler.go`, **after**
-the `w.WriteHeader` as T-035 requires. Not one line of `cmd/zapgw/estado.go` changed — T-039's single
+`internal/config/counter.go` and is recorded in step 5a of `internal/inbound/handler.go`, **after**
+the `w.WriteHeader` as T-035 requires. Not one line of `cmd/zapgw/state.go` changed — T-039's single
 source made the new key appear in the table on its own, which is the same guarantee exercised again,
 for free.*
 
@@ -248,7 +248,7 @@ the same code?" answers **yes** and walks straight past.
 *Cost: low in volume (one message per instance, at activation) and high in confidence — the zero landed
 exactly on the freshly activated instance, which is when *"has this instance sent anything yet?"* is asked
 most, and the right answer from the log would be "go look in the journal", the very trace the counters exist
-so as not to be the only one. Fix (T-054): step 3 of `cmd/zapgw/fumaca.go` records `config.CounterSent` on
+so as not to be the only one. Fix (T-054): step 3 of `cmd/zapgw/smoke.go` records `config.CounterSent` on
 success and `config.CounterSendFailures` on failure, **under the same key as the production send** — a key
 of its own for the smoke test would force the reader to add two columns to answer one question, and whoever
 has only the total never splits it back apart.*
@@ -264,13 +264,13 @@ the message would have gone out and the counter would say zero again. It is the 
 ordering mutation, one surface further along — the defence that actually exists is the SIGNATURE of
 `Registrar`, which returns nothing and therefore cannot abort `fumaca` after the message has gone out; (4)
 swapping the key for an invented one (`enviadas_pelo_fumaca`) leaves the same test from (1) red **with no
-error at all from the command** — the closed vocabulary (`internal/config/contador.go`) only logs and moves
+error at all from the command** — the closed vocabulary (`internal/config/counter.go`) only logs and moves
 on, which is the right behaviour and also the reason a new key needs a test so it does not become silently
 discarded counting.
 
 **The same pitfall on the SURFACE, not on the data: the consumer saw four blocks the operator with an SSH
 session open did not see.** T-060 (route `GET /v1/estado`) and T-064 (`certificado_do_callback`) shipped on
-the same day, each with a green suite, and neither touched `cmd/zapgw/estado.go`: the route published
+the same day, each with a green suite, and neither touched `cmd/zapgw/state.go`: the route published
 `estado`/`pausada`, `versao`, `token_meta` and `certificado_do_callback`, and `zapgw estado` showed **only
 the counter table**. It was not a data divergence — the numbers always came from `config.SummarizeCounters`,
 the single source since T-039, and the test that compares the two surfaces number by number passed. It was a
@@ -279,12 +279,12 @@ correct, and simply does not appear where somebody is looking**. And whoever is 
 almost by definition, in the middle of an incident — they would have to leave the CT, find a consumer token
 and call the internal route to ask the binary in front of them whether Meta still accepts the token.
 *Cost: zero measured — the command never showed a WRONG number, only showed LESS, and the hole lived a few
-hours (T-060 and T-064 on 2026-07-28, closed in T-065 the same day). Fix: `internal/outbound/estado.go` —
+hours (T-060 and T-064 on 2026-07-28, closed in T-065 the same day). Fix: `internal/outbound/state.go` —
 **one place that builds the state (`BuildState`), two surfaces that present it**; the route serializes the
 `Estado` as JSON and the CLI prints `StateRows`, which comes out by **reflection** over the struct's fields.
 Neither of the two enumerates a field, and that is what prevents the relapse.*
 **The discovery mode repeats the fifth way, and it is worth recording that it was not an accident:** the
-finder was the **T-064** implementer, who ran `grep -n "token_meta\|Veredito\|vigia" cmd/zapgw/estado.go`,
+finder was the **T-064** implementer, who ran `grep -n "token_meta\|Veredito\|vigia" cmd/zapgw/state.go`,
 saw **zero lines** and — instead of quietly fixing it outside scope, or leaving it for someone to find later
 — **reported it as a task**.
 
@@ -293,17 +293,17 @@ up on BOTH screens without editing either of them. Done and reverted before the 
 (`campo_de_mutacao`), with `git status` showing **one** modified file.*
 ✅ **The guarantee exercised itself, with a real field, in T-120 (2026-08-06):** the `entrada` block
 entered the `Estado` struct and appeared in the route's JSON **and** on the `zapgw estado` screen — the
-CLI (`cmd/zapgw/estado.go`) did not gain a single line about it, only the source's construction. *It is
+CLI (`cmd/zapgw/state.go`) did not gain a single line about it, only the source's construction. *It is
 not a new proof, it is the same proof charged by a real case instead of a made-up field.*
 
 ***And the finding that only showed up on implementation: extracting the common source IS NOT ENOUGH when
 the source is another process's MEMORY.*** The `token_meta` comes from the watcher's cache
-(`internal/outbound/vigia.go`), which lives in the **server's** memory. `zapgw estado` is another process,
+(`internal/outbound/watchdog.go`), which lives in the **server's** memory. `zapgw estado` is another process,
 and is born with an **empty** cache — publishing the block by reading that cache would have put
 `veredito: desconhecido` on the screen, with both stamps blank, **forever**. That is not "less
 information": it looks like a **broken watcher**, and it sends the operator to investigate a defect that
 does not exist, in the middle of the incident. *Fix: the CLI **measures** before reading
-(`Vigia.CheckInstance`), for the same reason the probe (`saude_handler.go`) has no cache — whoever is at
+(`Vigia.CheckInstance`), for the same reason the probe (`health_handler.go`) has no cache — whoever is at
 the terminal chose the frequency by pressing Enter. A PAUSED instance still is not measured, same as on the
 server, and the `pausada: sim` next to it explains the `desconhecido`.*
 **The question that generalizes: when you unify two surfaces, ask where each field COMES FROM in each
@@ -347,7 +347,7 @@ it was not review nor traffic — it was an `instancia mostrar` test, written in
 `app_secret=nao` and showing `app_secret=sim` on a freshly created instance nobody had registered. **Cost:
 zero in production** — the instance is born PAUSED and `zapgw fumaca` is the only path to `ativo = 1`, and it
 requires a message that actually went out, impossible with a generated `token_envio`; the damage would be to
-DIAGNOSIS, not to traffic. Fix in the same commit: `cmd/zapgw/provisionar.go` marks the two as
+DIAGNOSIS, not to traffic. Fix in the same commit: `cmd/zapgw/provision.go` marks the two as
 `fromConsumerMeta` and **does not generate them** when the instance is born without identification (the
 signal for "the Meta account is the consumer's"), printing `NAO sorteados, porque sao da conta Meta do
 CONSUMIDOR: …` so that the `nao` on the screen does not look like a defect. On the gateway's two fields
@@ -611,9 +611,9 @@ was not compared against the rule of the file they had themselves just written.
 *Cost: zero in production — caught before the merge, no tag, no deploy. The cost it would have charged had it
 gone through: 30 days of an arbitrary consumer string in a log designed to last exactly that window, plus the
 same value in the journal (different retention, read by a monitor). Fix: `Store.HMACCorrelation`
-(`internal/config/crypto.go`/`transito.go`), the SAME mechanism as the other two fields — and one test per
+(`internal/config/crypto.go`/`transit.go`), the SAME mechanism as the other two fields — and one test per
 PACKAGE sweeping ALL columns for a sentinel planted in the Idempotency-Key
-(`TestOutboundTransitDoesNotStoreTheIdempotencyKeyInTheClear`, `internal/outbound/transito_test.go`), mirroring
+(`TestOutboundTransitDoesNotStoreTheIdempotencyKeyInTheClear`, `internal/outbound/transit_test.go`), mirroring
 what already existed on the inbound side.*
 
 **The question that generalizes, and it is the mother pitfall's with the target on ONE table instead of a whole
@@ -782,7 +782,7 @@ the number it protects is the very thing it forbids.**
 
 The planner swept the tree decoding `wamid`s, reported **zero** occurrences of the phone number, **and ran a
 positive control that passed**. Both facts were true; the conclusion was false. A third party's real number was in
-a `wamid` in `internal/config/transito_test.go` the whole time, in base64, and only showed up when the T-161
+a `wamid` in `internal/config/transit_test.go` the whole time, in base64, and only showed up when the T-161
 implementer opened that file for another reason.
 
 **Three defects, and each one alone was enough for the "clean" verdict to come out wrong:**
@@ -814,7 +814,7 @@ private; in an open repo, it would be irreversible.*
 - **Check WHICH value you are looking for before concluding about it.** Extracting "the number" by regex from a
   file that contains several returns the first one, not the right one.
 
-✅ **Hole CLOSED by T-162** (`internal/config/telefones_allowlist_test.go`). T-161's gate matched only
+✅ **Hole CLOSED by T-162** (`internal/config/phones_allowlist_test.go`). T-161's gate matched only
 `\b55[0-9]{10,11}\b` — a literal number; a phone number inside a `wamid`'s base64 walked past it. Now each line is
 swept twice: by the literal (as before) and by `phoneNumbersInsideTheWamid`, which decodes every `wamid.<payload>`
 found — trying the TWO possible window lengths that correspond to 12 or 13 ASCII digits (16 or 18 base64
@@ -824,7 +824,7 @@ produced legible text) is a finding, not an absence: the test fails asking for a
 `NAO DECODIFICOU`.
 
 🔴 **And the mechanism found a second real number in the very movement of building it — it is not a hypothesis,
-it is what happened.** In `cmd/zapgw/transito_test.go`, an earlier task had already swapped the literal `numero`
+it is what happened.** In `cmd/zapgw/transit_test.go`, an earlier task had already swapped the literal `numero`
 for the synthetic `5511999990000`, but the `wamid` constant on the next line, with the SAME phone number embedded
 in base64, was left untouched — because no sweep until then looked inside the base64. Decoded: a real third-party
 number, area code 32, ending in `...10` (different from the `(32) 9xxxx-xx72` number T-161 had already found and
@@ -838,7 +838,7 @@ field.*
 **A new pitfall, found while building the positive control:** decoding at SEVERAL window lengths (not just one)
 produces an "almost right" number that is not a real form of the phone number — it is the same number cut at the
 last digit by the shorter window. The first version of this function tried any length from 12 to 24 base64
-characters and, for the synthetic `wamid` in `internal/config/transito_test.go`, produced TWO findings: the right
+characters and, for the synthetic `wamid` in `internal/config/transit_test.go`, produced TWO findings: the right
 number (13 digits) and a second "number" that is just the same one with the last digit cut off — never declared
 anywhere because it never existed. The correction restricts the search to the TWO lengths that correspond to 12 or
 13 ASCII digits (16 or 18 base64 characters) and, at each offset, prefers the 13-digit one — it only falls back to
@@ -846,7 +846,7 @@ the 12-digit one if the 13-digit one does not decode legibly there. *Rule that g
 fixed-size datum with a sliding window, testing lengths "close to" the right one is not more rigorous — it is the
 way to invent a finding that does not exist.*
 
-**The positive control uses a REAL `wamid` from the corpus** (`internal/config/transito_test.go`,
+**The positive control uses a REAL `wamid` from the corpus** (`internal/config/transit_test.go`,
 `wamid.HBgNNTUzMjk5OTk5MDAwMBUCABIYFjNFQjBEO`, which decodes to the synthetic `5532999990000`, already
 allowlisted) — it swaps only the phone-number stretch for a number outside the allowlist, preserving the original
 prefix and suffix, and proves that the sweep finds it, pointing at file and line. Fabricating a `wamid` from
@@ -1251,7 +1251,7 @@ was this project's mother pitfall inside a single function.*
 
 **Checked BEFORE deciding, because the task ordered checking and because (a) would break working creation if the
 answer were otherwise:** there is no legitimate path with those fields empty. `zapgw provisionar instancia`
-(`cmd/zapgw/provisionar.go`) already requires both flags — including for a **send-only** instance, where what is
+(`cmd/zapgw/provision.go`) already requires both flags — including for a **send-only** instance, where what is
 optional is the `callback_url` and not the identification, and including for the **laboratory** one, which since
 T-071 is born from the same command. The whole suite agreed: the new validation brought down **one** test, and it
 was precisely T-068's.
@@ -1290,7 +1290,7 @@ other prevents the handler from TRUSTING one that already is.*
 **Two `json:"sameName"` tags in the SAME struct produce neither a compile error nor a runtime error — `encoding/json`
 silently ignores BOTH fields, in `Marshal` as well as in `Unmarshal`.** T-044 (a template button discriminated by
 `tipo`) started from a request written with the new field literally called `botoes` — the same as the example Meta
-itself uses. Except that `Pedido.Buttons` (`internal/outbound/mensagem.go`) had used the tag `json:"botoes"` since
+itself uses. Except that `Pedido.Buttons` (`internal/outbound/message.go`) had used the tag `json:"botoes"` since
 before, for something entirely different: the body of `"tipo": "botoes"` (an ordinary interactive message,
 `{id,titulo}`, WITHOUT a template). The two features have nothing in common beyond the name. Confirmed by
 experiment before writing any code (`json.Marshal`/`Unmarshal` on a test struct with two `json:"botoes"` fields):
@@ -1304,7 +1304,7 @@ untouched; and `Validar()` gained a NAMED guard in both directions — `botoes` 
 `botoes_template` in a `tipo:"botoes"` request are both `ErrFieldForbidden` citing the right field name — so that
 confusing the two similar names produces an error pointing where to go, instead of a silent discard. Proven by
 `TestValidateRefusesInteractiveButtonsInTemplateWithAnErrorPointingAtTemplateButtons` and
-`TestValidateRefusesTemplateButtonsInTheInteractiveButtonsType` (`internal/outbound/mensagem_test.go`).*
+`TestValidateRefusesTemplateButtonsInTheInteractiveButtonsType` (`internal/outbound/message_test.go`).*
 **The question that generalizes, and it is a sibling — not the same — of this file's mother pitfall: that question,
 "where else should this rule hold, and does it?", uncovers a name that is missing in a second place; this one
 uncovers a name that already exists in a different FIRST place. The same name for two different things is worse
@@ -1386,7 +1386,7 @@ was born WITHOUT `json:"account_type"`, counting (without checking) on the packa
 field did not. The `Unmarshal` returned no error at all: `AccountType` was silently left `""`, and the command
 printed "tipo (não informado)" even with Meta answering `"account_type":"BUSINESS"` in the body.
 *Cost: zero — caught by the test written BEFORE the commit
-(`TestDiagnosticInstagramHealthyInstanceAnswersEveryQuestion`, `cmd/zapgw/diagnostico_test.go`), which asserts the
+(`TestDiagnosticInstagramHealthyInstanceAnswersEveryQuestion`, `cmd/zapgw/diagnostics_test.go`), which asserts the
 exact text `"tipo BUSINESS"` in the output instead of merely checking that the word "tipo" appeared. A test that
 only checked "question 1 answered something" would have passed just the same with the field empty.* **The question
 that generalizes: does every struct that decodes JSON from Meta (or from any third-party API) have an explicit tag
@@ -1410,7 +1410,7 @@ is a secret, sweep **every** place it can come out: database, log, error message
 only became dangerous when somebody tried to log it.** T-037 (logging the reason for a `POST /v1/messages`,
 `/v1/media` and `/v1/templates` refusal) started from the premise written in the handler itself: `Validar()`'s error
 "names the field, never the value" — and therefore logging `err.Error()` would be safe. Reviewing
-`internal/outbound/mensagem.go` field by field (not trusting the sentence), THREE exceptions showed up that
+`internal/outbound/message.go` field by field (not trusting the sentence), THREE exceptions showed up that
 deliberately cite the refused value, with `%q`, to guide the consumer: `ErrUnknownType` (echoes `p.Type`),
 `ErrUnknownCategory` (echoes `p.Categoria`) and `ErrUnknownHeaderType` (echoes `c.Cabecalho.Type`). None of the
 three is a bug in the HTTP RESPONSE — the very consumer who sent the value is reading it back — but all three would
@@ -1418,7 +1418,7 @@ be a leak if they went into the GATEWAY'S LOG: a free-text field (`tipo`) would 
 the gateway's journal, any string a consumer (malicious or merely broken) decided to put there.
 *Cost: zero — found BEFORE the commit, by checking each `Validar()` message against the code (this project's
 doctrine), not by assuming the comment's sentence held for all 39 messages at once. Fix:
-`mensagemDeRecusaSegura(err)` in `mensagem.go` swaps the three for fixed text before logging; the HTTP response to
+`mensagemDeRecusaSegura(err)` in `message.go` swaps the three for fixed text before logging; the HTTP response to
 the consumer keeps using raw `err.Error()`, with no change at all. Proven by
 `TestHandlerLogsUnknownTypeWithoutLeakingTheRefusedValue` (`internal/outbound/handler_test.go`), which sends a
 sentinel `tipo` and requires it to appear in the RESPONSE and not appear in the LOG.* **The question that
@@ -1647,7 +1647,7 @@ code existed. What it would have charged: this project's suite **does not talk t
 NÃO alcança"), so a `PUT` would pass green here and only fail against the real Graph API — in production, on cutover
 day, with the symptom pointing at the gateway.*
 **The guard that remained:** `TestReadsSendsPOSTOnTheSendPathWithTheMetaBody`
-(`internal/outbound/leituras_handler_test.go`) asserts the verb, the path and the whole body against a fake Graph
+(`internal/outbound/reads_handler_test.go`) asserts the verb, the path and the whole body against a fake Graph
 API that **records what it received** — a double that only answered `200` would leave the correction with no guard
 at all.
 
@@ -1668,7 +1668,7 @@ later, with no visible connection to anything anybody had touched.*
 case in which the user's experience **does not contradict** the doc — and that is why the doc is the only source
 that settles it.*
 **The guard that remained:** `TestObserveNumberAsksForTheFieldsCheckedAgainstTheSource`
-(`internal/meta/numero_test.go`) requires both current names in the URL **and goes red if `messaging_limit_tier`
+(`internal/meta/number_test.go`) requires both current names in the URL **and goes red if `messaging_limit_tier`
 shows up again** — the negative assertion is the half that matters, because the positive one alone would pass green
 with both fields requested together.
 
@@ -1695,12 +1695,12 @@ class**, which the watcher treats as a definitive outcome — that is, the day M
 nobody revoked.
 *Cost: **it did not charge** — it was seen while designing T-080. What it would have charged: the most expensive
 alarm on the dashboard firing for a reason that has nothing to do with what it asserts.*
-**The defence that remained** (`internal/outbound/vigia.go`, `checkOne`): `recusado` **never** comes from a call with
+**The defence that remained** (`internal/outbound/watchdog.go`, `checkOne`): `recusado` **never** comes from a call with
 `fields=`. Before declaring a refusal, the watcher reconfirms with the clean `GET`; if the clean one passes, the
 credential is fine and what was refused was our field request — the verdict comes out `ok` and the defect becomes a
 log line. Zero cost on the happy path. Guards:
 `TestWatchdogDoesNOTRefuseTheTokenWhenGraphRefusesOnlyTheFields` and
-`TestWatchdogKEEPSRefusingWhenTheTokenIsReallyRefused` (`internal/outbound/numero_test.go`), the second because
+`TestWatchdogKEEPSRefusingWhenTheTokenIsReallyRefused` (`internal/outbound/number_test.go`), the second because
 without it, deleting the credential check entirely would pass green. In the laboratory,
 `grafo-falso --recusar-campos-do-numero` reproduces the outcome with the real binary.
 
@@ -1785,7 +1785,7 @@ catches this whole family: if the result comes back smaller than it should, does
 **The SAME pitfall, in the "bench tool" version: `len(data)` without looking at `paging.next` is not a count, it is a
 page size — and printing it as if it were a total is false precision.** Measured in production on 2026-07-31, on the
 first real run of `zapgw diagnostico` (v0.42.0) against the real Meta: `countInstagramConversations`
-(`internal/meta/diagnostico_instagram.go`) built the `GET /me/conversations` query **without `limit`**, and the FIVE
+(`internal/meta/instagram_diagnostics.go`) built the `GET /me/conversations` query **without `limit`**, and the FIVE
 calls (default inbox + four folders) returned exactly **25** — the Graph API's default page ceiling, not a
 coincidence of real data. The label *"conversas na caixa padrão: 25"* read like a count; it was "at least 25, first
 page". And worse: the folder sweep exists to distinguish "there is no DM" from "the DM landed in another drawer"
@@ -1801,7 +1801,7 @@ number the screen shows have a way for Meta to say "there is more", and does the
 promises to cover.** The sweep of the four extra folders (`other`, `page_done`, `spam`, `requests`) exists to
 distinguish "there is no DM" from "the DM landed in another drawer" — and that intent was written, in those words, in
 **three** different places: the `diag_instagram_meta.py` donated by `consumer-b`, T-109's comment when the command was
-ported, and the comment of `InstagramMessagingPermission` itself (`internal/meta/diagnostico_instagram.go`). **None
+ported, and the comment of `InstagramMessagingPermission` itself (`internal/meta/instagram_diagnostics.go`). **None
 of the three ever measured whether the `folder` parameter really filters anything.** Measured in production by T-113
 (2026-07-31 15:31 -03, `v0.42.1`): the FIVE calls — default inbox + four folders — returned `≥ 50` in **all of them**,
 even asking for `limit=100` (Meta also does not honour the requested limit on this endpoint). `spam` and `page_done`
@@ -1821,13 +1821,13 @@ against it is **indistinguishable** from code that handles it — until somebody
 repeated in three files, looks exactly like a protection that works and like one that never worked. The only way to
 know the difference is to hit the real case, and that did not happen in this project until the second measurement
 against the real Meta (T-112 measured the ceiling; T-113 measured the parameter).
-**The defence that remained:** `internal/meta/diagnostico_instagram.go` stopped asserting that the sweep works —
+**The defence that remained:** `internal/meta/instagram_diagnostics.go` stopped asserting that the sweep works —
 `MeasuredFolderResult` (today `FolderUnknown`) is the ONLY point that decides the behaviour, with the measurement
 mechanism (`ProbeInvalidInstagramFolder`, switched on by `ZAPGW_DIAGNOSTICO_SONDAR_FOLDER` without needing a
 recompile) ready for the answer that is still missing. Guards:
 `TestInstagramMessagingPermissionSweepsTheFourFoldersWhenUnknown` and
 `TestInstagramMessagingPermissionStopsSweepingWhenFolderIgnored`
-(`internal/meta/diagnostico_instagram_test.go`) prove both sides of the `if` TODAY, before the real measurement
+(`internal/meta/instagram_diagnostics_test.go`) prove both sides of the `if` TODAY, before the real measurement
 happens — without them, the switch would only be tested on the day somebody actually flipped it, too late to catch an
 inverted `if`.
 
@@ -1977,7 +1977,7 @@ the removal (see the entry above); on SENDING the same absence **has no document
 halves of the same feature are not mirrored, and treating them as if they were would have produced a send that Meta
 accepts with `200` without removing anything.
 *Cost: zero — caught BEFORE writing code, following the task's own instruction not to guess without a source. Fix
-(T-024): `internal/outbound/mensagem.go`, `validateReaction` refuses an empty/missing `emoji` on send with
+(T-024): `internal/outbound/message.go`, `validateReaction` refuses an empty/missing `emoji` on send with
 `ErrRemocaoDeReacaoNaoSuportada`, and only the ADD case is supported. **The question that would have caught it
 earlier: is a search summary about an API citing the doc of the right API, or that of a neighbouring product from the
 same company?** — Meta searches for "reaction" and "unreact" cross Messenger Platform, Instagram and WhatsApp Cloud
@@ -2001,8 +2001,8 @@ response. Only the owner's handset, watched live, decided which of the two is tr
 *Cost: none in production — but the cost in TIME was real: the task sat still from 2026-07-24 until the experiment on
 2026-07-26 because no desk source (official doc, aggregator, search) sufficed, and guessing would have risked a
 removal that Meta accepts and does not execute, with NO error signal anywhere. Fix (T-027):
-`internal/outbound/mensagem.go`, `ReacaoPedido.Emoji` became a `*string` (nil = key absent = error; pointing at `""`
-= removal; pointing at a value = add) and `validateReaction` accepts an empty emoji; `internal/outbound/corpo.go`
+`internal/outbound/message.go`, `ReacaoPedido.Emoji` became a `*string` (nil = key absent = error; pointing at `""`
+= removal; pointing at a value = add) and `validateReaction` accepts an empty emoji; `internal/outbound/body.go`
 sends the `"emoji"` key ALWAYS, even empty — an `omitempty` (or an `if != "" { ... }`) would erase the key and turn
 every removal into a request with no effect, with Meta answering `200` all the same. Proven by mutation:
 `TestReactionBodyWithEmptyEmojiSendsTheKeyEmpty` goes red if the key becomes conditional. **The question that
@@ -2186,7 +2186,7 @@ published in different clothes.
 hash — here, derived from `ZAPGW_CHAVE_CIFRA`, which already lives outside the database (it is what makes a SQLite
 backup safe to exist). With a key, whoever steals the database cannot enumerate the numbers that talked to the
 gateway; without a key, the "anonymized" data opens with a script.* See `internal/config/crypto.go`
-(`Cofre.DeterministicHMAC`) and `internal/config/transito.go`.
+(`Cofre.DeterministicHMAC`) and `internal/config/transit.go`.
 
 ---
 
@@ -2323,7 +2323,7 @@ directory, was run from somewhere else and passed without scanning anything.*
 
 🔥 **A gate that sweeps a LIST of paths only protects what someone remembered to list — and the repository ROOT is
 the path everybody forgets, because nothing lives there yet the day the list is written (2026-08-30/31, T-191).**
-`internal/config/telefones_allowlist_test.go`'s phone-number gate scanned `scannedTargets`, a fixed slice
+`internal/config/phones_allowlist_test.go`'s phone-number gate scanned `scannedTargets`, a fixed slice
 (`cmd`, `internal`, `testdata`, `docs`, `implanta`, `README.md`) grown twice already (T-159, T-185) as new places
 turned out to carry a real number. The repository root was never on it. The consumer channel file — a real phone
 number and a production `wamid`, in a repository that is PUBLIC — was created **at the root**, sat **untracked**,
@@ -2514,7 +2514,7 @@ A "disappeared" commit is almost always a question asked in the wrong place — 
 `origin/main` has the SHA and `git merge-base --is-ancestor` confirms, nothing was lost.
 
 🔴 **A hand-made backup in `/tmp` inside a git repo: the restoring `cp` accepts GARBAGE FROM ANOTHER SESSION without
-a single error.** On 2026-07-29 an implementer wanted to save `cmd/zapgw/provisionar.go` before a mutation and chose
+a single error.** On 2026-07-29 an implementer wanted to save `cmd/zapgw/provision.go` before a mutation and chose
 `/tmp/provisionar.go.bak`. **A file with that name already existed**, from an earlier session and much older. The `cp`
 back worked perfectly — exit `0`, no message — and **overwrote the real file with a version ~751 lines shorter**. The
 only signal was `git diff --stat` showing `-751`.
@@ -2890,7 +2890,7 @@ scenario idempotency exists to handle: a burst of simultaneous retries.
 
 **And `busy_timeout` does NOT cover the case where the transaction has already READ before trying to WRITE — it only
 covers waiting for a lock.** `RemoveInstance` (`internal/config/store.go:1490`), `RegisterMeta`
-(`internal/config/store.go:1072`) and `ClearTransitByPhone` (`internal/config/transito.go:360`) open a `deferred`
+(`internal/config/store.go:1072`) and `ClearTransitByPhone` (`internal/config/transit.go:360`) open a `deferred`
 transaction, READ (`SELECT`/`SELECT ... GROUP BY`) and only then WRITE within the same transaction. If another
 connection commits a real write in that interval, the read snapshot the transaction already holds goes stale, and the
 attempt to become a writer aborts — and that happens immediately, not after waiting the configured 5000 ms:
@@ -2923,7 +2923,7 @@ subject from scratch. The reasons, in order of weight:
 
 1. **Where there is an instrument, it never happened.** CT 125's journal covers **24 days** (since 25/07) with **zero**
    `database is locked` — and zero `erro de store` of any kind. `RegisterMeta` is the only one of the three that runs
-   inside the daemon and logs store errors (`internal/outbound/cadastro_handler.go:334`), so **for it the zero is
+   inside the daemon and logs store errors (`internal/outbound/registration_handler.go:334`), so **for it the zero is
    proof**.
 2. ⚠️ **For the other two the zero is NOT proof — and that is written here on purpose.** `RemoveInstance` and
    `ClearTransitByPhone` run in the **CLI**'s process, which dies with a `log.Fatalf` against the terminal of whoever
@@ -3125,7 +3125,7 @@ sent a `botao_titulo` with more than 20 characters and Meta answered `(#131009) 
 what reached the consumer was **only that — without saying which of the request's parameters was the culprit.**
 The message went out **without the button** to the end customer, and the diagnosis only closed by **manual bisection
 on a test number** (17 passed, 21 failed, then 19 and 20 confirmed the exact ceiling). T-139 moved the ceiling to the
-input (`limiteBotaoTituloCTAURL`, `internal/outbound/mensagem.go`) — but the number is not documentation: the official
+input (`limiteBotaoTituloCTAURL`, `internal/outbound/message.go`) — but the number is not documentation: the official
 Cloud API reference is **silent** about that limit, and the code comment says so on purpose instead of feigning
 certainty about a value only a third party's handset measured.
 
@@ -3151,7 +3151,7 @@ party's) against Meta's real production, on the `tenant-one` instance, with mess
 `botoes[]` (the quick-reply button's `reply.title`) has the **same ceiling, 20**, and the count is also per **RUNE**,
 not byte — 20 accented characters (`ç`, 40 bytes) passed, 21 plain characters (21 bytes) were refused with the same
 anonymous error. T-140 moved that ceiling to the input (`quickReplyButtonTitleLimit`,
-`internal/outbound/mensagem.go`, in a constant of its own — the two fields are different Cloud API endpoints and Meta
+`internal/outbound/message.go`, in a constant of its own — the two fields are different Cloud API endpoints and Meta
 may change one without the other). Consumer `consumer-b` has 7 approved labels in the catalogue between 21 and 25
 characters that today would fail in free text without this guard.
 
@@ -3217,7 +3217,7 @@ conclusion.*
 rule written and policed (*"sending and receiving with different names for the same thing is the beginning of two
 vocabularies"*, T-024) — and for that reason did not see the first one coming.
 *T-044 was going to create `botoes` for a template button parameter, shape `{indice, tipo, payload}`. `Botoes []Botao`
-with the tag `json:"botoes"` **already existed** (`mensagem.go:233`), shape `{id, titulo}`, for the interactive
+with the tag `json:"botoes"` **already existed** (`message.go:233`), shape `{id, titulo}`, for the interactive
 message variant. Same key, two shapes, disambiguated only by the message's `tipo`.*
 **And it was not merely cosmetic:** two `json:"botoes"` tags at the same level make `encoding/json` **ignore both**.
 *Cost: zero — caught by consumer `consumer-b` reading the contract before planning on top of it, with the task already
@@ -3340,10 +3340,10 @@ that is wrong.** Hiding the symptom would erase the only signal that the referen
 
 *Two mutations, done and reverted before the commit, **and the second found more than it proved**:* (1) reverting the
 reference frame to `gerado_em` leaves `TestStateRowsMeasureTheDistanceAgainstThePrintNowNotAgainstGeneratedAt`
-(`internal/outbound/estado_test.go`) red **on the word**, with `medido_em` coming out `"(daqui a 1s)"` — the assertion
+(`internal/outbound/state_test.go`) red **on the word**, with `medido_em` coming out `"(daqui a 1s)"` — the assertion
 is about the PRINTED text, not about the computed duration, because it was the text that misled the reader; (2) the
 end-to-end test on the real command
-(`TestStateCommandDoesNotAnnounceAsFutureAMeasurementThatALREADYHAPPENED`, `cmd/zapgw/estado_test.go`) **passed GREEN
+(`TestStateCommandDoesNotAnnounceAsFutureAMeasurementThatALREADYHAPPENED`, `cmd/zapgw/state_test.go`) **passed GREEN
 with the defect restored** while the fake Graph API took 50 ms: **every stamp in this project is RFC3339 WITHOUT
 fractional seconds**, and the two instants fell in the same second. Only with a 1 s delay — which guarantees the
 measurement lands in a *later* second — does the test reproduce production byte for byte. **The lesson: a test that
@@ -3366,9 +3366,9 @@ fractional seconds) come out one second apart, and the test fails pointing at a 
 it exists to prove. **Measured on `main` on 2026-07-29: `-count=150` gave 5 failures (~3.3%).**
 
 *Why a fixed clock could not be injected (the preferred way out of this family, see T-072 above): both paths — menu
-and command line — go through the SAME `provisionInstance` (`cmd/zapgw/provisionar.go`), which calls
+and command line — go through the SAME `provisionInstance` (`cmd/zapgw/provision.go`), which calls
 `store.CreateInstance` (not the `…Em` variant, which receives the instant as a parameter) and therefore does not
-receive the time from outside. Changing that would mean touching `provisionar.go`, outside T-092's scope. Fix (T-092):
+receive the time from outside. Changing that would mean touching `provision.go`, outside T-092's scope. Fix (T-092):
 zero out `StampsSince` ON BOTH SIDES before comparing, with a comment naming the reason — and only that field; the rest
 of the struct is still compared in full, so as not to reopen the pitfall the total comparison exists to close.*
 
@@ -3401,7 +3401,7 @@ menu_test.go:319: a instancia criada pelo menu difere da criada pela linha de co
 **Zeroing `TokenSetAt` alongside `StampsSince` would have fixed today and reopened tomorrow** — it is exactly the
 hand-written list about the schema that T-092 had already paid the cost of identifying and could not avoid because of
 scope. T-100 took the path T-092 pointed at as the right one and left out: `store.CreateInstanceAt` already existed,
-receiving the instant as a parameter; what was missing was `provisionInstance` (`cmd/zapgw/provisionar.go`) using it
+receiving the instant as a parameter; what was missing was `provisionInstance` (`cmd/zapgw/provision.go`) using it
 instead of `CreateInstance`. The instant now comes from a package var, `relogioDeCriacao = time.Now` (the SAME pattern
 as `outbound.printClock`, T-072 above), which the test overrides to a FIXED instant before both calls (command line
 and menu) and restores with `t.Cleanup`. With the clock frozen, both stamps are born IDENTICAL on both paths — the
@@ -3917,7 +3917,7 @@ limitation, only an instruction.** the deployment runbook (kept in the private r
 CLI path: only `zapgw fumaca` activates, **and it talks to the real Graph API**", and therefore prescribed an
 `UPDATE instancia SET ativo = 1` typed by hand into the **production** database. The sentence's second half had been
 false since `fumaca` was born: it calls `graphBase` (`cmd/zapgw/main.go`), which reads `ZAPGW_GRAPH_BASE` — pointing at
-another endpoint was always possible, and it is exactly what the suite does in `cmd/zapgw/fumaca_test.go` from day
+another endpoint was always possible, and it is exactly what the suite does in `cmd/zapgw/smoke_test.go` from day
 one.
 *Cost: a hand-written `UPDATE` on production's SQLite with the service live (T-042, and the recipe stayed written as a
 procedure for two days), plus two tasks (T-048 and T-071) spent deciding whether it was worth opening a **second
@@ -4050,7 +4050,7 @@ in-flight agent is going to rewrite is their territory until the report arrives.
 
 ### 🔥 A gate that covers one kind of personal data reads as covering all of them — and the declared hole is where the leak went through (2026-08-31)
 
-The phone-number gate (`internal/config/telefones_allowlist_test.go`, T-161/T-162/T-191) is this repository's
+The phone-number gate (`internal/config/phones_allowlist_test.go`, T-161/T-162/T-191) is this repository's
 strongest mechanism: an allowlist that fails closed, decodes base64, and has already caught real data more than once.
 Its presence in `CLAUDE.md`'s rules table, right next to the row for "no data identifying a real person," reads as
 if the whole category were covered. **It was not.** The row's own text said so, in writing, since the row was first
@@ -4073,7 +4073,7 @@ anything for this to happen; the row was accurate the whole time, and accurate i
 
 **The fix (T-193) deliberately does not extend the phone gate's allowlist model.** A phone number can be
 legitimately synthetic, so declaring one and moving on makes sense. A customer's name showing up in a public
-repository is never legitimate, so `internal/config/nomes_allowlist_test.go` has no allowlist and no per-file
+repository is never legitimate, so `internal/config/names_allowlist_test.go` has no allowlist and no per-file
 exemption at all — any match is a finding, full stop — and its needle list lives OUTSIDE the repository
 (`ZAPGW_FORBIDDEN_NAMES` or `~/.zapgw/forbidden-names.txt`), because writing the forbidden names inside a public
 repository would publish exactly what the gate exists to keep out.

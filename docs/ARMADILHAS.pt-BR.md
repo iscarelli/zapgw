@@ -78,7 +78,7 @@ quarta no mesmo dia, achada por um QUINTO jeito:**
 | aqui, Go | envelope do evento de **mensagem** (T-023) | evento de **status**, que perdia o motivo da falha (T-028) |
 | consumidor, Python | `503` para credencial no canal bilateral | o **contrato**, que todo consumidor futuro leria (movido em PR #34) |
 | consumidor, Python | incremento da série de idempotência no **worker** | o **botão "reenviar" do admin**, que regravava o telefone sem trocar a chave → `422` → cliente nunca recebia |
-| aqui, Go | vocabulário fechado de contadores (`internal/config/contador.go`) | a impressão de `zapgw estado` (`cmd/zapgw/estado.go`), que repetia a lista à mão e não sabia da chave nova (T-038/T-039) |
+| aqui, Go | vocabulário fechado de contadores (`internal/config/counter.go`) | a impressão de `zapgw estado` (`cmd/zapgw/state.go`), que repetia a lista à mão e não sabia da chave nova (T-038/T-039) |
 
 Nos três primeiros, quem escreveu a regra foi quem deixou o buraco, e nos três a suíte estava verde.
 **O que achou os três foi a mesma pergunta, não a mesma pessoa** — o que sugere que ela vale como
@@ -95,19 +95,19 @@ adversarial, captura real de tráfego, experimento com aparelho físico, reler o
 com a pergunta certa — ver as entradas "Meta / WhatsApp Cloud API", acima). A T-038 acrescentou
 `config.CounterAccountDiscarded` ao vocabulário fechado e — sem nenhuma revisão externa, nenhum teste
 novo, nenhum tráfego novo — o PRÓPRIO implementer da T-038 declarou, ao encerrar a tarefa, que
-`cmd/zapgw/estado.go` tinha uma lista própria e não sabia da chave nova. Não foi "onde mais essa regra
+`cmd/zapgw/state.go` tinha uma lista própria e não sabia da chave nova. Não foi "onde mais essa regra
 deveria valer?" perguntado por um revisor de fora: foi quem acabou de escrever o código notando, na
 hora, que o problema que ele mesmo criava era uma instância do padrão deste arquivo, e registrando
 isso como a próxima tarefa em vez de deixar para alguém achar depois.
 *Custo: zero em produção até aqui — `CounterAccountDiscarded` nunca teve seu valor real olhado por
 ninguém antes do conserto (T-039), mas também nunca deu resultado ERRADO, só invisível. Conserto:
-`config.KeysInDisplayOrder` (`internal/config/contador.go`) vira a fonte única — tanto o
-conjunto de validação (`counterKeys`, derivado dela) quanto a impressão de `cmd/zapgw/estado.go`
+`config.KeysInDisplayOrder` (`internal/config/counter.go`) vira a fonte única — tanto o
+conjunto de validação (`counterKeys`, derivado dela) quanto a impressão de `cmd/zapgw/state.go`
 (que passou a percorrê-la, sem lista própria) leem do MESMO lugar. Mutação obrigatória, feita e
-revertida antes do commit: restaurar a lista antiga de `estado.go` (sem tocar em `contador.go`) deixa
-`TestStateCommandShowsEveryVocabularyKey` (`cmd/zapgw/estado_test.go`) vermelho, faltando
+revertida antes do commit: restaurar a lista antiga de `state.go` (sem tocar em `counter.go`) deixa
+`TestStateCommandShowsEveryVocabularyKey` (`cmd/zapgw/state_test.go`) vermelho, faltando
 `conta_descartada`; acrescentar uma chave nova só em `KeysInDisplayOrder` (sem tocar em
-`estado.go`) deixa o mesmo teste verde, com a chave nova aparecendo sozinha.* **A pergunta que
+`state.go`) deixa o mesmo teste verde, com a chave nova aparecendo sozinha.* **A pergunta que
 generaliza: quando você mesmo acaba de criar a assimetria "a regra vale aqui, não vale ali", o quinto
 jeito de achá-la é simplesmente dizer isso em voz alta antes de encerrar a tarefa — não esperar que
 uma revisão, uma captura ou um teste futuro a ache por você.**
@@ -146,8 +146,8 @@ razão fica registrada porque ela é a decisão certa, não a preguiça:** a T-0
 EXERCITAR, com a lista de `Files:` fechada no comentário do passo 5 — consertar ali teria misturado,
 no mesmo commit, o que foi medido com o que foi mudado. **Fechada na T-047:**
 `config.CounterNumberDiscarded` (`numero_descartado`) entra no vocabulário fechado de
-`internal/config/contador.go` e é registrado no passo 5a de `internal/inbound/handler.go`, **depois**
-do `w.WriteHeader` como manda a T-035. Nenhuma linha de `cmd/zapgw/estado.go` mudou — a fonte única
+`internal/config/counter.go` e é registrado no passo 5a de `internal/inbound/handler.go`, **depois**
+do `w.WriteHeader` como manda a T-035. Nenhuma linha de `cmd/zapgw/state.go` mudou — a fonte única
 da T-039 fez a chave nova aparecer sozinha na tabela, que é a mesma garantia exercitada de novo, de
 graça.*
 
@@ -248,7 +248,7 @@ pergunta "os dois caminhos usam o mesmo código?" responde **sim** e passa reto.
 *Custo: baixo em volume (uma mensagem por instância, na ativação) e alto em confiança — o zero caía
 exatamente na instância recém-ativada, que é quando *"essa instância já mandou alguma coisa?"* mais é
 perguntada, e a resposta certa a partir do log seria "procure no journal", o rastro que os contadores
-existem para não ser o único. Conserto (T-054): o passo 3 do `cmd/zapgw/fumaca.go` registra
+existem para não ser o único. Conserto (T-054): o passo 3 do `cmd/zapgw/smoke.go` registra
 `config.CounterSent` no sucesso e `config.CounterSendFailures` na falha, **pela mesma chave do envio
 de produção** — chave própria para o fumaça obrigaria quem lê a somar duas colunas para responder uma
 pergunta, e quem tem só o total nunca separa de volta.*
@@ -265,12 +265,12 @@ diria zero de novo. É a mesma lição da mutação de ordem da T-047, uma super
 que existe de fato é a ASSINATURA de `Registrar`, que não devolve nada e por isso não pode abortar o
 `fumaca` depois de a mensagem ter saído; (4) trocar a chave por uma inventada (`enviadas_pelo_fumaca`)
 deixa o mesmo teste de (1) vermelho **sem erro nenhum no comando** — o vocabulário fechado
-(`internal/config/contador.go`) só loga e segue, que é o comportamento certo e também o motivo de
+(`internal/config/counter.go`) só loga e segue, que é o comportamento certo e também o motivo de
 uma chave nova precisar de teste para não virar contagem silenciosamente descartada.
 
 **A mesma armadilha na SUPERFÍCIE, e não no dado: o consumidor via quatro blocos que o operador com
 SSH aberto não via.** A T-060 (rota `GET /v1/estado`) e a T-064 (`certificado_do_callback`) subiram
-no mesmo dia, cada uma com a suíte verde, e nenhuma das duas tocou em `cmd/zapgw/estado.go`: a rota
+no mesmo dia, cada uma com a suíte verde, e nenhuma das duas tocou em `cmd/zapgw/state.go`: a rota
 publicava `estado`/`pausada`, `versao`, `token_meta` e `certificado_do_callback`, e o `zapgw estado`
 mostrava **só a tabela de contadores**. Não era divergência de dado — os números sempre vieram de
 `config.SummarizeCounters`, fonte única desde a T-039, e o teste que compara as duas superfícies
@@ -281,29 +281,29 @@ consumidor e chamar a rota interna para perguntar ao binário na frente dele se 
 token.
 *Custo: zero medido — o comando nunca mostrou número ERRADO, só mostrou MENOS, e o buraco viveu
 poucas horas (T-060 e T-064 em 2026-07-28, fechado na T-065 no mesmo dia). Conserto:
-`internal/outbound/estado.go` — **um lugar que monta o estado (`BuildState`), duas superfícies que
+`internal/outbound/state.go` — **um lugar que monta o estado (`BuildState`), duas superfícies que
 o apresentam**; a rota serializa o `Estado` em JSON e o CLI imprime `StateRows`, que sai por
 **reflexão** sobre os campos do struct. Nenhuma das duas enumera campo, e é isso que impede a
 recaída.*
 **O modo de descoberta repete o quinto jeito, e vale registrar que ele não foi acidente:** quem achou
 foi o implementador da **T-064**, que rodou
-`grep -n "token_meta\|Veredito\|vigia" cmd/zapgw/estado.go`, viu **zero linhas** e — em vez de
+`grep -n "token_meta\|Veredito\|vigia" cmd/zapgw/state.go`, viu **zero linhas** e — em vez de
 consertar calado fora do escopo, ou de deixar para alguém achar depois — **reportou como tarefa**.
 *E a mutação obrigatória é a única prova que vale aqui: acrescentar um campo ao `Estado` tem de
 aparecer nas DUAS telas sem editar nenhuma delas. Feita e revertida antes do commit
 (`campo_de_mutacao`), com `git status` mostrando **um** arquivo modificado.*
 ✅ **A garantia se exerceu sozinha, com campo de verdade, na T-120 (2026-08-06):** o bloco `entrada`
 entrou no struct `Estado` e apareceu no JSON da rota **e** na tela do `zapgw estado` — o CLI
-(`cmd/zapgw/estado.go`) não ganhou uma linha sobre ele, só a construção da fonte. *Não é prova nova, é
+(`cmd/zapgw/state.go`) não ganhou uma linha sobre ele, só a construção da fonte. *Não é prova nova, é
 a mesma prova cobrada por um caso real em vez de um campo de mentira.*
 
 ***E o achado que só apareceu ao implementar: extrair a fonte comum NÃO BASTA quando a fonte é
-MEMÓRIA de outro processo.*** O `token_meta` vem do cache da vigia (`internal/outbound/vigia.go`),
+MEMÓRIA de outro processo.*** O `token_meta` vem do cache da vigia (`internal/outbound/watchdog.go`),
 que vive na memória do **servidor**. O `zapgw estado` é outro processo, e nasce com o cache **vazio**
 — publicar o bloco lendo esse cache teria posto na tela `veredito: desconhecido`, com os dois
 carimbos em branco, **para sempre**. Isso não é "menos informação": parece **vigia quebrada**, e
 manda quem opera investigar um defeito que não existe, no meio do incidente. *Conserto: o CLI **mede**
-antes de ler (`Vigia.CheckInstance`), pelo mesmo motivo que o probe (`saude_handler.go`) não tem
+antes de ler (`Vigia.CheckInstance`), pelo mesmo motivo que o probe (`health_handler.go`) não tem
 cache — quem está na frente do terminal escolheu a frequência ao apertar Enter. Instância PAUSADA
 continua não sendo medida, igual ao servidor, e o `pausada: sim` ao lado explica o `desconhecido`.*
 **A pergunta que generaliza: ao unificar duas superfícies, pergunte de onde cada campo VEM em cada
@@ -348,7 +348,7 @@ falhando em `app_secret=nao` e mostrando `app_secret=sim` numa instância recém
 tinha cadastrado. **Custo: zero em produção** — a instância nasce PAUSADA e o `zapgw fumaca` é o
 único caminho para `ativo = 1`, e ele exige uma mensagem que saiu de verdade, impossível com
 `token_envio` sorteado; o estrago seria de DIAGNÓSTICO, não de tráfego. Conserto no mesmo commit:
-`cmd/zapgw/provisionar.go` marca os dois como `fromConsumerMeta` e **não os sorteia** quando a
+`cmd/zapgw/provision.go` marca os dois como `fromConsumerMeta` e **não os sorteia** quando a
 instância nasce sem identificação (o sinal de "a conta Meta é do consumidor"), imprimindo
 `NAO sorteados, porque sao da conta Meta do CONSUMIDOR: …` para que o `nao` na tela não pareça
 defeito. Nos dois campos do gateway (`verify_token`, `segredo_entrega`) o sorteio da T-052 continua
@@ -612,10 +612,10 @@ escrever.
 *Custo: zero em produção — pego antes do merge, sem tag, sem deploy. O custo que teria cobrado se
 passasse: 30 dias de string arbitrária de consumidor num log pensado para durar exatamente essa
 janela, mais o mesmo valor no journal (retenção diferente, lida por monitor). Conserto:
-`Store.HMACCorrelation` (`internal/config/crypto.go`/`transito.go`), MESMO mecanismo dos outros dois
+`Store.HMACCorrelation` (`internal/config/crypto.go`/`transit.go`), MESMO mecanismo dos outros dois
 campos — e um teste por PACOTE que varre TODAS as colunas atrás de uma sentinela plantada na
 Idempotency-Key (`TestOutboundTransitDoesNotStoreTheIdempotencyKeyInTheClear`,
-`internal/outbound/transito_test.go`), espelhando o que já existia do lado da entrada.*
+`internal/outbound/transit_test.go`), espelhando o que já existia do lado da entrada.*
 
 **A pergunta que generaliza, e ela é a mesma da armadilha-mãe com o alvo em cima de UMA tabela em vez
 de um sistema inteiro:** ao proteger um campo com HMAC/cifra, pergunte **"quais OUTROS campos desta
@@ -785,7 +785,7 @@ carrega o número que protege é a própria coisa que ela proíbe.**
 
 O planner varreu a árvore decodificando `wamid`, reportou **zero** ocorrências do telefone, **e rodou
 um controle positivo que passou**. Os dois fatos eram verdadeiros; a conclusão, falsa. O número real
-de um terceiro estava num `wamid` de `internal/config/transito_test.go` o tempo todo, em base64, e só
+de um terceiro estava num `wamid` de `internal/config/transit_test.go` o tempo todo, em base64, e só
 apareceu quando o implementador da T-161 abriu aquele arquivo por outro motivo.
 
 **Três defeitos, e cada um sozinho bastava para o "limpo" sair errado:**
@@ -817,7 +817,7 @@ porque o repositório ainda é privado; num repo aberto, seria irreversível.*
 - **Confira QUAL valor você está procurando antes de concluir sobre ele.** Extrair "o número" por
   regex de um arquivo que contém vários devolve o primeiro, não o certo.
 
-✅ **Buraco FECHADO pela T-162** (`internal/config/telefones_allowlist_test.go`). O portão da T-161
+✅ **Buraco FECHADO pela T-162** (`internal/config/phones_allowlist_test.go`). O portão da T-161
 casava só `\b55[0-9]{10,11}\b` — número literal; um telefone dentro do base64 de um `wamid` passava
 por ele. Agora cada linha é varrida duas vezes: pelo literal (como antes) e por
 `phoneNumbersInsideTheWamid`, que decodifica todo `wamid.<payload>` achado — tentando os DOIS únicos
@@ -828,7 +828,7 @@ lista só. Falha de decodificação (nenhuma janela produziu texto legível) é 
 teste reprova pedindo olho humano, marcado `NAO DECODIFICOU`.
 
 🔴 **E o mecanismo achou um segundo número real no mesmo movimento de construí-lo — não é hipótese, é
-o que aconteceu.** Em `cmd/zapgw/transito_test.go`, uma tarefa anterior já tinha trocado o literal
+o que aconteceu.** Em `cmd/zapgw/transit_test.go`, uma tarefa anterior já tinha trocado o literal
 `numero` pelo sintético `5511999990000`, mas a constante `wamid` na linha seguinte, com o MESMO
 telefone embutido em base64, ficou intocada — porque nenhuma varredura até então olhava dentro do
 base64. Decodificado: um número real de terceiro, DDD 32, terminado em `...10` (diferente do número
@@ -843,7 +843,7 @@ lado de um `wamid` sujo é exatamente o tipo de vizinhança que engana quem só 
 janela (não só um) produz um número "quase certo" que não é uma forma real do telefone — é o mesmo
 número cortado no último dígito pela janela mais curta. A primeira versão desta função tentava
 qualquer comprimento de 12 a 24 caracteres de base64 e, para o `wamid` sintético de
-`internal/config/transito_test.go`, produzia DOIS achados: o número certo (13 dígitos) e um segundo
+`internal/config/transit_test.go`, produzia DOIS achados: o número certo (13 dígitos) e um segundo
 "número" que é só o mesmo com o último dígito cortado — nunca declarado em lugar nenhum porque nunca
 existiu. A correção restringe a busca aos DOIS únicos comprimentos que correspondem a 12 ou 13 dígitos
 ASCII (16 ou 18 caracteres de base64) e, em cada deslocamento, prefere o de 13 dígitos — só cai para o
@@ -851,7 +851,7 @@ de 12 se o de 13 não decodificar de forma legível ali. *Regra que generaliza: 
 tamanho fixo por janela deslizante, testar comprimentos "próximos" do certo não é mais rigoroso — é o
 jeito de inventar um achado que não existe.*
 
-**O controle positivo usa um `wamid` REAL do corpus** (`internal/config/transito_test.go`,
+**O controle positivo usa um `wamid` REAL do corpus** (`internal/config/transit_test.go`,
 `wamid.HBgNNTUzMjk5OTk5MDAwMBUCABIYFjNFQjBEO`, que decodifica para o sintético `5532999990000`, já
 allowlisted) — troca só o trecho do telefone por um número fora da allowlist, preservando prefixo e
 sufixo originais, e prova que a varredura o acha apontando arquivo e linha. Fabricar um `wamid` do
@@ -1276,7 +1276,7 @@ dois era a armadilha-mãe deste projeto dentro de uma função só.*
 
 **Conferido ANTES de decidir, porque a tarefa mandava conferir e porque (a) quebraria criação que
 funciona se a resposta fosse outra:** não existe caminho legítimo com esses campos vazios.
-`zapgw provisionar instancia` (`cmd/zapgw/provisionar.go`) já exige as duas flags — inclusive para
+`zapgw provisionar instancia` (`cmd/zapgw/provision.go`) já exige as duas flags — inclusive para
 instância **só de saída**, onde o opcional é a `callback_url` e não a identificação, e inclusive para
 a de **laboratório**, que desde a T-071 nasce pelo mesmo comando. A suíte inteira concordou: a
 validação nova derrubou **um** teste, e foi justamente o da T-068.
@@ -1318,7 +1318,7 @@ NASCER incompleta; a outra impede o handler de CONFIAR numa que já esteja assim
 `encoding/json` ignora os DOIS campos em silêncio, tanto no `Marshal` quanto no `Unmarshal`.** A
 T-044 (botão de template discriminado por `tipo`) partiu de um pedido escrito com o campo novo
 literalmente chamado `botoes` — igual ao exemplo que a própria Meta usa. Só que `Pedido.Buttons`
-(`internal/outbound/mensagem.go`) já usava a tag `json:"botoes"` desde antes, para outra coisa
+(`internal/outbound/message.go`) já usava a tag `json:"botoes"` desde antes, para outra coisa
 inteiramente diferente: o corpo de `"tipo": "botoes"` (mensagem interativa comum, `{id,titulo}`,
 SEM template). As duas funcionalidades não têm nada em comum além do nome. Confirmado por
 experimento antes de escrever qualquer código (`json.Marshal`/`Unmarshal` numa struct de teste com
@@ -1335,7 +1335,7 @@ de `tipo:"botoes"` são, os dois, `ErrFieldForbidden` citando o nome certo do ca
 confundir os dois nomes parecidos produza um erro que aponta para onde ir, em vez de um descarte
 silencioso. Provado por `TestValidateRefusesInteractiveButtonsInTemplateWithAnErrorPointingAtTemplateButtons`
 e `TestValidateRefusesTemplateButtonsInTheInteractiveButtonsType`
-(`internal/outbound/mensagem_test.go`).*
+(`internal/outbound/message_test.go`).*
 **A pergunta que generaliza, e é irmã — não a mesma — da armadilha-mãe deste arquivo: aquela
 pergunta "onde mais essa regra deveria valer, e vale?" descobre um nome que falta num segundo
 lugar; esta aqui descobre um nome que já existe num PRIMEIRO lugar diferente. O mesmo nome para
@@ -1422,7 +1422,7 @@ case-insensitive puro, e mascararam que o terceiro campo não batia. O `Unmarsha
 nenhum: `AccountType` ficava silenciosamente `""`, e o comando imprimia "tipo (não informado)" mesmo
 com a Meta respondendo `"account_type":"BUSINESS"` no corpo.
 *Custo: zero — pego pelo teste escrito ANTES do commit
-(`TestDiagnosticInstagramHealthyInstanceAnswersEveryQuestion`, `cmd/zapgw/diagnostico_test.go`),
+(`TestDiagnosticInstagramHealthyInstanceAnswersEveryQuestion`, `cmd/zapgw/diagnostics_test.go`),
 que afirma o texto exato `"tipo BUSINESS"` na saída em vez de só conferir que a palavra "tipo"
 apareceu. Um teste que só checasse "a pergunta 1 respondeu alguma coisa" teria passado do mesmo jeito
 com o campo vazio.* **A pergunta que generaliza: todo struct que decodifica JSON da Meta (ou de
@@ -1450,7 +1450,7 @@ resposta HTTP.
 e só virou perigosa quando alguém tentou logá-la.** A T-037 (logar o motivo da recusa de
 `POST /v1/messages`, `/v1/media` e `/v1/templates`) partiu da premissa escrita no próprio handler:
 o erro de `Validar()` "nomeia o campo, nunca o valor" — e por isso seria seguro logar
-`err.Error()`. Revisando `internal/outbound/mensagem.go` campo a campo (não confiando na frase),
+`err.Error()`. Revisando `internal/outbound/message.go` campo a campo (não confiando na frase),
 apareceram TRÊS exceções que citam de propósito o valor recusado, com `%q`, para orientar o
 consumidor: `ErrUnknownType` (ecoa `p.Type`), `ErrUnknownCategory` (ecoa `p.Categoria`)
 e `ErrUnknownHeaderType` (ecoa `c.Cabecalho.Type`). Nenhuma das três é bug na RESPOSTA HTTP
@@ -1459,7 +1459,7 @@ fossem para o LOG DO GATEWAY: um campo de texto livre (`tipo`) viraria canal par
 journal do gateway, qualquer string que um consumidor (malicioso ou só quebrado) decidisse pôr ali.
 *Custo: zero — achado ANTES do commit, ao conferir cada mensagem de `Validar()` contra o código
 (doutrina deste projeto), não ao assumir que a frase do comentário valia para as 39 mensagens de
-uma vez. Conserto: `mensagemDeRecusaSegura(err)` em `mensagem.go` troca as três por texto fixo
+uma vez. Conserto: `mensagemDeRecusaSegura(err)` em `message.go` troca as três por texto fixo
 antes de logar; a resposta HTTP ao consumidor continua usando `err.Error()` cru, sem mudança
 nenhuma. Provado por `TestHandlerLogsUnknownTypeWithoutLeakingTheRefusedValue`
 (`internal/outbound/handler_test.go`), que manda um `tipo` sentinela e exige que ele apareça na
@@ -1712,7 +1712,7 @@ existir código. O que ela cobraria: a suíte deste projeto **não fala com a Me
 o verify NÃO alcança"), então um `PUT` passaria verde aqui e falharia só contra a Graph API de
 verdade — em produção, no dia da virada, com o sintoma apontando para o gateway.*
 **A guarda que ficou:** `TestReadsSendsPOSTOnTheSendPathWithTheMetaBody`
-(`internal/outbound/leituras_handler_test.go`) afirma verbo, caminho e corpo inteiro contra uma Graph
+(`internal/outbound/reads_handler_test.go`) afirma verbo, caminho e corpo inteiro contra uma Graph
 API falsa que **grava o que recebeu** — um duplo que só respondesse `200` deixaria a correção sem
 guarda nenhuma.
 
@@ -1734,7 +1734,7 @@ falha chegaria meses depois, sem relação visível com nada que alguém tivesse
 exatamente o caso em que a experiência de quem usa **não contradiz** a doc — e por isso a doc é a
 única fonte que resolve.*
 **A guarda que ficou:** `TestObserveNumberAsksForTheFieldsCheckedAgainstTheSource`
-(`internal/meta/numero_test.go`) exige os dois nomes atuais na URL **e fica vermelho se
+(`internal/meta/number_test.go`) exige os dois nomes atuais na URL **e fica vermelho se
 `messaging_limit_tier` voltar a aparecer** — a asserção negativa é a metade que importa, porque a
 positiva sozinha passaria verde com os dois campos pedidos juntos.
 
@@ -1762,12 +1762,12 @@ acima) pintaria `token_meta.veredito = "recusado"` em **toda instância ativa**,
 procurar credencial revogada que ninguém revogou.
 *Custo: **não cobrou** — foi visto ao desenhar a T-080. O que ele cobraria: o alarme mais caro do
 painel disparando por um motivo que não tem nada a ver com o que ele afirma.*
-**A defesa que ficou** (`internal/outbound/vigia.go`, `checkOne`): `recusado` **nunca** nasce de
+**A defesa que ficou** (`internal/outbound/watchdog.go`, `checkOne`): `recusado` **nunca** nasce de
 uma chamada com `fields=`. Antes de declarar recusa, a vigia reconfirma com o `GET` limpo; se o limpo
 passa, a credencial está boa e quem foi recusado foi o nosso pedido de campo — o veredito sai `ok` e
 o defeito vira uma linha de log. Custo zero no caminho feliz. Guardas:
 `TestWatchdogDoesNOTRefuseTheTokenWhenGraphRefusesOnlyTheFields` e
-`TestWatchdogKEEPSRefusingWhenTheTokenIsReallyRefused` (`internal/outbound/numero_test.go`), a
+`TestWatchdogKEEPSRefusingWhenTheTokenIsReallyRefused` (`internal/outbound/number_test.go`), a
 segunda porque sem ela apagar a checagem de credencial inteira passaria verde. No laboratório,
 `grafo-falso --recusar-campos-do-numero` reproduz o desfecho com o binário de verdade.
 
@@ -1857,7 +1857,7 @@ coisa fica vermelha?*
 **A MESMA armadilha, na versão "ferramenta de bancada": `len(data)` sem olhar `paging.next` não é
 contagem, é tamanho de página — e imprimir isso como se fosse total é falsa precisão.** Medido em
 produção em 2026-07-31, na primeira execução real de `zapgw diagnostico` (v0.42.0) contra a Meta de
-verdade: `countInstagramConversations` (`internal/meta/diagnostico_instagram.go`) montava a query de
+verdade: `countInstagramConversations` (`internal/meta/instagram_diagnostics.go`) montava a query de
 `GET /me/conversations` **sem `limit`**, e as CINCO chamadas (caixa padrão + quatro pastas) devolveram
 exatamente **25** — o teto de página padrão da Graph API, não uma coincidência de dado real. O rótulo
 *"conversas na caixa padrão: 25"* lia como contagem; era "pelo menos 25, primeira página". E pior: a
@@ -1875,7 +1875,7 @@ contra o caso que promete cobrir.** A varredura das quatro pastas extras (`other
 `spam`, `requests`) existe para distinguir "não tem DM" de "a DM caiu noutra gaveta" — e essa
 intenção foi escrita, com essas palavras, em **três** lugares diferentes: o `diag_instagram_meta.py`
 doado pelo `consumer-b`, o comentário da T-109 quando o comando foi portado, e o comentário da
-própria `InstagramMessagingPermission` (`internal/meta/diagnostico_instagram.go`). **Nenhum dos três
+própria `InstagramMessagingPermission` (`internal/meta/instagram_diagnostics.go`). **Nenhum dos três
 jamais mediu se o parâmetro `folder` realmente filtra alguma coisa.** Medido em produção pela T-113
 (2026-07-31 15:31 -03, `v0.42.1`): as CINCO chamadas — caixa padrão + quatro pastas — devolveram
 `≥ 50` **em todas**, mesmo pedindo `limit=100` (a Meta também não honra o limite pedido neste
@@ -1897,13 +1897,13 @@ convincente, repetido em três arquivos, tem exatamente a mesma aparência de um
 e de uma que nunca funcionou. A única forma de saber a diferença é bater no caso de verdade, e isso
 não aconteceu neste projeto até a segunda medição contra a Meta real (T-112 mediu o teto; T-113 mediu
 o parâmetro).
-**A defesa que ficou:** `internal/meta/diagnostico_instagram.go` deixou de afirmar que a varredura
+**A defesa que ficou:** `internal/meta/instagram_diagnostics.go` deixou de afirmar que a varredura
 funciona — `MeasuredFolderResult` (hoje `FolderUnknown`) é o ÚNICO ponto que decide o
 comportamento, com o mecanismo de medição (`ProbeInvalidInstagramFolder`, ligado por
 `ZAPGW_DIAGNOSTICO_SONDAR_FOLDER` sem precisar recompilar) pronto para a resposta que ainda falta.
 Guardas: `TestInstagramMessagingPermissionSweepsTheFourFoldersWhenUnknown` e
 `TestInstagramMessagingPermissionStopsSweepingWhenFolderIgnored`
-(`internal/meta/diagnostico_instagram_test.go`) prova os dois lados do `if` HOJE, antes de a medição
+(`internal/meta/instagram_diagnostics_test.go`) prova os dois lados do `if` HOJE, antes de a medição
 real acontecer — sem elas, o interruptor só seria testado no dia em que alguém o virasse de verdade,
 tarde demais para pegar um `if` invertido.
 
@@ -2065,7 +2065,7 @@ no ENVIO a mesma ausência **não tem semântica documentada nenhuma** — as du
 funcionalidade não são espelhadas, e tratar como se fossem teria produzido um envio que a Meta
 aceita com `200` sem remover nada.
 *Custo: zero — pego ANTES de escrever código, seguindo a instrução da própria tarefa de não
-adivinhar sem fonte. Conserto (T-024): `internal/outbound/mensagem.go`, `validateReaction` recusa
+adivinhar sem fonte. Conserto (T-024): `internal/outbound/message.go`, `validateReaction` recusa
 `emoji` vazio/ausente no envio com `ErrRemocaoDeReacaoNaoSuportada`, e só o caso de ADICIONAR é
 suportado. **A pergunta que teria pego mais cedo: um resumo de busca sobre uma API está citando
 a doc da API certa, ou a de um produto vizinho da mesma empresa?** — buscas por "reaction" e
@@ -2093,9 +2093,9 @@ Só o aparelho do dono, olhado ao vivo, decidiu qual dos dois é verdade.
 *Custo: nenhum em produção — mas o custo em TEMPO foi real: a tarefa ficou parada de 2026-07-24
 até o experimento em 2026-07-26 porque nenhuma fonte de escritório (doc oficial, agregador,
 busca) bastava, e adivinhar teria arriscado uma remoção que a Meta aceita e não executa, sem
-NENHUM sinal de erro em lugar nenhum. Conserto (T-027): `internal/outbound/mensagem.go`,
+NENHUM sinal de erro em lugar nenhum. Conserto (T-027): `internal/outbound/message.go`,
 `ReacaoPedido.Emoji` virou `*string` (nil = chave ausente = erro; aponta para `""` = remoção;
-aponta para valor = adiciona) e `validateReaction` aceita emoji vazio; `internal/outbound/corpo.go`
+aponta para valor = adiciona) e `validateReaction` aceita emoji vazio; `internal/outbound/body.go`
 manda a chave `"emoji"` SEMPRE, mesmo vazia — um `omitempty` (ou um `if != "" { ... }`)
 apagaria a chave e transformaria toda remoção num pedido sem efeito, com a Meta respondendo
 `200` do mesmo jeito. Provado por mutação: `TestReactionBodyWithEmptyEmojiSendsTheKeyEmpty`
@@ -2295,7 +2295,7 @@ não é segredo: é só uma tabela-verdade publicada com outra roupa.
 junto com o hash — aqui, derivada da `ZAPGW_CHAVE_CIFRA`, que já vive fora do banco (é o que torna o
 backup do SQLite seguro de existir). Com chave, quem rouba o banco não consegue enumerar os números
 que falaram com o gateway; sem chave, o "anonimizado" se abre com um script.* Ver
-`internal/config/crypto.go` (`Cofre.DeterministicHMAC`) e `internal/config/transito.go`.
+`internal/config/crypto.go` (`Cofre.DeterministicHMAC`) e `internal/config/transit.go`.
 
 ---
 
@@ -2440,7 +2440,7 @@ ao diretório de trabalho, era rodado de outro lugar e passava sem escanear nada
 
 🔥 **Um portão que varre uma LISTA de caminhos só protege o que alguém lembrou de listar — e a RAIZ do
 repositório é o caminho que todo mundo esquece, porque nada mora lá no dia em que a lista é escrita
-(2026-08-30/31, T-191).** O portão de telefone de `internal/config/telefones_allowlist_test.go` varria
+(2026-08-30/31, T-191).** O portão de telefone de `internal/config/phones_allowlist_test.go` varria
 `scannedTargets`, uma fatia fixa (`cmd`, `internal`, `testdata`, `docs`, `implanta`, `README.md`) que já
 cresceu duas vezes (T-159, T-185) porque um lugar novo carregava um número real. A raiz do repositório
 nunca esteve nela. O arquivo do canal com o consumidor — telefone real e `wamid` de produção, num
@@ -2559,9 +2559,9 @@ efeito colateral (o caminho recebido) — a única asserção que não depende d
 🔴 **Teste que aponta `c.base` do CLIENTE e o `base` do PARÂMETRO para o MESMO servidor de mentira
 nunca exercita qual dos dois o código realmente usa.** A T-097 escreveu `SendInstagramMessage`
 montando a URL sobre `c.base` (o host do WhatsApp, `graph.facebook.com/vNN`) em vez de receber a
-base por parâmetro como `RenewInstagramToken` já fazia — e todo teste da época (`internal/outbound
-/instagram_test.go`) usava `meta.NovoClient(metaSrv.Client(), metaSrv.URL)`, o MESMO `metaSrv` para
-tudo. Com um host só no teste, "usei `c.base`" e "usei a base certa" produzem a MESMA requisição —
+base por parâmetro como `RenewInstagramToken` já fazia — e todo teste da época
+(`internal/outbound/instagram_test.go`) usava `meta.NovoClient(metaSrv.Client(), metaSrv.URL)`, o
+MESMO `metaSrv` para tudo. Com um host só no teste, "usei `c.base`" e "usei a base certa" produzem a MESMA requisição —
 a suíte ficava verde nos dois casos. **O defeito só apareceu contra a Meta real**, na primeira
 ativação de verdade da `tenant-two-ig` (2026-07-31 00:24 UTC = 2026-07-30 21:24 -03): `Invalid OAuth access token - Cannot
 parse access token`, porque um token de Instagram Login não é parseável em `graph.facebook.com`. A
@@ -2651,7 +2651,7 @@ Commit "desaparecido" é quase sempre pergunta feita no lugar errado — e é ba
 `origin/main` tem o SHA e `git merge-base --is-ancestor` confirma, nada foi perdido.
 
 🔴 **Backup à mão em `/tmp` dentro de um repo git: o `cp` de restauração aceita LIXO DE OUTRA SESSÃO
-sem um erro sequer.** Em 2026-07-29 um implementador quis guardar `cmd/zapgw/provisionar.go` antes de
+sem um erro sequer.** Em 2026-07-29 um implementador quis guardar `cmd/zapgw/provision.go` antes de
 uma mutação e escolheu `/tmp/provisionar.go.bak`. **Já existia um arquivo com esse nome**, de sessão
 anterior e muito mais antigo. O `cp` de volta funcionou perfeitamente — exit `0`, nenhuma mensagem — e
 **sobrescreveu o arquivo real por uma versão ~751 linhas mais curta**. O único sinal foi
@@ -3057,7 +3057,7 @@ retries simultâneos.
 
 **E `busy_timeout` NÃO cobre o caso em que a transação já LEU antes de tentar ESCREVER — só cobre
 espera por trava.** `RemoveInstance` (`internal/config/store.go:1490`), `RegisterMeta`
-(`internal/config/store.go:1072`) e `ClearTransitByPhone` (`internal/config/transito.go:360`)
+(`internal/config/store.go:1072`) e `ClearTransitByPhone` (`internal/config/transit.go:360`)
 abrem uma transação `deferred`, LEEM (`SELECT`/`SELECT ... GROUP BY`) e só depois ESCREVEM na mesma
 transação. Se outra conexão comitar uma escrita real no meio desse intervalo, o instantâneo (snapshot)
 de leitura que a transação já tem fica velho, e a tentativa de virar escritora aborta — e isso
@@ -3093,7 +3093,7 @@ alguém reabriria o assunto do zero. Os motivos, na ordem em que pesam:
 1. **Onde há instrumento, nunca aconteceu.** O journal do CT 125 cobre **24 dias** (desde 25/07) com
    **zero** `database is locked` — e zero `erro de store` de qualquer tipo. `RegisterMeta` é a única
    das três que corre dentro do daemon e loga erro de store
-   (`internal/outbound/cadastro_handler.go:334`), então **para ela o zero é prova**.
+   (`internal/outbound/registration_handler.go:334`), então **para ela o zero é prova**.
 2. ⚠️ **Para as outras duas o zero NÃO é prova — e isso fica escrito de propósito.**
    `RemoveInstance` e `ClearTransitByPhone` correm no processo do **CLI**, que morre em
    `log.Fatalf` contra o terminal de quem digitou (`cmd/zapgw/main.go:241`). O erro **nunca chega ao
@@ -3305,7 +3305,7 @@ respondeu `(#131009) Parameter value is not valid`, e o que chegou ao consumidor
 dizer qual dos parâmetros do pedido era o culpado.**
 A mensagem saiu **sem o botão** para o cliente final, e o diagnóstico só fechou por **bissecção manual
 num número de teste** (17 passou, 21 falhou, depois 19 e 20 confirmaram o teto exato). A T-139 moveu
-o teto para a entrada (`limiteBotaoTituloCTAURL`, `internal/outbound/mensagem.go`) — mas o número não
+o teto para a entrada (`limiteBotaoTituloCTAURL`, `internal/outbound/message.go`) — mas o número não
 é documentação: a referência oficial da Cloud API é **omissa** sobre esse limite, e o comentário no
 código diz isso de propósito em vez de fingir certeza sobre um valor que só um aparelho de terceiro
 mediu.
@@ -3333,7 +3333,7 @@ terceiro) contra a produção real da Meta, na instância `tenant-one`, com mens
 verdade: `titulo` de `botoes[]` (o `reply.title` do botão de resposta rápida) tem o **mesmo teto,
 20**, e a contagem também é por **RUNA**, não byte — 20 caracteres acentuados (`ç`, 40 bytes)
 passaram, 21 caracteres simples (21 bytes) foram recusados com o mesmo erro anônimo. A T-140 moveu
-esse teto para a entrada (`quickReplyButtonTitleLimit`, `internal/outbound/mensagem.go`, em
+esse teto para a entrada (`quickReplyButtonTitleLimit`, `internal/outbound/message.go`, em
 constante própria — os dois campos são endpoints diferentes da Cloud API e a Meta pode mudar um sem
 o outro). O consumidor `consumer-b` tem 7 rótulos aprovados no catálogo entre 21 e 25 caracteres
 que hoje falhariam em texto livre sem essa guarda.
@@ -3404,7 +3404,7 @@ comum é do `consumer-b` derrubando a nossa própria conclusão.*
 tinha a segunda regra escrita e vigiada (*"enviar e receber com nomes diferentes para a mesma coisa é
 o começo de dois vocabulários"*, T-024) — e por isso não viu a primeira chegando.
 *A T-044 ia criar `botoes` para parâmetro de botão de template, forma `{indice, tipo, payload}`.
-`Botoes []Botao` com tag `json:"botoes"` **já existia** (`mensagem.go:233`), forma `{id, titulo}`,
+`Botoes []Botao` com tag `json:"botoes"` **já existia** (`message.go:233`), forma `{id, titulo}`,
 para a variante de mensagem interativa. Mesma chave, duas formas, desambiguadas só pelo `tipo` da
 mensagem.*
 **E não era só cosmético:** duas tags `json:"botoes"` no mesmo nível fazem o `encoding/json`
@@ -3535,10 +3535,10 @@ referencial errou.
 *Duas mutações, feitas e revertidas antes do commit, **e a segunda encontrou mais do que provava**:*
 (1) voltar o referencial para o `gerado_em` deixa
 `TestStateRowsMeasureTheDistanceAgainstThePrintNowNotAgainstGeneratedAt`
-(`internal/outbound/estado_test.go`) vermelho **na palavra**, com `medido_em` saindo
+(`internal/outbound/state_test.go`) vermelho **na palavra**, com `medido_em` saindo
 `"(daqui a 1s)"` — a asserção é sobre o TEXTO impresso, não sobre a duração calculada, porque foi o
 texto que enganou quem leu; (2) o teste de ponta a ponta no comando de verdade
-(`TestStateCommandDoesNotAnnounceAsFutureAMeasurementThatALREADYHAPPENED`, `cmd/zapgw/estado_test.go`) **passou
+(`TestStateCommandDoesNotAnnounceAsFutureAMeasurementThatALREADYHAPPENED`, `cmd/zapgw/state_test.go`) **passou
 VERDE com o defeito reposto** enquanto a Graph API falsa demorava 50 ms: **todo carimbo deste projeto
 é RFC3339 SEM fração de segundo**, e os dois instantes caíam no mesmo segundo. Só com 1 s de atraso —
 o que garante que a medição caia num segundo *posterior* — o teste reproduz a produção byte a byte.
@@ -3566,9 +3566,9 @@ apontando um campo que não tem nada a ver com o que ele existe para provar. **M
 
 *Por que não deu para injetar relógio fixo (a saída preferida desta família, ver T-072 acima): os
 dois caminhos — menu e linha de comando — passam pelo MESMO `provisionInstance`
-(`cmd/zapgw/provisionar.go`), que chama `store.CreateInstance` (não a variante `…Em`, que recebe o
+(`cmd/zapgw/provision.go`), que chama `store.CreateInstance` (não a variante `…Em`, que recebe o
 instante por parâmetro) e por isso não recebe a hora de fora. Mudar isso seria mexer em
-`provisionar.go`, fora do escopo da T-092. Conserto (T-092): zerar `StampsSince` NOS DOIS LADOS
+`provision.go`, fora do escopo da T-092. Conserto (T-092): zerar `StampsSince` NOS DOIS LADOS
 antes de comparar, com comentário nomeando o porquê — e só esse campo; o resto do struct continua
 comparado por inteiro, para não reabrir a armadilha que a comparação total existe para fechar.*
 
@@ -3606,7 +3606,7 @@ menu_test.go:319: a instancia criada pelo menu difere da criada pela linha de co
 exatamente a lista escrita à mão sobre o esquema que a T-092 já tinha pago o custo de identificar
 e não pôde evitar por escopo. A T-100 tomou o caminho que a T-092 apontou como o certo e deixou de
 fora: `store.CreateInstanceAt` já existia, recebendo o instante por parâmetro; faltava
-`provisionInstance` (`cmd/zapgw/provisionar.go`) usá-la em vez de `CreateInstance`. O instante
+`provisionInstance` (`cmd/zapgw/provision.go`) usá-la em vez de `CreateInstance`. O instante
 passou a vir de uma var de pacote, `relogioDeCriacao = time.Now` (MESMO padrão de
 `outbound.printClock`, T-072 acima), que o teste sobrescreve para um instante FIXO antes das
 duas chamadas (linha e menu) e devolve com `t.Cleanup`. Com o relógio congelado, os dois carimbos
@@ -4164,7 +4164,7 @@ laboratório "continua sem caminho de CLI: só `zapgw fumaca` ativa, **e ele fal
 verdade**", e por isso prescrevia `UPDATE instancia SET ativo = 1` digitado à mão no banco de
 **produção**. A segunda metade da frase era falsa desde que o `fumaca` nasceu: ele chama
 `graphBase` (`cmd/zapgw/main.go`), que lê `ZAPGW_GRAPH_BASE` — apontar para outra ponta sempre foi
-possível, e é exatamente o que a suíte faz em `cmd/zapgw/fumaca_test.go` desde o primeiro dia.
+possível, e é exatamente o que a suíte faz em `cmd/zapgw/smoke_test.go` desde o primeiro dia.
 *Custo: um `UPDATE` na mão no SQLite de produção com o serviço no ar (T-042, e a receita ficou
 escrita como procedimento por dois dias), mais duas tarefas (T-048 e T-071) gastas decidindo se valia
 abrir uma **segunda porta** para `ativo = 1` — uma decisão de arquitetura para um problema que já
@@ -4305,7 +4305,7 @@ relatório chegar.*
 
 ### 🔥 Um portão que cobre um tipo de dado pessoal parece cobrir todos — e o buraco declarado foi por onde o vazamento passou (2026-08-31)
 
-O portão de telefone (`internal/config/telefones_allowlist_test.go`, T-161/T-162/T-191) é o mecanismo mais forte
+O portão de telefone (`internal/config/phones_allowlist_test.go`, T-161/T-162/T-191) é o mecanismo mais forte
 deste repositório: uma allowlist que falha fechada, decodifica base64, e já pegou dado real mais de uma vez. A
 presença dele na tabela de regras duras do `CLAUDE.md`, bem ao lado da linha "nenhum dado que identifique pessoa
 real", lê como se a categoria inteira estivesse coberta. **Não estava.** O próprio texto da linha dizia isso, por
@@ -4328,7 +4328,7 @@ para isto acontecer; a linha estava certa o tempo todo, e estar certa não é o 
 
 **O conserto (T-193) deliberadamente não estende o modelo de allowlist do portão de telefone.** Um telefone pode
 ser legitimamente sintético, então declará-lo e seguir em frente faz sentido. Um nome de cliente aparecendo num
-repositório público nunca é legítimo, então `internal/config/nomes_allowlist_test.go` não tem allowlist nem isenção
+repositório público nunca é legítimo, então `internal/config/names_allowlist_test.go` não tem allowlist nem isenção
 por arquivo nenhuma — qualquer achado é reprovação, ponto — e a lista de agulhas mora FORA do repositório
 (`ZAPGW_FORBIDDEN_NAMES` ou `~/.zapgw/forbidden-names.txt`), porque escrever os nomes proibidos dentro de um
 repositório público publicaria exatamente o que o portão existe para impedir.

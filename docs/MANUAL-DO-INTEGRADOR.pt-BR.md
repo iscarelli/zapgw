@@ -2,10 +2,10 @@
 
 *[Read in English](MANUAL-DO-INTEGRADOR.md)*
 
-**Código:** `internal/outbound/cadastro_handler.go`, `internal/outbound/fumaca.go`,
-`internal/outbound/fumaca_handler.go`, `internal/outbound/pausa_handler.go`,
-`internal/inbound/handler.go`, `cmd/zapgw/provisionar.go`, `internal/config/store.go`,
-`internal/meta/instagram.go`, `internal/outbound/renovador_instagram.go`.
+**Código:** `internal/outbound/registration_handler.go`, `internal/outbound/smoke.go`,
+`internal/outbound/smoke_handler.go`, `internal/outbound/pause_handler.go`,
+`internal/inbound/handler.go`, `cmd/zapgw/provision.go`, `internal/config/store.go`,
+`internal/meta/instagram.go`, `internal/outbound/instagram_renewer.go`.
 
 *(Esse bloco é metadado de manutenção do gateway — ele responde "que doc esta mudança de código
 quebrou?". **Você não precisa dele**, e nada abaixo depende de você ter esses arquivos.)*

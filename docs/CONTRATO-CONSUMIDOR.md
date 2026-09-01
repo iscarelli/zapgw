@@ -6,18 +6,18 @@
 `internal/inbound/mirror.go`, `internal/inbound/testdata/assinatura-entrega.json`,
 `internal/meta/types.go`, `internal/meta/parse.go`, `internal/meta/client.go`,
 `internal/meta/errors.go`, `internal/meta/media.go`, `internal/meta/templates.go`,
-`internal/meta/leitura.go`, `internal/meta/numero.go`, `internal/meta/instagram.go`,
-`internal/meta/bloqueio.go`,
+`internal/meta/read.go`, `internal/meta/number.go`, `internal/meta/instagram.go`,
+`internal/meta/block.go`,
 `internal/outbound/handler.go`,
-`internal/outbound/mensagem.go`, `internal/outbound/corpo.go`, `internal/outbound/saude_handler.go`,
+`internal/outbound/message.go`, `internal/outbound/body.go`, `internal/outbound/health_handler.go`,
 `internal/outbound/media_handler.go`, `internal/outbound/templates_handler.go`,
-`internal/outbound/leituras_handler.go`, `internal/outbound/bloqueio_handler.go`,
-`internal/outbound/estado_handler.go`,
-`internal/outbound/estado.go`, `internal/outbound/renovador_instagram.go`,
-`internal/outbound/sonda_externa.go`,
-`internal/outbound/cadastro_handler.go`, `internal/outbound/fumaca.go`,
-`internal/outbound/fumaca_handler.go`, `internal/outbound/pausa_handler.go`,
-`internal/config/store.go`, `internal/config/contador.go`, `cmd/zapgw/provisionar.go`,
+`internal/outbound/reads_handler.go`, `internal/outbound/block_handler.go`,
+`internal/outbound/state_handler.go`,
+`internal/outbound/state.go`, `internal/outbound/instagram_renewer.go`,
+`internal/outbound/external_probe.go`,
+`internal/outbound/registration_handler.go`, `internal/outbound/smoke.go`,
+`internal/outbound/smoke_handler.go`, `internal/outbound/pause_handler.go`,
+`internal/config/store.go`, `internal/config/counter.go`, `cmd/zapgw/provision.go`,
 `cmd/zapgw/main.go`.
 
 *(That block is gateway maintenance metadata — it answers "which doc did this code change break?".
@@ -2934,7 +2934,7 @@ the outcome of YOUR READING — I could not reach it, HTTP ≠ 200, a body that 
 `status`, an unknown literal — **never** a verdict it returns. Publishing "I could not measure" as a
 state the consumer treats as not-an-outage would turn the **probe's death** into a non-alarm, which is
 the very hole it exists to close. It is the same treatment the gateway gives this URL
-(`internal/outbound/sonda_externa.go:286-316`): none of those failures invents a verdict.
+(`internal/outbound/external_probe.go:286-316`): none of those failures invents a verdict.
 
 **The body carries no timestamp** — you cannot compute age from it, and you do not need to: stale data
 here does not stay silently green, **it turns into `down` on its own** after the period plus the grace.
@@ -3002,12 +3002,12 @@ last month it is its birth.
 the original scenario is WhatsApp and did not have that field when it was captured. The SEVEN values
 (`nao_se_aplica` and the six `null`) are exactly what
 `TestGETStateWhatsappInstagramTokenIsNotApplicableInTheJSON`
-(`internal/outbound/estado_instagram_test.go`) proves against the real handler — the guarantee is
+(`internal/outbound/state_instagram_test.go`) proves against the real handler — the guarantee is
 mechanical, only the paste here is manual.
 **THIRD EXCEPTION (T-107, 2026-07-30):** the `tipo` and `ig_id` fields were also added BY HAND — the
 original scenario predates both. The values (`"whatsapp"` and `"nao_se_aplica"`) are exactly what
 `TestGETStateWhatsappExposesTypeAndIgIDAsNotApplicableInTheJSON`
-(`internal/outbound/estado_instagram_test.go`) proves against the real handler.)*
+(`internal/outbound/state_instagram_test.go`) proves against the real handler.)*
 
 ```jsonc
 {
@@ -3105,7 +3105,7 @@ the block's own section, further below, for the example on an Instagram instance
 
 *(**FOURTH EXCEPTION (T-120, 2026-08-06):** the `entrada` block was added BY HAND to this paste — the
 original scenario predates it. The shape and the states are exactly the ones
-`internal/outbound/entrada_test.go` proves against the real handler; the values shown are those of an
+`internal/outbound/ingress_test.go` proves against the real handler; the values shown are those of an
 installation that comes in through a tunnel with the connector answering.)*
 
 ### `ultimo_em` — the field that answers what the counter does not
@@ -3224,7 +3224,7 @@ before summing, it stops matching — and that is not the gateway's fault.
 >
 > **Why not, and the reason is technical, not one of priority:** the day is decided on **WRITE**, not
 > on read. The counter aggregates in `INSERT INTO contador (slug, dia, …)` with the date already in
-> UTC (`internal/config/contador.go`, the `dayOf` function). **Once aggregated, the information about
+> UTC (`internal/config/counter.go`, the `dayOf` function). **Once aggregated, the information about
 > which LOCAL day each event fell on no longer exists** — only the instant of the bucket's last event
 > survives. No read parameter recovers that: a `?tz=` would return a **wrong** number with the face of
 > a right one, which is worse than not having it.
@@ -3681,7 +3681,7 @@ the **same word**.
 
 **And the same applies to `token_meta.veredito`, which also comes out as `"nao_se_aplica"` on an
 Instagram instance.** The reason is subtler than "the field does not apply by definition": the live
-check (`vigia.go`) measures by calling `GET /{phone_number_id}` on the Graph API, and an Instagram
+check (`watchdog.go`) measures by calling `GET /{phone_number_id}` on the Graph API, and an Instagram
 instance **never has** a `phone_number_id` (registration refuses it if it comes filled in). Without
 this handling, the watcher would measure with the field empty, the Graph would refuse the call locally
 (there would not even be a network request), and the gateway would classify that as a **refused

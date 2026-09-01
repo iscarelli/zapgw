@@ -2,15 +2,15 @@
 
 *[Leia em português](MODELO-DE-USO.pt-BR.md)*
 
-**Code:** `internal/outbound/cadastro_handler.go` (step 3, `POST /v1/cadastro`),
-`internal/outbound/fumaca.go` (the single path through the four smoke-test steps, called by BOTH
-facades), `internal/outbound/fumaca_handler.go` (`POST /v1/fumaca`, step 4 over the API),
-`internal/outbound/pausa_handler.go` (`POST /v1/pausa`), `cmd/zapgw/fumaca.go` (the command-line
+**Code:** `internal/outbound/registration_handler.go` (step 3, `POST /v1/cadastro`),
+`internal/outbound/smoke.go` (the single path through the four smoke-test steps, called by BOTH
+facades), `internal/outbound/smoke_handler.go` (`POST /v1/fumaca`, step 4 over the API),
+`internal/outbound/pause_handler.go` (`POST /v1/pausa`), `cmd/zapgw/smoke.go` (the command-line
 facade over the same path), `internal/config/store.go` (`RegisterMeta`, `RegistrationWindow`,
 `ReopenRegistrationWindow`, the `instancia.cadastro_em` migration, and
-`ActivateInstance`/`PauseInstance` — the only paths to `ativo`), `cmd/zapgw/provisionar.go`
+`ActivateInstance`/`PauseInstance` — the only paths to `ativo`), `cmd/zapgw/provision.go`
 (creation with `--slug` only, the delivery bundle and `zapgw instancia reabrir-cadastro`),
-`cmd/zapgw/estado.go` (the line that says where the daily series lives), `internal/meta/instagram.go`
+`cmd/zapgw/state.go` (the line that says where the daily series lives), `internal/meta/instagram.go`
 (Instagram sending and parsing). Steps 1, 2, 3, 4 and item 8 shipped in T-079; item 1 (manual
 creation) and item 7 (registering does not activate) predate it and still hold. Step 4 over the API
 (item 7 of the audit, below) shipped in T-084; items 2, 3, 4 and 5 of the audit shipped in T-083.
@@ -131,14 +131,14 @@ The first five were open and the owner decided all of them in the same conversat
    exists and where it comes out** — omitting without saying where it lives was T-065's defect with
    the sign flipped.
 
-**Items 2, 3, 4 and 5 shipped in T-083** (`docs/CONTRATO-CONSUMIDOR.md`, and `cmd/zapgw/estado.go`
+**Items 2, 3, 4 and 5 shipped in T-083** (`docs/CONTRATO-CONSUMIDOR.md`, and `cmd/zapgw/state.go`
 for the complement to item 6).
 
 7. ✅ **Step 4 becomes executable by the consumer: the SMOKE TEST gets a route, and so does PAUSE.**
    Decided by the owner on 2026-07-28, 21:21, about the hole raised while implementing T-079 —
    `zapgw fumaca` is a **command line**, a third party has no shell on the gateway machine, and there
    was no channel even to tell us it had registered. **Implemented in T-084**
-   (`internal/outbound/fumaca.go`, `fumaca_handler.go`, `pausa_handler.go`).
+   (`internal/outbound/smoke.go`, `smoke_handler.go`, `pause_handler.go`).
 
    **The verb is what makes the decision work, and it is not "activate":**
 
@@ -150,7 +150,7 @@ for the complement to item 6).
    🔴 **What still does not exist, not even as a route: turning OFF the smoke-test REQUIREMENT.** That
    is the force flag under another name. `internal/config/store.go` (comment on `ActivateInstance`)
    (*"AtivarInstancia e o UNICO caminho para `ativo = 1` neste projeto"*) and
-   `internal/outbound/fumaca.go` (*"NAO EXISTE FLAG DE FORCA"*) exist because a path to `ativo = 1`
+   `internal/outbound/smoke.go` (*"NAO EXISTE FLAG DE FORCA"*) exist because a path to `ativo = 1`
    without real traffic would let the consumer register the wrong credential, press the button and
    find out on the first real customer. **The route also does not send a message when the instance is
    already active** — otherwise it would become the only way to burn paid messages in a loop, since it
@@ -179,13 +179,13 @@ because this is the **first slice**, and replicating the whole model (24 h windo
 `ReopenRegistrationWindow`, identity validation over the API) without a second consumer asking for it
 would be building for a hypothetical demand. If a real third party needs to self-register on an
 Instagram instance, that is the next task — and it would extend `MetaRegistration` and
-`internal/outbound/cadastro_handler.go` for the new type, not create a parallel path.
+`internal/outbound/registration_handler.go` for the new type, not create a parallel path.
 
 **What does NOT change, and it is what this document exists to protect:** the instance is born
 **paused** (`CreateInstance` writes `ativo = 0` for any type — the check is structural, not
 per-field), and only a test send **actually accepted by Meta** activates it (`zapgw fumaca` /
 `POST /v1/fumaca`, extended to call `SendInstagramMessage` when the type asks for it —
-`internal/outbound/fumaca.go`). There is not, and cannot come to be, a force flag for either type.
+`internal/outbound/smoke.go`). There is not, and cannot come to be, a force flag for either type.
 
 Protocol details (IGSID, the 24 h/7-day window, what the send route accepts) are in
 `docs/CONTRATO-CONSUMIDOR.md`, section *Instagram — a primeira fatia* — this document describes

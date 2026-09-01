@@ -6,18 +6,18 @@
 `internal/inbound/mirror.go`, `internal/inbound/testdata/assinatura-entrega.json`,
 `internal/meta/types.go`, `internal/meta/parse.go`, `internal/meta/client.go`,
 `internal/meta/errors.go`, `internal/meta/media.go`, `internal/meta/templates.go`,
-`internal/meta/leitura.go`, `internal/meta/numero.go`, `internal/meta/instagram.go`,
-`internal/meta/bloqueio.go`,
+`internal/meta/read.go`, `internal/meta/number.go`, `internal/meta/instagram.go`,
+`internal/meta/block.go`,
 `internal/outbound/handler.go`,
-`internal/outbound/mensagem.go`, `internal/outbound/corpo.go`, `internal/outbound/saude_handler.go`,
+`internal/outbound/message.go`, `internal/outbound/body.go`, `internal/outbound/health_handler.go`,
 `internal/outbound/media_handler.go`, `internal/outbound/templates_handler.go`,
-`internal/outbound/leituras_handler.go`, `internal/outbound/bloqueio_handler.go`,
-`internal/outbound/estado_handler.go`,
-`internal/outbound/estado.go`, `internal/outbound/renovador_instagram.go`,
-`internal/outbound/sonda_externa.go`,
-`internal/outbound/cadastro_handler.go`, `internal/outbound/fumaca.go`,
-`internal/outbound/fumaca_handler.go`, `internal/outbound/pausa_handler.go`,
-`internal/config/store.go`, `internal/config/contador.go`, `cmd/zapgw/provisionar.go`,
+`internal/outbound/reads_handler.go`, `internal/outbound/block_handler.go`,
+`internal/outbound/state_handler.go`,
+`internal/outbound/state.go`, `internal/outbound/instagram_renewer.go`,
+`internal/outbound/external_probe.go`,
+`internal/outbound/registration_handler.go`, `internal/outbound/smoke.go`,
+`internal/outbound/smoke_handler.go`, `internal/outbound/pause_handler.go`,
+`internal/config/store.go`, `internal/config/counter.go`, `cmd/zapgw/provision.go`,
 `cmd/zapgw/main.go`.
 
 *(Esse bloco é metadado de manutenção do gateway — ele responde "que doc esta mudança de código
@@ -2915,7 +2915,7 @@ desfecho da SUA LEITURA — não alcancei, HTTP ≠ 200, corpo que não é JSON,
 desconhecido —, **nunca** um veredito que ela devolva. Publicar "eu não consegui medir" como estado
 que o consumidor trata como não-queda faria a **morte da sonda** virar não-alarme, que é o buraco que
 ela existe para fechar. É o mesmo tratamento que o gateway dá a esta URL
-(`internal/outbound/sonda_externa.go:286-316`): nenhuma dessas falhas inventa um veredito.
+(`internal/outbound/external_probe.go:286-316`): nenhuma dessas falhas inventa um veredito.
 
 **O corpo não traz carimbo de tempo** — não dá para calcular idade a partir dele, e não é preciso:
 dado velho aqui não fica verde calado, **vira `down` sozinho** depois de período + tolerância. É a
@@ -2985,11 +2985,11 @@ passado é o nascimento dela.
 **SEGUNDA EXCEÇÃO (T-098, 2026-07-30):** o bloco `token_instagram` foi acrescentado À MÃO a esta
 colagem — o cenário original é WhatsApp e não tinha esse campo quando foi capturado. Os SETE valores
 (`nao_se_aplica` e os seis `null`) são exatamente o que `TestGETStateWhatsappInstagramTokenIsNotApplicableInTheJSON`
-(`internal/outbound/estado_instagram_test.go`) prova contra o handler de verdade — a garantia é
+(`internal/outbound/state_instagram_test.go`) prova contra o handler de verdade — a garantia é
 mecânica, só a colagem aqui é manual.
 **TERCEIRA EXCEÇÃO (T-107, 2026-07-30):** os campos `tipo` e `ig_id` também foram acrescentados À MÃO
 — o cenário original é anterior aos dois. Os valores (`"whatsapp"` e `"nao_se_aplica"`) são exatamente
-o que `TestGETStateWhatsappExposesTypeAndIgIDAsNotApplicableInTheJSON` (`internal/outbound/estado_instagram_test.go`)
+o que `TestGETStateWhatsappExposesTypeAndIgIDAsNotApplicableInTheJSON` (`internal/outbound/state_instagram_test.go`)
 prova contra o handler de verdade.)*
 
 ```jsonc
@@ -3088,7 +3088,7 @@ própria do bloco, mais abaixo, para o exemplo numa instância Instagram.)*
 
 *(**QUARTA EXCEÇÃO (T-120, 2026-08-06):** o bloco `entrada` foi acrescentado À MÃO a esta colagem — o
 cenário original é anterior a ele. A forma e os estados são exatamente os que
-`internal/outbound/entrada_test.go` prova contra o handler de verdade; os valores mostrados são os de
+`internal/outbound/ingress_test.go` prova contra o handler de verdade; os valores mostrados são os de
 uma instalação que entra por túnel com o conector respondendo.)*
 
 ### `ultimo_em` — o campo que responde o que o contador não responde
@@ -3203,7 +3203,7 @@ somar, ela deixa de bater — e a culpa não é do gateway.
 >
 > **Por que não, e o motivo é técnico, não de prioridade:** o dia é decidido na **ESCRITA**, não na
 > leitura. O contador agrega em `INSERT INTO contador (slug, dia, …)` com a data já em UTC
-> (`internal/config/contador.go`, a função `dayOf`). **Depois de agregado, a informação de em que dia
+> (`internal/config/counter.go`, a função `dayOf`). **Depois de agregado, a informação de em que dia
 > LOCAL cada evento caiu não existe mais** — só sobrevive o instante do último evento do balde.
 > Nenhum parâmetro de leitura recupera isso: um `?tz=` devolveria número **errado** com cara de
 > certo, que é pior que não ter.
@@ -3646,7 +3646,7 @@ do lado do WhatsApp (seção seguinte), e as duas direções agora usam a **mesm
 
 **E o mesmo vale para `token_meta.veredito`, que também sai `"nao_se_aplica"` numa instância
 Instagram.** O motivo é mais sutil do que "o campo não se aplica por definição": a checagem viva
-(`vigia.go`) mede chamando `GET /{phone_number_id}` na Graph API, e uma instância Instagram **nunca
+(`watchdog.go`) mede chamando `GET /{phone_number_id}` na Graph API, e uma instância Instagram **nunca
 tem** `phone_number_id` (o cadastro recusa se vier preenchido). Sem este tratamento, a vigia mediria
 com o campo vazio, a Graph recusaria a chamada localmente (nem chega a haver requisição de rede), e o
 gateway classificaria isso como **credencial recusada** — um `veredito: "recusado"` **permanente e

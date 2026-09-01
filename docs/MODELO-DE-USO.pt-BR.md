@@ -2,14 +2,14 @@
 
 *[Read in English](MODELO-DE-USO.md)*
 
-**Código:** `internal/outbound/cadastro_handler.go` (o passo 3, `POST /v1/cadastro`),
-`internal/outbound/fumaca.go` (o caminho único dos quatro passos do fumaça, chamado pelas DUAS
-fachadas), `internal/outbound/fumaca_handler.go` (`POST /v1/fumaca`, o passo 4 por API),
-`internal/outbound/pausa_handler.go` (`POST /v1/pausa`), `cmd/zapgw/fumaca.go` (a fachada de linha
+**Código:** `internal/outbound/registration_handler.go` (o passo 3, `POST /v1/cadastro`),
+`internal/outbound/smoke.go` (o caminho único dos quatro passos do fumaça, chamado pelas DUAS
+fachadas), `internal/outbound/smoke_handler.go` (`POST /v1/fumaca`, o passo 4 por API),
+`internal/outbound/pause_handler.go` (`POST /v1/pausa`), `cmd/zapgw/smoke.go` (a fachada de linha
 de comando do mesmo caminho), `internal/config/store.go` (`RegisterMeta`, `RegistrationWindow`,
 `ReopenRegistrationWindow`, a migração `instancia.cadastro_em`, e `ActivateInstance`/`PauseInstance`
-— os únicos caminhos para `ativo`), `cmd/zapgw/provisionar.go` (criação só com `--slug`, o pacote de
-entrega e `zapgw instancia reabrir-cadastro`), `cmd/zapgw/estado.go` (a linha que diz onde a série
+— os únicos caminhos para `ativo`), `cmd/zapgw/provision.go` (criação só com `--slug`, o pacote de
+entrega e `zapgw instancia reabrir-cadastro`), `cmd/zapgw/state.go` (a linha que diz onde a série
 diária mora), `internal/meta/instagram.go` (o envio e o parse de Instagram). Os passos 1, 2, 3, 4 e
 o item 8 saíram na T-079; o
 item 1 (criação manual) e o 7 (cadastrar não ativa) são anteriores e continuam valendo. O passo 4
@@ -121,14 +121,14 @@ As cinco primeiras estavam em aberto e o dono decidiu todas na mesma conversa.
    não fica cego. **A T-083 acrescentou duas linhas ao `zapgw estado` dizendo que ela existe e por onde
    sai** — omitir sem dizer onde mora era o defeito da T-065 com o sinal trocado.
 
-**Os itens 2, 3, 4 e 5 saíram na T-083** (`docs/CONTRATO-CONSUMIDOR.md`, e `cmd/zapgw/estado.go` para
+**Os itens 2, 3, 4 e 5 saíram na T-083** (`docs/CONTRATO-CONSUMIDOR.md`, e `cmd/zapgw/state.go` para
 o complemento do item 6).
 
 7. ✅ **O passo 4 passa a ser executável pelo consumidor: o FUMAÇA ganha rota, e a PAUSA também.**
    Decidido pelo dono em 2026-07-28, 21:21, sobre o buraco levantado ao implementar a T-079 — o
    `zapgw fumaca` é **comando de linha**, um terceiro não tem shell na máquina do gateway, e não
    havia canal nem para ele avisar que cadastrou. **Implementado na T-084**
-   (`internal/outbound/fumaca.go`, `fumaca_handler.go`, `pausa_handler.go`).
+   (`internal/outbound/smoke.go`, `smoke_handler.go`, `pause_handler.go`).
 
    **O verbo é o que faz a decisão funcionar, e ele não é "ativar":**
 
@@ -139,7 +139,7 @@ o complemento do item 6).
 
    🔴 **O que continua não existindo, nem por rota: desligar a EXIGÊNCIA do fumaça.** Isso é a flag de
    força com outro nome. `internal/config/store.go` (comentário de `ActivateInstance`) (*"AtivarInstancia e o UNICO caminho para
-   `ativo = 1` neste projeto"*) e `internal/outbound/fumaca.go` (*"NAO EXISTE FLAG DE FORCA"*) existem
+   `ativo = 1` neste projeto"*) e `internal/outbound/smoke.go` (*"NAO EXISTE FLAG DE FORCA"*) existem
    porque um caminho para `ativo = 1` sem tráfego real deixaria o consumidor cadastrar credencial
    errada, apertar o botão e descobrir no primeiro cliente de verdade. **A rota também não manda
    mensagem quando a instância já está ativa** — senão ela viraria o único jeito de gastar mensagem
@@ -168,12 +168,12 @@ diferente, mas porque esta é a **primeira fatia**, e replicar o modelo inteiro 
 `ReopenRegistrationWindow`, validação de identificação por API) sem um segundo consumidor pedindo
 seria construir para uma demanda hipotética. Se um terceiro real precisar se autocadastrar numa
 instância Instagram, essa é a próxima tarefa — e ela extenderia `MetaRegistration` e
-`internal/outbound/cadastro_handler.go` para o tipo novo, não criaria um caminho paralelo.
+`internal/outbound/registration_handler.go` para o tipo novo, não criaria um caminho paralelo.
 
 **O que NÃO muda, e é o que este documento existe para proteger:** a instância nasce **pausada**
 (`CreateInstance` grava `ativo = 0` para qualquer tipo — a checagem é estrutural, não por campo), e
 só um envio de teste **aceito pela Meta de verdade** a ativa (`zapgw fumaca` / `POST /v1/fumaca`,
-estendidos para chamar `SendInstagramMessage` quando o tipo pedir — `internal/outbound/fumaca.go`).
+estendidos para chamar `SendInstagramMessage` quando o tipo pedir — `internal/outbound/smoke.go`).
 Não existe, e não pode passar a existir, uma flag de força para nenhum dos dois tipos.
 
 Detalhes de protocolo (IGSID, janela de 24h/7 dias, o que a rota de envio aceita) estão em

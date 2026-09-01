@@ -4,6 +4,18 @@ Uma linha por versao entregue, no mesmo commit do bump. A entrada diz o **efeito
 
 ## Nao lancado
 
+- **T-217 — Half the doc pointers are dead after the rename — fix them, and build the gate that
+  stops it recurring** — dos 113 ponteiros `.go` em `docs/*.md`, 50 apontavam para arquivo que a
+  T-212 tinha renomeado; cada mapeamento foi confirmado por `git log --follow` (nunca por nome
+  parecido) antes do conserto. Novo portao (`internal/config/doc_pointers_test.go`,
+  `TestNoDeadGoPointerInDocs`) varre `docs/*.md` atras de todo ponteiro `.go` (caminho e
+  `arquivo.go:linha` isolado) e reprova nomeando doc/linha/ponteiro quando o arquivo nao existe;
+  falha fechada se a varredura nao achar ponteiro nenhum
+  (`TestDeadDocPointerGateFailsClosedOnZeroPointers`). Prova por mutacao real contra
+  `docs/MODELO-DE-USO.md` (reprovou citando `docs/MODELO-DE-USO.md:7`, desfeita em seguida) e
+  positivo permanente em `TestDeadDocPointerGateFailsOnAMutatedPointer`. Lista de excecoes por
+  caminho completo comeca vazia. _Completed 2026-08-31 23:02._
+
 ## v0.64.0 — 2026-08-31
 
 - **T-214 — CAMADA 4: `ZAPGW_*` and the CLI accept both names, and count the old one** — aditivo, sem
@@ -72,7 +84,7 @@ Uma linha por versao entregue, no mesmo commit do bump. A entrada diz o **efeito
   `TestWaitWithContextStopsEarlyIfTheContextIsCancelled`
   (`internal/outbound/templates_handler_test.go:1362`, margem de 135ms) e
   `TestStateRouteDoesNotHangWithTheExternalProbeStuck`
-  (`internal/outbound/sonda_externa_test.go:368`, margem de 500ms). _Completed 2026-08-31 14:50._
+  (`internal/outbound/external_probe_test.go:368`, margem de 500ms). _Completed 2026-08-31 14:50._
 
 - **T-215 — The two sibling flakes** — os dois irmaos que a T-211 apontou e nao consertou agora
   provam o MECANISMO, nao o relogio. `TestWaitWithContextStopsEarlyIfTheContextIsCancelled`
@@ -81,14 +93,14 @@ Uma linha por versao entregue, no mesmo commit do bump. A entrada diz o **efeito
   fechado; o timer de 5s nao pode ter disparado), entao a escolha e' deterministica pela semantica
   do Go, nao uma corrida — o `time.After(500ms)` do teste e' um detector de trava, nao a asserção.
   `TestStateRouteDoesNotHangWithTheExternalProbeStuck`
-  (`internal/outbound/sonda_externa_test.go`) trocou o teto `elapsed > 500ms` por uma contagem
+  (`internal/outbound/external_probe_test.go`) trocou o teto `elapsed > 500ms` por uma contagem
   atomica de conexoes aceitas pelo listener travado: como `ExternalProbe.Read` so le uma struct em
   memoria (sem I/O algum), o contador tem de ficar em zero, e essa conferencia nao depende da
   velocidade do runner. Verde 20/20 nos dois, `go test -count=1 ./...` limpo. Sobram tres
   asserções de tempo de parede no pacote, revisadas e seguras porque nenhuma e teto apertado: um
   limite so inferior (`TestWaitWithContextWaitsTheRequestedTimeWithoutCancellation`, um scheduler
   so' pode atrasar, nunca encurtar), uma janela simetrica de 1 minuto
-  (`saude_handler_test.go:148`), e a janela de VALOR (nao duracao) que a propria T-211 deixou em
+  (`health_handler_test.go:148`), e a janela de VALOR (nao duracao) que a propria T-211 deixou em
   `handler_test.go`. _Completed 2026-08-31 14:57._
 
 ## v0.63.0 — 2026-08-31
@@ -122,7 +134,7 @@ Uma linha por versao entregue, no mesmo commit do bump. A entrada diz o **efeito
   Not a new finding, but independently reconfirmed by probing the marshaled output: the Portuguese
   leftovers T-209's own changelog entry (above) already flagged and left untouched on purpose
   (`AccountAlert.tipo/severidade/id_da_entidade/descricao`, `Billing.cobravel`,
-  `status_do_recurso`, `saude_handler.go`'s `verificado_em`, …) really do appear in the marshaled
+  `status_do_recurso`, `health_handler.go`'s `verificado_em`, …) really do appear in the marshaled
   JSON, exactly as that entry says — they remain OUT of scope for this task (instrument, not
   contract) and are the planner's call, not re-litigated here.
   _Completed 2026-08-31 14:09._
@@ -155,10 +167,10 @@ future, dono-authorized decision.
   `WindowInRegistration`'s `primeira_insercao_em`/`fecha_em`, `RegistrationResponse.proximo_passo`,
   `blockItemResponse`/`blockFailureResponse.telefone`, `blockOperationResponse.operacao`,
   `blockListResponse`'s `cursor_antes`/`cursor_depois`, `SmokeResponse`'s `ja_estava_ativa`/
-  `ativa_desde`, `saude_handler.go`'s `verificado_em`, `State`'s `lideranca`/`hoje`/`definido_em`,
+  `ativa_desde`, `health_handler.go`'s `verificado_em`, `State`'s `lideranca`/`hoje`/`definido_em`,
   `templateDeletedResponse`'s `entradas`/`aviso`/`releituras`/`espera_segundos`,
-  `LeadershipInState`'s `armada`/`titular`, `entrada.go`'s `ViaTunnel`/`ViaPortForwarding` values
-  (`tunel`/`encaminhamento_de_porta`), `leituras_handler.go`'s `wamid`/`digitando`, and every
+  `LeadershipInState`'s `armada`/`titular`, `ingress.go`'s `ViaTunnel`/`ViaPortForwarding` values
+  (`tunel`/`encaminhamento_de_porta`), `reads_handler.go`'s `wamid`/`digitando`, and every
   counter name besides `old_name_used` (`recebidas`, `entregues`, `enviadas`, the whole
   `cobranca_*` family, …) — none of these appear in the migration table, so none of them moved.
   🔴 **`cru`/`raw` and the byte-exact content are two different things, and only the KEY moved:**
@@ -166,15 +178,15 @@ future, dono-authorized decision.
   the untouched exact bytes from Meta — `TestDeliverSendsTheRawAndTheEventsTogether` proves this
   byte-for-byte via `received.Raw` (a Go field, blind to the JSON tag) and needed no edit.
   **Verify (the gate, not a sample):** `TestOutputContractHasNoPortugueseKeyOrValue`
-  (`internal/outbound/contrato_ingles_test.go`) reflectively fills one maximal instance of every
+  (`internal/outbound/english_contract_test.go`) reflectively fills one maximal instance of every
   SAIDA-EVENTO event type and every SAIDA-RESPOSTA body, marshals them, and fails on any of the
   108 Portuguese tokens this task retired — proven against real data by breaking `State.State`'s
   tag back to `estado` and watching it fail, then reverting.
   `TestFrozenKeysStayIdenticalInSource` sweeps `internal/meta`/`internal/outbound` for every key
   in `docs/contrato-chaves-que-nao-mudam.txt` and fails if one goes missing — proven the same way,
   against `profile_picture_handle`. The 36 `TestEntrada*` tests (T-203/T-207/T-208) passed
-  UNCHANGED, zero edits to `entrada_apelidos.go`'s dictionaries or `entrada_apelidos_test.go`.
-  `entrada_test.go` (T-120's ingress-health block, a same-named but unrelated file) DID change —
+  UNCHANGED, zero edits to `input_aliases.go`'s dictionaries or `input_aliases_test.go`.
+  `ingress_test.go` (T-120's ingress-health block, a same-named but unrelated file) DID change —
   its SAIDA-RESPOSTA mirror structs, not the entrada mechanism.
 
 ## v0.62.1 — 2026-08-31
@@ -193,7 +205,7 @@ future, dono-authorized decision.
   `GET /v1/bloqueios`, `GET /v1/perfil`, `GET /v1/templates`, `DELETE /v1/templates`;
   `mime_do_payload`->`payload_mime` on `GET /v1/media/{id}`; `serie_dias`->`series_days` on
   `GET /v1/estado`; `nome`->`name` on `DELETE /v1/templates` — new `queryAlias`/`queryAliasRaw`
-  helpers in `entrada_apelidos.go`, the same "novo or velho" principle as the body but a
+  helpers in `input_aliases.go`, the same "novo or velho" principle as the body but a
   DIFFERENT point in the code, since a query parameter is never a JSON key). `MediaHandler`,
   `StateHandler` and `ProfileHandler` gained a POSITIONAL AND MANDATORY `counter *config.Counter`
   (same discipline T-205 used for bloqueio/cadastro/pausa) — none of the three had one before,
@@ -204,7 +216,7 @@ future, dono-authorized decision.
   `titulo` inside `botoes[]` now moves the counter by exactly +1
   (`TestEntradaConsumerScenarioTitleInPortugueseMovesTheCounter`) — before this task it did not
   move at all. Output is untouched. Two existing test helpers
-  (`askStateWithWindow`/`cmd/zapgw/estado_test.go`'s state-route test) switched their OWN query
+  (`askStateWithWindow`/`cmd/zapgw/state_test.go`'s state-route test) switched their OWN query
   spelling from `instancia`/`serie_dias` to `instance`/`series_days`, since `GET /v1/estado` now
   self-counts on the old spelling and those helpers back nearly every state-reading test in the
   suite, unrelated to this migration. `CGO_ENABLED=0 go build ./...`, `go test ./...`,
@@ -259,13 +271,13 @@ future, dono-authorized decision.
   `AcceptedTypes`, T-111) — proved not to compile without it (removed the argument from
   `cmd/zapgw/main.go`, `CGO_ENABLED=0 go build ./...` failed naming the missing parameter, restored).
   The heart of the task is the STRUCTURAL GUARD (`TestOldNameCounterGuardCoversEveryAliasRoute`,
-  `internal/outbound/entrada_apelidos_test.go`): it does not enumerate the 7 routes by hand — it
+  `internal/outbound/input_aliases_test.go`): it does not enumerate the 7 routes by hand — it
   walks the package's AST for every call site of `translateEntradaOrReject` and requires the
   enclosing function to both capture `oldNames` and reference `config.CounterOldNameUsed`, so a
   route born tomorrow that forgets the counter fails this test by name, with zero edits to the
   guard. Proved against REAL production code, not only a synthetic fixture: temporarily reverted
-  `pausa_handler.go`'s wiring back to discarding `oldNames`, the guard failed citing
-  `pauseRoute (chamada em pausa_handler.go:101:23)`, then the wiring was restored and the guard went
+  `pause_handler.go`'s wiring back to discarding `oldNames`, the guard failed citing
+  `pauseRoute (chamada em pause_handler.go:101:23)`, then the wiring was restored and the guard went
   green again. `CGO_ENABLED=0 go build ./...`, `go test ./...`, `go vet ./...`,
   `gofmt -l cmd internal` clean. _Completed 2026-08-31 10:54._
 - **The pre-push gate must not refuse a TAG that points at an already-pushed commit** (T-204) — an
@@ -291,7 +303,7 @@ future, dono-authorized decision.
 
 - **The gateway accepts English key names on ENTRADA input, and counts the old ones** (T-203, passo
   2 de 4 da T-189) — as 30 chaves de direcao ENTRADA de `docs/MIGRACAO-CONTRATO-EN.md` ganharam
-  apelido em ingles, POR POSICAO (`internal/outbound/entrada_apelidos.go`), nas 7 rotas que
+  apelido em ingles, POR POSICAO (`internal/outbound/input_aliases.go`), nas 7 rotas que
   decodificam corpo: `POST /v1/messages` (com descida nos 4 objetos aninhados —
   `cabecalho`/`reacao`/`localizacao`/`fluxo` — e em cada item de `botoes_template`),
   `POST /v1/templates`, `POST /v1/cadastro`, `POST /v1/pausa`, `POST/DELETE /v1/bloqueios`,
@@ -325,7 +337,7 @@ future, dono-authorized decision.
   inventario, com a regra de colisao do `consumer-b` creditada. Nenhum nome foi decidido pela
   tarefa. Todos os 119 ponteiros `arquivo:linha` foram conferidos mecanicamente contra o codigo
   (script Python de verificacao, nao so amostragem); um erro de arquivo achado nessa conferencia
-  (`conector` apontava para `estado.go` em vez de `entrada.go`) foi corrigido antes do commit.
+  (`conector` apontava para `state.go` em vez de `ingress.go`) foi corrigido antes do commit.
   Zero dado identificavel copiado do canal privado (so as linhas de tabela chave/valor). Verify:
   `CGO_ENABLED=0 go build ./...`, `go test ./...` (os dois portoes de dado pessoal varreram `docs/`
   e passaram), `go vet ./...`, `gofmt -l cmd internal` limpos. _Completed 2026-08-31 08:18._
@@ -387,12 +399,12 @@ future, dono-authorized decision.
   ingles entre as 29. A varredura inversa (item 4) achou 20+ chaves de SAIDA ja em ingles
   (`media_id`, `wa_id`, `id`, `status`, `ok`, os campos de `meta.Profile`/`ProfilePatch` etc.),
   incluindo a localizacao exata e corrigida do exemplo do `Why` — a resposta de `POST /v1/media`
-  emite `media_id` em `internal/outbound/media_handler.go:260` (nao em `mensagem.go:179,626`, que
+  emite `media_id` em `internal/outbound/media_handler.go:260` (nao em `message.go:179,626`, que
   sao usos de ENTRADA do mesmo nome). Nao decide nome nenhum, nao edita tabela de contrato. Verify:
   `go test ./...`, `go vet ./...`, `CGO_ENABLED=0 go build ./...`, `gofmt -l cmd internal` limpos;
   amostra de 7 `arquivo:linha` conferida com `sed -n`. _Completed 2026-08-31 06:02._
 - **Settle whether the instance-type gate exists, and make the row say what is true** (T-197) — o
-  mecanismo EXISTE: `internal/outbound/tipos.go` (`AcceptedTypes`, T-111), parametro posicional
+  mecanismo EXISTE: `internal/outbound/types.go` (`AcceptedTypes`, T-111), parametro posicional
   obrigatorio no ultimo lugar de todo construtor `outbound.New*Handler`. Provado removendo
   `outbound.WhatsAppOnly` da chamada de `NewReadsHandler` em `cmd/zapgw/main.go:430` e rodando
   `go build ./...`: `not enough arguments in call to outbound.NewReadsHandler`; restaurado, `git
@@ -414,14 +426,14 @@ future, dono-authorized decision.
   ("nao consegui verificar") de proposito. `CLAUDE.md` corrigido: a CI ja existe, nao "volta em
   2026-09-01". _Completed 2026-08-31 00:50._
 - **A gate for customer names, and the tree it cleans** (T-193) — novo portao
-  (`internal/config/nomes_allowlist_test.go`) sem allowlist e sem isencao por arquivo: qualquer
+  (`internal/config/names_allowlist_test.go`) sem allowlist e sem isencao por arquivo: qualquer
   agulha e reprovacao. A lista mora fora do repositorio (`ZAPGW_FORBIDDEN_NAMES` ou
   `~/.zapgw/forbidden-names.txt`); sem uma das duas, falha dizendo que nao conseguiu verificar,
   nunca verde. Reprovou contra a arvore suja (25 ocorrencias, 6 arquivos) antes da limpeza; depois
   da limpeza, `go test ./...` inteiro `ok`. `CLAUDE.md` e `docs/ARMADILHAS.md` (+ par pt-BR)
   atualizados. _Completed 2026-08-31 00:37._
 - **A real customer name in a test argument becomes a synthetic one** (T-192) — trocado o valor de
-  `cmd/zapgw/provisionar_test.go:2392`; varredura da agulha na arvore inteira (rastreados e
+  `cmd/zapgw/provision_test.go:2392`; varredura da agulha na arvore inteira (rastreados e
   nao-rastreados-nao-ignorados) nao achou mais nenhuma ocorrencia. _Completed 2026-08-31 00:15._
 - **The personal-data gate sweeps the whole repository, minus a declared exclusion** (T-191) — o
   portao de telefone trocou a lista fixa de diretorios (`scannedTargets`) por `filesGitSeesFromRoot`:

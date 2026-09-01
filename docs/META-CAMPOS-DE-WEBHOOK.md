@@ -274,8 +274,8 @@ literally** (`"TIER_250"`, not converted to a number: Meta may create a new tier
 **And since T-080 (2026-07-28) it is the SECOND SOURCE of one block of the state.** The
 `current_limit` is written to `numero_na_meta.limite_de_mensagens` with `fonte: "webhook"`
 (`internal/inbound/handler.go`, `recordNumberLimit`); the other source is the watcher's measurement
-(`internal/outbound/vigia.go`). The tiebreaker is `config.UpdateNumberAtMeta`
-(`internal/config/numero.go`), by the rule **"the most recent observation wins, whatever the
+(`internal/outbound/watchdog.go`). The tiebreaker is `config.UpdateNumberAtMeta`
+(`internal/config/number.go`), by the rule **"the most recent observation wins, whatever the
 source"** — and the stamp compared is **our** clock, not `entry.time`, because comparing two
 unsynchronized clocks would decide the tiebreak in silence.
 

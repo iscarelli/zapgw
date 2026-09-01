@@ -121,41 +121,6 @@ fizeram no `processado_em` hoje de manha.
 ## Active
 
 > A fila do periodo privado esta em `iscarelli/zapgw-dev`, congelada. Tarefa nova nasce aqui.
-## [ ] T-217  Half the doc pointers are dead after the rename — fix them, and build the gate that stops it recurring
-Why:    🔴 **Medido em 2026-08-31, depois da T-212:** dos **113** ponteiros `arquivo.go` nos documentos
-        de `docs/`, **50 apontam para arquivo que nao existe mais**. A camada 1 renomeou 86 arquivos e
-        os documentos ficaram apontando para os nomes velhos.
-        **A causa e' minha:** a spec da T-212 mandava corrigir comentario de codigo que citava nome
-        antigo, e **nao disse "e os docs"**. O implementador fez exatamente o que foi pedido.
-🔴      **E isto e' o incidente T-190 se repetindo em 24 h** — la eram 28 ponteiros prometendo arquivos
-        que nao tinham migrado. *Um doc que aponta para arquivo inexistente nao falha, nao avisa, e
-        so' e' descoberto por quem foi procurar e nao achou — que e' o pior momento.*
-        O `CLAUDE.md` diz que o cabecalho `Código:` existe justamente para que *"qual doc a minha
-        mudanca quebrou?"* seja mecanico. **Hoje ele nao e', porque nada confere.**
-Files:  docs/*.md
-        internal/config/  (o portao novo)
-
-Do:
-  1. **Conserte os 50**, mapeando cada nome velho para o novo. O `git log --follow` sabe o caminho de
-     cada renomeacao — use isso em vez de adivinhar pelo nome parecido.
-  2. 🔴 **Construa o portao, e ele e' metade da tarefa:** um teste que varre `docs/` atras de todo
-     ponteiro no formato `caminho/arquivo.go` (e `arquivo.go:linha`) e **reprova nomeando o doc, a
-     linha e o ponteiro** quando o arquivo nao existe.
-  3. **Falha fechada:** se a varredura nao achar ponteiro nenhum, ela **reprova** dizendo que nao
-     conseguiu verificar — zero ponteiros num repositorio com 113 significa que o padrao mudou e o
-     teste parou de olhar, nao que esta tudo certo.
-  4. **Prove por mutacao:** aponte um doc para um arquivo inexistente, confirme que o teste reprova
-     **nomeando doc, linha e ponteiro**, e desfaca. Cole a saida.
-  5. **Cuidado com os falsos positivos legitimos:** doc que cita um arquivo de OUTRO repositorio
-     (`zapgw-dev:...`), ou um caminho de exemplo, nao e' ponteiro quebrado. Se precisar de excecao,
-     🔴 **ela e' por CAMINHO COMPLETO, nunca por palavra** — foi banir a palavra `"tipo"` inteira que
-     cegou a varredura do contrato hoje.
-
-Verify:
-  - `grep` conta **zero** ponteiros mortos depois do conserto — cole o numero antes e depois.
-  - A saida da mutacao do item 4.
-  - A saida do controle de falha fechada (varredura sem ponteiro nenhum reprova).
-  - `go test -count=1 ./...`, `CGO_ENABLED=0 go build ./...`, `go vet ./...`, `gofmt -l cmd internal`.
 
 ## [ ] T-216  The obsolete-name warning never reaches the operator — surface it on a SUCCESSFUL deploy
 Why:    A T-214 fez o gateway avisar, no arranque, quando uma variavel de ambiente com nome velho foi
