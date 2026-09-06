@@ -53,11 +53,15 @@ type environment func(name string) string
 // main(), not here.
 func dispatch(args []string, out io.Writer, env environment) error {
 	if len(args) == 0 {
-		return errors.New("zapgw: falta o subcomando (provisionar | fumaca/smoke | diagnostico | instancia/instance |" +
-			" consumidor/consumer | estado/state | template | transito | log | perdidas | versao)")
+		return errors.New("zapgw: falta o subcomando (provisionar/provision | fumaca/smoke | diagnostico/diagnostics |" +
+			" instancia/instance | consumidor/consumer | estado/state | template | transito | log | perdidas | versao)")
 	}
 	switch args[0] {
 	case "provisionar":
+		// T-218: OLD (Portuguese) spelling — see the "fumaca" case above.
+		warnOldVerb(out, "provisionar", "provision")
+		return provision(args[1:], out, env)
+	case "provision":
 		return provision(args[1:], out, env)
 	case "fumaca":
 		// T-214: OLD (Portuguese) spelling of the "smoke" verb — still the
@@ -74,6 +78,11 @@ func dispatch(args []string, out io.Writer, env environment) error {
 		// T-109: READ-ONLY — does not send, does not activate, does not
 		// write to the database. See diagnostics.go for why it is not
 		// the same path as fumaca.
+		//
+		// T-218: OLD (Portuguese) spelling — see the "fumaca" case above.
+		warnOldVerb(out, "diagnostico", "diagnostics")
+		return diagnose(args[1:], out, env)
+	case "diagnostics":
 		return diagnose(args[1:], out, env)
 	case "instancia":
 		// T-214: OLD (Portuguese) spelling — see the "fumaca" case above.
@@ -148,49 +157,90 @@ func dispatch(args []string, out io.Writer, env environment) error {
 			" invocavel poderia ser posto num script e travar esperando entrada, furando a guarda" +
 			" que so deixa o menu abrir sem argumento e com terminal dos dois lados")
 	default:
-		return fmt.Errorf("zapgw: subcomando desconhecido %q (conheco: provisionar, fumaca/smoke, diagnostico,"+
+		return fmt.Errorf("zapgw: subcomando desconhecido %q (conheco: provisionar/provision, fumaca/smoke, diagnostico/diagnostics,"+
 			" instancia/instance, consumidor/consumer, estado/state, template, transito, log, versao)", args[0])
 	}
 }
 
 func instanceCommand(args []string, out io.Writer, env environment) error {
 	if len(args) == 0 {
-		return errors.New("zapgw: instancia o que? (listar | mostrar | rotacionar | reabrir-cadastro | pausar | remover | registrar | desregistrar | pin)")
+		return errors.New("zapgw: instancia o que? (listar/list | mostrar/show | rotacionar/rotate |" +
+			" reabrir-cadastro/reopen-enrollment | pausar/pause | remover/remove | registrar/register |" +
+			" desregistrar/deregister | pin)")
 	}
 	switch args[0] {
 	case "listar":
+		// T-218: OLD (Portuguese) spelling — see dispatch's "fumaca" case
+		// for why this is never removed.
+		warnOldVerb(out, "listar", "list")
+		return listInstances(args[1:], out, env)
+	case "list":
 		return listInstances(args[1:], out, env)
 	case "mostrar":
+		// T-218: OLD (Portuguese) spelling — see dispatch's "fumaca" case.
+		warnOldVerb(out, "mostrar", "show")
+		return showInstance(args[1:], out, env)
+	case "show":
 		return showInstance(args[1:], out, env)
 	case "rotacionar":
+		// T-218: OLD (Portuguese) spelling — see dispatch's "fumaca" case.
+		warnOldVerb(out, "rotacionar", "rotate")
+		return rotateInstance(args[1:], out, env)
+	case "rotate":
 		return rotateInstance(args[1:], out, env)
 	case "reabrir-cadastro":
 		// T-079: giving the consumer back the right to write their own
 		// configuration. Without this command, a consumer stuck with the
 		// wrong credential = an UPDATE by hand in the production SQLite.
+		//
+		// T-218: OLD (Portuguese) spelling — see dispatch's "fumaca" case.
+		warnOldVerb(out, "reabrir-cadastro", "reopen-enrollment")
+		return reopenEnrollment(args[1:], out, env)
+	case "reopen-enrollment":
 		return reopenEnrollment(args[1:], out, env)
 	case "pausar":
 		// T-048: bringing it down without deleting it. It is the
 		// mandatory step before removing, and the only one of the two
 		// that has an undo.
+		//
+		// T-218: OLD (Portuguese) spelling — see dispatch's "fumaca" case.
+		warnOldVerb(out, "pausar", "pause")
+		return pauseInstance(args[1:], out, env)
+	case "pause":
 		return pauseInstance(args[1:], out, env)
 	case "remover":
+		// T-218: OLD (Portuguese) spelling — see dispatch's "fumaca" case.
+		warnOldVerb(out, "remover", "remove")
+		return removeInstance(args[1:], out, env)
+	case "remove":
 		return removeInstance(args[1:], out, env)
 	case "registrar":
 		// T-151: turns on the number's two-step verification with Meta.
 		// Provisioning only — see the header of
 		// internal/meta/registration.go.
+		//
+		// T-218: OLD (Portuguese) spelling — see dispatch's "fumaca" case.
+		warnOldVerb(out, "registrar", "register")
+		return registerInstance(args[1:], out, env)
+	case "register":
 		return registerInstance(args[1:], out, env)
 	case "desregistrar":
 		// T-151: takes the number OFF the air in production, at Meta.
 		// The same confirmation pattern as `remover`.
+		//
+		// T-218: OLD (Portuguese) spelling — see dispatch's "fumaca" case.
+		warnOldVerb(out, "desregistrar", "deregister")
+		return deregisterInstance(args[1:], out, env)
+	case "deregister":
 		return deregisterInstance(args[1:], out, env)
 	case "pin":
 		// T-151: swaps the two-step verification PIN of a number ALREADY
 		// registered.
 		return changeInstancePin(args[1:], out, env)
 	default:
-		return fmt.Errorf("zapgw: nao sei fazer %q com uma instancia (conheco: listar, mostrar, rotacionar, reabrir-cadastro, pausar, remover, registrar, desregistrar, pin)", args[0])
+		return fmt.Errorf("zapgw: nao sei fazer %q com uma instancia (conheco: listar/list, mostrar/show,"+
+			" rotacionar/rotate, reabrir-cadastro/reopen-enrollment, pausar/pause, remover/remove,"+
+			" registrar/register, desregistrar/deregister, pin)", args[0])
 	}
 }
 
@@ -205,15 +255,23 @@ func instanceCommand(args []string, out io.Writer, env environment) error {
 // sqlite3 wasn't even installed there.
 func consumerCommand(args []string, out io.Writer, env environment) error {
 	if len(args) == 0 {
-		return errors.New("zapgw: consumidor o que? (listar | rotacionar)")
+		return errors.New("zapgw: consumidor o que? (listar/list | rotacionar/rotate)")
 	}
 	switch args[0] {
 	case "listar":
+		// T-218: OLD (Portuguese) spelling — see dispatch's "fumaca" case.
+		warnOldVerb(out, "listar", "list")
+		return listConsumers(args[1:], out, env)
+	case "list":
 		return listConsumers(args[1:], out, env)
 	case "rotacionar":
+		// T-218: OLD (Portuguese) spelling — see dispatch's "fumaca" case.
+		warnOldVerb(out, "rotacionar", "rotate")
+		return rotateConsumer(args[1:], out, env)
+	case "rotate":
 		return rotateConsumer(args[1:], out, env)
 	default:
-		return fmt.Errorf("zapgw: nao sei fazer %q com um consumidor (conheco: listar, rotacionar)", args[0])
+		return fmt.Errorf("zapgw: nao sei fazer %q com um consumidor (conheco: listar/list, rotacionar/rotate)", args[0])
 	}
 }
 

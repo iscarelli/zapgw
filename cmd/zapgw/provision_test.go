@@ -13,6 +13,7 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"errors"
+	"fmt"
 	"math/big"
 	"net/http"
 	"net/http/httptest"
@@ -2478,6 +2479,95 @@ func TestDispatchRefusesUnknownSubcommand(t *testing.T) {
 	var out bytes.Buffer
 	if err := dispatch([]string{"provisonar", "instancia"}, &out, fakeEnvironment(testEnvironment(t))); err == nil {
 		t.Fatal("subcomando desconhecido foi aceito")
+	}
+}
+
+// --- T-218: English aliases for the CLI sub-verbs, ONE LEVEL BELOW the
+// top-level verbs T-214 already migrated (fumaca/smoke, instancia/instance,
+// consumidor/consumer, estado/state -- see
+// TestDispatchAcceptsEnglishVerbsSilently in env_aliases_test.go). ---------
+
+// TestDispatchAcceptsEnglishSubVerbsSilently proves, for EVERY pair T-218
+// names (rotacionar/rotate, listar/list, mostrar/show, pausar/pause,
+// remover/remove, registrar/register, desregistrar/deregister,
+// reabrir-cadastro/reopen-enrollment, provisionar/provision,
+// diagnostico/diagnostics), the two halves the task requires:
+//
+//  1. the OLD (Portuguese) spelling still dispatches AND prints the
+//     warnOldVerb notice;
+//  2. the NEW (English) spelling dispatches to the EXACT SAME underlying
+//     function, silently.
+//
+// EVERY CASE deliberately stops at a "--slug/--nome e obrigatorio"-shaped
+// rejection (or the sub-verb's own "o que?" message): that text is written
+// by the underlying function itself, with no reference to which spelling
+// dispatch routed through (each flag.NewFlagSet name is a fixed literal,
+// e.g. "instancia remover", never args[0]) -- and it is reached before any
+// database or network call, so the case stays fast and offline for BOTH
+// spellings. That is what makes stripping the notice from the OLD output
+// and comparing it byte-for-byte with the NEW output a real proof that the
+// two spellings run the SAME code, not two copies that merely agree today.
+func TestDispatchAcceptsEnglishSubVerbsSilently(t *testing.T) {
+	env := fakeEnvironment(testEnvironment(t))
+	cases := []struct {
+		name             string
+		oldArgs, newArgs []string
+		oldVerb, newVerb string
+	}{
+		// NOTE: the top-level verb below is always the ENGLISH one
+		// ("instance"/"consumer", not "instancia"/"consumidor"): T-214
+		// already made that layer warn on its own, and using the OLD
+		// top-level spelling here would add ITS notice on top of the
+		// sub-verb's, contaminating both the notice-count check and the
+		// stripped-output comparison below with a layer this test does
+		// not own.
+		{"instance listar/list", []string{"instance", "listar"}, []string{"instance", "list"}, "listar", "list"},
+		{"instance mostrar/show", []string{"instance", "mostrar"}, []string{"instance", "show"}, "mostrar", "show"},
+		{"instance rotacionar/rotate", []string{"instance", "rotacionar"}, []string{"instance", "rotate"}, "rotacionar", "rotate"},
+		{"instance reabrir-cadastro/reopen-enrollment", []string{"instance", "reabrir-cadastro"}, []string{"instance", "reopen-enrollment"}, "reabrir-cadastro", "reopen-enrollment"},
+		{"instance pausar/pause", []string{"instance", "pausar"}, []string{"instance", "pause"}, "pausar", "pause"},
+		{"instance remover/remove", []string{"instance", "remover"}, []string{"instance", "remove"}, "remover", "remove"},
+		{"instance registrar/register", []string{"instance", "registrar"}, []string{"instance", "register"}, "registrar", "register"},
+		{"instance desregistrar/deregister", []string{"instance", "desregistrar"}, []string{"instance", "deregister"}, "desregistrar", "deregister"},
+		{"consumer listar/list", []string{"consumer", "listar"}, []string{"consumer", "list"}, "listar", "list"},
+		{"consumer rotacionar/rotate", []string{"consumer", "rotacionar"}, []string{"consumer", "rotate"}, "rotacionar", "rotate"},
+		{"provisionar/provision", []string{"provisionar"}, []string{"provision"}, "provisionar", "provision"},
+		{"diagnostico/diagnostics", []string{"diagnostico"}, []string{"diagnostics"}, "diagnostico", "diagnostics"},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			var outOld bytes.Buffer
+			errOld := dispatch(c.oldArgs, &outOld, env)
+
+			var outNew bytes.Buffer
+			errNew := dispatch(c.newArgs, &outNew, env)
+
+			notice := fmt.Sprintf("zapgw: o subcomando %q esta obsoleto -- use %q no lugar (T-214)\n", c.oldVerb, c.newVerb)
+			if !strings.Contains(outOld.String(), notice) {
+				t.Fatalf("%q nao emitiu o aviso T-214/T-218 esperado: %s", c.oldVerb, outOld.String())
+			}
+			if strings.Contains(outNew.String(), "obsoleto") {
+				t.Fatalf("%q (grafia NOVA) avisou sem precisar: %s", c.newVerb, outNew.String())
+			}
+
+			rest := strings.Replace(outOld.String(), notice, "", 1)
+			if rest != outNew.String() {
+				t.Errorf("saida do verbo velho (sem o aviso) difere da saida do verbo novo -- sinal de que"+
+					" as duas grafias NAO chamam a mesma funcao:\nvelho: %q\nnovo:  %q", rest, outNew.String())
+			}
+			switch {
+			case errOld == nil && errNew == nil:
+				// Ambos silenciosos e sem erro -- ok (ex.: `listar`/`list`
+				// num banco vazio).
+			case errOld != nil && errNew != nil:
+				if errOld.Error() != errNew.Error() {
+					t.Errorf("erro do verbo velho difere do erro do verbo novo:\nvelho: %v\nnovo:  %v", errOld, errNew)
+				}
+			default:
+				t.Errorf("um dos dois falhou e o outro nao (velho=%v, novo=%v) -- as duas grafias deviam se comportar identicamente", errOld, errNew)
+			}
+		})
 	}
 }
 

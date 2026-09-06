@@ -4,6 +4,20 @@ Uma linha por versao entregue, no mesmo commit do bump. A entrada diz o **efeito
 
 ## Nao lancado
 
+- **T-218 — English aliases for the CLI sub-verbs** — aditivo, sem remover nenhuma grafia
+  portuguesa. T-214 so' tinha migrado os 4 verbos de TOPO; esta tarefa desce um nivel: 10 pares de
+  sub-verbo passam a aceitar a grafia inglesa ao lado da portuguesa, com o MESMO mecanismo
+  (`warnOldVerb`) — `rotacionar`/`rotate`, `listar`/`list`, `mostrar`/`show`, `pausar`/`pause`,
+  `remover`/`remove`, `registrar`/`register`, `desregistrar`/`deregister`,
+  `reabrir-cadastro`/`reopen-enrollment`, `provisionar`/`provision`, `diagnostico`/`diagnostics`
+  (`pin` ja' era ingles). As mensagens de erro que ENUMERAM os sub-verbos conhecidos (em
+  `instanceCommand`, `consumerCommand` e no `dispatch` de topo) foram atualizadas junto, senao
+  passariam a mentir sobre o que o binario aceita. Novo teste
+  `TestDispatchAcceptsEnglishSubVerbsSilently` (`cmd/zapgw/provision_test.go`) prova, para CADA par,
+  as DUAS metades: a grafia inglesa despacha para a mesma funcao (comparado byte a byte apos tirar
+  o aviso da saida velha) e a portuguesa continua despachando E emitindo o aviso T-214.
+  _Completed 2026-09-05 21:10._
+
 - **T-216 — The obsolete-name warning never reaches the operator — surface it on a SUCCESSFUL
   deploy** — `implanta/deploy.sh` so' mostrava o journal do arranque quando o `/v1/health` FALHAVA;
   no caminho de sucesso (o caso normal) o aviso da T-214 sobre variavel de ambiente com nome velho
