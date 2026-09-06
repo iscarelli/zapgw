@@ -143,7 +143,13 @@ After:   T-219
 Why:     o projeto e' publico e a decisao de 2026-08-30 e' codigo em INGLES. A T-218 fez a ponte
          (o ingles passou a funcionar); manter a grafia portuguesa para sempre transforma a ponte em
          destino. O portao do contador NAO se aplica aqui: ele existe para o apelido de ENTRADA, que
-         tem um terceiro do outro lado. A CLI tem um operador so', e ele e' o dono.
+         tem um terceiro do outro lado. A CLI tem um operador so', e o dono confirmou em 2026-09-06
+         que NAO tem nada dele rodando por CLI nem por cron — e' tudo por API, que ja esta em ingles.
+🔥 O PERIGO REAL NAO E' "chamador desconhecido", E' `main` != IMPLANTADO. Custo medido em
+         2026-09-06 00:36, minutos depois desta tarefa ser escrita: migrei o /root/rotaciona-token.sh
+         para `zapgw instance list` porque a T-218 estava no main — e o binario no CT era a v0.64.0,
+         que responde `nao sei fazer "list" com uma instancia`. O script quebrou na hora. A grafia
+         nova so' existe onde o binario novo esta.
 Files:   cmd/zapgw/provision.go, cmd/zapgw/menu.go, cmd/zapgw/*_test.go, implanta/deploy.sh,
          implanta/profile-zapgw.sh, docs/*.md (os que mostram comandos)
 Do:      🔴 A ORDEM E' A GARANTIA, e o inverso quebra calado — so' falha na proxima vez que alguem
