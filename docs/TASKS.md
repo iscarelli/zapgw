@@ -138,3 +138,28 @@ Verify:  CGO_ENABLED=0 go build ./... && go test ./... && go vet ./... && gofmt 
          E depois: `grep -rnE '(nao|voce|instancia|segredo|obrigatorio|invalido)' cmd/ --include=*.go | grep -v _test`
          deve vir vazio. Se algo sobrar, diga o que e por que ficou, em vez de forcar.
 
+## [ ] T-220  Remove the Portuguese spellings of the CLI verbs
+After:   T-219
+Why:     o projeto e' publico e a decisao de 2026-08-30 e' codigo em INGLES. A T-218 fez a ponte
+         (o ingles passou a funcionar); manter a grafia portuguesa para sempre transforma a ponte em
+         destino. O portao do contador NAO se aplica aqui: ele existe para o apelido de ENTRADA, que
+         tem um terceiro do outro lado. A CLI tem um operador so', e ele e' o dono.
+Files:   cmd/zapgw/provision.go, cmd/zapgw/menu.go, cmd/zapgw/*_test.go, implanta/deploy.sh,
+         implanta/profile-zapgw.sh, docs/*.md (os que mostram comandos)
+Do:      🔴 A ORDEM E' A GARANTIA, e o inverso quebra calado — so' falha na proxima vez que alguem
+         rodar o script. Faca nesta ordem:
+         1. VARRA todos os chamadores dentro do repo e liste-os no relatorio:
+            `grep -rn "zapgw \(instancia\|consumidor\|provisionar\|fumaca\|diagnostico\)" --include="*.sh" --include="*.md" --include="*.go" .`
+            Inclua `implanta/`, `.github/`, os docs, e o menu interativo.
+         2. ATUALIZE cada chamador para a grafia inglesa.
+         3. SO' ENTAO remova as grafias portuguesas do dispatch e o `warnOldVerb` que virou morto.
+         4. Atualize as mensagens que ENUMERAM os verbos, de novo — elas mentem se ficarem com os dois.
+         Se encontrar chamador que voce nao pode alcancar (fora do repo), NAO remova o verbo que ele
+         usa: pare, liste no relatorio, e deixe esse par para o planner.
+Verify:  CGO_ENABLED=0 go build ./... && go test ./... && go vet ./... && gofmt -l cmd internal
+         E um teste que prove que a grafia portuguesa agora e' RECUSADA com erro que nomeia a
+         inglesa — "some silenciosamente" e' o modo de falha desta mudanca.
+         E a varredura do passo 1 rodada de novo deve vir vazia.
+🙋 PARTE QUE O IMPLEMENTADOR NAO ALCANCA, e o planner faz: `/root/rotaciona-token.sh` dentro do CT
+   125 usa `zapgw instancia listar`. Ele vive fora do repositorio e tem de ser atualizado no mesmo
+   dia, ou quebra na proxima rotacao de token.
