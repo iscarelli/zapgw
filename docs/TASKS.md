@@ -118,6 +118,29 @@ esta provado num valor que muda (`observed` -> `observado`); falta a combinacao 
 errado, o sintoma e' evento **preso com aviso**, nao evento sumido — por causa do conserto que eles
 fizeram no `processado_em` hoje de manha.
 
+🔴 **NAO RODE DEPLOY ate a prova pendente de 2026-09-05 (detalhe no Vikunja [1449]).** O
+`implanta/deploy.sh` APAGA e recria o snapshot `pre-update` do CT. Hoje esse snapshot (31/08 23:09)
+e' a **unica outra copia** do `token_envio` original de uma instancia que foi restaurada a partir
+dele e **ainda nao foi provada com envio real**. O dono so' consegue testar em 06/09. Se o deploy
+correr antes e a restauracao estiver errada, o caminho barato de recuperacao deixa de existir e
+sobra pedir token novo na conta Meta de terceiro.
+
+**O que aconteceu em 2026-09-05, medido:** um token permanente de System User da Meta, com acesso de
+ADMIN do negocio, vazou em texto claro no prompt de uma rotina agendada e foi despejado em 62
+transcripts de 7 projetos entre 13/08 e 05/09. Foi anulado no painel (o botao e' tudo-ou-nada) e as
+instancias foram rotacionadas. Duas licoes que custaram na hora e valem alem deste incidente:
+
+- 🔥 **Rotacao em LACO sobre todas as instancias alcancou tres quando o alvo era uma.** Slug por
+  extenso, uma instancia por comando. A ferramenta que sobrou disso (`/root/rotaciona-token.sh`, no
+  CT, fora do repo) impoe isso.
+- 🔥 **O arquivo `.db` do SQLite NAO e' o estado completo.** As escritas recentes estavam no `-wal`
+  (ultimo checkpoint 5h antes). Puxar so' o `.db`, escrever por cima e apagar o `-wal` desfez uma
+  rotacao ja feita e ~5h de transito/idempotencia. Com o servico parado, `PRAGMA
+  wal_checkpoint(TRUNCATE)` antes de copiar, ou leve `.db` + `-wal` + `-shm` juntos.
+- 🔥 **`main` nao e' o implantado.** Um verbo novo mergeado no `main` nao existe no binario do CT ate
+  o deploy. Migrar um chamador para a grafia nova antes do deploy quebra na hora — aconteceu com o
+  script do CT dez minutos depois da T-220 ser escrita.
+
 ## Active
 
 > A fila do periodo privado esta em `iscarelli/zapgw-dev`, congelada. Tarefa nova nasce aqui.
