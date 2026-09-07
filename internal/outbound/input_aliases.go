@@ -148,6 +148,17 @@ var requestAliasAtTopLevel = map[string]string{
 	// refusal fires the same way regardless of which spelling arrives —
 	// there is no special case here, only the normal translation.
 	"url_buttons": "botoes_url",
+	// contacts/flow/sections: T-221. These three had no row here at all —
+	// not merely unaliased on purpose like `template`/`media_id`/`components`
+	// (which are already English, see docs/contrato-chaves-que-nao-mudam.txt)
+	// — so a consumer writing an all-English POST /v1/messages body still
+	// had to spell `contatos`/`fluxo`/`secoes` in Portuguese, with no way to
+	// avoid it. TestRequestTopLevelKeysAreAllAccountedFor (input_aliases_test.go)
+	// is the gate that makes a FOURTH missing row like this fail loudly
+	// instead of shipping unnoticed, the way these three did.
+	"contacts": "contatos",
+	"flow":     "fluxo",
+	"sections": "secoes",
 }
 
 // templateHeaderAlias: TemplateHeader's fields (the `cabecalho` object),

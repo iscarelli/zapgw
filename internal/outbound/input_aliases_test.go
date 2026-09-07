@@ -12,6 +12,8 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"os"
+	"path/filepath"
+	"reflect"
 	"strings"
 	"sync"
 	"testing"
@@ -1561,5 +1563,215 @@ func TestInputTemplatesDeleteNameQueryOldNameCounts(t *testing.T) {
 	}
 	if got := oldNameCounterTodayInState(t, store, "lojinha"); got != 1 {
 		t.Fatalf("apos ?name=: contador = %d, quero 1 (nao pode subir de novo)", got)
+	}
+}
+
+// --- T-221: the INVERTED gate — every top-level Request key must be
+// accounted for, not just the rows that happen to be in the table ----------
+//
+// Every test above this point walks requestAliasAtTopLevel ITSELF and
+// checks that each row it already contains works. That structurally cannot
+// see a MISSING row: `contatos`, `fluxo` and `secoes` had no English alias
+// at all — not even the "deliberately absent, same word in both languages"
+// kind `template`/`media_id`/`components` are — and every test above kept
+// passing while that hole existed, because none of them ever looks at
+// Request's own field list. This is the test that does: it enumerates
+// Request's json tags from the struct itself and requires each one to be
+// either an alias VALUE here or a frozen (already-English) key in
+// docs/contrato-chaves-que-nao-mudam.txt. A tag in neither list fails,
+// NAMING the tag — see docs/TASKS.md, T-221.
+
+// frozenEnglishKeysForGate reads docs/contrato-chaves-que-nao-mudam.txt —
+// same file, same parsing rule (one key per line, '#' and blank lines are
+// comments) as TestFrozenKeysStayIdenticalInSource, above in
+// english_contract_test.go — but on its OWN, because this gate's failure
+// mode has to stay distinguishable from that other test's: "the file could
+// not be read / had zero keys" must read as "could not verify", never as
+// silently "zero findings" (CLAUDE.md, "a blind monitor that answers OK is
+// worse than no monitor"). The caller decides what to do with an empty
+// result; this function only loads.
+func frozenEnglishKeysForGate(t *testing.T) ([]string, error) {
+	t.Helper()
+	raw, err := os.ReadFile(filepath.Join("..", "..", "docs", "contrato-chaves-que-nao-mudam.txt"))
+	if err != nil {
+		return nil, fmt.Errorf("ler docs/contrato-chaves-que-nao-mudam.txt: %w", err)
+	}
+	var keys []string
+	for _, line := range strings.Split(string(raw), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		keys = append(keys, line)
+	}
+	if len(keys) == 0 {
+		return nil, fmt.Errorf("docs/contrato-chaves-que-nao-mudam.txt nao tem nenhuma chave")
+	}
+	return keys, nil
+}
+
+// requestTopLevelJSONTags reads the json tag (the part before the first
+// comma) of every field of outbound.Request via reflection, so this test
+// sees exactly what json.Unmarshal sees — not a hand-copied list that can
+// itself drift from the struct the way requestAliasAtTopLevel's missing
+// rows drifted from it.
+func requestTopLevelJSONTags(t *testing.T) []string {
+	t.Helper()
+	typ := reflect.TypeOf(Request{})
+	var tags []string
+	for i := 0; i < typ.NumField(); i++ {
+		tag := typ.Field(i).Tag.Get("json")
+		if tag == "" || tag == "-" {
+			continue
+		}
+		name := strings.Split(tag, ",")[0]
+		if name == "" {
+			continue
+		}
+		tags = append(tags, name)
+	}
+	if len(tags) == 0 {
+		t.Fatal("outbound.Request nao tem nenhum campo com json tag — este teste nao provaria nada")
+	}
+	return tags
+}
+
+// TestRequestTopLevelKeysAreAllAccountedFor is the gate itself. THE POINT
+// OF T-221 IS THIS TEST, not the three rows it caught missing on the way in
+// (contacts/flow/sections) — a fourth field added to Request tomorrow with
+// no alias and no frozen-key entry fails HERE, by name, instead of shipping
+// silently the way these three did.
+func TestRequestTopLevelKeysAreAllAccountedFor(t *testing.T) {
+	frozen, err := frozenEnglishKeysForGate(t)
+	if err != nil {
+		t.Fatalf("NAO CONSEGUI VERIFICAR (nao e um achado — sem lista de chaves congeladas para comparar): %v", err)
+	}
+	frozenSet := make(map[string]bool, len(frozen))
+	for _, k := range frozen {
+		frozenSet[k] = true
+	}
+
+	aliased := make(map[string]bool, len(requestAliasAtTopLevel))
+	for _, pt := range requestAliasAtTopLevel {
+		aliased[pt] = true
+	}
+
+	for _, tag := range requestTopLevelJSONTags(t) {
+		tag := tag
+		t.Run(tag, func(t *testing.T) {
+			if aliased[tag] {
+				return // has an English alias — requestAliasAtTopLevel covers it
+			}
+			if frozenSet[tag] {
+				return // already English by contract — docs/contrato-chaves-que-nao-mudam.txt
+			}
+			t.Errorf("a chave %q de outbound.Request nao tem alias em ingles em "+
+				"requestAliasAtTopLevel NEM esta em docs/contrato-chaves-que-nao-mudam.txt — "+
+				"um consumidor 100%% em ingles nao consegue escrever esta chave", tag)
+		})
+	}
+}
+
+// TestInputAcceptsContactsFlowSectionsEnglishTopLevelKeys is T-221's Verify
+// item: a request using `contacts`, `flow` and `sections` (the three rows
+// added by this task) is accepted the same way as the Portuguese spelling —
+// same technique as TestInputAcceptsEnglishAliasWithIdenticalResponse
+// above: only the ONE top-level key under test changes language, everything
+// else (including values and nested-object field names, which are out of
+// this task's scope — see Do item 4) stays exactly as it already was, so a
+// difference in the response can only come from the key alias itself.
+func TestInputAcceptsContactsFlowSectionsEnglishTopLevelKeys(t *testing.T) {
+	// The suffix stays under 16 characters ON PURPOSE (see
+	// minimumToHideAPhoneNumber, internal/config/phones_allowlist_test.go):
+	// at 16+ the phone-number gate tries to base64-decode it, and a wamid
+	// this test made up (never a real Meta id) isn't valid base64, so a
+	// longer suffix here would fail that gate with a "could not decode"
+	// finding that needs a human to clear.
+	srv := acceptingMeta("wamid.TRESALIAS")
+	defer srv.Close()
+	h, _ := testHandler(t, srv)
+
+	cases := []struct {
+		name   string
+		ptBody string
+		enBody string
+	}{
+		{
+			name:   "contacts",
+			ptBody: `{"instancia":"lojinha","para":"5511999990000","tipo":"contatos","contatos":[{"name":{"formatted_name":"Nome Teste"}}]}`,
+			enBody: `{"instancia":"lojinha","para":"5511999990000","tipo":"contatos","contacts":[{"name":{"formatted_name":"Nome Teste"}}]}`,
+		},
+		{
+			name:   "flow",
+			ptBody: `{"instancia":"lojinha","para":"5511999990000","tipo":"flow","fluxo":{"id":"flow-id","token":"tok"}}`,
+			enBody: `{"instancia":"lojinha","para":"5511999990000","tipo":"flow","flow":{"id":"flow-id","token":"tok"}}`,
+		},
+		{
+			name:   "sections",
+			ptBody: `{"instancia":"lojinha","para":"5511999990000","tipo":"lista","texto":"corpo","botao_titulo":"Ver","secoes":[{"titulo":"S1","itens":[{"id":"1","titulo":"Item"}]}]}`,
+			enBody: `{"instancia":"lojinha","para":"5511999990000","tipo":"lista","texto":"corpo","botao_titulo":"Ver","sections":[{"titulo":"S1","itens":[{"id":"1","titulo":"Item"}]}]}`,
+		},
+	}
+	for _, c := range cases {
+		c := c
+		t.Run(c.name, func(t *testing.T) {
+			pt := ask(t, h, "token-do-a", "contatos-fluxo-secoes-pt-"+c.name, c.ptBody)
+			en := ask(t, h, "token-do-a", "contatos-fluxo-secoes-en-"+c.name, c.enBody)
+			if pt.Code != en.Code {
+				t.Fatalf("status PT=%d EN=%d — corpo PT=%s EN=%s", pt.Code, en.Code, pt.Body, en.Body)
+			}
+			if pt.Body.String() != en.Body.String() {
+				t.Errorf("respostas diferentes:\nPT: %s\nEN: %s", pt.Body, en.Body)
+			}
+		})
+	}
+}
+
+// TestInputOldNameCounterOnSections is T-221 Do item 5's confirmation for
+// one of the three new rows (`secoes`/`sections` — chosen because, unlike
+// `contatos`/`flow` above, its minimal body actually reaches 200, so a
+// non-2xx response can never be mistaken for "didn't count because it was
+// rejected"): the OLD (Portuguese) spelling still increments
+// config.CounterOldNameUsed, and the SAME request in the NEW spelling does
+// not count again — same requirement, and same pattern, as every other row
+// of requestAliasAtTopLevel (TestInputOldNameCounterCountsAndAppearsInState
+// and the T-205 route-level tests above already prove this generically for
+// the dict; this is the same mechanism applied to a row that didn't exist
+// before this task).
+func TestInputOldNameCounterOnSections(t *testing.T) {
+	store, path := storeWithConsumer(t)
+	activateInstance(t, path, "lojinha")
+	counter := config.NewCounter(store)
+	srv := acceptingMeta("wamid.SECOESCONTADOR")
+	defer srv.Close()
+	h := NewHandler(store, NewAuthenticator(store),
+		meta.NewClient(srv.Client(), srv.URL), 1<<20, counter, config.NewTransit(store), AllTypes)
+
+	// The EN body below has to be fully migrated on EVERY OTHER field
+	// (`instance`/`to`/`kind`/`text`/`button_title`, and `tipo`'s VALUE
+	// "list" rather than "lista") — otherwise ANY other old spelling still
+	// present would also set len(oldNames) > 0 and make the counter go up
+	// a second time for a reason that has nothing to do with `secoes` vs
+	// `sections`, the one thing this test isolates. `titulo`/`itens`
+	// inside each section item stay Portuguese on BOTH bodies on purpose:
+	// they have no alias at all (out of T-221's scope, see Do item 4), so
+	// they never register on the counter either way.
+	ptBody := `{"instancia":"lojinha","para":"5511999990000","tipo":"lista","texto":"corpo","botao_titulo":"Ver","secoes":[{"titulo":"S1","itens":[{"id":"1","titulo":"Item"}]}]}`
+	enBody := `{"instance":"lojinha","to":"5511999990000","kind":"list","text":"corpo","button_title":"Ver","sections":[{"titulo":"S1","itens":[{"id":"1","titulo":"Item"}]}]}`
+
+	pt := ask(t, h, "token-do-a", "secoes-contador-pt", ptBody)
+	if pt.Code != http.StatusOK {
+		t.Fatalf("PT (secoes): status = %d, corpo = %s", pt.Code, pt.Body)
+	}
+	if got := oldNameCounterTodayInState(t, store, "lojinha"); got != 1 {
+		t.Fatalf("apos o pedido com 'secoes': contador = %d, quero 1", got)
+	}
+
+	en := ask(t, h, "token-do-a", "secoes-contador-en", enBody)
+	if en.Code != http.StatusOK {
+		t.Fatalf("EN (sections): status = %d, corpo = %s", en.Code, en.Body)
+	}
+	if got := oldNameCounterTodayInState(t, store, "lojinha"); got != 1 {
+		t.Fatalf("apos o pedido com 'sections': contador = %d, quero 1 (nao pode subir de novo)", got)
 	}
 }
