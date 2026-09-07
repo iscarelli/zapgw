@@ -176,3 +176,33 @@ Verify:  CGO_ENABLED=0 go build ./... && go test ./... && go vet ./... && gofmt 
 🙋 PARTE QUE O IMPLEMENTADOR NAO ALCANCA, e o planner faz: `/root/rotaciona-token.sh` dentro do CT
    125 usa `zapgw instancia listar`. Ele vive fora do repositorio e tem de ser atualizado no mesmo
    dia, ou quebra na proxima rotacao de token.
+
+## [ ] T-222  Fix the error vocabulary the consumer contract documents
+Vikunja: 1466
+Why:     `docs/CONTRATO-CONSUMIDOR.md` documenta o erro como `classe` com
+         `permanente`/`retentavel`/`desconhecido`. O gateway EMITE `class` com
+         `permanent`/`retryable`/`config`/`unknown` desde a virada da T-209
+         (`internal/outbound/handler.go:277`, `internal/meta/errors.go:29-32`). E' doc falso no
+         documento que os consumidores leem para integrar: quem escrever um `switch` a partir dele
+         nunca casa. Medido em 2026-09-06.
+Files:   docs/CONTRATO-CONSUMIDOR.md, docs/CONTRATO-CONSUMIDOR.pt-BR.md, docs/INVENTARIO-VALORES.md,
+         docs/ARMADILHAS.md, docs/ARMADILHAS.pt-BR.md, docs/MIGRACAO-CONTRATO-EN.md
+Do:      🔴 NAO E' SED GLOBAL, e a armadilha ja esta escrita no proprio `ARMADILHAS.md`: um
+         `.replace()` que troca toda ocorrencia. Parte das ocorrencias e' LEGITIMA.
+         1. Va arquivo por arquivo. Em cada ocorrencia decida entre tres casos:
+            (a) e' o VALOR/CHAVE que o gateway emite hoje -> corrija para a forma inglesa;
+            (b) e' o doc de MIGRACAO citando a forma VELHA de proposito (`retentavel` ->
+                `retryable`) -> NAO toque;
+            (c) e' prosa em portugues nos arquivos `.pt-BR.md` usando a palavra como palavra
+                ("erro permanente") -> NAO toque; so' o literal muda.
+         2. Confira cada afirmacao contra o CODIGO, nunca contra o doc antigo. Aponte `arquivo:linha`.
+         3. Se achar outro campo do corpo de erro documentado com nome errado, conserte no mesmo
+            passo e diga no relatorio quais eram.
+         NAO mexa em codigo. Esta tarefa e' so' documentacao.
+Verify:  Para cada nome novo, prove contra o codigo que ele e' o emitido:
+         `grep -rn 'json:"class"' internal/outbound/handler.go` e
+         `grep -rn 'ErrorClass = ' internal/meta/errors.go`
+         E depois, no doc corrigido: nenhuma ocorrencia de `classe`/`retentavel`/`permanente`/
+         `desconhecido` pode estar descrevendo o que o gateway EMITE HOJE — liste no relatorio, uma
+         a uma, as que voce deixou e em qual dos casos (b)/(c) cada uma cai.
+         `CGO_ENABLED=0 go build ./... && go test ./...` (nao deve mudar nada, e' so' garantia).
