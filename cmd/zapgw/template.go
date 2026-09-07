@@ -51,41 +51,41 @@ import (
 
 func templateCommand(args []string, out io.Writer, env environment) error {
 	if len(args) == 0 {
-		return errors.New("zapgw: template o que? (criar)")
+		return errors.New("zapgw: template what? (criar)")
 	}
 	switch args[0] {
 	case "criar":
 		return templateCreate(args[1:], out, env)
 	default:
-		return fmt.Errorf("zapgw: nao sei fazer %q com um template (conheco: criar)", args[0])
+		return fmt.Errorf("zapgw: don't know how to do %q with a template (I know: criar)", args[0])
 	}
 }
 
 func templateCreate(args []string, out io.Writer, env environment) error {
 	fs := flag.NewFlagSet("template criar", flag.ContinueOnError)
 	fs.SetOutput(out)
-	slug := fs.String("slug", "", "instancia dona do template")
-	name := fs.String("nome", "", "nome do template, no formato que a Meta exige")
-	category := fs.String("categoria", "", "categoria do template (ex.: MARKETING, UTILITY, AUTHENTICATION)")
-	language := fs.String("idioma", "", "idioma do template, no formato da Meta (ex.: pt_BR)")
+	slug := fs.String("slug", "", "instance that owns the template")
+	name := fs.String("nome", "", "template name, in the format Meta requires")
+	category := fs.String("categoria", "", "template category (e.g.: MARKETING, UTILITY, AUTHENTICATION)")
+	language := fs.String("idioma", "", "template language, in Meta's format (e.g.: pt_BR)")
 	componentsFileFlag := fs.String("componentes", "",
-		"arquivo com a lista JSON de componentes do template. OBRIGATORIO — nao existe flag "+
-			"para componentes em linha, porque escapar aspas na linha de comando ja produziu um "+
-			"segredo corrompido neste projeto (docs/ARMADILHAS.md)")
+		"file with the JSON list of the template's components. REQUIRED — there is no flag "+
+			"for inline components, because escaping quotes on the command line has already produced a "+
+			"corrupted secret in this project (docs/ARMADILHAS.md)")
 	if keepGoing, err := parseFlags(fs, args); err != nil || !keepGoing {
 		return err
 	}
 
 	path := strings.TrimSpace(*componentsFileFlag)
 	if path == "" {
-		return errors.New("zapgw: --componentes e obrigatorio (caminho de um arquivo com a lista JSON de componentes)")
+		return errors.New("zapgw: --componentes is required (path to a file with the JSON list of components)")
 	}
 	// A missing-file error NAMES THE PATH: an error that only says "not
 	// found" forces whoever ran it to guess which of the several files
 	// named in the command was missing.
 	raw, err := os.ReadFile(path)
 	if err != nil {
-		return fmt.Errorf("zapgw: --componentes: ler %s: %w", path, err)
+		return fmt.Errorf("zapgw: --componentes: read %s: %w", path, err)
 	}
 
 	// The SAME validation as the HTTP route
@@ -114,10 +114,10 @@ func templateCreate(args []string, out io.Writer, env environment) error {
 	inst, err := store.FindInstance(p.Instance)
 	if err != nil {
 		if errors.Is(err, config.ErrInstanceNotFound) {
-			return fmt.Errorf("zapgw: instancia %q nao existe (use `zapgw instancia listar` para ver os slugs): %w",
+			return fmt.Errorf("zapgw: instance %q does not exist (use `zapgw instancia listar` to see the slugs): %w",
 				p.Instance, err)
 		}
-		return fmt.Errorf("zapgw: buscar instancia %q: %w", p.Instance, err)
+		return fmt.Errorf("zapgw: look up instance %q: %w", p.Instance, err)
 	}
 
 	// The SAME deadline as the HTTP route (outbound.InstanceDeadline,
@@ -134,10 +134,10 @@ func templateCreate(args []string, out io.Writer, env environment) error {
 		Components: p.Components,
 	})
 	if err != nil {
-		return fmt.Errorf("zapgw: criar template %q na instancia %q: %w", p.Name, p.Instance, err)
+		return fmt.Errorf("zapgw: create template %q on instance %q: %w", p.Name, p.Instance, err)
 	}
 
-	fmt.Fprintf(out, "template %q criado na instancia %q (id %s", p.Name, inst.Slug, created.ID)
+	fmt.Fprintf(out, "template %q created on instance %q (id %s", p.Name, inst.Slug, created.ID)
 	if created.Status != "" {
 		fmt.Fprintf(out, ", status %s", created.Status)
 	}

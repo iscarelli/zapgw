@@ -49,7 +49,7 @@ import (
 func stateCommand(args []string, out io.Writer, env environment) error {
 	fs := flag.NewFlagSet("estado", flag.ContinueOnError)
 	fs.SetOutput(out)
-	slug := fs.String("slug", "", "instancia a mostrar; vazio = TODAS as instancias cadastradas")
+	slug := fs.String("slug", "", "instance to show; empty = ALL registered instances")
 	if keepGoing, err := parseFlags(fs, args); err != nil || !keepGoing {
 		return err
 	}
@@ -86,15 +86,15 @@ func stateCommand(args []string, out io.Writer, env environment) error {
 		r, err := store.SummarizeInstance(who)
 		if err != nil {
 			if errors.Is(err, config.ErrInstanceNotFound) {
-				return fmt.Errorf("zapgw: instancia %q nao existe (use `zapgw instancia listar` para ver os slugs): %w", who, err)
+				return fmt.Errorf("zapgw: instance %q does not exist (use `zapgw instancia listar` to see the slugs): %w", who, err)
 			}
-			return fmt.Errorf("zapgw: buscar instancia %q: %w", who, err)
+			return fmt.Errorf("zapgw: look up instance %q: %w", who, err)
 		}
 		instances = []config.InstanceSummary{r}
 	} else {
 		instances, err = store.ListInstances()
 		if err != nil {
-			return fmt.Errorf("zapgw: listar instancias: %w", err)
+			return fmt.Errorf("zapgw: list instances: %w", err)
 		}
 	}
 	if len(instances) == 0 {
@@ -102,7 +102,7 @@ func stateCommand(args []string, out io.Writer, env environment) error {
 		// database, or a slug filter that exists but never received
 		// traffic, are the two normal cases for this command, not a
 		// failure.
-		fmt.Fprintf(out, "nenhuma instancia cadastrada neste banco.\n")
+		fmt.Fprintf(out, "no instance registered in this database.\n")
 		return nil
 	}
 
@@ -193,7 +193,7 @@ func stateCommand(args []string, out io.Writer, env environment) error {
 		// DATABASE and stay correct in any process.
 		e, err := outbound.BuildState(store, watchdog, nil, in, externalProbe, leadership, version, inst.Slug, now)
 		if err != nil {
-			return fmt.Errorf("zapgw: estado da instancia %q: %w", inst.Slug, err)
+			return fmt.Errorf("zapgw: state of instance %q: %w", inst.Slug, err)
 		}
 		states[inst.Slug] = e
 		if e.Counters[config.CounterDefinitiveLossAlarm].Last7Days > 0 {
@@ -207,17 +207,17 @@ func stateCommand(args []string, out io.Writer, env environment) error {
 	// number below.
 	if len(instancesWithAlarm) > 0 {
 		fmt.Fprintf(out, "======================================================================\n")
-		fmt.Fprintf(out, "ALARME: %d instancia(s) com PERDA DEFINITIVA nos ultimos 7 dias: %s\n",
+		fmt.Fprintf(out, "ALARM: %d instance(s) with DEFINITIVE LOSS in the last 7 days: %s\n",
 			len(instancesWithAlarm), strings.Join(instancesWithAlarm, ", "))
-		fmt.Fprintf(out, "A Meta ja respondeu 200 para essas mensagens — ela NAO reenvia mais.\n")
-		fmt.Fprintf(out, "Procure \"ALARME zapgw\" no log do servico para a correlacao de cada evento.\n")
+		fmt.Fprintf(out, "Meta already answered 200 for these messages — it will NOT resend them.\n")
+		fmt.Fprintf(out, "Search for \"ALARME zapgw\" in the service log for each event's correlation.\n")
 		fmt.Fprintf(out, "======================================================================\n\n")
 	}
 
 	for _, inst := range instances {
 		e := states[inst.Slug]
 
-		fmt.Fprintf(out, "instancia %q\n", inst.Slug)
+		fmt.Fprintf(out, "instance %q\n", inst.Slug)
 
 		// TWO tabwriters, not one: the label/value block has two columns
 		// and the counters table has four. On the same writer, the
@@ -243,7 +243,7 @@ func stateCommand(args []string, out io.Writer, env environment) error {
 		fmt.Fprintln(out)
 
 		tab := tabwriter.NewWriter(out, 0, 0, 2, ' ', 0)
-		fmt.Fprintf(tab, "  chave\thoje\tultimos 7 dias\tultimo em\n")
+		fmt.Fprintf(tab, "  key\ttoday\tlast 7 days\tlast at\n")
 		// Iterates over config.KeysInDisplayOrder — the SINGLE SOURCE
 		// of the vocabulary (T-039). There is no separate list here: a new
 		// key only needs to enter there to appear in this table.
@@ -267,9 +267,9 @@ func stateCommand(args []string, out io.Writer, env environment) error {
 		// operator didn't. Omitting the series WITHOUT saying where it
 		// lives would reproduce exactly that defect, just in the opposite
 		// direction.
-		fmt.Fprintf(out, "  a serie DIARIA (dia a dia, ate %d dias) nao cabe nesta tela e sai por\n",
+		fmt.Fprintf(out, "  the DAILY series (day by day, up to %d days) does not fit on this screen and is available at\n",
 			config.CounterRetentionDays(env))
-		fmt.Fprintf(out, "  GET /v1/estado?instancia=%s&serie_dias=N — os MESMOS numeros, por dia.\n",
+		fmt.Fprintf(out, "  GET /v1/estado?instancia=%s&serie_dias=N — the SAME numbers, per day.\n",
 			inst.Slug)
 
 		fmt.Fprintln(out)

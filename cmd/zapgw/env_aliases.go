@@ -75,5 +75,5 @@ func databasePath(env environment) (path string, oldNameUsed bool) {
 // its own "arranque" — the operator is looking at `out` right there, and
 // there is no separate startup phase to defer to.
 func warnOldVerb(out io.Writer, oldVerb, newVerb string) {
-	fmt.Fprintf(out, "zapgw: o subcomando %q esta obsoleto -- use %q no lugar (T-214)\n", oldVerb, newVerb)
+	fmt.Fprintf(out, "zapgw: subcommand %q is deprecated -- use %q instead (T-214)\n", oldVerb, newVerb)
 }

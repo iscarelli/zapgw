@@ -54,23 +54,23 @@ func parseSince(raw string) (time.Time, error) {
 	if t, err := time.Parse("2006-01-02", raw); err == nil {
 		return t, nil
 	}
-	return time.Time{}, fmt.Errorf("zapgw: --desde %q nao e RFC3339 nem AAAA-MM-DD", raw)
+	return time.Time{}, fmt.Errorf("zapgw: --desde %q is neither RFC3339 nor YYYY-MM-DD", raw)
 }
 
 func transitCommand(args []string, out io.Writer, env environment) error {
 	fs := flag.NewFlagSet("transito", flag.ContinueOnError)
 	fs.SetOutput(out)
-	instance := fs.String("instancia", "", "slug da instancia (obrigatorio)")
-	phone := fs.String("telefone", "", "o numero a procurar, em qualquer grafia (com --chave, escolha um dos dois)")
-	rawKey := fs.String("chave", "", "a Idempotency-Key do ENVIO a procurar (com --telefone, escolha um dos dois)")
-	rawSince := fs.String("desde", "", "so linhas a partir daqui — RFC3339 ou AAAA-MM-DD (default: desde sempre)")
+	instance := fs.String("instancia", "", "instance slug (required)")
+	phone := fs.String("telefone", "", "the number to search for, in any spelling (with --chave, pick one of the two)")
+	rawKey := fs.String("chave", "", "the Idempotency-Key of the SEND to search for (with --telefone, pick one of the two)")
+	rawSince := fs.String("desde", "", "only lines from here on — RFC3339 or YYYY-MM-DD (default: since forever)")
 	if keepGoing, err := parseFlags(fs, args); err != nil || !keepGoing {
 		return err
 	}
 
 	slug := strings.TrimSpace(*instance)
 	if slug == "" {
-		return fmt.Errorf("zapgw: --instancia e obrigatorio")
+		return fmt.Errorf("zapgw: --instancia is required")
 	}
 	number := strings.TrimSpace(*phone)
 	key := strings.TrimSpace(*rawKey)
@@ -80,10 +80,10 @@ func transitCommand(args []string, out io.Writer, env environment) error {
 	// decision no one asked for and that would only confuse whoever reads
 	// the output.
 	if number == "" && key == "" {
-		return fmt.Errorf("zapgw: informe --telefone ou --chave")
+		return fmt.Errorf("zapgw: provide --telefone or --chave")
 	}
 	if number != "" && key != "" {
-		return fmt.Errorf("zapgw: --telefone e --chave sao alternativas — escolha um dos dois")
+		return fmt.Errorf("zapgw: --telefone and --chave are alternatives — choose one of the two")
 	}
 	since, err := parseSince(*rawSince)
 	if err != nil {
@@ -105,11 +105,11 @@ func transitCommand(args []string, out io.Writer, env environment) error {
 		// of T-094.
 		lastEight := meta.LastEightDigits(number)
 		if lastEight == "" {
-			return fmt.Errorf("zapgw: --telefone %q tem menos de 8 digitos", number)
+			return fmt.Errorf("zapgw: --telefone %q has fewer than 8 digits", number)
 		}
 		lines, err = store.SearchTransit(slug, lastEight, since)
 		if err != nil {
-			return fmt.Errorf("zapgw: buscar transito por telefone: %w", err)
+			return fmt.Errorf("zapgw: search transit by phone: %w", err)
 		}
 	} else {
 		// --key: the search on the OUTBOUND side — the Idempotency-Key
@@ -121,21 +121,21 @@ func transitCommand(args []string, out io.Writer, env environment) error {
 		hmac := store.HMACCorrelation(key)
 		lines, err = store.SearchTransitByCorrelation(slug, hmac, since)
 		if err != nil {
-			return fmt.Errorf("zapgw: buscar transito por chave: %w", err)
+			return fmt.Errorf("zapgw: search transit by key: %w", err)
 		}
 	}
 
 	if len(lines) == 0 {
-		fmt.Fprintf(out, "nada encontrado na instancia %q.\n", slug)
+		fmt.Fprintf(out, "nothing found on instance %q.\n", slug)
 		return nil
 	}
 
 	tab := tabwriter.NewWriter(out, 0, 0, 2, ' ', 0)
-	fmt.Fprintf(tab, "carimbo\tdirecao\ttipo\twamid\tdesfecho\n")
+	fmt.Fprintf(tab, "stamp\tdirection\ttype\twamid\toutcome\n")
 	for _, l := range lines {
 		kind := l.Type
 		if kind == "" {
-			kind = "(nenhum evento modelado)"
+			kind = "(no modeled event)"
 		}
 		// "—" for an empty wamid: inbound, a send that failed before Meta
 		// answered, or a row predating T-094 are the cases — the same

@@ -25,15 +25,15 @@ import (
 func lostCommand(args []string, out io.Writer, env environment) error {
 	fs := flag.NewFlagSet("perdidas", flag.ContinueOnError)
 	fs.SetOutput(out)
-	old := fs.String("antigo", "", "banco do no que CAIU, guardado de lado pelo supervisor (obrigatorio)")
-	current := fs.String("atual", "", "banco em uso agora; vazio usa o mesmo que o gateway abriria")
+	old := fs.String("antigo", "", "database of the node that FELL, kept aside by the supervisor (required)")
+	current := fs.String("atual", "", "database in use now; empty uses the same one the gateway would open")
 	if keepGoing, err := parseFlags(fs, args); err != nil || !keepGoing {
 		return err
 	}
 	if *old == "" {
-		return fmt.Errorf("zapgw: perdidas: informe --antigo <caminho do banco do no que caiu>.\n" +
-			"  Ele e' a copia que o supervisor guarda ANTES de restaurar. Se ela nao existe,\n" +
-			"  nao ha pericia possivel — e isso e' o que a instrucao de guardar o arquivo evita")
+		return fmt.Errorf("zapgw: perdidas: provide --antigo <path to the fallen node's database>.\n" +
+			"  It is the copy the supervisor keeps BEFORE restoring. If it does not exist,\n" +
+			"  no forensics is possible — and that is exactly what the instruction to keep the file avoids")
 	}
 	currentPath := *current
 	if currentPath == "" {
@@ -47,7 +47,7 @@ func lostCommand(args []string, out io.Writer, env environment) error {
 		return fmt.Errorf("zapgw: perdidas: %w", err)
 	}
 
-	fmt.Fprintf(out, "comparando\n  antigo: %s (%d reservas)\n  atual:  %s (%d reservas)\n\n",
+	fmt.Fprintf(out, "comparing\n  old:     %s (%d reservations)\n  current: %s (%d reservations)\n\n",
 		*old, c.ReadInOld, currentPath, c.ReadInCurrent)
 
 	// The size of what was compared is ALWAYS printed, and before the
@@ -56,21 +56,21 @@ func lostCommand(args []string, out io.Writer, env environment) error {
 	// it has to be able to tell the two readings apart without going to
 	// check the file.
 	if c.ReadInOld == 0 {
-		fmt.Fprintf(out, "ATENCAO: o banco antigo nao tem NENHUMA reserva de idempotencia.\n"+
-			"  Isso pode ser verdade (nenhum envio na retencao) ou pode ser o arquivo errado.\n"+
-			"  Confira antes de concluir que nada se perdeu.\n\n")
+		fmt.Fprintf(out, "WARNING: the old database has NO idempotency reservation at all.\n"+
+			"  This may be true (no send in the retention window) or it may be the wrong file.\n"+
+			"  Check before concluding that nothing was lost.\n\n")
 	}
 
 	if !c.Lost() {
-		fmt.Fprintf(out, "NADA EM RISCO: toda reserva do banco antigo esta no atual.\n")
+		fmt.Fprintf(out, "NOTHING AT RISK: every reservation in the old database is in the current one.\n")
 		return nil
 	}
 
 	if len(c.Confirmed) > 0 {
-		fmt.Fprintf(out, "🔴 CONFIRMADAS PERDIDAS — %d. A mensagem CHEGOU a Meta e o gateway esqueceu.\n"+
-			"   Um retry do consumidor com a mesma chave envia DE NOVO: duplicata no aparelho da cliente.\n\n",
+		fmt.Fprintf(out, "🔴 CONFIRMED LOST — %d. The message REACHED Meta and the gateway forgot it.\n"+
+			"   A consumer retry with the same key sends AGAIN: a duplicate on the customer's device.\n\n",
 			len(c.Confirmed))
-		fmt.Fprintf(out, "  %-20s  %-38s  %-22s  %s\n", "consumidor", "chave", "reservada em (UTC)", "wamid")
+		fmt.Fprintf(out, "  %-20s  %-38s  %-22s  %s\n", "consumer", "key", "reserved at (UTC)", "wamid")
 		for _, e := range c.Confirmed {
 			fmt.Fprintf(out, "  %-20s  %-38s  %-22s  %s\n",
 				e.Consumer, e.Key, time.Unix(e.CreatedAt, 0).UTC().Format(time.RFC3339), e.Wamid)
@@ -79,11 +79,11 @@ func lostCommand(args []string, out io.Writer, env environment) error {
 	}
 
 	if len(c.Open) > 0 {
-		fmt.Fprintf(out, "🟡 EM ABERTO PERDIDAS — %d. Reservaram e NAO confirmaram.\n"+
-			"   Pode nunca ter saido, ou ter saido e o confirm nao ter replicado. NAO da para saber daqui:\n"+
-			"   so' a Meta (ou o consumidor) responde. Estas NAO sao contadas como duplicata provavel.\n\n",
+		fmt.Fprintf(out, "🟡 OPEN LOST — %d. They reserved and did NOT confirm.\n"+
+			"   They may never have gone out, or gone out with the confirm not replicated. There is NO way to tell from here:\n"+
+			"   only Meta (or the consumer) can answer. These are NOT counted as a probable duplicate.\n\n",
 			len(c.Open))
-		fmt.Fprintf(out, "  %-20s  %-38s  %s\n", "consumidor", "chave", "reservada em (UTC)")
+		fmt.Fprintf(out, "  %-20s  %-38s  %s\n", "consumer", "key", "reserved at (UTC)")
 		for _, e := range c.Open {
 			fmt.Fprintf(out, "  %-20s  %-38s  %s\n",
 				e.Consumer, e.Key, time.Unix(e.CreatedAt, 0).UTC().Format(time.RFC3339))

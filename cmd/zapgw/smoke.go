@@ -58,22 +58,22 @@ import (
 func smoke(args []string, out io.Writer, env environment) error {
 	fs := flag.NewFlagSet("fumaca", flag.ContinueOnError)
 	fs.SetOutput(out)
-	slug := fs.String("slug", "", "instancia a provar e ativar")
+	slug := fs.String("slug", "", "instance to prove and activate")
 	// NO DEFAULT, on purpose: a default here sends a message to the wrong
 	// number, and a sent message cannot be undone.
-	destination := fs.String("destino", "", "quem vai RECEBER a mensagem de teste — numero em E.164 (WhatsApp) ou IGSID (Instagram, "+
-		"e so' funciona se ele tiver mandado mensagem nas ultimas 24h). OBRIGATORIO")
+	destination := fs.String("destino", "", "who will RECEIVE the test message — number in E.164 (WhatsApp) or IGSID (Instagram, "+
+		"only works if they have sent a message in the last 24h). REQUIRED")
 	if keepGoing, err := parseFlags(fs, args); err != nil || !keepGoing {
 		return err
 	}
 
 	who := strings.TrimSpace(*slug)
 	if who == "" {
-		return errors.New("zapgw: --slug e obrigatorio")
+		return errors.New("zapgw: --slug is required")
 	}
 	toWhom := strings.TrimSpace(*destination)
 	if toWhom == "" {
-		return errors.New("zapgw: --destino e obrigatorio e nao tem default — o teste de fumaca manda uma mensagem DE VERDADE")
+		return errors.New("zapgw: --destino is required and has no default — the smoke test sends a REAL message")
 	}
 
 	store, err := openStore(env)
@@ -99,11 +99,11 @@ func smoke(args []string, out io.Writer, env environment) error {
 	}
 
 	if result.AlreadyActive {
-		fmt.Fprintf(out, "instancia %q ja estava ATIVA — nenhuma mensagem foi enviada. "+
-			"para provar de novo, pause primeiro (`zapgw instancia pausar`).\n", result.Instance.Slug)
+		fmt.Fprintf(out, "instance %q was already ACTIVE — no message was sent. "+
+			"to prove it again, pause it first (`zapgw instancia pausar`).\n", result.Instance.Slug)
 		return nil
 	}
 
-	fmt.Fprintf(out, "confirme com quem recebeu que a mensagem chegou — a Meta aceitar nao e a mensagem aparecer no celular.\n")
+	fmt.Fprintf(out, "confirm with the recipient that the message arrived — Meta accepting it is not the same as it showing up on the phone.\n")
 	return nil
 }

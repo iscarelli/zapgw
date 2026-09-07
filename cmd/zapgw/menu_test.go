@@ -566,9 +566,9 @@ func TestMenuShowsStateSummaryOnOpening(t *testing.T) {
 	if err := menu(answers("0"), &out, fakeEnvironment(vars)); err != nil {
 		t.Fatalf("menu: %v", err)
 	}
-	for _, snippet := range []string{"resumo: 2 instancia(s)", "1 ativa", "1 pausada"} {
+	for _, snippet := range []string{"summary: 2 instance(s)", "1 ativa", "1 pausada"} {
 		if !strings.Contains(out.String(), snippet) {
-			t.Errorf("o resumo nao traz %q:\n%s", snippet, out.String())
+			t.Errorf("the summary is missing %q:\n%s", snippet, out.String())
 		}
 	}
 }
@@ -581,11 +581,11 @@ func TestMenuOpensEvenWithTheDatabaseUnreachable(t *testing.T) {
 	if err := menu(answers("0"), &out, fakeEnvironment(map[string]string{})); err != nil {
 		t.Fatalf("menu: %v", err)
 	}
-	if !strings.Contains(out.String(), "resumo indisponivel") {
-		t.Fatalf("o menu nao explicou por que nao ha resumo:\n%s", out.String())
+	if !strings.Contains(out.String(), "summary unavailable") {
+		t.Fatalf("the menu did not explain why there is no summary:\n%s", out.String())
 	}
 	if !strings.Contains(out.String(), "instancia listar") {
-		t.Fatalf("o menu nao chegou a ser mostrado:\n%s", out.String())
+		t.Fatalf("the menu was not even shown:\n%s", out.String())
 	}
 }
 
@@ -610,7 +610,7 @@ func TestMenuSeparatesTheIrreversibleFromTheRead(t *testing.T) {
 		if reads > 0 && writesSeen > 0 {
 			t.Errorf("o grupo %q mistura leitura e escrita — `remover` logo abaixo de `listar` e o que esta secao existe para impedir", g.title)
 		}
-		if strings.Contains(g.title, "IRREVERSIVEL") {
+		if strings.Contains(g.title, "IRREVERSIBLE") {
 			irreversibles = append(irreversibles, g.items...)
 		}
 	}

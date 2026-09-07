@@ -422,7 +422,7 @@ func TestLogFixedAlignmentBetweenInitialBlockAndFollow(t *testing.T) {
 		t.Fatalf("nao encontrei as duas linhas esperadas:\n%s", text)
 	}
 
-	headerOffset := strings.Index(header, "instancia")
+	headerOffset := strings.Index(header, "instance")
 	initialOffset := strings.Index(initialLine, "lojinha")
 	followOffset := strings.Index(followLine, "lojinha")
 	if headerOffset < 0 || initialOffset < 0 || followOffset < 0 {
@@ -512,11 +512,11 @@ func TestLogHeaderMatchesBodyWhenValuesFit(t *testing.T) {
 		label  string
 		value  string
 	}{
-		{"instancia", "instancia", "lojinha"},
-		{"contraparte", "contraparte", syntheticCounterpart},
-		{"direcao", "direcao", "entrada"},
-		{"tipo", "tipo", "mensagem"},
-		{"desfecho", "desfecho", "consumidor guardou (200)"},
+		{"instance", "instance", "lojinha"},
+		{"counterpart", "counterpart", syntheticCounterpart},
+		{"direction", "direction", "entrada"},
+		{"type", "type", "mensagem"},
+		{"outcome", "outcome", "consumidor guardou (200)"},
 	}
 	for _, c := range cases {
 		headerOff := strings.Index(header, c.label)
@@ -599,16 +599,16 @@ func TestLogSeparatorSurvivesWhenValueFillsTheColumn(t *testing.T) {
 	const expectedSeparator = "  "
 
 	// the header also has to have the 2 spaces there — same constant,
-	// same format (logRowFormat), so "contraparte" (11 letters) and
-	// "direcao" have to be separated by >= 2 spaces already in the
+	// same format (logRowFormat), so "counterpart" (11 letters) and
+	// "direction" have to be separated by >= 2 spaces already in the
 	// header.
-	counterpartHeaderOff := strings.Index(header, "contraparte")
+	counterpartHeaderOff := strings.Index(header, "counterpart")
 	if counterpartHeaderOff < 0 {
-		t.Fatalf("rotulo \"contraparte\" nao encontrado no cabecalho: %q", header)
+		t.Fatalf("label \"counterpart\" not found in the header: %q", header)
 	}
-	afterLabel := header[counterpartHeaderOff+len("contraparte"):]
+	afterLabel := header[counterpartHeaderOff+len("counterpart"):]
 	if !strings.HasPrefix(afterLabel, expectedSeparator) {
-		t.Fatalf("cabecalho: rotulo \"contraparte\" nao tem os 2 espacos de separador antes do proximo: %q", header)
+		t.Fatalf("header: label \"counterpart\" does not have the 2 separator spaces before the next one: %q", header)
 	}
 
 	// in the BODY: after "tipo" (exactly 10 characters), the SEPARATOR (2

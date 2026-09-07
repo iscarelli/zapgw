@@ -50,14 +50,14 @@ const defaultLogRows = 200
 func parseLogFlags(args []string, out io.Writer) (n int, slug string, keepGoing bool, err error) {
 	fs := flag.NewFlagSet("log", flag.ContinueOnError)
 	fs.SetOutput(out)
-	nFlag := fs.Int("n", defaultLogRows, "quantas linhas ja gravadas mostrar antes de seguir")
-	instance := fs.String("instancia", "", "so uma instancia (default: todas)")
+	nFlag := fs.Int("n", defaultLogRows, "how many already-recorded lines to show before following")
+	instance := fs.String("instancia", "", "only one instance (default: all)")
 	keepGoing, err = parseFlags(fs, args)
 	if err != nil || !keepGoing {
 		return 0, "", keepGoing, err
 	}
 	if *nFlag <= 0 {
-		return 0, "", false, fmt.Errorf("zapgw: --n tem de ser maior que zero")
+		return 0, "", false, fmt.Errorf("zapgw: --n has to be greater than zero")
 	}
 	return *nFlag, strings.TrimSpace(*instance), true, nil
 }
@@ -105,14 +105,14 @@ func logCommand(args []string, out io.Writer, env environment) error {
 // align with them.
 const (
 	logStampWidth = 20 // RFC3339 in UTC — internal/config forces .UTC() on every timestamp read, so it always ends in "Z": constant size, no slack.
-	// instancia at 24 is the OWNER'S REQUEST, 2026-07-30: today the
+	// instance at 24 is the OWNER'S REQUEST, 2026-07-30: today the
 	// longest slug is "tenant-one" (13 characters); he wants slack for
 	// a longer name.
 	logInstanceWidth    = 24
 	logCounterpartWidth = 15 // E.164 with the "55" fits in 13 digits — 2 of slack.
-	logDirectionWidth   = 8  // "entrada" (7) is the longest value today — 1 of slack.
+	logDirectionWidth   = 9  // the header label "direction" (9) is now the longest value in this column — the data itself ("entrada"/"saida") is shorter.
 	logTypeWidth        = 10 // "mensagem" (8) is the longest value today, but "template" (8) is nearly as long — 2 of slack, no more.
-	// "desfecho" is the LAST column and takes NO fixed width — see the
+	// "outcome" is the LAST column and takes NO fixed width — see the
 	// comment in printLogRows about why nothing here truncates.
 )
 
@@ -140,7 +140,7 @@ const logColumnSeparator = "  "
 // (printLogHeader) and by each data row (printLogRows) —
 // header and body CANNOT have their own format, otherwise the problem
 // this task solved comes back. The separator goes between EVERY pair of
-// columns, including before the last one (desfecho) — it also needs 2
+// columns, including before the last one (outcome) — it also needs 2
 // spaces of distance from the previous field, it just carries no fixed
 // width OF ITS OWN because it is the last one.
 const logRowFormat = "%-*s" + logColumnSeparator +
@@ -157,12 +157,12 @@ const logRowFormat = "%-*s" + logColumnSeparator +
 // different calls).
 func printLogHeader(out io.Writer) error {
 	_, err := fmt.Fprintf(out, logRowFormat,
-		logStampWidth, "carimbo",
-		logInstanceWidth, "instancia",
-		logCounterpartWidth, "contraparte",
-		logDirectionWidth, "direcao",
-		logTypeWidth, "tipo",
-		"desfecho")
+		logStampWidth, "stamp",
+		logInstanceWidth, "instance",
+		logCounterpartWidth, "counterpart",
+		logDirectionWidth, "direction",
+		logTypeWidth, "type",
+		"outcome")
 	return err
 }
 
@@ -267,7 +267,7 @@ func printLogRows(out io.Writer, lines []config.LogLine) error {
 	for _, l := range lines {
 		kind := l.Type
 		if kind == "" {
-			kind = "(nenhum evento modelado)"
+			kind = "(no modeled event)"
 		}
 		// "—" for an empty counterparty: an ACCOUNT webhook (never had a
 		// counterparty) and a row recorded BEFORE T-094 (one-way HMAC,
@@ -330,9 +330,9 @@ func printLogRows(out io.Writer, lines []config.LogLine) error {
 func logClearCommand(args []string, out io.Writer, env environment) error {
 	fs := flag.NewFlagSet("log clear", flag.ContinueOnError)
 	fs.SetOutput(out)
-	instance := fs.String("instancia", "", "apaga TODO o log de transito desta instancia. IRREVERSIVEL — exige --confirmo")
-	phone := fs.String("telefone", "", "apaga o log de transito deste telefone, em TODAS as instancias. IRREVERSIVEL — exige --confirmo")
-	confirm := fs.String("confirmo", "", "digite --instancia (o slug) ou --telefone (o numero) DE NOVO para confirmar. Nao existe -y")
+	instance := fs.String("instancia", "", "delete this instance's ENTIRE transit log. IRREVERSIBLE — requires --confirmo")
+	phone := fs.String("telefone", "", "delete this phone's transit log, across ALL instances. IRREVERSIBLE — requires --confirmo")
+	confirm := fs.String("confirmo", "", "type --instancia (the slug) or --telefone (the number) AGAIN to confirm. There is no -y")
 	if keepGoing, err := parseFlags(fs, args); err != nil || !keepGoing {
 		return err
 	}
@@ -340,10 +340,10 @@ func logClearCommand(args []string, out io.Writer, env environment) error {
 	slug := strings.TrimSpace(*instance)
 	number := strings.TrimSpace(*phone)
 	if slug == "" && number == "" {
-		return errors.New("zapgw: log clear: informe --instancia OU --telefone (exatamente um dos dois)")
+		return errors.New("zapgw: log clear: provide --instancia OR --telefone (exactly one of the two)")
 	}
 	if slug != "" && number != "" {
-		return errors.New("zapgw: log clear: --instancia e --telefone sao alternativas — escolha um dos dois")
+		return errors.New("zapgw: log clear: --instancia and --telefone are alternatives — choose one of the two")
 	}
 
 	// THE CONFIRMATION IS CHECKED BEFORE OPENING THE DATABASE, same
@@ -351,11 +351,11 @@ func logClearCommand(args []string, out io.Writer, env environment) error {
 	// without touching anything. Both halves require the SAME pattern
 	// since T-114 — neither has a `-y`.
 	if slug != "" && strings.TrimSpace(*confirm) != slug {
-		return fmt.Errorf("zapgw: apagar o log de transito da instancia %q e IRREVERSIVEL — repita o slug em --confirmo:"+
+		return fmt.Errorf("zapgw: deleting the transit log of instance %q is IRREVERSIBLE — repeat the slug in --confirmo:"+
 			"  zapgw log clear --instancia %s --confirmo %s", slug, slug, slug)
 	}
 	if number != "" && strings.TrimSpace(*confirm) != number {
-		return fmt.Errorf("zapgw: apagar o log de transito do telefone %q e IRREVERSIVEL — repita o numero em --confirmo:"+
+		return fmt.Errorf("zapgw: deleting the transit log of phone %q is IRREVERSIBLE — repeat the number in --confirmo:"+
 			"  zapgw log clear --telefone %s --confirmo %s", number, number, number)
 	}
 
@@ -379,7 +379,7 @@ func logClearByInstance(store *config.Store, slug string, out io.Writer) error {
 	if err != nil {
 		return fmt.Errorf("zapgw: log clear --instancia %q: %w", slug, err)
 	}
-	fmt.Fprintf(out, "log de transito da instancia %q APAGADO (irreversivel): %d linha(s).\n", slug, deleted)
+	fmt.Fprintf(out, "transit log of instance %q DELETED (irreversible): %d line(s).\n", slug, deleted)
 	return nil
 }
 
@@ -391,21 +391,21 @@ func logClearByInstance(store *config.Store, slug string, out io.Writer) error {
 func logClearByPhone(store *config.Store, number string, out io.Writer) error {
 	lastEight := meta.LastEightDigits(number)
 	if lastEight == "" {
-		return fmt.Errorf("zapgw: --telefone %q tem menos de 8 digitos", number)
+		return fmt.Errorf("zapgw: --telefone %q has fewer than 8 digits", number)
 	}
 
 	numbers, err := store.NumbersForLastEight(lastEight)
 	if err != nil {
-		return fmt.Errorf("zapgw: log clear --telefone: buscar numeros: %w", err)
+		return fmt.Errorf("zapgw: log clear --telefone: look up numbers: %w", err)
 	}
 	if len(numbers) == 0 {
-		fmt.Fprintf(out, "nada encontrado para --telefone %q — nenhuma linha apagada.\n", number)
+		fmt.Fprintf(out, "nothing found for --telefone %q — no line deleted.\n", number)
 		return nil
 	}
 	if len(numbers) > 1 {
-		return fmt.Errorf("zapgw: --telefone %q casa com %d numeros DISTINTOS pelos ultimos oito digitos —"+
-			" apagar apagaria o historico de mais de uma pessoa, e por isso NADA foi apagado."+
-			" digite a forma COMPLETA (com DDI e DDD) para escolher qual: %s",
+		return fmt.Errorf("zapgw: --telefone %q matches %d DISTINCT numbers by the last eight digits —"+
+			" deleting would delete more than one person's history, so NOTHING was deleted."+
+			" type the FULL form (with country and area code) to pick which: %s",
 			number, len(numbers), strings.Join(numbers, ", "))
 	}
 
@@ -414,7 +414,7 @@ func logClearByPhone(store *config.Store, number string, out io.Writer) error {
 		return fmt.Errorf("zapgw: log clear --telefone %q: %w", number, err)
 	}
 	if len(deleted) == 0 {
-		fmt.Fprintf(out, "nada encontrado para --telefone %q — nenhuma linha apagada.\n", number)
+		fmt.Fprintf(out, "nothing found for --telefone %q — no line deleted.\n", number)
 		return nil
 	}
 
@@ -427,7 +427,7 @@ func logClearByPhone(store *config.Store, number string, out io.Writer) error {
 	if err := tab.Flush(); err != nil {
 		return err
 	}
-	fmt.Fprintf(out, "log de transito do telefone %q APAGADO (irreversivel) em %d instancia(s), %d linha(s) no total.\n",
+	fmt.Fprintf(out, "transit log of phone %q DELETED (irreversible) in %d instance(s), %d line(s) total.\n",
 		number, len(deleted), total)
 	return nil
 }

@@ -147,14 +147,14 @@ func TestDispatchAcceptsEnglishVerbsSilently(t *testing.T) {
 		t.Run(c.oldVerb+"/"+c.newVerb, func(t *testing.T) {
 			var outOld bytes.Buffer
 			_ = dispatch([]string{c.oldVerb}, &outOld, env)
-			if !strings.Contains(outOld.String(), "obsoleto") || !strings.Contains(outOld.String(), c.newVerb) {
-				t.Errorf("%q nao avisou para usar %q: %s", c.oldVerb, c.newVerb, outOld.String())
+			if !strings.Contains(outOld.String(), "deprecated") || !strings.Contains(outOld.String(), c.newVerb) {
+				t.Errorf("%q did not warn to use %q: %s", c.oldVerb, c.newVerb, outOld.String())
 			}
 
 			var outNew bytes.Buffer
 			_ = dispatch([]string{c.newVerb}, &outNew, env)
-			if strings.Contains(outNew.String(), "obsoleto") {
-				t.Errorf("%q (o verbo NOVO) avisou sem precisar: %s", c.newVerb, outNew.String())
+			if strings.Contains(outNew.String(), "deprecated") {
+				t.Errorf("%q (the NEW verb) warned needlessly: %s", c.newVerb, outNew.String())
 			}
 		})
 	}
@@ -289,8 +289,8 @@ func TestDiagnosticProbeFolderAcceptsTheNewNameAndItWins(t *testing.T) {
 	if err := dispatch(diagnosticArgs("insta-alias-sonda"), &out, fakeEnvironment(vars)); err != nil {
 		t.Fatalf("dispatch: %v\n%s", err, out.String())
 	}
-	if !strings.Contains(out.String(), "5) sonda do parametro `folder`") {
-		t.Fatalf("a sonda NAO ligou com a variavel NOVA (%s):\n%s", envDiagnosticProbeFolderNew, out.String())
+	if !strings.Contains(out.String(), "5) `folder` parameter probe") {
+		t.Fatalf("the probe did NOT turn on with the NEW variable (%s):\n%s", envDiagnosticProbeFolderNew, out.String())
 	}
 }
 

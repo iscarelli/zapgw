@@ -57,7 +57,7 @@ func (g *fakeInstagramGraph) server(t *testing.T) *httptest.Server {
 		// going there, the diagnostic stops proving what it exists to
 		// prove.
 		if r.Header.Get("Authorization") == "" {
-			t.Errorf("chamada sem Authorization em %s %s", r.Method, r.URL.Path)
+			t.Errorf("call without Authorization on %s %s", r.Method, r.URL.Path)
 		}
 		g.mu.Lock()
 		g.paths = append(g.paths, r.URL.Path+"?"+r.URL.RawQuery)
@@ -72,7 +72,7 @@ func (g *fakeInstagramGraph) server(t *testing.T) *httptest.Server {
 			folder := r.URL.Query().Get("folder")
 			if status, has := g.conversationsError[folder]; has {
 				w.WriteHeader(status)
-				_, _ = w.Write([]byte(`{"error":{"message":"nao tem permissao para ler conversas","code":10}}`))
+				_, _ = w.Write([]byte(`{"error":{"message":"no permission to read conversations","code":10}}`))
 				return
 			}
 			w.WriteHeader(http.StatusOK)
@@ -81,7 +81,7 @@ func (g *fakeInstagramGraph) server(t *testing.T) *httptest.Server {
 			w.WriteHeader(g.subStatus)
 			_, _ = w.Write([]byte(g.subBody))
 		default:
-			t.Errorf("caminho inesperado no diagnostico: %s", r.URL.Path)
+			t.Errorf("unexpected path in the diagnostic: %s", r.URL.Path)
 			w.WriteHeader(http.StatusNotFound)
 		}
 	}))
@@ -139,31 +139,31 @@ func TestDiagnosticInstagramHealthyInstanceAnswersEveryQuestion(t *testing.T) {
 	}
 	text := out.String()
 
-	for _, mark := range []string{"1) a conta do token", "2) a permissao de mensagens", "3) a inscricao de webhook", "4) o papel de testador"} {
+	for _, mark := range []string{"1) the token's account", "2) the messaging permission", "3) the account's webhook subscription", "4) the tester role in the App"} {
 		if !strings.Contains(text, mark) {
-			t.Errorf("a saida nao tem a pergunta %q:\n%s", mark, text)
+			t.Errorf("the output is missing question %q:\n%s", mark, text)
 		}
 	}
 	// THE ENTIRE /me BODY HAS TO BE READ, not just id/username: a
 	// json.Unmarshal missing the `json:"account_type"` tag on the
 	// AccountType field (a real bug, caught by this test during T-109's
 	// implementation) read the correct id and username and stayed silent
-	// about the account type, always falling back to "(nao informado)"
+	// about the account type, always falling back to "(not informed)"
 	// even with Meta answering BUSINESS.
-	if !strings.Contains(text, "tipo BUSINESS") {
-		t.Errorf("a saida nao leu o account_type devolvido pela Meta (tipo BUSINESS):\n%s", text)
+	if !strings.Contains(text, "type BUSINESS") {
+		t.Errorf("the output did not read the account_type Meta returned (type BUSINESS):\n%s", text)
 	}
-	if strings.Contains(text, "(nao informado)") {
-		t.Errorf("o tipo da conta saiu como \"nao informado\" apesar de a Meta ter respondido account_type:\n%s", text)
+	if strings.Contains(text, "(not informed)") {
+		t.Errorf("the account type came out as \"not informed\" even though Meta answered account_type:\n%s", text)
 	}
-	if !strings.Contains(text, "tudo o que da para ver DAQUI esta em ordem") {
-		t.Errorf("instancia saudavel nao terminou com o veredito de \"em ordem\":\n%s", text)
+	if !strings.Contains(text, "everything that can be seen FROM HERE is in order") {
+		t.Errorf("a healthy instance did not end with the \"in order\" verdict:\n%s", text)
 	}
-	if !strings.Contains(text, "nao_verificavel_daqui") {
-		t.Errorf("a saida nao marca o item 4 como nao_verificavel_daqui:\n%s", text)
+	if !strings.Contains(text, "not_verifiable_here") {
+		t.Errorf("the output does not mark item 4 as not_verifiable_here:\n%s", text)
 	}
 	if strings.Contains(text, oldSend) {
-		t.Errorf("O TOKEN APARECEU NA SAIDA DO DIAGNOSTICO:\n%s", text)
+		t.Errorf("THE TOKEN APPEARED IN THE DIAGNOSTIC OUTPUT:\n%s", text)
 	}
 }
 
@@ -184,20 +184,20 @@ func TestDiagnosticInstagramMissingPermissionDoesNotUseDebugToken(t *testing.T) 
 	}
 	text := out.String()
 
-	if !strings.Contains(text, "recusado por PERMISSAO") {
-		t.Errorf("a saida nao diz que a permissao foi recusada:\n%s", text)
+	if !strings.Contains(text, "refused by PERMISSION") {
+		t.Errorf("the output does not say the permission was refused:\n%s", text)
 	}
 	if !strings.Contains(text, "instagram_business_manage_messages") {
-		t.Errorf("a saida nao nomeia a permissao que falta:\n%s", text)
+		t.Errorf("the output does not name the missing permission:\n%s", text)
 	}
 	if strings.Contains(strings.ToLower(text), "debug_token") {
-		t.Errorf("a saida menciona debug_token — este comando NAO pode reintroduzi-lo (T-109, item 3b):\n%s", text)
+		t.Errorf("the output mentions debug_token — this command must NOT reintroduce it (T-109, item 3b):\n%s", text)
 	}
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	for _, path := range g.paths {
 		if strings.Contains(path, "debug_token") {
-			t.Errorf("o comando BATEU em debug_token: %s", path)
+			t.Errorf("the command HIT debug_token: %s", path)
 		}
 	}
 }
@@ -220,26 +220,26 @@ func TestDiagnosticInstagramDivergentButExpectedIDIsNotAProblem(t *testing.T) {
 	text := out.String()
 
 	if !strings.Contains(text, "NORMAL") {
-		t.Errorf("a saida nao diz que a divergencia de id e NORMAL:\n%s", text)
+		t.Errorf("the output does not say the id divergence is NORMAL:\n%s", text)
 	}
 	if !strings.Contains(text, "IGID_DO_ESCOPO_DO_APP") || !strings.Contains(text, "IGID_ENTRY_DO_WEBHOOK") {
-		t.Errorf("a saida nao mostra os DOIS ids divergentes:\n%s", text)
+		t.Errorf("the output does not show BOTH divergent ids:\n%s", text)
 	}
 	// THE STRONG PROOF: with everything else healthy, the divergence
 	// alone must NOT push the command to the "missing" verdict — it is
 	// informational.
-	if strings.Contains(text, "o que esta faltando") {
-		t.Errorf("a divergencia de id ESPERADA foi tratada como problema:\n%s", text)
+	if strings.Contains(text, "what is missing") {
+		t.Errorf("the EXPECTED id divergence was treated as a problem:\n%s", text)
 	}
-	if !strings.Contains(text, "tudo o que da para ver DAQUI esta em ordem") {
-		t.Errorf("instancia saudavel (so com id divergente, que e esperado) nao fechou em ordem:\n%s", text)
+	if !strings.Contains(text, "everything that can be seen FROM HERE is in order") {
+		t.Errorf("a healthy instance (only a divergent id, which is expected) did not close in order:\n%s", text)
 	}
 }
 
 // TestDiagnosticInstagramTesterRoleComesOutNotVerifiable is case (d): a
 // check the gateway structurally CANNOT do (tester role in the App
 // requires app_id and an administrator token the instance does not hold)
-// comes out as `nao_verificavel_daqui` WITH A REASON — it never
+// comes out as `not_verifiable_here` WITH A REASON — it never
 // disappears from the output, it never becomes "ok" by omission.
 func TestDiagnosticInstagramTesterRoleComesOutNotVerifiable(t *testing.T) {
 	g := workingInstagramGraph("IGID_SINTETICO_QUALQUER")
@@ -251,19 +251,19 @@ func TestDiagnosticInstagramTesterRoleComesOutNotVerifiable(t *testing.T) {
 	}
 	text := out.String()
 
-	if !strings.Contains(text, "4) o papel de testador") {
-		t.Fatalf("a pergunta do papel de testador SUMIU da saida:\n%s", text)
+	if !strings.Contains(text, "4) the tester role in the App") {
+		t.Fatalf("the tester role question DISAPPEARED from the output:\n%s", text)
 	}
-	if !strings.Contains(text, "nao_verificavel_daqui") {
-		t.Errorf("o item 4 nao saiu como nao_verificavel_daqui:\n%s", text)
+	if !strings.Contains(text, "not_verifiable_here") {
+		t.Errorf("item 4 did not come out as not_verifiable_here:\n%s", text)
 	}
-	if strings.Contains(text, "[ok] este gateway") {
-		t.Errorf("o item 4 saiu como \"ok\" por omissao — ele tem de dizer que NAO sabe:\n%s", text)
+	if strings.Contains(text, "[ok] this gateway") {
+		t.Errorf("item 4 came out as \"ok\" by omission — it has to say it does NOT know:\n%s", text)
 	}
 	// The reason has to be in the SAME line/block, pastable into chat —
 	// never just the label with no explanation.
 	if !strings.Contains(text, "app_id") {
-		t.Errorf("a saida nao diz O MOTIVO de o item 4 nao ser verificavel:\n%s", text)
+		t.Errorf("the output does not say WHY item 4 is not verifiable:\n%s", text)
 	}
 }
 
@@ -290,14 +290,14 @@ func TestDiagnosticInstagramCountWithoutFloorComesOutExact(t *testing.T) {
 	}
 	text := out.String()
 
-	if !strings.Contains(text, "conversas na caixa padrao: 2 conversa(s)") {
-		t.Errorf("a caixa padrao (2 itens, sem paging.next) nao saiu com numero exato:\n%s", text)
+	if !strings.Contains(text, "conversations in the default inbox: 2 conversation(s)") {
+		t.Errorf("the default inbox (2 items, no paging.next) did not come out with the exact number:\n%s", text)
 	}
-	if !strings.Contains(text, `pasta "requests": 1 conversa(s)`) {
-		t.Errorf("a pasta requests (1 item, sem paging.next) nao saiu com numero exato:\n%s", text)
+	if !strings.Contains(text, `folder "requests": 1 conversation(s)`) {
+		t.Errorf("the requests folder (1 item, no paging.next) did not come out with the exact number:\n%s", text)
 	}
 	if strings.Contains(text, "≥") {
-		t.Errorf("uma pagina SEM paging.next nao pode sair marcada como piso (≥):\n%s", text)
+		t.Errorf("a page WITHOUT paging.next must not come out marked as a floor (≥):\n%s", text)
 	}
 }
 
@@ -308,8 +308,8 @@ func TestDiagnosticInstagramCountWithoutFloorComesOutExact(t *testing.T) {
 //
 // The MANDATORY MUTATION of Verify (going back to printing raw
 // `len(data)`) leaves this test red: without the floor marker, "2
-// conversa(s)" would hit the NOT-contains assertion "conversas na caixa
-// padrao: 2 conversa(s)" below, because the exact expected format requires
+// conversation(s)" would hit the NOT-contains assertion "conversations in the default
+// inbox: 2 conversation(s)" below, because the exact expected format requires
 // the `≥` prefix.
 func TestDiagnosticInstagramCountWithFloorShowsPlusSign(t *testing.T) {
 	g := workingInstagramGraph("IGID_SINTETICO_CONTAGEM_PISO")
@@ -322,16 +322,16 @@ func TestDiagnosticInstagramCountWithFloorShowsPlusSign(t *testing.T) {
 	}
 	text := out.String()
 
-	if !strings.Contains(text, "conversas na caixa padrao: ≥ 2 conversa(s)") {
-		t.Errorf("a caixa padrao com paging.next nao saiu marcada como piso:\n%s", text)
+	if !strings.Contains(text, "conversations in the default inbox: ≥ 2 conversation(s)") {
+		t.Errorf("the default inbox with paging.next did not come out marked as a floor:\n%s", text)
 	}
-	if !strings.Contains(text, "primeira pagina") {
-		t.Errorf("a saida nao explica que o numero e' so a primeira pagina:\n%s", text)
+	if !strings.Contains(text, "first page") {
+		t.Errorf("the output does not explain that the number is only the first page:\n%s", text)
 	}
 	// The negative proof: the raw number must NEVER appear as if it were
 	// the total (without the `≥` on the same line as the default inbox).
-	if strings.Contains(text, "conversas na caixa padrao: 2 conversa(s)\n") {
-		t.Errorf("o piso saiu impresso como se fosse o total (sem o sinal ≥):\n%s", text)
+	if strings.Contains(text, "conversations in the default inbox: 2 conversation(s)\n") {
+		t.Errorf("the floor was printed as if it were the total (without the ≥ sign):\n%s", text)
 	}
 }
 
@@ -368,14 +368,14 @@ func TestDiagnosticInstagramAllFoldersEqualWarns(t *testing.T) {
 	}
 	text := out.String()
 
-	if !strings.Contains(text, "MESMO numero") {
-		t.Errorf("a saida nao avisa que todas as pastas deram o mesmo numero:\n%s", text)
+	if !strings.Contains(text, "SAME number") {
+		t.Errorf("the output does not warn that every folder came back with the same number:\n%s", text)
 	}
 	if !strings.Contains(text, "folder") {
-		t.Errorf("o aviso nao nomeia o parametro `folder` como suspeito:\n%s", text)
+		t.Errorf("the warning does not name the `folder` parameter as suspect:\n%s", text)
 	}
-	if !strings.Contains(text, "NAO conclua") {
-		t.Errorf("o aviso nao instrui a nao concluir em que gaveta a DM esta:\n%s", text)
+	if !strings.Contains(text, "DO NOT conclude") {
+		t.Errorf("the warning does not instruct not to conclude which drawer the DM is in:\n%s", text)
 	}
 }
 
@@ -390,8 +390,8 @@ func TestDiagnosticInstagramAllFoldersEqualWarns(t *testing.T) {
 // because it is exactly that configuration this test proves.
 func TestDiagnosticInstagramPerFolderSegregationNotObservable(t *testing.T) {
 	if meta.MeasuredFolderResult != meta.FolderIgnored {
-		t.Fatalf("meta.MeasuredFolderResult = %v — este teste prova o comportamento de PRODUCAO "+
-			"(o filtro de pasta e' ignorado, T-114); se o valor mudou de proposito, ajuste este teste junto",
+		t.Fatalf("meta.MeasuredFolderResult = %v — this test proves the PRODUCTION behavior "+
+			"(the folder filter is ignored, T-114); if the value changed on purpose, adjust this test too",
 			meta.MeasuredFolderResult)
 	}
 
@@ -404,28 +404,28 @@ func TestDiagnosticInstagramPerFolderSegregationNotObservable(t *testing.T) {
 	}
 	text := out.String()
 
-	if !strings.Contains(text, "NAO E OBSERVAVEL por esta API") {
-		t.Errorf("a saida nao AFIRMA que a segregacao por pasta nao e observavel:\n%s", text)
+	if !strings.Contains(text, "NOT OBSERVABLE through this API") {
+		t.Errorf("the output does not STATE that per-folder segregation is not observable:\n%s", text)
 	}
-	if strings.Contains(text, "pode nao estar sendo aplicado") {
-		t.Errorf("a saida ainda usa o texto CONDICIONAL antigo, que a T-114 devia ter fechado:\n%s", text)
+	if strings.Contains(text, "may not be applied") {
+		t.Errorf("the output still uses the old CONDITIONAL text, which T-114 was supposed to have closed:\n%s", text)
 	}
 
 	// NEGATIVE PROOF: none of the four extra folders was queried — the
 	// sweep stops as soon as MeasuredFolderResult is FolderIgnored
-	// (meta.InstagramMessagingPermission). No call, no "pasta ..." line.
+	// (meta.InstagramMessagingPermission). No call, no "folder ..." line.
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	for _, path := range g.paths {
 		if strings.Contains(path, "folder=") {
-			t.Errorf("uma chamada usou `folder` apesar de o filtro de pasta ja estar provado ignorado — a varredura nao parou: %s", path)
+			t.Errorf("a call used `folder` even though the folder filter is already proven ignored — the sweep did not stop: %s", path)
 		}
 	}
 }
 
 // TestDiagnosticInstagramPermissionVerdictDoesNotChangeWithFloor is case (d)
 // of T-112's Verify: even with paging.next filled in (a floor) on the
-// default inbox, the permission verdict stays "CONCEDIDA" — it never
+// default inbox, the permission verdict stays "GRANTED" — it never
 // depended on the number, only on the endpoint having answered (T-112, Do
 // item 4).
 func TestDiagnosticInstagramPermissionVerdictDoesNotChangeWithFloor(t *testing.T) {
@@ -439,8 +439,8 @@ func TestDiagnosticInstagramPermissionVerdictDoesNotChangeWithFloor(t *testing.T
 	}
 	text := out.String()
 
-	if !strings.Contains(text, "permissao CONCEDIDA (o endpoint de conversas respondeu)") {
-		t.Errorf("o veredito de permissao mudou so por causa do piso:\n%s", text)
+	if !strings.Contains(text, "permission GRANTED (the conversations endpoint responded)") {
+		t.Errorf("the permission verdict changed just because of the floor:\n%s", text)
 	}
 }
 
@@ -467,14 +467,14 @@ func TestDiagnosticInstagramWithoutEnvVarDoesNotProbeInvalidFolder(t *testing.T)
 	}
 	text := out.String()
 
-	if strings.Contains(text, "5) sonda") {
-		t.Errorf("o item 5 apareceu sem ZAPGW_DIAGNOSTICO_SONDAR_FOLDER:\n%s", text)
+	if strings.Contains(text, "5) `folder` parameter probe") {
+		t.Errorf("item 5 appeared without ZAPGW_DIAGNOSTICO_SONDAR_FOLDER:\n%s", text)
 	}
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	for _, path := range g.paths {
 		if strings.Contains(path, testInvalidFolder) {
-			t.Errorf("o comando bateu no folder invalido SEM a env var pedir: %s", path)
+			t.Errorf("the command hit the invalid folder WITHOUT the env var asking for it: %s", path)
 		}
 	}
 }
@@ -502,14 +502,14 @@ func TestDiagnosticInstagramInvalidFolderProbeAcceptedSaysIgnored(t *testing.T) 
 	}
 	text := out.String()
 
-	if !strings.Contains(text, "5) sonda do parametro `folder`") {
-		t.Fatalf("o item 5 nao apareceu com a sonda ligada:\n%s", text)
+	if !strings.Contains(text, "5) `folder` parameter probe") {
+		t.Fatalf("item 5 did not appear with the probe turned on:\n%s", text)
 	}
-	if !strings.Contains(text, "ACEITOU") {
-		t.Errorf("a saida nao diz que a Meta aceitou o folder invalido:\n%s", text)
+	if !strings.Contains(text, "ACCEPTED") {
+		t.Errorf("the output does not say Meta accepted the invalid folder:\n%s", text)
 	}
-	if !strings.Contains(text, "o filtro de pasta foi IGNORADO") {
-		t.Errorf("a saida nao DIZ que o filtro de pasta foi ignorado para o operador colar no relatorio:\n%s", text)
+	if !strings.Contains(text, "the folder filter was IGNORED") {
+		t.Errorf("the output does not SAY the folder filter was ignored for the operator to paste into the report:\n%s", text)
 	}
 
 	g.mu.Lock()
@@ -521,7 +521,7 @@ func TestDiagnosticInstagramInvalidFolderProbeAcceptedSaysIgnored(t *testing.T) 
 		}
 	}
 	if !found {
-		t.Errorf("nenhuma chamada usou o folder invalido apesar da sonda ligada: %v", g.paths)
+		t.Errorf("no call used the invalid folder even though the probe was on: %v", g.paths)
 	}
 }
 
@@ -542,14 +542,14 @@ func TestDiagnosticInstagramInvalidFolderProbeRefusedSaysHonored(t *testing.T) {
 	}
 	text := out.String()
 
-	if !strings.Contains(text, "5) sonda do parametro `folder`") {
-		t.Fatalf("o item 5 nao apareceu com a sonda ligada:\n%s", text)
+	if !strings.Contains(text, "5) `folder` parameter probe") {
+		t.Fatalf("item 5 did not appear with the probe turned on:\n%s", text)
 	}
-	if !strings.Contains(text, "RECUSOU") {
-		t.Errorf("a saida nao diz que a Meta recusou o folder invalido:\n%s", text)
+	if !strings.Contains(text, "REFUSED") {
+		t.Errorf("the output does not say Meta refused the invalid folder:\n%s", text)
 	}
-	if !strings.Contains(text, "o filtro de pasta foi RESPEITADO") {
-		t.Errorf("a saida nao DIZ que o filtro de pasta foi respeitado para o operador colar no relatorio:\n%s", text)
+	if !strings.Contains(text, "the folder filter was HONORED") {
+		t.Errorf("the output does not SAY the folder filter was honored for the operator to paste into the report:\n%s", text)
 	}
 }
 
@@ -561,16 +561,16 @@ func TestDiagnosticRefusesWhatsAppInstance(t *testing.T) {
 	vars := testEnvironment(t)
 	var out bytes.Buffer
 	if err := dispatch(instanceArgs("lojinha"), &out, fakeEnvironment(vars)); err != nil {
-		t.Fatalf("provisionar instancia: %v", err)
+		t.Fatalf("provision instance: %v", err)
 	}
 	out.Reset()
 
 	err := dispatch(diagnosticArgs("lojinha"), &out, fakeEnvironment(vars))
 	if err == nil {
-		t.Fatal("o diagnostico aceitou uma instancia --tipo whatsapp")
+		t.Fatal("the diagnostic accepted a --tipo whatsapp instance")
 	}
 	if !strings.Contains(err.Error(), "instagram") {
-		t.Errorf("o erro nao explica que so instagram e coberto: %v", err)
+		t.Errorf("the error does not explain that only instagram is covered: %v", err)
 	}
 }
 
@@ -582,6 +582,6 @@ func TestDiagnosticAbortsWhenTheInstanceDoesNotExist(t *testing.T) {
 	var out bytes.Buffer
 	err := dispatch(diagnosticArgs("nao-existe"), &out, fakeEnvironment(vars))
 	if err == nil {
-		t.Fatal("o comando aceitou um slug inexistente")
+		t.Fatal("the command accepted a nonexistent slug")
 	}
 }

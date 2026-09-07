@@ -318,10 +318,10 @@ func TestStateCommandWithoutTrafficPrintsZerosNotError(t *testing.T) {
 	}
 
 	text := out.String()
-	if strings.Contains(text, "ALARME") {
-		t.Errorf("instancia sem trafego nao pode alarmar. saida:\n%s", text)
+	if strings.Contains(text, "ALARM") {
+		t.Errorf("an instance with no traffic must not alarm. output:\n%s", text)
 	}
-	if !strings.Contains(text, `instancia "lojinha"`) {
+	if !strings.Contains(text, `instance "lojinha"`) {
 		t.Errorf("a instancia nao apareceu na saida:\n%s", text)
 	}
 	for _, key := range config.KeysInDisplayOrder {
@@ -571,19 +571,19 @@ func TestStateCommandShowsTheAlarmBEFORETheTable(t *testing.T) {
 	}
 
 	text := out.String()
-	alarmPos := strings.Index(text, "ALARME")
-	tablePos := strings.Index(text, `instancia "lojinha"`)
+	alarmPos := strings.Index(text, "ALARM")
+	tablePos := strings.Index(text, `instance "lojinha"`)
 	if alarmPos == -1 {
-		t.Fatalf("nenhum ALARME na saida, com 1 evento de perda definitiva gravado:\n%s", text)
+		t.Fatalf("no ALARM in the output, with 1 definitive-loss event recorded:\n%s", text)
 	}
 	if tablePos == -1 {
-		t.Fatalf("a tabela da instancia nao apareceu:\n%s", text)
+		t.Fatalf("the instance table did not appear:\n%s", text)
 	}
 	if alarmPos > tablePos {
-		t.Errorf("ALARME apareceu DEPOIS da tabela — tem de ser a primeira coisa visivel. saida:\n%s", text)
+		t.Errorf("ALARM appeared AFTER the table — it has to be the first visible thing. output:\n%s", text)
 	}
 	if !strings.Contains(text, "lojinha") {
-		t.Errorf("o ALARME nao diz QUAL instancia:\n%s", text)
+		t.Errorf("the ALARM does not say WHICH instance:\n%s", text)
 	}
 }
 
@@ -604,10 +604,10 @@ func TestStateCommandFiltersBySlug(t *testing.T) {
 	}
 
 	text := out.String()
-	if !strings.Contains(text, `instancia "lojinha"`) {
+	if !strings.Contains(text, `instance "lojinha"`) {
 		t.Errorf("lojinha nao apareceu:\n%s", text)
 	}
-	if strings.Contains(text, `instancia "clinica"`) {
+	if strings.Contains(text, `instance "clinica"`) {
 		t.Errorf("clinica apareceu apesar do filtro --slug lojinha:\n%s", text)
 	}
 }

@@ -97,17 +97,17 @@ type fakeGraph struct {
 }
 
 func main() {
-	port := flag.Int("porta", 9090, "porta em 127.0.0.1 (o endereco NAO e escolhivel: so loopback)")
-	refuseToken := flag.Bool("recusar-token", false, "responder 401 no GET /{phone_number_id} — o passo 2 do fumaca aborta e NENHUMA mensagem e tentada")
-	refuseSend := flag.Bool("recusar-envio", false, "responder 400 no POST /{phone_number_id}/messages — o fumaca falha e a instancia CONTINUA PAUSADA")
+	port := flag.Int("porta", 9090, "port on 127.0.0.1 (the address is NOT choosable: loopback only)")
+	refuseToken := flag.Bool("recusar-token", false, "answer 401 on GET /{phone_number_id} — step 2 of fumaca aborts and NO message is attempted")
+	refuseSend := flag.Bool("recusar-envio", false, "answer 400 on POST /{phone_number_id}/messages — fumaca fails and the instance STAYS PAUSED")
 	refuseNumberFields := flag.Bool("recusar-campos-do-numero", false,
-		"responder 400/code 100 ao GET /{phone_number_id}?fields=... (campo que a Graph nao conhece), "+
-			"mantendo o GET limpo em 200: o veredito do token tem de continuar `ok` e so a qualidade/limite "+
-			"do numero param de atualizar")
+		"answer 400/code 100 on GET /{phone_number_id}?fields=... (a field the Graph API does not know), "+
+			"keeping the clean GET at 200: the token verdict has to stay `ok` and only the number's "+
+			"quality/limit stops updating")
 	templateFailure := flag.String("falha-de-template", failTemplateNone,
-		"derruba a conexao do POST /{waba_id}/message_templates SEM resposta, para exercitar os tres desfechos "+
-			"da T-078: `criado` (o template existe e o gateway deve responder 201), `nao-criado` (o gateway deve "+
-			"responder INCONCLUSIVO) ou `catalogo-tambem` (o GET tambem cai e o 502 desconhecido continua certo)")
+		"drops the connection of POST /{waba_id}/message_templates WITH NO answer, to exercise the three outcomes "+
+			"of T-078: `criado` (the template exists and the gateway must answer 201), `nao-criado` (the gateway must "+
+			"answer INCONCLUSIVE) or `catalogo-tambem` (the GET also falls and the 502 unknown is still correct)")
 	flag.Parse()
 
 	switch *templateFailure {
@@ -116,7 +116,7 @@ func main() {
 		// Refuse here, rather than ignore: a mistyped value that got ignored would
 		// make the lab run the HAPPY path while whoever is operating expects the
 		// failure path — and the resulting "it passed" would be a lie.
-		log.Printf("grafo-falso: --falha-de-template=%q nao existe (conheco: %q, %q, %q, %q)",
+		log.Printf("grafo-falso: --falha-de-template=%q does not exist (I know: %q, %q, %q, %q)",
 			*templateFailure, failTemplateNone, failTemplateCreated,
 			failTemplateNotCreated, failTemplateCatalogToo)
 		os.Exit(2)
@@ -133,25 +133,25 @@ func main() {
 	// to find out in one line that it is not Meta — a silent server on 9090 is
 	// exactly the kind of thing someone assumes is production.
 	log.SetFlags(log.Ltime)
-	log.Printf("grafo-falso: Graph API DE MENTIRA em http://%s — nao e a Meta, nao entrega mensagem a ninguem", address)
-	log.Printf("grafo-falso: aponte o laboratorio com  ZAPGW_GRAPH_BASE=http://%s", address)
+	log.Printf("grafo-falso: FAKE Graph API at http://%s — this is not Meta, it delivers no message to anyone", address)
+	log.Printf("grafo-falso: point the lab at it with  ZAPGW_GRAPH_BASE=http://%s", address)
 	if g.refuseToken {
-		log.Printf("grafo-falso: --recusar-token LIGADO: o GET responde 401 (token revogado)")
+		log.Printf("grafo-falso: --recusar-token ON: the GET answers 401 (token revoked)")
 	}
 	if g.refuseSend {
-		log.Printf("grafo-falso: --recusar-envio LIGADO: o POST responde 400 (envio recusado)")
+		log.Printf("grafo-falso: --recusar-envio ON: the POST answers 400 (send refused)")
 	}
 	if g.refuseNumberFields {
-		log.Printf("grafo-falso: --recusar-campos-do-numero LIGADO: o GET com `fields=` responde 400; " +
-			"o GET limpo continua 200")
+		log.Printf("grafo-falso: --recusar-campos-do-numero ON: the GET with `fields=` answers 400; " +
+			"the clean GET stays 200")
 	}
 	if g.templateFailure != failTemplateNone {
-		log.Printf("grafo-falso: --falha-de-template=%s LIGADO: o POST de template MORRE sem resposta "+
-			"(falha de transporte, como em 2026-07-28)", g.templateFailure)
+		log.Printf("grafo-falso: --falha-de-template=%s ON: the template POST DIES with no answer "+
+			"(transport failure, as on 2026-07-28)", g.templateFailure)
 	}
 
 	if err := http.ListenAndServe(address, g.routes()); err != nil {
-		log.Printf("grafo-falso: servidor caiu: %v", err)
+		log.Printf("grafo-falso: server crashed: %v", err)
 		os.Exit(1)
 	}
 }
@@ -173,7 +173,7 @@ func (g *fakeGraph) routes() http.Handler {
 		// gateway stopped sending Authorization would go unnoticed in the lab and
 		// would only show up against Meta.
 		if r.Header.Get("Authorization") == "" {
-			g.writeError(w, http.StatusUnauthorized, 190, "grafo-falso: requisicao sem Authorization")
+			g.writeError(w, http.StatusUnauthorized, 190, "grafo-falso: request with no Authorization")
 			return
 		}
 
@@ -199,7 +199,7 @@ func (g *fakeGraph) routes() http.Handler {
 			g.checkCredential(w, r)
 			return
 		}
-		g.writeError(w, http.StatusNotFound, 100, "grafo-falso: rota que a Graph API nao tem: "+r.Method+" "+r.URL.Path)
+		g.writeError(w, http.StatusNotFound, 100, "grafo-falso: route the Graph API does not have: "+r.Method+" "+r.URL.Path)
 	})
 	return mux
 }
@@ -267,7 +267,7 @@ func (g *fakeGraph) checkCredential(w http.ResponseWriter, r *http.Request) {
 func (g *fakeGraph) postToMessages(w http.ResponseWriter, r *http.Request) {
 	raw, err := io.ReadAll(io.LimitReader(r.Body, bodyCap))
 	if err != nil {
-		g.writeError(w, http.StatusBadRequest, 100, "grafo-falso: corpo do POST ilegivel")
+		g.writeError(w, http.StatusBadRequest, 100, "grafo-falso: unreadable POST body")
 		return
 	}
 	var body struct {
@@ -302,7 +302,7 @@ func (g *fakeGraph) send(w http.ResponseWriter) {
 		// THE SAME error shape as Meta's (error.message + error.code): what
 		// classifies is internal/meta.ClassifyResponse, and a body in another
 		// shape would prove an error path production does not have.
-		g.writeError(w, http.StatusBadRequest, 131000, "grafo-falso: envio recusado a pedido (--recusar-envio)")
+		g.writeError(w, http.StatusBadRequest, 131000, "grafo-falso: send refused on request (--recusar-envio)")
 		return
 	}
 	// A UNIQUE id per send. A fixed id would pass just the same today, but it
@@ -330,7 +330,7 @@ func (g *fakeGraph) send(w http.ResponseWriter) {
 func (g *fakeGraph) createTemplate(w http.ResponseWriter, r *http.Request) {
 	raw, err := io.ReadAll(io.LimitReader(r.Body, bodyCap))
 	if err != nil {
-		g.writeError(w, http.StatusBadRequest, 100, "grafo-falso: corpo do POST ilegivel")
+		g.writeError(w, http.StatusBadRequest, 100, "grafo-falso: unreadable POST body")
 		return
 	}
 	var p struct {
@@ -339,7 +339,7 @@ func (g *fakeGraph) createTemplate(w http.ResponseWriter, r *http.Request) {
 		Language string `json:"language"`
 	}
 	if err := json.Unmarshal(raw, &p); err != nil || strings.TrimSpace(p.Name) == "" {
-		g.writeError(w, http.StatusBadRequest, 100, "grafo-falso: criacao de template sem `name`")
+		g.writeError(w, http.StatusBadRequest, 100, "grafo-falso: template creation with no `name`")
 		return
 	}
 
@@ -363,7 +363,7 @@ func (g *fakeGraph) createTemplate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if g.templateFailure != failTemplateNone {
-		log.Printf("grafo-falso: derrubando a conexao do POST de template SEM resposta (--falha-de-template=%s)",
+		log.Printf("grafo-falso: dropping the template POST's connection WITH NO answer (--falha-de-template=%s)",
 			g.templateFailure)
 		panic(http.ErrAbortHandler)
 	}
@@ -384,7 +384,7 @@ func (g *fakeGraph) createTemplate(w http.ResponseWriter, r *http.Request) {
 // prove is the RE-READ after the ambiguous creation.
 func (g *fakeGraph) listTemplates(w http.ResponseWriter) {
 	if g.templateFailure == failTemplateCatalogToo {
-		log.Printf("grafo-falso: derrubando tambem o GET do catalogo (--falha-de-template=%s)", g.templateFailure)
+		log.Printf("grafo-falso: dropping the catalog GET too (--falha-de-template=%s)", g.templateFailure)
 		panic(http.ErrAbortHandler)
 	}
 	g.mu.Lock()

@@ -4,6 +4,23 @@ Uma linha por versao entregue, no mesmo commit do bump. A entrada diz o **efeito
 
 ## Nao lancado
 
+- **T-219 — Translate the operator-facing strings of the CLI** — traduziu para ingles as strings de
+  saida e de erro de `cmd/zapgw/*.go` e `cmd/grafo-falso/*.go` (nao-teste), com os testes que casam
+  ajustados junto (13 arquivos de producao + 9 de teste). Confirmado antes de tocar em cada arquivo
+  contra `docs/INVENTARIO-STRINGS.md` (T-213): os dois binarios sao LOG por construcao, nenhum alcanca
+  o consumidor. `internal/outbound/`, `internal/config/`, `internal/meta/` e `internal/inbound/` NAO
+  foram tocados — la moram as mensagens que o consumidor pode estar comparando (decisao do dono ainda
+  pendente). Ficaram em portugues, deliberadamente, os pontos que sao vocabulario COMPARTILHADO com
+  esses pacotes fora de escopo (`PRECISA DE GENTE`, `ALARME zapgw`, os valores `sim`/`nao`,
+  `nao_configurado`, `nao_se_aplica`) e os que sao CONTRATO de CLI, nao texto humano: as grafias dos
+  verbos e sub-verbos (`instancia`, `consumidor`, `provisionar`, `fumaca`, `diagnostico` e afins —
+  territorio da T-220) e os NOMES das flags (`--instancia`, `--telefone`, `--confirmo`, `--tipo`
+  etc.), alem dos valores do enum `--falha-de-template` do `grafo-falso`, documentados em
+  `docs/ARMADILHAS.md`. A varredura `grep -rnE '(nao|voce|instancia|segredo|obrigatorio|invalido)'
+  cmd/ --include=*.go | grep -v _test` nao veio vazia, mas todo resto que sobrou e' uma dessas duas
+  categorias. Verify completo (`go build`, `go test ./...`, `go vet`, `gofmt -l cmd internal`) verde.
+  _Completed 2026-09-06 21:18._
+
 ## v0.65.0 — 2026-09-06
 
 - **T-221 — Accept the English spelling of every top-level request key** — `contacts`, `flow` e

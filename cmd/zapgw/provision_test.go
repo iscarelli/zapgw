@@ -146,8 +146,8 @@ func TestProvisionInstanceIsBornPAUSED(t *testing.T) {
 	if i.Active {
 		t.Fatal("instancia nasceu ATIVA — so o teste de fumaca pode ativar")
 	}
-	if !strings.Contains(out.String(), "PAUSADA") {
-		t.Errorf("a saida nao avisa que a instancia nasceu pausada:\n%s", out.String())
+	if !strings.Contains(out.String(), "PAUSED") {
+		t.Errorf("the output does not say the instance was born paused:\n%s", out.String())
 	}
 }
 
@@ -457,7 +457,7 @@ func TestProvisionInstanceONLYWithTheSlugPrintsTheDeliveryPackage(t *testing.T) 
 	// Each package item, one by one: one forgotten turns into a stuck
 	// consumer with no one to ask.
 	for _, required := range []string{
-		"PACOTE DE ENTREGA",
+		"DELIVERY PACKAGE",
 		"terceiro",                                       // o slug
 		"https://zapgw.exemplo.test/v1/cadastro",         // para onde ele writes
 		"https://zapgw.exemplo.test/v1/inbound/terceiro", // o que ele cola na Meta DELE
@@ -490,7 +490,7 @@ func TestProvisionInstanceWithIdentificationDoesNotPrintTheDeliveryPackage(t *te
 		t.Fatalf("dispatch: %v", err)
 	}
 
-	if strings.Contains(out.String(), "PACOTE DE ENTREGA") {
+	if strings.Contains(out.String(), "DELIVERY PACKAGE") {
 		t.Errorf("imprimiu pacote de entrega numa instancia que ja nasceu com a identificacao:\n%s", out.String())
 	}
 }
@@ -539,8 +539,8 @@ func TestProvisionInstanceONLYWithTheSlugDoesNOTDrawWhatBelongsToTheConsumerMeta
 	// The output has to SAY it didn't generate them, otherwise
 	// `app_secret=nao` looks like a defect and someone is going to "fix"
 	// an instance that is correct.
-	if !strings.Contains(out.String(), "NAO sorteados") {
-		t.Errorf("a saida nao avisa que os segredos do consumidor nao foram sorteados:\n%s", out.String())
+	if !strings.Contains(out.String(), "NOT randomly generated") {
+		t.Errorf("the output does not say the consumer's secrets were not randomly generated:\n%s", out.String())
 	}
 }
 
@@ -674,8 +674,8 @@ func TestProvisionConsumerWarnsTheTokenDoesNotComeBack(t *testing.T) {
 	// The store only keeps the HASH: without the warning, whoever
 	// operated it closes the terminal and loses the token forever, and
 	// the only way out becomes creating another consumer.
-	if !strings.Contains(out.String(), "GUARDE") {
-		t.Errorf("a saida nao avisa que o token nao pode ser recuperado:\n%s", out.String())
+	if !strings.Contains(out.String(), "SAVE") {
+		t.Errorf("the output does not warn that the token cannot be recovered:\n%s", out.String())
 	}
 }
 
@@ -758,8 +758,8 @@ func TestProvisionInstanceRegistersTheCABundleFromTheFile(t *testing.T) {
 	// And it has to say, in plain words, that nothing was loosened —
 	// otherwise "I registered the CA" and "I turned off verification"
 	// become synonyms.
-	if !strings.Contains(out.String(), "ESTRITA") {
-		t.Errorf("a saida nao diz que a verificacao continua estrita:\n%s", out.String())
+	if !strings.Contains(out.String(), "STRICT") {
+		t.Errorf("the output does not say verification stays strict:\n%s", out.String())
 	}
 }
 
@@ -1133,9 +1133,9 @@ func TestRotateInstanceRemindsToUpdateMetaAFTERWARDS(t *testing.T) {
 	}
 
 	text := out.String()
-	for _, word := range []string{"Meta", "DEPOIS"} {
+	for _, word := range []string{"Meta", "THEN"} {
 		if !strings.Contains(text, word) {
-			t.Errorf("a saida nao lembra de atualizar a Meta depois (falta %q):\n%s", word, text)
+			t.Errorf("the output does not remind to update Meta afterward (missing %q):\n%s", word, text)
 		}
 	}
 }
@@ -1159,8 +1159,8 @@ func TestRotateInstanceWarnsAboutTheVerifyTokenOnlyWhenItChanges(t *testing.T) {
 			&out, fakeEnvironment(vars)); err != nil {
 			t.Fatalf("dispatch: %v", err)
 		}
-		if !strings.Contains(out.String(), "re-salvar") {
-			t.Errorf("a saida nao avisa que o verify_token so aparece ao re-salvar a URL na Meta:\n%s", out.String())
+		if !strings.Contains(out.String(), "re-saves") {
+			t.Errorf("the output does not warn that verify_token only shows up when the URL is re-saved at Meta:\n%s", out.String())
 		}
 	})
 
@@ -1553,8 +1553,8 @@ func TestListInstancesShowsTheTYPEOfBoth(t *testing.T) {
 		t.Fatalf("dispatch: %v", err)
 	}
 
-	if !strings.Contains(out.String(), "TIPO") {
-		t.Errorf("o cabecalho nao tem a coluna TIPO:\n%s", out.String())
+	if !strings.Contains(out.String(), "TYPE") {
+		t.Errorf("the header is missing the TYPE column:\n%s", out.String())
 	}
 	wppLine := instanceLine(t, out.String(), "tenant-one")
 	if !strings.Contains(wppLine, config.TypeWhatsApp) {
@@ -1574,8 +1574,8 @@ func TestListInstancesSaysWhenThereIsNONE(t *testing.T) {
 	if err := dispatch([]string{"instancia", "listar"}, &out, fakeEnvironment(testEnvironment(t))); err != nil {
 		t.Fatalf("dispatch: %v", err)
 	}
-	if !strings.Contains(out.String(), "nenhuma instancia") {
-		t.Errorf("a saida nao diz que nao ha instancia nenhuma:\n%q", out.String())
+	if !strings.Contains(out.String(), "no instance registered") {
+		t.Errorf("the output does not say there is no instance at all:\n%q", out.String())
 	}
 }
 
@@ -1647,7 +1647,7 @@ func TestShowInstanceWhatsAppStaysWithoutANewTypeLine(t *testing.T) {
 	}
 
 	text := out.String()
-	if !strings.Contains(labelLine(t, text, "tipo"), config.TypeWhatsApp) {
+	if !strings.Contains(labelLine(t, text, "type"), config.TypeWhatsApp) {
 		t.Errorf("a linha de tipo nao diz %q:\n%s", config.TypeWhatsApp, text)
 	}
 	if strings.Contains(text, "ig_id") {
@@ -1670,7 +1670,7 @@ func TestShowInstanceInstagramShowsTypeAndIgID(t *testing.T) {
 	}
 
 	text := out.String()
-	if !strings.Contains(labelLine(t, text, "tipo"), config.TypeInstagram) {
+	if !strings.Contains(labelLine(t, text, "type"), config.TypeInstagram) {
 		t.Errorf("a linha de tipo nao diz %q:\n%s", config.TypeInstagram, text)
 	}
 	if !strings.Contains(labelLine(t, text, "ig_id"), "IGID_SINTETICO_27807047495582675") {
@@ -2048,9 +2048,9 @@ func TestInstanceRemoveWarnsThatMetaDoesNotKnow(t *testing.T) {
 		t.Fatalf("instancia remover: %v", err)
 	}
 	text := out.String()
-	for _, want := range []string{"404", "painel da Meta"} {
+	for _, want := range []string{"404", "Meta's panel"} {
 		if !strings.Contains(text, want) {
-			t.Errorf("a saida da remocao nao traz %q:\n%s", want, text)
+			t.Errorf("the removal output is missing %q:\n%s", want, text)
 		}
 	}
 }
@@ -2100,15 +2100,15 @@ func TestProvisionInstancePRINTSTheTwoSHAREDSecrets(t *testing.T) {
 	if got := valueFromOutput(t, text, "segredo_entrega"); got != i.DeliverySecret {
 		t.Errorf("segredo_entrega impresso = %q, gravado = %q", got, i.DeliverySecret)
 	}
-	if !strings.Contains(text, "GUARDE") {
-		t.Errorf("a saida nao avisa que os valores nao voltam:\n%s", text)
+	if !strings.Contains(text, "SAVE") {
+		t.Errorf("the output does not warn that the values will not come back:\n%s", text)
 	}
 	// And the command has to say WHAT each one is FOR: without it,
 	// whoever operated it has two 64-character hex strings on screen and
 	// no destination.
-	for _, want := range []string{"Verify Token", "CONSUMIDOR"} {
+	for _, want := range []string{"Verify Token", "CONSUMER"} {
 		if !strings.Contains(text, want) {
-			t.Errorf("a saida nao diz o destino do valor (%q):\n%s", want, text)
+			t.Errorf("the output does not say what the value is for (%q):\n%s", want, text)
 		}
 	}
 }
@@ -2172,8 +2172,8 @@ func TestProvisionInstanceDoesNotReprintWhatCAMEFromTheENVIRONMENT(t *testing.T)
 			t.Errorf("o comando reimprimiu %q, que veio do ambiente:\n%s", value, text)
 		}
 	}
-	if strings.Contains(text, "GUARDE") {
-		t.Errorf("o aviso de guardar apareceu sem nada ter sido sorteado:\n%s", text)
+	if strings.Contains(text, "SAVE") {
+		t.Errorf("the save warning appeared without anything having been randomly generated:\n%s", text)
 	}
 }
 
@@ -2370,13 +2370,13 @@ func TestConsumerRotateWarnsTheTokenDoesNotComeBackAndThePreviousOneDied(t *test
 		t.Fatalf("consumidor rotacionar: %v", err)
 	}
 	text := out.String()
-	// "GUARDE" for the same reason as creation (the store only keeps the
+	// "SAVE" for the same reason as creation (the store only keeps the
 	// hash); "401" because whoever rotates it needs to know, right then,
 	// that they have to warn the consumer — otherwise they find out
 	// through their own production error.
-	for _, want := range []string{"GUARDE", "401"} {
+	for _, want := range []string{"SAVE", "401"} {
 		if !strings.Contains(text, want) {
-			t.Errorf("a saida da rotacao nao traz %q:\n%s", want, text)
+			t.Errorf("the rotation output is missing %q:\n%s", want, text)
 		}
 	}
 }
@@ -2446,8 +2446,8 @@ func TestConsumerListOnEmptyDatabaseIsNotAnError(t *testing.T) {
 		fakeEnvironment(testEnvironment(t))); err != nil {
 		t.Fatalf("listar em banco vazio: %v", err)
 	}
-	if !strings.Contains(out.String(), "nenhum consumidor") {
-		t.Errorf("a saida nao diz que o banco esta vazio:\n%s", out.String())
+	if !strings.Contains(out.String(), "no consumer") {
+		t.Errorf("the output does not say the database is empty:\n%s", out.String())
 	}
 }
 
@@ -2543,29 +2543,29 @@ func TestDispatchAcceptsEnglishSubVerbsSilently(t *testing.T) {
 			var outNew bytes.Buffer
 			errNew := dispatch(c.newArgs, &outNew, env)
 
-			notice := fmt.Sprintf("zapgw: o subcomando %q esta obsoleto -- use %q no lugar (T-214)\n", c.oldVerb, c.newVerb)
+			notice := fmt.Sprintf("zapgw: subcommand %q is deprecated -- use %q instead (T-214)\n", c.oldVerb, c.newVerb)
 			if !strings.Contains(outOld.String(), notice) {
-				t.Fatalf("%q nao emitiu o aviso T-214/T-218 esperado: %s", c.oldVerb, outOld.String())
+				t.Fatalf("%q did not emit the expected T-214/T-218 notice: %s", c.oldVerb, outOld.String())
 			}
-			if strings.Contains(outNew.String(), "obsoleto") {
-				t.Fatalf("%q (grafia NOVA) avisou sem precisar: %s", c.newVerb, outNew.String())
+			if strings.Contains(outNew.String(), "deprecated") {
+				t.Fatalf("%q (NEW spelling) warned needlessly: %s", c.newVerb, outNew.String())
 			}
 
 			rest := strings.Replace(outOld.String(), notice, "", 1)
 			if rest != outNew.String() {
-				t.Errorf("saida do verbo velho (sem o aviso) difere da saida do verbo novo -- sinal de que"+
-					" as duas grafias NAO chamam a mesma funcao:\nvelho: %q\nnovo:  %q", rest, outNew.String())
+				t.Errorf("the old verb's output (without the notice) differs from the new verb's output -- a sign that"+
+					" the two spellings do NOT call the same function:\nold: %q\nnew:  %q", rest, outNew.String())
 			}
 			switch {
 			case errOld == nil && errNew == nil:
-				// Ambos silenciosos e sem erro -- ok (ex.: `listar`/`list`
-				// num banco vazio).
+				// Both quiet with no error -- ok (e.g. `listar`/`list`
+				// on an empty database).
 			case errOld != nil && errNew != nil:
 				if errOld.Error() != errNew.Error() {
-					t.Errorf("erro do verbo velho difere do erro do verbo novo:\nvelho: %v\nnovo:  %v", errOld, errNew)
+					t.Errorf("the old verb's error differs from the new verb's error:\nold: %v\nnew:  %v", errOld, errNew)
 				}
 			default:
-				t.Errorf("um dos dois falhou e o outro nao (velho=%v, novo=%v) -- as duas grafias deviam se comportar identicamente", errOld, errNew)
+				t.Errorf("one of the two failed and the other did not (old=%v, new=%v) -- the two spellings should behave identically", errOld, errNew)
 			}
 		})
 	}
@@ -2589,10 +2589,10 @@ func TestDispatchMenuTeachesThePath(t *testing.T) {
 	var out bytes.Buffer
 	err := dispatch([]string{"menu"}, &out, fakeEnvironment(testEnvironment(t)))
 	if err == nil {
-		t.Fatal("dispatch([]string{\"menu\"}) nao devolveu erro")
+		t.Fatal("dispatch([]string{\"menu\"}) did not return an error")
 	}
-	if !strings.Contains(err.Error(), "zapgw sem argumento") {
-		t.Errorf("o erro de `zapgw menu` nao ensina o caminho (nao cita \"zapgw sem argumento\"): %v", err)
+	if !strings.Contains(err.Error(), "zapgw with no argument") {
+		t.Errorf("the `zapgw menu` error does not teach the path (does not cite \"zapgw with no argument\"): %v", err)
 	}
 }
 
@@ -2603,13 +2603,13 @@ func TestDispatchMenuDoesNotUseTheGenericError(t *testing.T) {
 	var out bytes.Buffer
 	err := dispatch([]string{"xpto"}, &out, fakeEnvironment(testEnvironment(t)))
 	if err == nil {
-		t.Fatal("subcomando desconhecido \"xpto\" foi aceito")
+		t.Fatal("unknown subcommand \"xpto\" was accepted")
 	}
-	if !strings.Contains(err.Error(), "subcomando desconhecido") {
-		t.Errorf("subcomando desconhecido generico mudou de mensagem: %v", err)
+	if !strings.Contains(err.Error(), "unknown subcommand") {
+		t.Errorf("the generic unknown-subcommand message changed: %v", err)
 	}
-	if strings.Contains(err.Error(), "tela interativa") {
-		t.Errorf("subcomando desconhecido generico ganhou o texto do ensinamento de \"menu\": %v", err)
+	if strings.Contains(err.Error(), "interactive screen") {
+		t.Errorf("the generic unknown-subcommand error picked up \"menu\"'s teaching text: %v", err)
 	}
 }
 
@@ -2699,9 +2699,9 @@ func TestInstanceReopenEnrollmentUNBLOCKSTheConsumerWithoutTouchingTheConfigurat
 	// The command has to say what it did NOT do: the expensive
 	// confusion here is the owner thinking he fixed the consumer's
 	// configuration.
-	for _, required := range []string{"REABERTA", "CONSUMIDOR", "nenhum campo"} {
+	for _, required := range []string{"REOPENED", "CONSUMER", "no configuration field"} {
 		if !strings.Contains(text, required) {
-			t.Errorf("a saida nao diz %q:\n%s", required, text)
+			t.Errorf("the output does not say %q:\n%s", required, text)
 		}
 	}
 }
@@ -2767,8 +2767,8 @@ func TestShowInstanceSaysWhetherTheEnrollmentWindowISOpen(t *testing.T) {
 	if err := dispatch([]string{"instancia", "mostrar", "--slug", "terceiro"}, &out, fakeEnvironment(vars)); err != nil {
 		t.Fatalf("mostrar: %v", err)
 	}
-	if !strings.Contains(out.String(), "ABERTA") || !strings.Contains(out.String(), "PRIMEIRA insercao") {
-		t.Errorf("a instancia sem cadastro nao aparece com a janela aberta:\n%s", out.String())
+	if !strings.Contains(out.String(), "OPEN") || !strings.Contains(out.String(), "FIRST insertion") {
+		t.Errorf("the unregistered instance does not show up with an open window:\n%s", out.String())
 	}
 	// And the owner has to see the consumer's fields are pending
 	// registration WITHOUT thinking it's a defect.
@@ -2783,8 +2783,8 @@ func TestShowInstanceSaysWhetherTheEnrollmentWindowISOpen(t *testing.T) {
 	if err := dispatch([]string{"instancia", "mostrar", "--slug", "terceiro"}, &out, fakeEnvironment(vars)); err != nil {
 		t.Fatalf("mostrar: %v", err)
 	}
-	if !strings.Contains(out.String(), "FECHADA") {
-		t.Errorf("a janela vencida nao aparece como fechada:\n%s", out.String())
+	if !strings.Contains(out.String(), "CLOSED") {
+		t.Errorf("the expired window does not show up as closed:\n%s", out.String())
 	}
 	if !strings.Contains(out.String(), "reabrir-cadastro --slug terceiro --confirmo terceiro") {
 		t.Errorf("a linha da janela fechada nao traz o comando que destrava:\n%s", out.String())
@@ -2851,13 +2851,13 @@ func TestRegisterInstanceReadsThePinFromZAPGWPinAndPostsTheRightBody(t *testing.
 	if p.body["messaging_product"] != "whatsapp" || p.body["pin"] != "123456" {
 		t.Errorf("corpo = %v, quero messaging_product=whatsapp e pin=123456", p.body)
 	}
-	if !strings.Contains(out.String(), "REGISTRADA") {
-		t.Errorf("a saida nao confirma o registro:\n%s", out.String())
+	if !strings.Contains(out.String(), "REGISTERED") {
+		t.Errorf("the output does not confirm the registration:\n%s", out.String())
 	}
 	// The one-way warning has to appear: whoever uses it needs to know
 	// BEFORE that there is no way to deactivate it through the API.
-	if !strings.Contains(out.String(), "MAO UNICA") {
-		t.Errorf("a saida nao avisa que a operacao e de mao unica:\n%s", out.String())
+	if !strings.Contains(out.String(), "ONE-WAY") {
+		t.Errorf("the output does not warn that the operation is one-way:\n%s", out.String())
 	}
 	// The PIN NEVER shows up in the output.
 	if strings.Contains(out.String(), "123456") {
@@ -2908,8 +2908,8 @@ func TestDeregisterInstanceWithoutConfirmFailsWithoutTouchingTheNetwork(t *testi
 	}
 	// The message has to SAY WHAT HAPPENS, not just ask for confirmation
 	// (Do item 3 of T-151).
-	if !strings.Contains(err.Error(), "PRODUCAO DO AR") {
-		t.Errorf("a mensagem nao diz o que acontece: %v", err)
+	if !strings.Contains(err.Error(), "OFF THE AIR") {
+		t.Errorf("the message does not say what happens: %v", err)
 	}
 	if len(*requests) != 0 {
 		t.Errorf("desregistrar sem --confirmo TOCOU a rede (%d chamada(s))", len(*requests))
@@ -2928,8 +2928,8 @@ func TestDeregisterInstanceWithConfirmCallsDeregister(t *testing.T) {
 	if len(*requests) != 1 || !strings.HasSuffix((*requests)[0].path, "/PNID1/deregister") {
 		t.Fatalf("pedidos = %+v, quero um POST em /PNID1/deregister", *requests)
 	}
-	if !strings.Contains(out.String(), "DESREGISTRADA") {
-		t.Errorf("a saida nao confirma o desregistro:\n%s", out.String())
+	if !strings.Contains(out.String(), "DEREGISTERED") {
+		t.Errorf("the output does not confirm the deregistration:\n%s", out.String())
 	}
 }
 

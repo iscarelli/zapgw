@@ -226,7 +226,7 @@ func TestTransitCommandWithoutHitsIsNotAnError(t *testing.T) {
 		&out, env); err != nil {
 		t.Fatalf("dispatch: %v — buscar num numero que nunca falou nao e erro", err)
 	}
-	if !strings.Contains(out.String(), "nada encontrado") {
-		t.Fatalf("saida = %q, queria dizer que nada foi encontrado", out.String())
+	if !strings.Contains(out.String(), "nothing found") {
+		t.Fatalf("output = %q, wanted it to say nothing was found", out.String())
 	}
 }

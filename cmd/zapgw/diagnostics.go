@@ -41,7 +41,7 @@
 // the App is an APP-LEVEL question (it requires app_id and an
 // administrator token the instance does not hold — only the app_secret,
 // used to validate the webhook signature). Comes out as
-// `nao_verificavel_daqui`, with the reason — NEVER disappearing from the
+// `not_verifiable_here`, with the reason — NEVER disappearing from the
 // output and NEVER coming out as "ok" by omission: a diagnostic that stays
 // silent about what it doesn't know produces a false "all clear" at
 // exactly the moment someone is hunting for a problem (T-109, Do item 4).
@@ -67,9 +67,9 @@ import (
 
 const (
 	verdictOK            = "  [ok]"
-	verdictError         = "  [ERRO]"
+	verdictError         = "  [ERROR]"
 	verdictWarning       = "  [!]"
-	verdictNotVerifiable = "  [nao_verificavel_daqui]"
+	verdictNotVerifiable = "  [not_verifiable_here]"
 )
 
 // instagramConversationFolders is the display ORDER of the extra folders —
@@ -79,16 +79,16 @@ const (
 var instagramConversationFolders = []string{"other", "page_done", "spam", "requests"}
 
 // formatInstagramCount is the ONLY place that decides how a
-// conversation count turns into text (T-112). `≥ N (primeira pagina)` when
+// conversation count turns into text (T-112). `≥ N (first page)` when
 // Meta signaled `paging.next` (there is more beyond what came back);
-// `N conversa(s)` with no marker when not — then N is exact, not a floor.
+// `N conversation(s)` with no marker when not — then N is exact, not a floor.
 // NEVER prints a bare `N` when Floor is true: presenting a floor as a total
 // is exactly the T-112 defect.
 func formatInstagramCount(c meta.ConversationCount) string {
 	if c.Floor {
-		return fmt.Sprintf("≥ %d conversa(s) (primeira pagina; pode haver mais)", c.N)
+		return fmt.Sprintf("≥ %d conversation(s) (first page; there may be more)", c.N)
 	}
-	return fmt.Sprintf("%d conversa(s)", c.N)
+	return fmt.Sprintf("%d conversation(s)", c.N)
 }
 
 // foldersWithSameNumber detects the symptom measured in production in
@@ -116,14 +116,14 @@ func foldersWithSameNumber(byFolder map[string]meta.ConversationCount) bool {
 func diagnose(args []string, out io.Writer, env environment) error {
 	fs := flag.NewFlagSet("diagnostico", flag.ContinueOnError)
 	fs.SetOutput(out)
-	slug := fs.String("slug", "", "instancia a diagnosticar. SOMENTE LEITURA. OBRIGATORIO")
+	slug := fs.String("slug", "", "instance to diagnose. READ-ONLY. REQUIRED")
 	if keepGoing, err := parseFlags(fs, args); err != nil || !keepGoing {
 		return err
 	}
 
 	who := strings.TrimSpace(*slug)
 	if who == "" {
-		return errors.New("zapgw: --slug e obrigatorio")
+		return errors.New("zapgw: --slug is required")
 	}
 
 	store, err := openStore(env)
@@ -135,9 +135,9 @@ func diagnose(args []string, out io.Writer, env environment) error {
 	inst, err := store.FindInstance(who)
 	if err != nil {
 		if errors.Is(err, config.ErrInstanceNotFound) {
-			return fmt.Errorf("zapgw: instancia %q nao existe (use `zapgw instancia listar` para ver os slugs): %w", who, err)
+			return fmt.Errorf("zapgw: instance %q does not exist (use `zapgw instancia listar` to see the slugs): %w", who, err)
 		}
-		return fmt.Errorf("zapgw: buscar instancia %q: %w", who, err)
+		return fmt.Errorf("zapgw: look up instance %q: %w", who, err)
 	}
 
 	// "" reads as TypeWhatsApp — the same normalization
@@ -149,8 +149,8 @@ func diagnose(args []string, out io.Writer, env environment) error {
 		kind = config.TypeWhatsApp
 	}
 	if kind != config.TypeInstagram {
-		return fmt.Errorf("zapgw: diagnostico ainda so cobre instancias --tipo instagram (T-109, item 7) —"+
-			" %q e do tipo %q", who, kind)
+		return fmt.Errorf("zapgw: diagnostico still only covers --tipo instagram instances (T-109, item 7) —"+
+			" %q is of type %q", who, kind)
 	}
 
 	// The SAME client and SAME host resolution smoke.go and main.go use
@@ -179,59 +179,59 @@ func diagnose(args []string, out io.Writer, env environment) error {
 // it — only what Meta returned about the ACCOUNT (id, username, type) and
 // about the STATE (permission granted or not, subscribed or not).
 func diagnoseInstagram(ctx context.Context, client *meta.Client, base string, inst config.Instance, out io.Writer, probeInvalidFolder bool) error {
-	fmt.Fprintf(out, "diagnostico do instagram · instancia %q (ig_id %q)\n\n", inst.Slug, inst.IgID)
+	fmt.Fprintf(out, "instagram diagnostic · instance %q (ig_id %q)\n\n", inst.Slug, inst.IgID)
 
 	var problems []string
 
-	// 1) de quem e este token.
-	fmt.Fprintln(out, "1) a conta do token")
+	// 1) whose token this is.
+	fmt.Fprintln(out, "1) the token's account")
 	account, err := client.InstagramTokenAccount(ctx, base, inst.SendToken)
 	if err != nil {
-		fmt.Fprintf(out, "%s nao deu para ler a conta — %v\n", verdictError, err)
-		problems = append(problems, "o token nao respondeu; pode estar expirado ou ser de outro App")
+		fmt.Fprintf(out, "%s could not read the account — %v\n", verdictError, err)
+		problems = append(problems, "the token did not respond; it may be expired or from another App")
 	} else {
 		accountType := account.AccountType
 		if accountType == "" {
-			accountType = "(nao informado)"
+			accountType = "(not informed)"
 		}
-		fmt.Fprintf(out, "%s @%s · id %s · tipo %s\n", verdictOK, account.Username, account.ID, accountType)
+		fmt.Fprintf(out, "%s @%s · id %s · type %s\n", verdictOK, account.Username, account.ID, accountType)
 		if account.AccountType != "" && account.AccountType != "BUSINESS" && account.AccountType != "MEDIA_CREATOR" {
-			problems = append(problems, fmt.Sprintf("a conta e %s, nao profissional", account.AccountType))
+			problems = append(problems, fmt.Sprintf("the account is %s, not professional", account.AccountType))
 		}
 		// 🔴 DO NOT flag divergence — it is EXPECTED. See the comment on
 		// meta.InstagramAccount and the Why of T-109 (4 events discarded
 		// when this comparison was done backwards, recording the App-scope
 		// id instead of entry[].id).
 		if inst.IgID != "" && account.ID != "" && account.ID != inst.IgID {
-			fmt.Fprintf(out, "%s id do token (escopo do App): %s\n", verdictWarning, account.ID)
-			fmt.Fprintf(out, "      ig_id desta instancia (entry[].id do webhook): %s\n", inst.IgID)
-			fmt.Fprintln(out, "      divergir e NORMAL — sao espacos de id diferentes. quem vale para o")
-			fmt.Fprintln(out, "      roteamento e o entry[].id do webhook, que e o ig_id gravado na instancia.")
+			fmt.Fprintf(out, "%s token id (App scope): %s\n", verdictWarning, account.ID)
+			fmt.Fprintf(out, "      this instance's ig_id (webhook entry[].id): %s\n", inst.IgID)
+			fmt.Fprintln(out, "      diverging is NORMAL — they are different id spaces. what matters for")
+			fmt.Fprintln(out, "      routing is the webhook's entry[].id, which is the ig_id recorded on the instance.")
 		}
 	}
 
 	// 2) the messaging permission, tested BY USE — never via debug_token.
-	fmt.Fprintln(out, "\n2) a permissao de mensagens — testada pelo uso")
+	fmt.Fprintln(out, "\n2) the messaging permission — tested by use")
 	permission, err := client.InstagramMessagingPermission(ctx, base, inst.SendToken)
 	if err != nil {
 		var metaError *meta.MetaError
 		if errors.As(err, &metaError) && metaError.Class == meta.ClassConfig {
-			fmt.Fprintf(out, "%s recusado por PERMISSAO/CREDENCIAL — %v\n", verdictError, err)
-			problems = append(problems, "o token nao tem `instagram_business_manage_messages` concedida: gere o "+
-				"token de novo e, na tela de autorizacao, confirme que a permissao de mensagens aparece")
+			fmt.Fprintf(out, "%s refused by PERMISSION/CREDENTIAL — %v\n", verdictError, err)
+			problems = append(problems, "the token was not granted `instagram_business_manage_messages`: generate the "+
+				"token again and, on the authorization screen, confirm the messaging permission appears")
 		} else {
-			fmt.Fprintf(out, "%s nao deu para listar conversas — %v\n", verdictWarning, err)
-			fmt.Fprintln(out, "      (nao conclui nada sobre a permissao: o erro nao e de permissao)")
+			fmt.Fprintf(out, "%s could not list conversations — %v\n", verdictWarning, err)
+			fmt.Fprintln(out, "      (this concludes nothing about the permission: the error is not a permission error)")
 		}
 	} else {
-		fmt.Fprintf(out, "%s permissao CONCEDIDA (o endpoint de conversas respondeu)\n", verdictOK)
-		fmt.Fprintf(out, "      conversas na caixa padrao: %s\n", formatInstagramCount(permission.ByFolder[""]))
+		fmt.Fprintf(out, "%s permission GRANTED (the conversations endpoint responded)\n", verdictOK)
+		fmt.Fprintf(out, "      conversations in the default inbox: %s\n", formatInstagramCount(permission.ByFolder[""]))
 		for _, folder := range instagramConversationFolders {
 			c, has := permission.ByFolder[folder]
 			if !has {
 				continue // folder failed (best effort) — no number, no line
 			}
-			fmt.Fprintf(out, "%s pasta %q: %s\n", verdictOK, folder, formatInstagramCount(c))
+			fmt.Fprintf(out, "%s folder %q: %s\n", verdictOK, folder, formatInstagramCount(c))
 		}
 		// T-113/T-114: this warning's text is PARAMETERIZED by
 		// meta.MeasuredFolderResult. With FolderIgnored the sweep of
@@ -246,41 +246,41 @@ func diagnoseInstagram(ctx context.Context, client *meta.Client, base string, in
 		// (which requires at least two folders answered) would make the
 		// warning NEVER appear, the hedge this task exists to close.
 		if meta.MeasuredFolderResult == meta.FolderIgnored {
-			fmt.Fprintln(out, verdictOK+" a segregacao por pasta NAO E OBSERVAVEL por esta API (medido, T-113/T-114):")
-			fmt.Fprintln(out, "      o parametro `folder` de /me/conversations e ignorado com token de Instagram")
-			fmt.Fprintln(out, "      Login. Nao use estes numeros para dizer em que gaveta uma DM esta.")
+			fmt.Fprintln(out, verdictOK+" per-folder segregation is NOT OBSERVABLE through this API (measured, T-113/T-114):")
+			fmt.Fprintln(out, "      the `folder` parameter of /me/conversations is ignored with an Instagram")
+			fmt.Fprintln(out, "      Login token. Do not use these numbers to say which drawer a DM is in.")
 		} else if foldersWithSameNumber(permission.ByFolder) {
 			switch meta.MeasuredFolderResult {
 			case meta.FolderHonored:
-				fmt.Fprintln(out, verdictWarning+" todas as pastas que responderam trouxeram o MESMO numero. O filtro")
-				fmt.Fprintln(out, "      `folder` EXISTE (medido, T-113) — a causa mais provavel e' o TETO DE PAGINA")
-				fmt.Fprintln(out, "      mascarando a diferenca real entre pastas.")
+				fmt.Fprintln(out, verdictWarning+" every folder that answered came back with the SAME number. The")
+				fmt.Fprintln(out, "      `folder` filter EXISTS (measured, T-113) — the most likely cause is the PAGE CEILING")
+				fmt.Fprintln(out, "      masking the real difference between folders.")
 			default:
-				fmt.Fprintln(out, verdictWarning+" todas as pastas que responderam trouxeram o MESMO numero — o filtro")
-				fmt.Fprintln(out, "      `folder` pode nao estar sendo aplicado por este endpoint. NAO conclua daqui")
-				fmt.Fprintln(out, "      em que gaveta a DM esta (medicao em producao ainda pendente — ver T-113;")
-				fmt.Fprintln(out, "      rode com ZAPGW_DIAGNOSTIC_PROBE_FOLDER=1 para medir).")
+				fmt.Fprintln(out, verdictWarning+" every folder that answered came back with the SAME number — the")
+				fmt.Fprintln(out, "      `folder` filter may not be applied by this endpoint. DO NOT conclude from this")
+				fmt.Fprintln(out, "      which drawer the DM is in (measurement in production still pending — see T-113;")
+				fmt.Fprintln(out, "      run with ZAPGW_DIAGNOSTIC_PROBE_FOLDER=1 to measure).")
 			}
 		}
 		if permission.TotalConversations == 0 {
-			fmt.Fprintln(out, "      nenhuma conversa em pasta nenhuma — isso reforça que a Meta nao esta")
-			fmt.Fprintln(out, "      expondo trafego desta conta ao App (ou ainda nao chegou DM nenhuma).")
+			fmt.Fprintln(out, "      no conversation in any folder — this reinforces that Meta is not")
+			fmt.Fprintln(out, "      exposing this account's traffic to the App (or no DM has arrived yet).")
 		}
 	}
 
 	// 3) the account's webhook subscription.
-	fmt.Fprintln(out, "\n3) a inscricao de webhook da conta")
+	fmt.Fprintln(out, "\n3) the account's webhook subscription")
 	fields, err := client.InstagramWebhookSubscription(ctx, base, inst.SendToken)
 	if err != nil {
-		fmt.Fprintf(out, "%s nao deu para ler a inscricao — %v\n", verdictError, err)
+		fmt.Fprintf(out, "%s could not read the subscription — %v\n", verdictError, err)
 	} else {
 		label := strings.Join(fields, ", ")
 		if label == "" {
-			label = "(nenhum campo inscrito)"
+			label = "(no field subscribed)"
 		}
-		fmt.Fprintf(out, "%s inscricoes: %s\n", verdictOK, label)
+		fmt.Fprintf(out, "%s subscriptions: %s\n", verdictOK, label)
 		if !slices.Contains(fields, "messages") {
-			problems = append(problems, "a conta nao esta inscrita no campo `messages`")
+			problems = append(problems, "the account is not subscribed to the `messages` field")
 		}
 	}
 
@@ -289,10 +289,10 @@ func diagnoseInstagram(ctx context.Context, client *meta.Client, base string, in
 	// ADMINISTRATOR token for the App, and the instance only has the
 	// app_secret (used only to validate the webhook signature). Makes NO
 	// call at all — the reason does not depend on the network.
-	fmt.Fprintln(out, "\n4) o papel de testador no App")
-	fmt.Fprintf(out, "%s este gateway nao guarda o app_id nem um token administrador do App para esta "+
-		"instancia — so o app_secret, usado para validar a assinatura do webhook. confira manualmente no "+
-		"painel da Meta (App > Instagram > Funcoes > Testadores do Instagram).\n", verdictNotVerifiable)
+	fmt.Fprintln(out, "\n4) the tester role in the App")
+	fmt.Fprintf(out, "%s this gateway does not hold the app_id nor an administrator token for the App for this "+
+		"instance — only the app_secret, used to validate the webhook signature. check manually in the "+
+		"Meta panel (App > Instagram > Roles > Instagram Testers).\n", verdictNotVerifiable)
 
 	// 5) the probe from item 1 of T-113 — ONLY runs when requested
 	// (ZAPGW_DIAGNOSTIC_PROBE_FOLDER, old name ZAPGW_DIAGNOSTICO_SONDAR_FOLDER
@@ -301,28 +301,28 @@ func diagnoseInstagram(ctx context.Context, client *meta.Client, base string, in
 	// documented proves, by itself, which of the two hypotheses holds
 	// (meta.FolderFilterResult).
 	if probeInvalidFolder {
-		fmt.Fprintln(out, "\n5) sonda do parametro `folder` — medicao pedida (T-113, ZAPGW_DIAGNOSTIC_PROBE_FOLDER)")
+		fmt.Fprintln(out, "\n5) `folder` parameter probe — measurement requested (T-113, ZAPGW_DIAGNOSTIC_PROBE_FOLDER)")
 		probe, err := client.ProbeInvalidInstagramFolder(ctx, base, inst.SendToken)
 		if err != nil {
-			fmt.Fprintf(out, "%s a Meta RECUSOU um folder invalido — %v\n", verdictOK, err)
-			fmt.Fprintln(out, "      isso PROVA que o filtro de pasta foi RESPEITADO: o parametro `folder`")
-			fmt.Fprintln(out, "      EXISTE e e' aplicado. Cole esta linha inteira no relatorio da T-113.")
+			fmt.Fprintf(out, "%s Meta REFUSED an invalid folder — %v\n", verdictOK, err)
+			fmt.Fprintln(out, "      this PROVES the folder filter was HONORED: the `folder` parameter")
+			fmt.Fprintln(out, "      EXISTS and is applied. Paste this whole line into T-113's report.")
 		} else {
-			fmt.Fprintf(out, "%s a Meta ACEITOU o folder invalido e devolveu %s\n", verdictWarning, formatInstagramCount(probe))
-			fmt.Fprintln(out, "      compare com \"conversas na caixa padrao\" no item 2, acima: numero IGUAL PROVA")
-			fmt.Fprintln(out, "      que o filtro de pasta foi IGNORADO: o parametro `folder` nao e' aplicado.")
-			fmt.Fprintln(out, "      Cole as duas linhas no relatorio da T-113.")
+			fmt.Fprintf(out, "%s Meta ACCEPTED the invalid folder and returned %s\n", verdictWarning, formatInstagramCount(probe))
+			fmt.Fprintln(out, "      compare with \"conversations in the default inbox\" in item 2, above: an EQUAL number PROVES")
+			fmt.Fprintln(out, "      that the folder filter was IGNORED: the `folder` parameter is not applied.")
+			fmt.Fprintln(out, "      Paste both lines into T-113's report.")
 		}
 	}
 
 	fmt.Fprintln(out, "\n"+strings.Repeat("=", 70))
 	if len(problems) > 0 {
-		fmt.Fprintln(out, "o que esta faltando:")
+		fmt.Fprintln(out, "what is missing:")
 		for _, p := range problems {
 			fmt.Fprintf(out, "  · %s\n", p)
 		}
 	} else {
-		fmt.Fprintln(out, "tudo o que da para ver DAQUI esta em ordem — o item 4 continua manual (ver acima).")
+		fmt.Fprintln(out, "everything that can be seen FROM HERE is in order — item 4 remains manual (see above).")
 	}
 	fmt.Fprintln(out, strings.Repeat("=", 70))
 

@@ -53,7 +53,7 @@ type environment func(name string) string
 // main(), not here.
 func dispatch(args []string, out io.Writer, env environment) error {
 	if len(args) == 0 {
-		return errors.New("zapgw: falta o subcomando (provisionar/provision | fumaca/smoke | diagnostico/diagnostics |" +
+		return errors.New("zapgw: missing subcommand (provisionar/provision | fumaca/smoke | diagnostico/diagnostics |" +
 			" instancia/instance | consumidor/consumer | estado/state | template | transito | log | perdidas | versao)")
 	}
 	switch args[0] {
@@ -152,19 +152,19 @@ func dispatch(args []string, out io.Writer, env environment) error {
 		// subcommand with that guard working and it was REJECTED anyway
 		// -- see docs/IMPLANTACAO.md, "O menu" section, and T-082's
 		// changelog entry (2026-07-28 20:56). Do not reopen this.
-		return fmt.Errorf("zapgw: nao existe subcomando \"menu\" -- a tela interativa abre com zapgw" +
-			" sem argumento nenhum, num terminal. nao existe subcomando \"menu\" porque um nome" +
-			" invocavel poderia ser posto num script e travar esperando entrada, furando a guarda" +
-			" que so deixa o menu abrir sem argumento e com terminal dos dois lados")
+		return fmt.Errorf("zapgw: there is no \"menu\" subcommand -- the interactive screen opens with zapgw" +
+			" with no argument at all, in a terminal. there is no \"menu\" subcommand because an" +
+			" invocable name could be put in a script and lock up waiting for input, punching through the guard" +
+			" that only lets the menu open with no argument and with a terminal on both sides")
 	default:
-		return fmt.Errorf("zapgw: subcomando desconhecido %q (conheco: provisionar/provision, fumaca/smoke, diagnostico/diagnostics,"+
+		return fmt.Errorf("zapgw: unknown subcommand %q (I know: provisionar/provision, fumaca/smoke, diagnostico/diagnostics,"+
 			" instancia/instance, consumidor/consumer, estado/state, template, transito, log, versao)", args[0])
 	}
 }
 
 func instanceCommand(args []string, out io.Writer, env environment) error {
 	if len(args) == 0 {
-		return errors.New("zapgw: instancia o que? (listar/list | mostrar/show | rotacionar/rotate |" +
+		return errors.New("zapgw: instancia what? (listar/list | mostrar/show | rotacionar/rotate |" +
 			" reabrir-cadastro/reopen-enrollment | pausar/pause | remover/remove | registrar/register |" +
 			" desregistrar/deregister | pin)")
 	}
@@ -238,7 +238,7 @@ func instanceCommand(args []string, out io.Writer, env environment) error {
 		// registered.
 		return changeInstancePin(args[1:], out, env)
 	default:
-		return fmt.Errorf("zapgw: nao sei fazer %q com uma instancia (conheco: listar/list, mostrar/show,"+
+		return fmt.Errorf("zapgw: don't know how to do %q with an instance (I know: listar/list, mostrar/show,"+
 			" rotacionar/rotate, reabrir-cadastro/reopen-enrollment, pausar/pause, remover/remove,"+
 			" registrar/register, desregistrar/deregister, pin)", args[0])
 	}
@@ -255,7 +255,7 @@ func instanceCommand(args []string, out io.Writer, env environment) error {
 // sqlite3 wasn't even installed there.
 func consumerCommand(args []string, out io.Writer, env environment) error {
 	if len(args) == 0 {
-		return errors.New("zapgw: consumidor o que? (listar/list | rotacionar/rotate)")
+		return errors.New("zapgw: consumidor what? (listar/list | rotacionar/rotate)")
 	}
 	switch args[0] {
 	case "listar":
@@ -271,7 +271,7 @@ func consumerCommand(args []string, out io.Writer, env environment) error {
 	case "rotate":
 		return rotateConsumer(args[1:], out, env)
 	default:
-		return fmt.Errorf("zapgw: nao sei fazer %q com um consumidor (conheco: listar/list, rotacionar/rotate)", args[0])
+		return fmt.Errorf("zapgw: don't know how to do %q with a consumer (I know: listar/list, rotacionar/rotate)", args[0])
 	}
 }
 
@@ -335,15 +335,15 @@ func presence(r config.InstanceSummary) []string {
 func windowAsText(r config.InstanceSummary, now time.Time) string {
 	j := config.WindowFrom(r.RegisteredAt)
 	if j.OpenedAt.IsZero() {
-		return "ABERTA — o consumidor ainda nao cadastrou nada;" +
-			" as " + config.RegistrationWindow.String() + " comecam na PRIMEIRA insercao dele, nao agora"
+		return "OPEN — the consumer has not registered anything yet;" +
+			" the " + config.RegistrationWindow.String() + " start at their FIRST insertion, not now"
 	}
 	if j.IsOpen(now) {
-		return "ABERTA ate " + j.ClosesAt.UTC().Format(time.RFC3339) +
-			" (primeira insercao do consumidor em " + j.OpenedAt.UTC().Format(time.RFC3339) + ")"
+		return "OPEN until " + j.ClosesAt.UTC().Format(time.RFC3339) +
+			" (consumer's first insertion at " + j.OpenedAt.UTC().Format(time.RFC3339) + ")"
 	}
-	return "FECHADA desde " + j.ClosesAt.UTC().Format(time.RFC3339) +
-		" — o consumidor recebe 409 ao cadastrar. Para reabrir:" +
+	return "CLOSED since " + j.ClosesAt.UTC().Format(time.RFC3339) +
+		" — the consumer gets 409 when registering. To reopen:" +
 		"  zapgw instancia reabrir-cadastro --slug " + r.Slug + " --confirmo " + r.Slug
 }
 
@@ -352,8 +352,8 @@ func windowAsText(r config.InstanceSummary, now time.Time) string {
 // like a defect and someone is going to "fix" an instance that is
 // correct.
 var absenceNote = map[string]string{
-	"callback_url": "instancia so de SAIDA: o gateway nao entrega a ninguem o que a Meta mandar aqui",
-	"bundle_ca":    "sem ancora propria: a entrega usa a store de CAs do sistema, e a verificacao continua ESTRITA",
+	"callback_url": "SEND-only instance: the gateway does not deliver to anyone what Meta sends here",
+	"bundle_ca":    "no anchor of its own: delivery uses the system's CA store, and verification stays STRICT",
 	// The two below entered in T-079, and their note matters more than
 	// the other two: since the instance started being born with ONLY THE
 	// SLUG, `nao` here is the NORMAL state of a freshly created
@@ -361,8 +361,8 @@ var absenceNote = map[string]string{
 	// the owner reads "app_secret=nao" as a defect and goes fix an
 	// instance that is correct (or, worse, types in the consumer's
 	// credential, which he does not have and should not have).
-	"app_secret":  "o CONSUMIDOR ainda nao cadastrou a Meta dele (POST /v1/cadastro) — normal em instancia recem-criada",
-	"token_envio": "o CONSUMIDOR ainda nao cadastrou a Meta dele (POST /v1/cadastro) — normal em instancia recem-criada",
+	"app_secret":  "the CONSUMER has not registered their Meta yet (POST /v1/cadastro) — normal on a freshly created instance",
+	"token_envio": "the CONSUMER has not registered their Meta yet (POST /v1/cadastro) — normal on a freshly created instance",
 }
 
 func listInstances(args []string, out io.Writer, env environment) error {
@@ -380,13 +380,13 @@ func listInstances(args []string, out io.Writer, env environment) error {
 
 	list, err := store.ListInstances()
 	if err != nil {
-		return fmt.Errorf("zapgw: listar instancias: %w", err)
+		return fmt.Errorf("zapgw: list instances: %w", err)
 	}
 	if len(list) == 0 {
 		// An empty output cannot be told apart from "the command didn't
 		// run", and on a freshly created database that doubt costs a
 		// pointless investigation.
-		fmt.Fprintf(out, "nenhuma instancia cadastrada neste banco.\n")
+		fmt.Fprintf(out, "no instance registered in this database.\n")
 		return nil
 	}
 
@@ -394,12 +394,12 @@ func listInstances(args []string, out io.Writer, env environment) error {
 	// readable at a glance — and "at a glance" is the only way this
 	// output will ever be read.
 	tab := tabwriter.NewWriter(out, 0, 0, 2, ' ', 0)
-	// T-103: TIPO goes right next to ESTADO, not at the end — without
+	// T-103: TYPE goes right next to STATE, not at the end — without
 	// it, an instagram instance shows up with
-	// NUMERO/PHONE_NUMBER_ID/WABA_ID empty and nothing in the row
+	// NUMBER/PHONE_NUMBER_ID/WABA_ID empty and nothing in the row
 	// explains why; whoever reads it goes looking for missing
 	// configuration where nothing is missing.
-	fmt.Fprintf(tab, "SLUG\tESTADO\tTIPO\tNUMERO\tPHONE_NUMBER_ID\tWABA_ID\tTIMEOUT\tCADASTRADO? (nada e decifrado, valor nenhum e mostrado)\n")
+	fmt.Fprintf(tab, "SLUG\tSTATE\tTYPE\tNUMBER\tPHONE_NUMBER_ID\tWABA_ID\tTIMEOUT\tREGISTERED? (nothing is decrypted, no value is shown)\n")
 	for _, r := range list {
 		fmt.Fprintf(tab, "%s\t%s\t%s\t%s\t%s\t%s\t%dms\t%s\n",
 			r.Slug, stateOf(r), r.Type, r.DisplayNumber, r.PhoneNumberID, r.WabaID, r.TimeoutMs,
@@ -411,14 +411,14 @@ func listInstances(args []string, out io.Writer, env environment) error {
 func showInstance(args []string, out io.Writer, env environment) error {
 	fs := flag.NewFlagSet("instancia mostrar", flag.ContinueOnError)
 	fs.SetOutput(out)
-	slug := fs.String("slug", "", "instancia a mostrar")
+	slug := fs.String("slug", "", "instance to show")
 	if keepGoing, err := parseFlags(fs, args); err != nil || !keepGoing {
 		return err
 	}
 
 	who := strings.TrimSpace(*slug)
 	if who == "" {
-		return errors.New("zapgw: --slug e obrigatorio (use `zapgw instancia listar` para ver os slugs)")
+		return errors.New("zapgw: --slug is required (use `zapgw instancia listar` to see the slugs)")
 	}
 
 	store, err := openStore(env)
@@ -429,7 +429,7 @@ func showInstance(args []string, out io.Writer, env environment) error {
 
 	r, err := store.SummarizeInstance(who)
 	if err != nil {
-		return fmt.Errorf("zapgw: mostrar a instancia %q: %w", who, err)
+		return fmt.Errorf("zapgw: show instance %q: %w", who, err)
 	}
 
 	// T-103: on WhatsApp the three fields below (numero_exibido/phone_number_id/
@@ -450,8 +450,8 @@ func showInstance(args []string, out io.Writer, env environment) error {
 
 	lines := [][2]string{
 		{"slug", r.Slug},
-		{"estado", stateOf(r)},
-		{"tipo", r.Type},
+		{"state", stateOf(r)},
+		{"type", r.Type},
 		{"numero_exibido", displayedNumber},
 		{"phone_number_id", phoneNumberID},
 		{"waba_id", wabaID},
@@ -477,7 +477,7 @@ func showInstance(args []string, out io.Writer, env environment) error {
 		return err
 	}
 
-	fmt.Fprintf(out, "campos cifrados — cadastrado? (nada e decifrado, e valor nenhum e mostrado):\n")
+	fmt.Fprintf(out, "encrypted fields — registered? (nothing is decrypted, and no value is shown):\n")
 	fields := tabwriter.NewWriter(out, 0, 0, 2, ' ', 0)
 	pairs := presence(r)
 	for n, c := range r.Encrypted {
@@ -519,22 +519,22 @@ func rotateInstance(args []string, out io.Writer, env environment) error {
 	// There is NO rename flag, and the absence is the guarantee: the
 	// slug becomes /v1/inbound/{slug} and is already pasted into Meta's
 	// panel. It says WHICH instance to swap, never what to swap it into.
-	slug := fs.String("slug", "", "instancia cujos segredos serao trocados. O slug e IMUTAVEL: ele diz QUAL instancia, nunca vira um valor novo")
-	callbackURL := fs.String("callback-url", "", "nova callback_url; https:// obrigatorio. So e trocada se a flag VIER; passe vazia para apagar (instancia so de saida)")
+	slug := fs.String("slug", "", "instance whose secrets will be swapped. The slug is IMMUTABLE: it says WHICH instance, it never becomes a new value")
+	callbackURL := fs.String("callback-url", "", "new callback_url; https:// required. Only swapped if the flag IS PASSED; pass empty to clear it (send-only instance)")
 	// T-102: ig_id is an IDENTIFIER, not a secret (the same class as
 	// waba_id and phone_number_id) — that is why it is a FLAG, like in
 	// `provisionar instancia`, and not an environment variable. Only
 	// applies to a --tipo instagram instance: the write is rejected with
 	// an error on a whatsapp instance (see the validation right below,
 	// which REUSES config.ValidateInstanceType).
-	igID := fs.String("ig-id", "", "novo ig_id (Instagram-scoped Business Account ID) da instancia; identificador, nao e segredo. So se aplica a instancia --tipo instagram — recusado com erro numa instancia whatsapp")
+	igID := fs.String("ig-id", "", "new ig_id (Instagram-scoped Business Account ID) of the instance; an identifier, not a secret. Only applies to a --tipo instagram instance — refused with an error on a whatsapp instance")
 	if keepGoing, err := parseFlags(fs, args); err != nil || !keepGoing {
 		return err
 	}
 
 	who := strings.TrimSpace(*slug)
 	if who == "" {
-		return errors.New("zapgw: --slug e obrigatorio")
+		return errors.New("zapgw: --slug is required")
 	}
 
 	// The SAME order and the SAME variables as provisioning: two name
@@ -610,10 +610,10 @@ func rotateInstance(args []string, out io.Writer, env environment) error {
 	}
 
 	if len(swapped) == 0 {
-		return errors.New("zapgw: nada para trocar — defina ZAPGW_APP_SECRET, ZAPGW_VERIFY_TOKEN," +
-			" " + envSendTokenNew + " (ou " + envSendTokenOld + ") ou " + envDeliverySecretNew +
-			" (ou " + envDeliverySecretOld + ") no ambiente, e/ou passe --callback-url ou --ig-id." +
-			" Rotacionar nada e imprimir sucesso deixaria voce achando que o segredo real ja esta no gateway")
+		return errors.New("zapgw: nothing to swap — set ZAPGW_APP_SECRET, ZAPGW_VERIFY_TOKEN," +
+			" " + envSendTokenNew + " (or " + envSendTokenOld + ") or " + envDeliverySecretNew +
+			" (or " + envDeliverySecretOld + ") in the environment, and/or pass --callback-url or --ig-id." +
+			" Rotating nothing and printing success would leave you thinking the real secret is already on the gateway")
 	}
 	// The SAME function the store calls — not a second rule (two rules
 	// diverge; a function called from two places doesn't). Here it only
@@ -637,25 +637,25 @@ func rotateInstance(args []string, out io.Writer, env environment) error {
 	defer func() { _ = store.Close() }()
 
 	if err := store.RotateInstance(who, r); err != nil {
-		return fmt.Errorf("zapgw: rotacionar a instancia %q: %w", who, err)
+		return fmt.Errorf("zapgw: rotate instance %q: %w", who, err)
 	}
 
 	// SAY WHICH ONES, never the values — neither the new one nor the
 	// old one. The old one is still valid at Meta until the swap over
 	// there, so printing it leaks a LIVE secret.
-	fmt.Fprintf(out, "instancia %q: trocado(s) %s (o valor NAO e mostrado).\n",
+	fmt.Fprintf(out, "instance %q: swapped %s (the value is NOT shown).\n",
 		who, strings.Join(swapped, ", "))
-	fmt.Fprintf(out, "o que nao esta nessa lista ficou INTACTO.\n")
+	fmt.Fprintf(out, "what is not on that list stayed INTACT.\n")
 	// THE ORDER IS THE GUARANTEE: reversed, every delivery between the
 	// two steps fails verification — no loss (Meta re-queues for 36h),
 	// but with an alarm and pointless noise.
-	fmt.Fprintf(out, "agora atualize a Meta, e so DEPOIS do gateway — nunca antes.\n")
+	fmt.Fprintf(out, "now update Meta, and only THEN the gateway — never the other way around.\n")
 	if r.VerifyToken != nil {
 		// The warning spec §7.4 requires ON SCREEN: the verify_token
 		// trap is sneaky because it is only used on the verification
 		// GET.
-		fmt.Fprintf(out, "atencao ao verify_token: trocar aqui NAO quebra trafego nenhum hoje — ele so e usado no GET de verificacao."+
-			" A recusa aparece semanas depois, na primeira vez que alguem re-salvar a URL de callback no painel da Meta com o valor antigo.\n")
+		fmt.Fprintf(out, "watch out for verify_token: swapping it here does NOT break any traffic today — it is only used on the verification GET."+
+			" The rejection shows up weeks later, the first time someone re-saves the callback URL in Meta's panel with the old value.\n")
 	}
 	return nil
 }
@@ -689,14 +689,14 @@ func rotateInstance(args []string, out io.Writer, env environment) error {
 func pauseInstance(args []string, out io.Writer, env environment) error {
 	fs := flag.NewFlagSet("instancia pausar", flag.ContinueOnError)
 	fs.SetOutput(out)
-	slug := fs.String("slug", "", "instancia a tirar do ar")
+	slug := fs.String("slug", "", "instance to take down")
 	if keepGoing, err := parseFlags(fs, args); err != nil || !keepGoing {
 		return err
 	}
 
 	who := strings.TrimSpace(*slug)
 	if who == "" {
-		return errors.New("zapgw: --slug e obrigatorio (use `zapgw instancia listar` para ver os slugs)")
+		return errors.New("zapgw: --slug is required (use `zapgw instancia listar` to see the slugs)")
 	}
 
 	store, err := openStore(env)
@@ -706,16 +706,16 @@ func pauseInstance(args []string, out io.Writer, env environment) error {
 	defer func() { _ = store.Close() }()
 
 	if err := store.PauseInstance(who); err != nil {
-		return fmt.Errorf("zapgw: pausar a instancia %q: %w", who, err)
+		return fmt.Errorf("zapgw: pause instance %q: %w", who, err)
 	}
 
-	fmt.Fprintf(out, "instancia %q PAUSADA: o webhook responde 503 e o envio tambem.\n", who)
+	fmt.Fprintf(out, "instance %q PAUSED: the webhook responds 503, and so does sending.\n", who)
 	// The consequence that decides whether pausing was the right thing
 	// to do: 503 is not 200, so Meta RE-QUEUES and re-sends for up to
 	// 36h. A short pause loses no event; a long pause does, with no
 	// warning.
-	fmt.Fprintf(out, "a Meta reenfileira o que chegar (503 nao e 200) e reenvia por ate 36h — depois disso, perde.\n")
-	fmt.Fprintf(out, "para religar:  zapgw fumaca --slug %s --destino <numero em E.164>\n", who)
+	fmt.Fprintf(out, "Meta re-queues what arrives (503 is not 200) and retries for up to 36h — after that, it is lost.\n")
+	fmt.Fprintf(out, "to turn it back on:  zapgw fumaca --slug %s --destino <number in E.164>\n", who)
 	return nil
 }
 
@@ -730,18 +730,18 @@ func pauseInstance(args []string, out io.Writer, env environment) error {
 func removeInstance(args []string, out io.Writer, env environment) error {
 	fs := flag.NewFlagSet("instancia remover", flag.ContinueOnError)
 	fs.SetOutput(out)
-	slug := fs.String("slug", "", "instancia a apagar. IRREVERSIVEL")
-	confirm := fs.String("confirmo", "", "digite o slug DE NOVO para confirmar. Nao existe -y: apagar a instancia errada nao tem desfazer")
+	slug := fs.String("slug", "", "instance to delete. IRREVERSIBLE")
+	confirm := fs.String("confirmo", "", "type the slug AGAIN to confirm. There is no -y: deleting the wrong instance cannot be undone")
 	if keepGoing, err := parseFlags(fs, args); err != nil || !keepGoing {
 		return err
 	}
 
 	who := strings.TrimSpace(*slug)
 	if who == "" {
-		return errors.New("zapgw: --slug e obrigatorio (use `zapgw instancia listar` para ver os slugs)")
+		return errors.New("zapgw: --slug is required (use `zapgw instancia listar` to see the slugs)")
 	}
 	if strings.TrimSpace(*confirm) != who {
-		return fmt.Errorf("zapgw: remover a instancia %q e IRREVERSIVEL — repita o slug em --confirmo:"+
+		return fmt.Errorf("zapgw: removing instance %q is IRREVERSIBLE — repeat the slug in --confirmo:"+
 			"  zapgw instancia remover --slug %s --confirmo %s", who, who, who)
 	}
 
@@ -770,14 +770,14 @@ func removeInstance(args []string, out io.Writer, env environment) error {
 	deleted, err := store.RemoveInstance(who)
 	if err != nil {
 		if errors.Is(err, config.ErrInstanceActive) {
-			return fmt.Errorf("zapgw: a instancia %q esta ATIVA e nada foi apagado."+
-				" Pause primeiro (`zapgw instancia pausar --slug %s`), confira que nada quebrou, e so entao remova —"+
-				" pausar tem desfazer, remover nao: %w", who, who, err)
+			return fmt.Errorf("zapgw: instance %q is ACTIVE and nothing was deleted."+
+				" Pause it first (`zapgw instancia pausar --slug %s`), check nothing broke, and only then remove it —"+
+				" pausing can be undone, removing cannot: %w", who, who, err)
 		}
-		return fmt.Errorf("zapgw: remover a instancia %q: %w", who, err)
+		return fmt.Errorf("zapgw: remove instance %q: %w", who, err)
 	}
 
-	fmt.Fprintf(out, "instancia %q REMOVIDA (irreversivel). Linhas apagadas, numa transacao so:\n", who)
+	fmt.Fprintf(out, "instance %q REMOVED (irreversible). Rows deleted, in a single transaction:\n", who)
 	tab := tabwriter.NewWriter(out, 0, 0, 2, ' ', 0)
 	for _, a := range deleted {
 		fmt.Fprintf(tab, "  %s\t%d\n", a.Table, a.Rows)
@@ -786,7 +786,7 @@ func removeInstance(args []string, out io.Writer, env environment) error {
 		return err
 	}
 	if len(orphans) > 0 {
-		fmt.Fprintf(out, "PERDERAM ACESSO a esta instancia: %s — as chamadas deles para ela passam a receber 403.\n",
+		fmt.Fprintf(out, "LOST ACCESS to this instance: %s — their calls to it now get 403.\n",
 			strings.Join(orphans, ", "))
 	}
 	// What the gateway CANNOT delete, and therefore has to say: the
@@ -794,8 +794,8 @@ func removeInstance(args []string, out io.Writer, env environment) error {
 	// arriving at /v1/inbound/{slug} and the gateway answers 404
 	// (internal/inbound/handler.go), with one journal line per batch —
 	// and no one reads the journal out of habit.
-	fmt.Fprintf(out, "a Meta NAO sabe disso: enquanto a Callback URL apontar para /v1/inbound/%s, ela recebe 404 a cada entrega.\n", who)
-	fmt.Fprintf(out, "tire a inscricao no painel da Meta, ou reaponte a Callback URL.\n")
+	fmt.Fprintf(out, "Meta does NOT know about this: while the Callback URL still points at /v1/inbound/%s, it gets a 404 on every delivery.\n", who)
+	fmt.Fprintf(out, "remove the subscription in Meta's panel, or repoint the Callback URL.\n")
 	return nil
 }
 
@@ -832,19 +832,19 @@ func readPin(env environment, file string) (string, error) {
 	if file != "" {
 		raw, err := os.ReadFile(file)
 		if err != nil {
-			return "", fmt.Errorf("zapgw: --pin-arquivo: ler %s: %w", file, err)
+			return "", fmt.Errorf("zapgw: --pin-arquivo: read %s: %w", file, err)
 		}
 		pin := strings.TrimSpace(string(raw))
 		if pin == "" {
-			return "", fmt.Errorf("zapgw: --pin-arquivo: %s esta vazio", file)
+			return "", fmt.Errorf("zapgw: --pin-arquivo: %s is empty", file)
 		}
 		return pin, nil
 	}
 	pin := strings.TrimSpace(env("ZAPGW_PIN"))
 	if pin == "" {
-		return "", errors.New("zapgw: o pin e obrigatorio — defina ZAPGW_PIN no ambiente ou passe --pin-arquivo" +
-			" com o CAMINHO de um arquivo que contenha o pin (NUNCA --pin: argumento de linha de comando aparece" +
-			" no `ps` de qualquer processo local e em todo dump de configuracao)")
+		return "", errors.New("zapgw: the pin is required — set ZAPGW_PIN in the environment or pass --pin-arquivo" +
+			" with the PATH to a file containing the pin (NEVER --pin: a command-line argument shows up" +
+			" in the `ps` of any local process and in every configuration dump)")
 	}
 	return pin, nil
 }
@@ -866,9 +866,9 @@ func instanceForTalkingToMeta(env environment, who string) (config.Instance, *me
 	inst, err := store.FindInstance(who)
 	if err != nil {
 		if errors.Is(err, config.ErrInstanceNotFound) {
-			return config.Instance{}, nil, fmt.Errorf("zapgw: instancia %q nao existe (use `zapgw instancia listar` para ver os slugs): %w", who, err)
+			return config.Instance{}, nil, fmt.Errorf("zapgw: instance %q does not exist (use `zapgw instancia listar` to see the slugs): %w", who, err)
 		}
-		return config.Instance{}, nil, fmt.Errorf("zapgw: buscar instancia %q: %w", who, err)
+		return config.Instance{}, nil, fmt.Errorf("zapgw: look up instance %q: %w", who, err)
 	}
 	return inst, meta.NewClient(&http.Client{}, graphBase(env)), nil
 }
@@ -883,16 +883,16 @@ func instanceForTalkingToMeta(env environment, who string) (config.Instance, *me
 func registerInstance(args []string, out io.Writer, env environment) error {
 	fs := flag.NewFlagSet("instancia registrar", flag.ContinueOnError)
 	fs.SetOutput(out)
-	slug := fs.String("slug", "", "instancia a registrar na Meta (liga a verificacao em duas etapas). OBRIGATORIO")
-	pinFile := fs.String("pin-arquivo", "", "arquivo com o pin de 6 digitos (o CAMINHO, nunca o valor)."+
-		" Alternativa: variavel de ambiente ZAPGW_PIN. NAO existe --pin")
+	slug := fs.String("slug", "", "instance to register with Meta (turns on two-step verification). REQUIRED")
+	pinFile := fs.String("pin-arquivo", "", "file with the 6-digit pin (the PATH, never the value)."+
+		" Alternative: environment variable ZAPGW_PIN. There is no --pin")
 	if keepGoing, err := parseFlags(fs, args); err != nil || !keepGoing {
 		return err
 	}
 
 	who := strings.TrimSpace(*slug)
 	if who == "" {
-		return errors.New("zapgw: --slug e obrigatorio (use `zapgw instancia listar` para ver os slugs)")
+		return errors.New("zapgw: --slug is required (use `zapgw instancia listar` to see the slugs)")
 	}
 	pin, err := readPin(env, strings.TrimSpace(*pinFile))
 	if err != nil {
@@ -905,12 +905,12 @@ func registerInstance(args []string, out io.Writer, env environment) error {
 	}
 
 	if err := client.Register(context.Background(), inst.PhoneNumberID, inst.SendToken, pin); err != nil {
-		return fmt.Errorf("zapgw: registrar %q na Meta: %w", who, err)
+		return fmt.Errorf("zapgw: register %q with Meta: %w", who, err)
 	}
 
-	fmt.Fprintf(out, "instancia %q REGISTRADA na Meta — verificacao em duas etapas ligada com o pin fornecido.\n", who)
-	fmt.Fprintln(out, "isto e' DE MAO UNICA: nao ha endpoint da Cloud API para DESATIVAR a verificacao em duas")
-	fmt.Fprintln(out, "etapas — so o WhatsApp Manager, fora desta API, consegue.")
+	fmt.Fprintf(out, "instance %q REGISTERED with Meta — two-step verification turned on with the pin provided.\n", who)
+	fmt.Fprintln(out, "this is ONE-WAY: there is no Cloud API endpoint to TURN OFF two-step")
+	fmt.Fprintln(out, "verification — only the WhatsApp Manager, outside this API, can.")
 	return nil
 }
 
@@ -925,19 +925,19 @@ func registerInstance(args []string, out io.Writer, env environment) error {
 func deregisterInstance(args []string, out io.Writer, env environment) error {
 	fs := flag.NewFlagSet("instancia desregistrar", flag.ContinueOnError)
 	fs.SetOutput(out)
-	slug := fs.String("slug", "", "instancia a tirar do ar NA META. OBRIGATORIO")
-	confirm := fs.String("confirmo", "", "digite o slug DE NOVO para confirmar. Nao existe -y")
+	slug := fs.String("slug", "", "instance to take OFF THE AIR at Meta. REQUIRED")
+	confirm := fs.String("confirmo", "", "type the slug AGAIN to confirm. There is no -y")
 	if keepGoing, err := parseFlags(fs, args); err != nil || !keepGoing {
 		return err
 	}
 
 	who := strings.TrimSpace(*slug)
 	if who == "" {
-		return errors.New("zapgw: --slug e obrigatorio (use `zapgw instancia listar` para ver os slugs)")
+		return errors.New("zapgw: --slug is required (use `zapgw instancia listar` to see the slugs)")
 	}
 	if strings.TrimSpace(*confirm) != who {
-		return fmt.Errorf("zapgw: desregistrar %q TIRA O NUMERO DE PRODUCAO DO AR na Meta — nenhuma mensagem"+
-			" entra nem sai por este phone_number_id ate um novo `zapgw instancia registrar`. Repita o slug em"+
+		return fmt.Errorf("zapgw: deregistering %q TAKES THE PRODUCTION NUMBER OFF THE AIR at Meta — no message"+
+			" goes in or out through this phone_number_id until a new `zapgw instancia registrar`. Repeat the slug in"+
 			" --confirmo:  zapgw instancia desregistrar --slug %s --confirmo %s", who, who, who)
 	}
 
@@ -947,13 +947,13 @@ func deregisterInstance(args []string, out io.Writer, env environment) error {
 	}
 
 	if err := client.Deregister(context.Background(), inst.PhoneNumberID, inst.SendToken); err != nil {
-		return fmt.Errorf("zapgw: desregistrar %q na Meta: %w", who, err)
+		return fmt.Errorf("zapgw: deregister %q with Meta: %w", who, err)
 	}
 
-	fmt.Fprintf(out, "instancia %q DESREGISTRADA na Meta — o numero SAIU DO AR: nenhuma mensagem entra nem sai"+
-		" por ele agora.\n", who)
-	fmt.Fprintf(out, "isto NAO apagou nada aqui no gateway: a linha continua no banco. Para religar, registre"+
-		" de novo com um pin:  zapgw instancia registrar --slug %s\n", who)
+	fmt.Fprintf(out, "instance %q DEREGISTERED at Meta — the number is OFF THE AIR: no message goes in or out"+
+		" through it now.\n", who)
+	fmt.Fprintf(out, "this did NOT delete anything here on the gateway: the row is still in the database. To turn it back on, register"+
+		" it again with a pin:  zapgw instancia registrar --slug %s\n", who)
 	return nil
 }
 
@@ -964,16 +964,16 @@ func deregisterInstance(args []string, out io.Writer, env environment) error {
 func changeInstancePin(args []string, out io.Writer, env environment) error {
 	fs := flag.NewFlagSet("instancia pin", flag.ContinueOnError)
 	fs.SetOutput(out)
-	slug := fs.String("slug", "", "instancia cujo pin de verificacao em duas etapas sera trocado. OBRIGATORIO")
-	pinFile := fs.String("pin-arquivo", "", "arquivo com o NOVO pin de 6 digitos (o CAMINHO, nunca o valor)."+
-		" Alternativa: variavel de ambiente ZAPGW_PIN. NAO existe --pin")
+	slug := fs.String("slug", "", "instance whose two-step verification pin will be swapped. REQUIRED")
+	pinFile := fs.String("pin-arquivo", "", "file with the NEW 6-digit pin (the PATH, never the value)."+
+		" Alternative: environment variable ZAPGW_PIN. There is no --pin")
 	if keepGoing, err := parseFlags(fs, args); err != nil || !keepGoing {
 		return err
 	}
 
 	who := strings.TrimSpace(*slug)
 	if who == "" {
-		return errors.New("zapgw: --slug e obrigatorio (use `zapgw instancia listar` para ver os slugs)")
+		return errors.New("zapgw: --slug is required (use `zapgw instancia listar` to see the slugs)")
 	}
 	pin, err := readPin(env, strings.TrimSpace(*pinFile))
 	if err != nil {
@@ -986,16 +986,16 @@ func changeInstancePin(args []string, out io.Writer, env environment) error {
 	}
 
 	if err := client.SetPin(context.Background(), inst.PhoneNumberID, inst.SendToken, pin); err != nil {
-		return fmt.Errorf("zapgw: trocar o pin de %q na Meta: %w", who, err)
+		return fmt.Errorf("zapgw: swap the pin of %q with Meta: %w", who, err)
 	}
 
-	fmt.Fprintf(out, "instancia %q: pin de verificacao em duas etapas TROCADO na Meta (o valor NAO e mostrado).\n", who)
+	fmt.Fprintf(out, "instance %q: two-step verification pin SWAPPED with Meta (the value is NOT shown).\n", who)
 	return nil
 }
 
 func provision(args []string, out io.Writer, env environment) error {
 	if len(args) == 0 {
-		return errors.New("zapgw: provisionar o que? (instancia | consumidor)")
+		return errors.New("zapgw: provisionar what? (instancia | consumidor)")
 	}
 	switch args[0] {
 	case "instancia":
@@ -1003,7 +1003,7 @@ func provision(args []string, out io.Writer, env environment) error {
 	case "consumidor":
 		return provisionConsumer(args[1:], out, env)
 	default:
-		return fmt.Errorf("zapgw: nao sei provisionar %q (conheco: instancia, consumidor)", args[0])
+		return fmt.Errorf("zapgw: don't know how to provisionar %q (I know: instancia, consumidor)", args[0])
 	}
 }
 
@@ -1040,7 +1040,7 @@ var creationClock = time.Now
 func randomSecret() (string, error) {
 	raw := make([]byte, 32)
 	if _, err := rand.Read(raw); err != nil {
-		return "", fmt.Errorf("zapgw: sortear segredo: %w", err)
+		return "", fmt.Errorf("zapgw: generate random secret: %w", err)
 	}
 	return hex.EncodeToString(raw), nil
 }
@@ -1089,15 +1089,15 @@ func parseFlags(fs *flag.FlagSet, args []string) (keepGoing bool, err error) {
 func provisionInstance(args []string, out io.Writer, env environment) error {
 	fs := flag.NewFlagSet("provisionar instancia", flag.ContinueOnError)
 	fs.SetOutput(out)
-	slug := fs.String("slug", "", "identificador da instancia; vira /v1/inbound/{slug}. IMUTAVEL. minusculas, digitos e hifen, 3 a 40. E a UNICA flag obrigatoria")
-	kind := fs.String("tipo", config.TypeWhatsApp, "\"whatsapp\" (default) ou \"instagram\" (T-097). Instancia Instagram NAO usa --waba-id/--phone-number-id/--numero-exibido — usa --ig-id, e exige-o JA NESTA CRIACAO: esta fatia nao tem cadastro por API para Instagram")
-	igID := fs.String("ig-id", "", "Instagram-scoped Business Account ID (identificador, nao e segredo). OBRIGATORIO quando --tipo=instagram; nao se aplica a --tipo=whatsapp")
-	wabaID := fs.String("waba-id", "", "WABA ID da conta na Meta (identificador, nao e segredo). So em --tipo=whatsapp. OPCIONAL: se a conta Meta for do CONSUMIDOR, deixe vazio — ele cadastra por POST /v1/cadastro")
-	phoneNumberID := fs.String("phone-number-id", "", "Phone Number ID do numero na Meta (identificador, nao e segredo). So em --tipo=whatsapp. OPCIONAL, pelo mesmo motivo do --waba-id")
-	displayedNumber := fs.String("numero-exibido", "", "o numero como ele aparece para o cliente. So em --tipo=whatsapp. OPCIONAL, pelo mesmo motivo do --waba-id")
-	timeoutMs := fs.Int("timeout-ms", 5000, "prazo de cada chamada a Graph API, em ms")
-	callbackURL := fs.String("callback-url", "", "para onde o gateway entrega o que a Meta mandar; https:// obrigatorio, vazio = instancia so de saida")
-	caBundle := fs.String("bundle-ca", "", "arquivo PEM com a CA do consumidor, quando ele nao usa CA publica; vazio = store de CAs do sistema. NAO desliga a verificacao: troca a ancora de confianca, so para esta instancia")
+	slug := fs.String("slug", "", "instance identifier; becomes /v1/inbound/{slug}. IMMUTABLE. lowercase, digits and hyphen, 3 to 40. It is the ONLY required flag")
+	kind := fs.String("tipo", config.TypeWhatsApp, "\"whatsapp\" (default) or \"instagram\" (T-097). An Instagram instance does NOT use --waba-id/--phone-number-id/--numero-exibido — it uses --ig-id, and requires it AT CREATION TIME: this slice has no API registration for Instagram")
+	igID := fs.String("ig-id", "", "Instagram-scoped Business Account ID (an identifier, not a secret). REQUIRED when --tipo=instagram; does not apply to --tipo=whatsapp")
+	wabaID := fs.String("waba-id", "", "WABA ID of the account at Meta (an identifier, not a secret). Only with --tipo=whatsapp. OPTIONAL: if the Meta account belongs to the CONSUMER, leave it empty — they register it via POST /v1/cadastro")
+	phoneNumberID := fs.String("phone-number-id", "", "Phone Number ID of the number at Meta (an identifier, not a secret). Only with --tipo=whatsapp. OPTIONAL, for the same reason as --waba-id")
+	displayedNumber := fs.String("numero-exibido", "", "the number as it shows up to the customer. Only with --tipo=whatsapp. OPTIONAL, for the same reason as --waba-id")
+	timeoutMs := fs.Int("timeout-ms", 5000, "deadline of each Graph API call, in ms")
+	callbackURL := fs.String("callback-url", "", "where the gateway delivers what Meta sends; https:// required, empty = send-only instance")
+	caBundle := fs.String("bundle-ca", "", "PEM file with the consumer's CA, when they don't use a public CA; empty = system CA store. Does NOT turn off verification: it swaps the trust anchor, only for this instance")
 	if keepGoing, err := parseFlags(fs, args); err != nil || !keepGoing {
 		return err
 	}
@@ -1111,7 +1111,7 @@ func provisionInstance(args []string, out io.Writer, env environment) error {
 	if path := strings.TrimSpace(*caBundle); path != "" {
 		raw, err := os.ReadFile(path)
 		if err != nil {
-			return fmt.Errorf("zapgw: --bundle-ca: ler %s: %w", path, err)
+			return fmt.Errorf("zapgw: --bundle-ca: read %s: %w", path, err)
 		}
 		caPEM = string(raw)
 		// An EMPTY file does not become "no bundle": whoever passed the
@@ -1121,7 +1121,7 @@ func provisionInstance(args []string, out io.Writer, env environment) error {
 		// on the first delivery. A truncated copy is the common way this
 		// happens.
 		if caPEM == "" {
-			return fmt.Errorf("zapgw: --bundle-ca: %s esta vazio; para usar a store de CAs do sistema, OMITA a flag: %w",
+			return fmt.Errorf("zapgw: --bundle-ca: %s is empty; to use the system's CA store, OMIT the flag: %w",
 				path, config.ErrInvalidCABundle)
 		}
 	}
@@ -1154,7 +1154,7 @@ func provisionInstance(args []string, out io.Writer, env environment) error {
 	}
 	for _, o := range mandatory {
 		if o.value == "" {
-			return fmt.Errorf("zapgw: %s e obrigatorio", o.flag)
+			return fmt.Errorf("zapgw: %s is required", o.flag)
 		}
 	}
 	// BOTH OR NEITHER. Half identification is the one state that serves
@@ -1165,11 +1165,11 @@ func provisionInstance(args []string, out io.Writer, env environment) error {
 	// consumer registers both at once (or the instance is Instagram,
 	// which never uses either — see ValidateInstanceType right below).
 	if (inst.WabaID == "") != (inst.PhoneNumberID == "") {
-		return errors.New("zapgw: --waba-id e --phone-number-id andam JUNTOS: passe os dois, ou nenhum" +
-			" (nenhum = a conta Meta e do consumidor, e ele cadastra por POST /v1/cadastro)")
+		return errors.New("zapgw: --waba-id and --phone-number-id go TOGETHER: pass both, or neither" +
+			" (neither = the Meta account belongs to the consumer, and they register it via POST /v1/cadastro)")
 	}
 	if inst.TimeoutMs <= 0 {
-		return errors.New("zapgw: --timeout-ms tem de ser maior que zero")
+		return errors.New("zapgw: --timeout-ms has to be greater than zero")
 	}
 	// THE SAME functions CreateInstance calls — not a second rule (two
 	// rules diverge; a function called from two places doesn't). Calling
@@ -1222,11 +1222,11 @@ func provisionInstance(args []string, out io.Writer, env environment) error {
 			missing = append(missing, envSendTokenOld)
 		}
 		if len(missing) > 0 {
-			return fmt.Errorf("zapgw: --tipo instagram exige %s no ambiente — esta fatia nao tem "+
-				"POST /v1/cadastro equivalente para Instagram (T-111), entao um valor sorteado aqui "+
-				"nunca seria substituido por um real: a instancia nasceria e nunca funcionaria (o "+
-				"app_secret sorteado rejeita todo webhook por HMAC, em silencio)",
-				strings.Join(missing, " e "))
+			return fmt.Errorf("zapgw: --tipo instagram requires %s in the environment — this slice has no "+
+				"equivalent POST /v1/cadastro for Instagram (T-111), so a value randomly generated here "+
+				"would never be replaced with a real one: the instance would be born and never work (a "+
+				"randomly generated app_secret silently rejects every webhook by HMAC)",
+				strings.Join(missing, " and "))
 		}
 	}
 
@@ -1346,23 +1346,23 @@ func provisionInstance(args []string, out io.Writer, env environment) error {
 	defer func() { _ = store.Close() }()
 
 	if err := store.CreateInstanceAt(inst, creationClock()); err != nil {
-		return fmt.Errorf("zapgw: criar instancia %q: %w", inst.Slug, err)
+		return fmt.Errorf("zapgw: create instance %q: %w", inst.Slug, err)
 	}
 
-	fmt.Fprintf(out, "instancia %q criada.\n", inst.Slug)
+	fmt.Fprintf(out, "instance %q created.\n", inst.Slug)
 	if len(generated) > 0 {
 		// SAY WHICH ONES, never the value: without this line the
 		// operator walks away thinking their own app_secret was used
 		// when it was actually generated, and inbound would reject
 		// Meta's HMAC with no one understanding why.
-		fmt.Fprintf(out, "segredos sorteados aqui (o valor NAO e mostrado): %s\n",
+		fmt.Fprintf(out, "secrets randomly generated here (the value is NOT shown): %s\n",
 			strings.Join(generated, ", "))
 	}
 	if len(toRegister) > 0 {
 		// SAY WE DID NOT GENERATE THEM, and why: without this line the
 		// owner sees `app_secret=nao` in `instancia mostrar` and treats
 		// it as a defect.
-		fmt.Fprintf(out, "NAO sorteados, porque sao da conta Meta do CONSUMIDOR: %s — ele os cadastra por POST /v1/cadastro.\n",
+		fmt.Fprintf(out, "NOT randomly generated, because they belong to the CONSUMER's Meta account: %s — they register them via POST /v1/cadastro.\n",
 			strings.Join(toRegister, ", "))
 	}
 	printSharedSecrets(out, inst.Slug, drawnShared)
@@ -1371,14 +1371,14 @@ func provisionInstance(args []string, out io.Writer, env environment) error {
 		// this line, "I registered the CA" and "I turned off
 		// verification" become the same thing in whoever operated it's
 		// head.
-		fmt.Fprintf(out, "bundle de CA proprio cadastrado para esta instancia: a verificacao do certificado continua ESTRITA, so a ancora de confianca muda.\n")
+		fmt.Fprintf(out, "custom CA bundle registered for this instance: certificate verification stays STRICT, only the trust anchor changes.\n")
 	}
-	fmt.Fprintf(out, "webhook para colar na Meta: %s\n", webhookURL(env, inst.Slug))
-	fmt.Fprintf(out, "a instancia nasceu PAUSADA: enquanto ativo = 0, o webhook responde 503 e o envio tambem.\n")
+	fmt.Fprintf(out, "webhook to paste into Meta: %s\n", webhookURL(env, inst.Slug))
+	fmt.Fprintf(out, "the instance was born PAUSED: while ativo = 0, the webhook responds 503, and so does sending.\n")
 	if inst.Type == config.TypeInstagram {
-		fmt.Fprintf(out, "so o teste de fumaca ativa:  zapgw fumaca --slug %s --destino <IGSID que te mandou mensagem nas ultimas 24h>\n", inst.Slug)
+		fmt.Fprintf(out, "only the smoke test activates it:  zapgw fumaca --slug %s --destino <IGSID that sent you a message in the last 24h>\n", inst.Slug)
 	} else {
-		fmt.Fprintf(out, "so o teste de fumaca ativa:  zapgw fumaca --slug %s --destino <numero em E.164>\n", inst.Slug)
+		fmt.Fprintf(out, "only the smoke test activates it:  zapgw fumaca --slug %s --destino <number in E.164>\n", inst.Slug)
 	}
 	// THE DELIVERY PACKAGE only applies to the THIRD-PARTY model with
 	// their own Meta account (T-079, docs/MODELO-DE-USO.md) — which is a
@@ -1415,22 +1415,22 @@ func provisionInstance(args []string, out io.Writer, env environment) error {
 // place would be worse than pointing at the command — the owner would
 // copy the entire list thinking it is complete.
 func printDeliveryPackage(out io.Writer, env environment, slug string) {
-	fmt.Fprintf(out, "\nPACOTE DE ENTREGA — o que o CONSUMIDOR precisa receber, e nada alem disto:\n")
-	fmt.Fprintf(out, "  1. o slug:                     %s\n", slug)
-	fmt.Fprintf(out, "  2. a URL de cadastro (POST):   %s\n", enrollmentURL(env))
-	fmt.Fprintf(out, "  3. a URL do webhook, que ELE cola no painel da Meta DELE:\n")
+	fmt.Fprintf(out, "\nDELIVERY PACKAGE — what the CONSUMER needs to receive, and nothing beyond this:\n")
+	fmt.Fprintf(out, "  1. the slug:                   %s\n", slug)
+	fmt.Fprintf(out, "  2. the registration URL (POST): %s\n", enrollmentURL(env))
+	fmt.Fprintf(out, "  3. the webhook URL, which THEY paste into THEIR Meta panel:\n")
 	fmt.Fprintf(out, "                                 %s\n", webhookURL(env, slug))
-	fmt.Fprintf(out, "  4. o verify_token e o segredo_entrega impressos acima\n")
-	fmt.Fprintf(out, "  5. o token de consumidor, que sai do proximo comando:\n")
-	fmt.Fprintf(out, "     zapgw provisionar consumidor --nome <nome-dele> --instancias %s\n", slug)
-	fmt.Fprintf(out, "quem cadastra waba_id, phone_number_id, numero, app_secret, token_envio e callback_url e ELE,\n")
-	fmt.Fprintf(out, "por POST /v1/cadastro — voce nao precisa desses valores e nao deve pedi-los.\n")
+	fmt.Fprintf(out, "  4. the verify_token and segredo_entrega printed above\n")
+	fmt.Fprintf(out, "  5. the consumer token, which comes out of the next command:\n")
+	fmt.Fprintf(out, "     zapgw provisionar consumidor --nome <their-name> --instancias %s\n", slug)
+	fmt.Fprintf(out, "THEY are the one who registers waba_id, phone_number_id, number, app_secret, token_envio and callback_url,\n")
+	fmt.Fprintf(out, "via POST /v1/cadastro — you do not need these values and should not ask for them.\n")
 	// THE WINDOW, told to the owner at creation time, because he is the
 	// one who has the command to reopen it and he is the one who will
 	// receive the request when it closes.
-	fmt.Fprintf(out, "ele tem %s para cadastrar, contados da PRIMEIRA insercao dele (nao de agora).\n",
+	fmt.Fprintf(out, "they have %s to register, counted from THEIR FIRST insertion (not from now).\n",
 		config.RegistrationWindow)
-	fmt.Fprintf(out, "se ele travar depois disso:  zapgw instancia reabrir-cadastro --slug %s --confirmo %s\n", slug, slug)
+	fmt.Fprintf(out, "if they get stuck after that:  zapgw instancia reabrir-cadastro --slug %s --confirmo %s\n", slug, slug)
 }
 
 // enrollmentURL assembles the POST /v1/cadastro URL through the SAME
@@ -1447,7 +1447,7 @@ func enrollmentURL(env environment) string {
 	raw, oldUsed := config.EnvOrOld(env, envPublicURLNew, envPublicURLOld)
 	base := strings.TrimRight(strings.TrimSpace(raw), "/")
 	if base == "" {
-		base = "https://<defina " + envPublicURLNew + ">"
+		base = "https://<set " + envPublicURLNew + ">"
 	} else {
 		config.WarnOldEnvVar(oldUsed, envPublicURLOld, envPublicURLNew)
 	}
@@ -1466,18 +1466,18 @@ func enrollmentURL(env environment) string {
 func reopenEnrollment(args []string, out io.Writer, env environment) error {
 	fs := flag.NewFlagSet("instancia reabrir-cadastro", flag.ContinueOnError)
 	fs.SetOutput(out)
-	slug := fs.String("slug", "", "instancia cuja janela de cadastro sera reaberta")
-	confirm := fs.String("confirmo", "", "digite o slug DE NOVO para confirmar. Reabrir no slug errado da 24h de escrita sobre a instancia de outro consumidor, sem nada acusar")
+	slug := fs.String("slug", "", "instance whose registration window will be reopened")
+	confirm := fs.String("confirmo", "", "type the slug AGAIN to confirm. Reopening the wrong slug gives that consumer 24h of write access to another instance, with nothing flagging it")
 	if keepGoing, err := parseFlags(fs, args); err != nil || !keepGoing {
 		return err
 	}
 
 	who := strings.TrimSpace(*slug)
 	if who == "" {
-		return errors.New("zapgw: --slug e obrigatorio (use `zapgw instancia listar` para ver os slugs)")
+		return errors.New("zapgw: --slug is required (use `zapgw instancia listar` to see the slugs)")
 	}
 	if strings.TrimSpace(*confirm) != who {
-		return fmt.Errorf("zapgw: reabrir a janela de %q da ao consumidor dela 24h de escrita — repita o slug em --confirmo:"+
+		return fmt.Errorf("zapgw: reopening %q's window gives its consumer 24h of write access — repeat the slug in --confirmo:"+
 			"  zapgw instancia reabrir-cadastro --slug %s --confirmo %s", who, who, who)
 	}
 
@@ -1488,17 +1488,17 @@ func reopenEnrollment(args []string, out io.Writer, env environment) error {
 	defer func() { _ = store.Close() }()
 
 	if err := store.ReopenRegistrationWindow(who); err != nil {
-		return fmt.Errorf("zapgw: reabrir a janela de cadastro da instancia %q: %w", who, err)
+		return fmt.Errorf("zapgw: reopen the registration window of instance %q: %w", who, err)
 	}
 
-	fmt.Fprintf(out, "instancia %q: janela de cadastro REABERTA.\n", who)
+	fmt.Fprintf(out, "instance %q: registration window REOPENED.\n", who)
 	// WHAT CHANGED AND WHAT DIDN'T, in this order: the expensive
 	// confusion here would be the owner thinking he fixed the consumer's
 	// configuration.
-	fmt.Fprintf(out, "nenhum campo da configuracao foi tocado — quem cadastra continua sendo o CONSUMIDOR, por POST /v1/cadastro.\n")
-	fmt.Fprintf(out, "o relogio NAO comeca agora: as %s contam da proxima vez que ele cadastrar algo.\n",
+	fmt.Fprintf(out, "no configuration field was touched — the CONSUMER is still the one who registers, via POST /v1/cadastro.\n")
+	fmt.Fprintf(out, "the clock does NOT start now: the %s count from the next time they register something.\n",
 		config.RegistrationWindow)
-	fmt.Fprintf(out, "avise-o — o gateway nao tem como avisar ninguem.\n")
+	fmt.Fprintf(out, "let them know — the gateway has no way to notify anyone.\n")
 	return nil
 }
 
@@ -1564,15 +1564,15 @@ func printSharedSecrets(out io.Writer, slug string, pairs [][2]string) {
 	if len(pairs) == 0 {
 		return
 	}
-	fmt.Fprintf(out, "GUARDE AGORA os valores abaixo — o gateway guarda so o cifrado e NAO os mostra de novo.\n")
-	fmt.Fprintf(out, "eles foram sorteados aqui e sao COMPARTILHADOS: sem eles nas maos de quem configura, o provisionamento nao termina.\n")
+	fmt.Fprintf(out, "SAVE the values below NOW — the gateway only keeps them encrypted and will NOT show them again.\n")
+	fmt.Fprintf(out, "they were randomly generated here and are SHARED: without them in the hands of whoever configures, provisioning does not finish.\n")
 	for _, p := range pairs {
 		fmt.Fprintf(out, "%s: %s\n", p[0], p[1])
 		switch p[0] {
 		case "verify_token":
-			fmt.Fprintf(out, "  ^ este e o valor que voce digita em Verify Token no painel da Meta.\n")
+			fmt.Fprintf(out, "  ^ this is the value you type into Verify Token in Meta's panel.\n")
 		case "segredo_entrega":
-			fmt.Fprintf(out, "  ^ este e o valor que o CONSUMIDOR poe no .env dele para conferir a assinatura da entrega.\n")
+			fmt.Fprintf(out, "  ^ this is the value the CONSUMER puts in their .env to check the delivery's signature.\n")
 		}
 	}
 	// The way out for whoever closes the terminal before copying.
@@ -1580,8 +1580,8 @@ func printSharedSecrets(out io.Writer, slug string, pairs [][2]string) {
 	// the instance — and the slug is IMMUTABLE, so recreating isn't even
 	// possible. `rotacionar` does NOT generate: the new value comes from
 	// the environment, so whoever rotates it already knows what it is.
-	fmt.Fprintf(out, "perdeu? nao ha como recuperar — gere um valor novo e ponha no ambiente:\n")
-	fmt.Fprintf(out, "  ZAPGW_VERIFY_TOKEN=<novo> zapgw instancia rotacionar --slug %s\n", slug)
+	fmt.Fprintf(out, "lost it? there is no way to recover it — generate a new value and put it in the environment:\n")
+	fmt.Fprintf(out, "  ZAPGW_VERIFY_TOKEN=<new> zapgw instancia rotacionar --slug %s\n", slug)
 }
 
 // webhookURL assembles the URL to paste into Meta's panel.
@@ -1595,7 +1595,7 @@ func webhookURL(env environment, slug string) string {
 	raw, oldUsed := config.EnvOrOld(env, envPublicURLNew, envPublicURLOld)
 	base := strings.TrimRight(strings.TrimSpace(raw), "/")
 	if base == "" {
-		base = "https://<defina " + envPublicURLNew + ">"
+		base = "https://<set " + envPublicURLNew + ">"
 	} else {
 		config.WarnOldEnvVar(oldUsed, envPublicURLOld, envPublicURLNew)
 	}
@@ -1605,15 +1605,15 @@ func webhookURL(env environment, slug string) string {
 func provisionConsumer(args []string, out io.Writer, env environment) error {
 	fs := flag.NewFlagSet("provisionar consumidor", flag.ContinueOnError)
 	fs.SetOutput(out)
-	name := fs.String("nome", "", "nome do sistema consumidor")
-	list := fs.String("instancias", "", "slugs que ele pode usar, separados por virgula")
+	name := fs.String("nome", "", "name of the consumer system")
+	list := fs.String("instancias", "", "slugs it may use, comma-separated")
 	if keepGoing, err := parseFlags(fs, args); err != nil || !keepGoing {
 		return err
 	}
 
 	whoIs := strings.TrimSpace(*name)
 	if whoIs == "" {
-		return errors.New("zapgw: --nome e obrigatorio")
+		return errors.New("zapgw: --nome is required")
 	}
 
 	var slugs []string
@@ -1625,7 +1625,7 @@ func provisionConsumer(args []string, out io.Writer, env environment) error {
 	if len(slugs) == 0 {
 		// A consumer with no link at all authenticates and receives 403
 		// on everything — a symptom that doesn't look like the cause.
-		return errors.New("zapgw: --instancias e obrigatorio (pelo menos um slug)")
+		return errors.New("zapgw: --instancias is required (at least one slug)")
 	}
 
 	store, err := openStore(env)
@@ -1642,9 +1642,9 @@ func provisionConsumer(args []string, out io.Writer, env environment) error {
 	for _, slug := range slugs {
 		if _, err := store.FindInstance(slug); err != nil {
 			if errors.Is(err, config.ErrInstanceNotFound) {
-				return fmt.Errorf("zapgw: instancia %q nao existe — vincular a um slug inexistente vira um 403 futuro que ninguem sabe explicar: %w", slug, err)
+				return fmt.Errorf("zapgw: instance %q does not exist — linking to a nonexistent slug turns into a future 403 nobody can explain: %w", slug, err)
 			}
-			return fmt.Errorf("zapgw: conferir instancia %q: %w", slug, err)
+			return fmt.Errorf("zapgw: check instance %q: %w", slug, err)
 		}
 	}
 
@@ -1653,10 +1653,10 @@ func provisionConsumer(args []string, out io.Writer, env environment) error {
 		return err
 	}
 	if err := store.CreateConsumer(whoIs, token, slugs); err != nil {
-		return fmt.Errorf("zapgw: criar consumidor %q: %w", whoIs, err)
+		return fmt.Errorf("zapgw: create consumer %q: %w", whoIs, err)
 	}
 
-	fmt.Fprintf(out, "consumidor %q criado, com acesso a: %s\n", whoIs, strings.Join(slugs, ", "))
+	fmt.Fprintf(out, "consumer %q created, with access to: %s\n", whoIs, strings.Join(slugs, ", "))
 	printConsumerToken(out, token)
 	return nil
 }
@@ -1672,7 +1672,7 @@ func provisionConsumer(args []string, out io.Writer, env environment) error {
 // <value>" format is also a contract with whoever operates it and with
 // the tests.
 func printConsumerToken(out io.Writer, token string) {
-	fmt.Fprintf(out, "GUARDE AGORA o token abaixo — o gateway guarda so o hash dele e nao ha como recupera-lo.\n")
+	fmt.Fprintf(out, "SAVE the token below NOW — the gateway only keeps its hash and there is no way to recover it.\n")
 	fmt.Fprintf(out, "token: %s\n", token)
 }
 
@@ -1693,14 +1693,14 @@ func printConsumerToken(out io.Writer, token string) {
 func rotateConsumer(args []string, out io.Writer, env environment) error {
 	fs := flag.NewFlagSet("consumidor rotacionar", flag.ContinueOnError)
 	fs.SetOutput(out)
-	name := fs.String("nome", "", "consumidor cujo token sera trocado. O nome nao muda: ele diz QUEM, nunca o que trocar")
+	name := fs.String("nome", "", "consumer whose token will be swapped. The name does not change: it says WHO, never what to swap")
 	if keepGoing, err := parseFlags(fs, args); err != nil || !keepGoing {
 		return err
 	}
 
 	whoIs := strings.TrimSpace(*name)
 	if whoIs == "" {
-		return errors.New("zapgw: --nome e obrigatorio (use `zapgw consumidor listar` para ver os nomes)")
+		return errors.New("zapgw: --nome is required (use `zapgw consumidor listar` to see the names)")
 	}
 
 	store, err := openStore(env)
@@ -1715,19 +1715,19 @@ func rotateConsumer(args []string, out io.Writer, env environment) error {
 	}
 	if err := store.RotateConsumer(whoIs, token); err != nil {
 		if errors.Is(err, config.ErrConsumerNotFound) {
-			return fmt.Errorf("zapgw: consumidor %q nao existe — nada foi rotacionado, e o token que voce quer revogar CONTINUA valendo: %w", whoIs, err)
+			return fmt.Errorf("zapgw: consumer %q does not exist — nothing was rotated, and the token you want to revoke is STILL valid: %w", whoIs, err)
 		}
-		return fmt.Errorf("zapgw: rotacionar o consumidor %q: %w", whoIs, err)
+		return fmt.Errorf("zapgw: rotate consumer %q: %w", whoIs, err)
 	}
 
-	fmt.Fprintf(out, "consumidor %q: token trocado. O ANTERIOR nao autentica mais — a partir de agora ele recebe 401.\n", whoIs)
-	fmt.Fprintf(out, "os vinculos de instancia NAO foram tocados: o que ele podia usar antes, continua podendo.\n")
+	fmt.Fprintf(out, "consumer %q: token swapped. The PREVIOUS one no longer authenticates — from now on it gets 401.\n", whoIs)
+	fmt.Fprintf(out, "the instance links were NOT touched: what it could use before, it still can.\n")
 	printConsumerToken(out, token)
 	// Without this line, whoever rotated it walks away thinking they're
 	// done, and the consumer finds out about the swap through a 401 in
 	// production. The gateway has no channel to warn anyone — whoever
 	// operates it does.
-	fmt.Fprintf(out, "avise o consumidor AGORA: as chamadas dele falham com 401 ate ele trocar o token do lado dele.\n")
+	fmt.Fprintf(out, "notify the consumer NOW: their calls fail with 401 until they swap the token on their side.\n")
 	return nil
 }
 
@@ -1749,22 +1749,22 @@ func listConsumers(args []string, out io.Writer, env environment) error {
 
 	list, err := store.ListConsumers()
 	if err != nil {
-		return fmt.Errorf("zapgw: listar consumidores: %w", err)
+		return fmt.Errorf("zapgw: list consumers: %w", err)
 	}
 	if len(list) == 0 {
 		// An empty output cannot be told apart from "the command didn't
 		// run" — same reason as `instancia listar`.
-		fmt.Fprintf(out, "nenhum consumidor cadastrado neste banco.\n")
+		fmt.Fprintf(out, "no consumer registered in this database.\n")
 		return nil
 	}
 
 	tab := tabwriter.NewWriter(out, 0, 0, 2, ' ', 0)
-	fmt.Fprintf(tab, "NOME\tINSTANCIAS QUE ELE PODE USAR (nenhum token, nem o hash, e mostrado)\n")
+	fmt.Fprintf(tab, "NAME\tINSTANCES IT CAN USE (no token, not even the hash, is shown)\n")
 	for _, c := range list {
 		// A consumer with no link authenticates and receives 403 on
 		// EVERYTHING, and a blank row wouldn't say that — the text does,
 		// because the symptom doesn't look like the cause.
-		which := "(nenhuma — ele autentica e recebe 403 em tudo)"
+		which := "(none — it authenticates and gets 403 on everything)"
 		if len(c.Instances) > 0 {
 			which = strings.Join(c.Instances, ", ")
 		}

@@ -187,7 +187,7 @@ func openStore(env environment) (*config.Store, error) {
 
 	store, err := config.OpenStore(path, vault)
 	if err != nil {
-		return nil, fmt.Errorf("zapgw: abrir banco: %w", err)
+		return nil, fmt.Errorf("zapgw: open database: %w", err)
 	}
 	return store, nil
 }
@@ -254,13 +254,13 @@ func startPeriodicPurge(name string, period time.Duration, purge func() (int, er
 			func() {
 				defer func() {
 					if rec := recover(); rec != nil {
-						log.Printf("zapgw: purga de %s sofreu panico (recuperado): %v", name, rec)
+						log.Printf("zapgw: purge of %s suffered a panic (recovered): %v", name, rec)
 					}
 				}()
 				if n, err := purge(); err != nil {
-					log.Printf("zapgw: purga de %s falhou: %v", name, err)
+					log.Printf("zapgw: purge of %s failed: %v", name, err)
 				} else if n > 0 {
-					log.Printf("zapgw: purga de %s removeu %d registro(s)", name, n)
+					log.Printf("zapgw: purge of %s removed %d record(s)", name, n)
 				}
 			}()
 			time.Sleep(period)
@@ -329,9 +329,9 @@ func main() {
 		// this line prints — resolved the SAME way NewLeadership resolved
 		// it, so the two can never disagree about which file is in effect.
 		fileValue, _ := config.EnvOrOld(os.Getenv, outbound.VarLeadershipFileNew, outbound.VarLeadershipFile)
-		log.Printf("zapgw: guarda de lideranca ARMADA (%s)", fileValue)
+		log.Printf("zapgw: leadership guard ARMED (%s)", fileValue)
 	} else {
-		log.Printf("zapgw: guarda de lideranca DESARMADA — no unico; defina %s (ou %s) para armar",
+		log.Printf("zapgw: leadership guard DISARMED — single node; set %s (or %s) to arm",
 			outbound.VarLeadershipFileNew, outbound.VarLeadershipFile)
 	}
 
@@ -537,8 +537,8 @@ func main() {
 		leadership,
 		version, counterDays, counter, outbound.AllTypes)
 
-	log.Printf("zapgw ouvindo em %s", address)
+	log.Printf("zapgw listening on %s", address)
 	if err := http.ListenAndServe(address, routes(h, leadership.Require(out), health, templates, media, state, reads, enrollment, smokeRoute, pauseRoute, blockingRoute, profileRoute)); err != nil {
-		log.Fatalf("zapgw: servidor caiu: %v", err)
+		log.Fatalf("zapgw: server crashed: %v", err)
 	}
 }

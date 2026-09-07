@@ -145,22 +145,6 @@ instancias foram rotacionadas. Duas licoes que custaram na hora e valem alem des
 
 > A fila do periodo privado esta em `iscarelli/zapgw-dev`, congelada. Tarefa nova nasce aqui.
 
-## [ ] T-219  Translate the operator-facing strings of the CLI
-Why:     o inventario T-213 (`docs/INVENTARIO-STRINGS.md`) certifica que toda string de
-         `cmd/zapgw/` e `cmd/grafo-falso/` e' LOG por construcao — nenhuma alcanca o consumidor —
-         entao esta parte NAO depende da resposta pendente do consumer-b.
-Files:   cmd/zapgw/*.go, cmd/grafo-falso/*.go (nao-teste), e os testes que casam com essas strings
-Do:      Traduza para ingles as strings de saida e de erro DESSES DOIS binarios apenas.
-         🔴 NAO toque em `internal/outbound/`, `internal/config/`, `internal/meta/` nem
-         `internal/inbound/`: la moram as mensagens que o consumidor pode estar comparando, e isso
-         e' decisao do dono, ainda pendente desde 2026-09-01.
-         NAO renomeie colunas de banco nem chaves de JSON — so' texto humano.
-         Confirme no `docs/INVENTARIO-STRINGS.md` antes de mexer em qualquer arquivo: se um arquivo
-         que voce ia tocar nao estiver classificado como LOG la, PARE e relate.
-Verify:  CGO_ENABLED=0 go build ./... && go test ./... && go vet ./... && gofmt -l cmd internal
-         E depois: `grep -rnE '(nao|voce|instancia|segredo|obrigatorio|invalido)' cmd/ --include=*.go | grep -v _test`
-         deve vir vazio. Se algo sobrar, diga o que e por que ficou, em vez de forcar.
-
 ## [ ] T-220  Remove the Portuguese spellings of the CLI verbs
 After:   T-219
 Why:     o projeto e' publico e a decisao de 2026-08-30 e' codigo em INGLES. A T-218 fez a ponte
