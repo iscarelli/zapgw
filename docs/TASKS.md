@@ -6,6 +6,61 @@
 > Escrito ao fim de 2026-08-30, o dia em que o repositorio virou publico. Bloco de retomada
 > mentindo e' pior que bloco nenhum: e' o primeiro texto que a proxima sessao le.
 
+### 📌 2026-09-06 — o que fica para amanha (escrito no fim do dia, so' o que foi medido)
+
+✅ **`v0.65.0` ESTA EM PRODUCAO**, provada pelo proprio deploy: `SAUDE OK:
+{"ok":true,"versao":"0.65.0"}` seguido de `VERSAO CONFERE: 0.65.0 (igual a construida)`.
+**O que ela leva:** T-221 (as tres chaves de topo em ingles) e T-218 (sub-verbos da CLI).
+**O que ela NAO leva:** a T-219, que esta no `main` e ainda nao subiu.
+
+✅ **T-221 fechada — o pedido inteiro passou a ter grafia inglesa.** `contacts`, `flow` e `sections`
+entraram em `requestAliasAtTopLevel` (`internal/outbound/input_aliases.go:159-161`). Ate ontem um
+consumidor 100% em ingles TINHA de mandar uma chave em portugues, e por isso um exemplo limpo do
+contrato era impossivel de escrever — foi assim que um exemplo misturado chegou a um documento de
+consumidor.
+🔴 **O que vale mais que as tres linhas e' o portao invertido:**
+`TestRequestTopLevelKeysAreAllAccountedFor` le as tags do `Request` e exige apelido ingles ou
+presenca em `docs/contrato-chaves-que-nao-mudam.txt`. O teste que existia percorria a **propria
+tabela** e por isso nao enxergava linha AUSENTE — foi assim que as tres sobreviveram a T-203 inteira.
+**Reprovou contra dado real duas vezes** (o implementador tirando `secoes`; eu tirando `contacts` no
+`main`), entao conta como mecanismo pelo criterio desta casa.
+
+✅ **T-219 fechada e no `main` (`fe992e5`), NAO implantada.** Strings de `cmd/zapgw` e
+`cmd/grafo-falso` em ingles. A varredura da propria tarefa **nao vem vazia**, e isso e' o esperado:
+o que sobra sao as grafias dos VERBOS e os NOMES das flags (contrato de CLI, territorio da T-220) e
+vocabulario compartilhado de proposito com os pacotes fora de escopo (`PRECISA DE GENTE`, `sim`/`nao`).
+🔥 **O implementador RE-DELEGOU apesar da proibicao escrita** (abriu um fork para o `provision.go`) —
+segunda vez, depois de 21/08. Contido: `git worktree list` deu tres arvores e nao quatro, o filho
+dividiu a arvore do pai, e `HEAD` da worktree seguia em `cb7be5a` (ninguem commitou por conta
+propria). *"Nao re-delegue" continua sendo pedido, nao mecanismo.*
+
+🚦 **T-220 e' a proxima e PAROU DE PROPOSITO esperando o dono.** Ela remove as grafias
+portuguesas dos verbos, e so' e' segura se **tres passos acontecerem no mesmo movimento**:
+mesclar -> deployar -> atualizar `/root/rotaciona-token.sh` no CT 125, que usa `zapgw instancia
+listar`. Foi exatamente esse descompasso que quebrou o script em 06/09 00:36. *`main` nao e' o
+implantado.*
+
+📝 **O prompt para o consumidor esta ESCRITO e NAO publicado**, de proposito:
+`prompt-consumidor-contato.local.md`, na raiz do repo (gitignorado por `*.local.md`).
+Ele cobre o que mudou (as tres chaves + o portao) e como enviar cartao de contato, com o aviso do
+`wa_id` — o campo que decide se o cartao chega com "Conversar" ou com "Convidar para o WhatsApp",
+sendo que **nenhum dos dois da erro**.
+🔥 **Duas licoes do dono, hoje:** (1) *"Quem mandou abrir canal?"* — pedido de PROMPT e' texto para
+revisar, publicar espera palavra explicita; eu publiquei no canal deles e tive de reverter.
+(2) *"Quando eu pedir prompt, escreva em portugues, o resto do projeto todo em ingles."*
+
+🔴 **Tres pendencias medidas hoje que NAO estao na fila do repo:**
+- **[1466] / T-222 (ja enfileirada):** `docs/CONTRATO-CONSUMIDOR.md` documenta `classe` com
+  `permanente`/`retentavel`/`desconhecido`; o codigo emite `class` com
+  `permanent`/`retryable`/`config`/`unknown` desde a T-209. Doc falso no documento que os
+  consumidores leem para integrar.
+- **[1467]:** o erro de contato cita `contatos[0].name.formatted_name` para quem mandou `contacts`
+  (`internal/outbound/message.go:1303`). **Depende da pergunta de 01/09 ao consumidor**, ainda sem
+  resposta: eles comparam o TEXTO de mensagem de erro em algum lugar?
+- **[1468]:** seis `ZAPGW_*` com nome obsoleto ainda em uso no arranque do CT, gritadas a cada
+  deploy. Uma delas e' a chave de cifra — trocar o nome sem levar o valor derruba o servico.
+
+
 ✅ **FEITO EM 2026-08-31 00:44 (-03; `gh repo view --json createdAt` = `03:44:28Z`): o repositorio
 publico foi APAGADO E RECRIADO, e o historico comeca
 num commit so.** Medido, nao afirmado:
@@ -118,12 +173,16 @@ esta provado num valor que muda (`observed` -> `observado`); falta a combinacao 
 errado, o sintoma e' evento **preso com aviso**, nao evento sumido — por causa do conserto que eles
 fizeram no `processado_em` hoje de manha.
 
-🔴 **NAO RODE DEPLOY ate a prova pendente de 2026-09-05 (detalhe no Vikunja [1449]).** O
-`implanta/deploy.sh` APAGA e recria o snapshot `pre-update` do CT. Hoje esse snapshot (31/08 23:09)
-e' a **unica outra copia** do `token_envio` original de uma instancia que foi restaurada a partir
-dele e **ainda nao foi provada com envio real**. O dono so' consegue testar em 06/09. Se o deploy
-correr antes e a restauracao estiver errada, o caminho barato de recuperacao deixa de existir e
-sobra pedir token novo na conta Meta de terceiro.
+🔴 **O AVISO DE "NAO RODE DEPLOY" MORREU EM 2026-09-06, POR DECISAO DO DONO — e o preco ja foi
+pago.** Ele autorizou: *"Autorizado o deploy, amanha trabalhamos na lojinha."* O deploy da `v0.65.0`
+rodou logo apos o commit do bump (`21d7d65`) e o `pct delsnapshot` apagou o `pre-update` de
+31/08 23:09.
+**Consequencia MEDIDA, nao temida:** aquele snapshot era a unica outra copia do `token_envio`
+original da instancia restaurada; hoje existe **uma** copia, a que esta viva no banco, e ela
+**continua sem prova de envio real**. Se a restauracao de 31/08 estiver errada, o caminho barato
+acabou e sobra pedir token novo na conta Meta de terceiro (Vikunja [1449]).
+⚠️ **O que fazer amanha, na ordem:** provar a instancia com um envio real ANTES de qualquer outro
+deploy. Se o envio funcionar, o assunto encerra e [1449] fecha de verdade.
 
 **O que aconteceu em 2026-09-05, medido:** um token permanente de System User da Meta, com acesso de
 ADMIN do negocio, vazou em texto claro no prompt de uma rotina agendada e foi despejado em 62
