@@ -4,6 +4,19 @@ Uma linha por versao entregue, no mesmo commit do bump. A entrada diz o **efeito
 
 ## Nao lancado
 
+## v0.65.0 — 2026-09-06
+
+- **T-221 — Accept the English spelling of every top-level request key** — `contacts`, `flow` e
+  `sections` passam a existir; antes um consumidor 100% em ingles ainda tinha de mandar uma chave
+  em portugues, e um exemplo inteiro do contrato em ingles era impossivel de escrever. Nada saiu do
+  fio: a grafia portuguesa continua valendo e mandar as duas no mesmo pedido continua sendo
+  `ErrConflictingAlias`. O que vale mais que as tres linhas e' o portao invertido
+  (`TestRequestTopLevelKeysAreAllAccountedFor`): ele le as tags do `Request` e exige apelido ingles
+  ou presenca em `docs/contrato-chaves-que-nao-mudam.txt` — o teste antigo percorria a propria
+  tabela e por isso nao enxergava linha AUSENTE, que foi como as tres sobreviveram a T-203.
+  Reprovou contra dado real duas vezes (tirando `secoes`, e de novo `contacts` no main).
+  _Completed 2026-09-06 21:05._
+
 - **T-218 — English aliases for the CLI sub-verbs** — aditivo, sem remover nenhuma grafia
   portuguesa. T-214 so' tinha migrado os 4 verbos de TOPO; esta tarefa desce um nivel: 10 pares de
   sub-verbo passam a aceitar a grafia inglesa ao lado da portuguesa, com o MESMO mecanismo
