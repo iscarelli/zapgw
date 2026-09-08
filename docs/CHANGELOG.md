@@ -4,6 +4,15 @@ One line per version shipped, in the same commit as the bump. The entry states t
 
 ## Unreleased
 
+- **T-232 — Translate docs/CHANGELOG.md to English** — 24 blocks of Portuguese prose translated,
+  including the `## Nao lancado` header, which became `## Unreleased`. Nothing any entry ASSERTS was
+  changed: a changelog is a record, and correcting a record retroactively is inventing history.
+  Invariance proved on both sides and re-checked by the planner: same bullet count and an identical
+  multiset of task ids before and after. Everything that survives in Portuguese is a literal — the
+  `sim`/`nao` contract values, quoted program output like `NAO CONSEGUI LER`, and the filename
+  `contrato-chaves-que-nao-mudam.txt`. _Completed 2026-09-08 02:53._
+
+
 - **T-235 — Fix the two shell/Go log couplings, and build the gate that has never existed** — fixed
   `valida-lideranca.sh` (grepped a leadership line the Go stopped emitting at T-219, producing a false
   `FAILED`) and `deploy.sh` (grepped the obsolete-env-var warning the Go stopped emitting at T-224,

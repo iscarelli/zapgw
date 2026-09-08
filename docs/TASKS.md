@@ -354,21 +354,6 @@ Do:      🔴 Boa parte das ocorrencias e' LEGITIMA e tem de ficar: e' o NOME PO
 Verify:  liste no relatorio, por arquivo, quantas ocorrencias voce traduziu e quantas deixou em (b)
          ou (c). `go test ./internal/config/ -run TestDoc` verde (os ponteiros dos docs).
 
-## [ ] T-232  Translate docs/CHANGELOG.md to English
-After:   T-231
-Why:     o changelog e' o registro permanente e publico do projeto, e a regra desta casa e' projeto
-         em ingles. Medido: 463 ocorrencias portuguesas em 524 linhas.
-Files:   docs/CHANGELOG.md
-Do:      Traduza o TEXTO de cada entrada. 🔴 NAO reescreva o que cada entrada AFIRMA, nao junte
-         entradas, nao corrija nada que pareca errado — changelog e' registro, e corrigir registro
-         retroativamente e' inventar historia. Se achar uma entrada falsa, DIGA no relatorio e
-         deixe como esta; quem apaga parte falsa e' o planner.
-         Nomes de tarefa e ids ficam identicos — eles sao a identidade da tarefa.
-         Traduza o cabecalho `## Nao lancado` para `## Unreleased`.
-Verify:  o arquivo tem exatamente o mesmo numero de bullets e os mesmos ids antes e depois:
-         `grep -c '^- ' docs/CHANGELOG.md` e `grep -o 'T-[0-9]*' docs/CHANGELOG.md | sort | uniq -c`
-         iguais aos de `git show HEAD:docs/CHANGELOG.md`. Cole os dois no relatorio.
-
 ## [ ] T-220  Remove the Portuguese spellings of the CLI verbs
 After:   T-232 — e o movimento sincronizado (mesclar + deployar + atualizar
          /root/rotaciona-token.sh no CT 125) e do PLANNER, nao do implementador.
