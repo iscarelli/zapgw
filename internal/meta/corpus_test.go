@@ -24,13 +24,13 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 		// explicit guarantee, including that neither field leaks into the
 		// envelope.
 		if err != nil || len(evs) != 1 {
-			t.Fatalf("err=%v len=%d, quero nil e 1", err, len(evs))
+			t.Fatalf("err=%v len=%d, want nil and 1", err, len(evs))
 		}
 		if evs[0].Text != "Teste" {
 			t.Errorf("Text = %q", evs[0].Text)
 		}
 		if evs[0].FromRaw != "551199990000" || evs[0].FromCanonical != "5511999990000" {
-			t.Errorf("FromRaw=%q FromCanonical=%q — as DUAS formas sao obrigatorias",
+			t.Errorf("FromRaw=%q FromCanonical=%q — BOTH forms are mandatory",
 				evs[0].FromRaw, evs[0].FromCanonical)
 		}
 	},
@@ -45,7 +45,7 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 			t.Fatalf("err=%v len=%d", err, len(evs))
 		}
 		if evs[0].ButtonPayload != "Falar com a gente" {
-			t.Errorf("ButtonPayload = %q — type \"button\" nao esta sendo lido", evs[0].ButtonPayload)
+			t.Errorf("ButtonPayload = %q — type \"button\" is not being read", evs[0].ButtonPayload)
 		}
 		if evs[0].ButtonText != "Falar com a gente" {
 			t.Errorf("ButtonText = %q", evs[0].ButtonText)
@@ -56,7 +56,7 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 		// guarantee as resposta_a_mensagem.json — reading context.from
 		// instead of context.id here would also leave this test red.
 		if evs[0].ReplyTo != "wamid.TESTE013" {
-			t.Errorf("ReplyTo = %q, quero wamid.TESTE013 (o id do context, nao o from)", evs[0].ReplyTo)
+			t.Errorf("ReplyTo = %q, want wamid.TESTE013 (the context's id, not the from)", evs[0].ReplyTo)
 		}
 	},
 	"resposta_a_mensagem.json": func(t *testing.T, evs []Event, err error) {
@@ -67,13 +67,13 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 		// mutation (reading the wrong field swaps the value, not just
 		// its presence).
 		if err != nil || len(evs) != 1 {
-			t.Fatalf("err=%v len=%d, quero nil e 1", err, len(evs))
+			t.Fatalf("err=%v len=%d, want nil and 1", err, len(evs))
 		}
 		if evs[0].ReplyTo != "wamid.TESTE001" {
-			t.Errorf("ReplyTo = %q, quero wamid.TESTE001 (o id do context, nao o from)", evs[0].ReplyTo)
+			t.Errorf("ReplyTo = %q, want wamid.TESTE001 (the context's id, not the from)", evs[0].ReplyTo)
 		}
 		if evs[0].Text != "Recebido" {
-			t.Errorf("Text = %q, quero \"Recebido\"", evs[0].Text)
+			t.Errorf("Text = %q, want \"Recebido\"", evs[0].Text)
 		}
 	},
 	"mensagem_encaminhada_sintetica.json": func(t *testing.T, evs []Event, err error) {
@@ -85,20 +85,20 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 		// botao_de_template_sintetico.json exists: with both equal,
 		// reading one field in place of the other would pass GREEN.
 		if err != nil || len(evs) != 1 {
-			t.Fatalf("err=%v len=%d, quero nil e 1", err, len(evs))
+			t.Fatalf("err=%v len=%d, want nil and 1", err, len(evs))
 		}
 		if !evs[0].Forwarded {
-			t.Errorf("Forwarded = false, quero true — context.forwarded nao esta sendo lido")
+			t.Errorf("Forwarded = false, want true — context.forwarded is not being read")
 		}
 		if evs[0].FrequentlyForwarded {
-			t.Errorf("FrequentlyForwarded = true, quero false — os dois campos foram trocados na leitura")
+			t.Errorf("FrequentlyForwarded = true, want false — the two fields were swapped in the read")
 		}
 		// This fixture has "context" WITHOUT "id": forwarding isn't
 		// quoting. If the two cases were glued together, a forwarded
 		// message would gain an empty responder_a or, worse, the
 		// consumer would conclude it's a reply to something.
 		if evs[0].ReplyTo != "" {
-			t.Errorf("ReplyTo = %q, quero vazio — encaminhar nao e citar", evs[0].ReplyTo)
+			t.Errorf("ReplyTo = %q, want empty — forwarding is not quoting", evs[0].ReplyTo)
 		}
 	},
 	// --- T-061: an unexpected type degrades the BLOCK, never the message ---
@@ -112,20 +112,20 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 	"context_de_tipo_errado_sintetico.json": func(t *testing.T, evs []Event, err error) {
 		// "context" came as a STRING where an OBJECT is expected.
 		if err != nil || len(evs) != 1 {
-			t.Fatalf("err=%v len=%d, quero nil e 1 — um context ilegivel NAO pode derrubar a mensagem", err, len(evs))
+			t.Fatalf("err=%v len=%d, want nil and 1 — an unreadable context must NOT take the message down", err, len(evs))
 		}
 		// The message arrives WHOLE: what's lost is the block, not the rest.
 		if evs[0].Text != "Recebido" {
-			t.Errorf("Text = %q, quero \"Recebido\" — a mensagem tem de sobreviver ao context ilegivel", evs[0].Text)
+			t.Errorf("Text = %q, want \"Recebido\" — the message has to survive the unreadable context", evs[0].Text)
 		}
 		if evs[0].WaMessageID != "wamid.TESTE018" {
 			t.Errorf("WaMessageID = %q", evs[0].WaMessageID)
 		}
 		if evs[0].ReplyTo != "" {
-			t.Errorf("ReplyTo = %q, quero vazio — o bloco nao pode ser adivinhado", evs[0].ReplyTo)
+			t.Errorf("ReplyTo = %q, want empty — the block cannot be guessed at", evs[0].ReplyTo)
 		}
 		if evs[0].Forwarded || evs[0].FrequentlyForwarded {
-			t.Errorf("Forwarded=%v FrequentlyForwarded=%v, quero os dois false",
+			t.Errorf("Forwarded=%v FrequentlyForwarded=%v, want both false",
 				evs[0].Forwarded, evs[0].FrequentlyForwarded)
 		}
 	},
@@ -135,10 +135,10 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 		// where a bool is expected. This is the case the sibling file
 		// does NOT cover: there the block isn't even entered.
 		if err != nil || len(evs) != 1 {
-			t.Fatalf("err=%v len=%d, quero nil e 1 — campo ilegivel DENTRO do context tambem nao derruba a mensagem", err, len(evs))
+			t.Fatalf("err=%v len=%d, want nil and 1 — a field unreadable INSIDE context also does not take the message down", err, len(evs))
 		}
 		if evs[0].Text != "Recebido" {
-			t.Errorf("Text = %q, quero \"Recebido\"", evs[0].Text)
+			t.Errorf("Text = %q, want \"Recebido\"", evs[0].Text)
 		}
 		if evs[0].WaMessageID != "wamid.TESTE019" {
 			t.Errorf("WaMessageID = %q", evs[0].WaMessageID)
@@ -147,10 +147,10 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 		// keys, not for a wamid — inventing a wamid from a number would
 		// make the consumer reply to a message that doesn't exist.
 		if evs[0].ReplyTo != "" {
-			t.Errorf("ReplyTo = %q, quero vazio", evs[0].ReplyTo)
+			t.Errorf("ReplyTo = %q, want empty", evs[0].ReplyTo)
 		}
 		if evs[0].Forwarded {
-			t.Errorf("Forwarded = true — \"sim\" nao e um booleano e nao pode virar um")
+			t.Errorf("Forwarded = true — \"sim\" is not a boolean and must not become one")
 		}
 	},
 	"audio_voice_de_tipo_errado_sintetico.json": func(t *testing.T, evs []Event, err error) {
@@ -158,22 +158,22 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 		// came as a STRING where a bool is expected, inside a media
 		// block that goes through no isolation at all.
 		if err != nil || len(evs) != 1 {
-			t.Fatalf("err=%v len=%d, quero nil e 1 — um \"voice\" ilegivel NAO pode derrubar o audio inteiro", err, len(evs))
+			t.Fatalf("err=%v len=%d, want nil and 1 — an unreadable \"voice\" must NOT take the whole audio down", err, len(evs))
 		}
 		// What matters about the audio survives — including the mime
 		// WITH its parameter, which is what makes the voice note exist
 		// on the other side.
 		if evs[0].MediaID != "MEDIA_TESTE9" {
-			t.Errorf("MediaID = %q, quero MEDIA_TESTE9", evs[0].MediaID)
+			t.Errorf("MediaID = %q, want MEDIA_TESTE9", evs[0].MediaID)
 		}
 		if evs[0].MediaMimePayload != "audio/ogg; codecs=opus" {
-			t.Errorf("MediaMimePayload = %q — o parametro codecs se perdeu", evs[0].MediaMimePayload)
+			t.Errorf("MediaMimePayload = %q — the codecs parameter was lost", evs[0].MediaMimePayload)
 		}
 		// nil, not false: "I don't know" is the only honest answer, and
 		// it's what stops the consumer from resending a voice note as a
 		// plain attachment.
 		if evs[0].Voice != nil {
-			t.Errorf("Voice = %v, quero nil — \"sim\" nao e um booleano e nao pode virar false", *evs[0].Voice)
+			t.Errorf("Voice = %v, want nil — \"sim\" is not a boolean and must not become false", *evs[0].Voice)
 		}
 	},
 	// --- T-062: the WHOLE FAMILY, one file per message TYPE ---
@@ -195,60 +195,60 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 		// unexpectedly-shaped text used to erase the system's most
 		// banal message.
 		if err != nil || len(evs) != 2 {
-			t.Fatalf("err=%v len=%d, quero nil e 2 — a mensagem quebrada E a irma tem de chegar", err, len(evs))
+			t.Fatalf("err=%v len=%d, want nil and 2 — the broken message AND the sibling have to arrive", err, len(evs))
 		}
 		if evs[0].WaMessageID != "wamid.TESTE021" {
-			t.Errorf("WaMessageID = %q, quero wamid.TESTE021 — a mensagem de text ilegivel sumiu", evs[0].WaMessageID)
+			t.Errorf("WaMessageID = %q, want wamid.TESTE021 — the message with unreadable text vanished", evs[0].WaMessageID)
 		}
 		if evs[0].Text != "" {
-			t.Errorf("Text = %q, quero vazio — o bloco ilegivel nao pode ser adivinhado", evs[0].Text)
+			t.Errorf("Text = %q, want empty — the unreadable block cannot be guessed at", evs[0].Text)
 		}
 		// What survives is what identifies the message: without it the
 		// delivered event would be good for nothing.
 		if evs[0].SubType != "text" || evs[0].FromRaw != "551199990000" || evs[0].Timestamp != 1769000040 {
-			t.Errorf("SubType=%q FromRaw=%q Timestamp=%d — a identidade da mensagem tem de sobreviver",
+			t.Errorf("SubType=%q FromRaw=%q Timestamp=%d — the message's identity has to survive",
 				evs[0].SubType, evs[0].FromRaw, evs[0].Timestamp)
 		}
 		if evs[1].Text != "Irma sa" {
-			t.Errorf("Text da irma = %q — tolerar o ilegivel nao pode virar parar de ler", evs[1].Text)
+			t.Errorf("the sibling's Text = %q — tolerating the unreadable must not turn into stopping reading", evs[1].Text)
 		}
 	},
 	"audio_de_tipo_errado_sintetico.json": func(t *testing.T, evs []Event, err error) {
 		// `"audio":"MEDIA_TESTE10"` — the WHOLE media block with the
 		// wrong type, one level above the "voice" T-061 closed.
 		if err != nil || len(evs) != 2 {
-			t.Fatalf("err=%v len=%d, quero nil e 2", err, len(evs))
+			t.Fatalf("err=%v len=%d, want nil and 2", err, len(evs))
 		}
 		if evs[0].WaMessageID != "wamid.TESTE023" {
-			t.Errorf("WaMessageID = %q, quero wamid.TESTE023", evs[0].WaMessageID)
+			t.Errorf("WaMessageID = %q, want wamid.TESTE023", evs[0].WaMessageID)
 		}
 		// The id is NOT mined out of the unreadable block: "MEDIA_TESTE10"
 		// sits right there, readable in plain sight, and still doesn't
 		// become midia_id — a block that couldn't be read doesn't exist
 		// (see messageBlock).
 		if evs[0].MediaID != "" {
-			t.Errorf("MediaID = %q, quero vazio — o bloco degrada inteiro, nao campo a campo", evs[0].MediaID)
+			t.Errorf("MediaID = %q, want empty — the block degrades whole, not field by field", evs[0].MediaID)
 		}
 		if evs[1].MediaID != "MEDIA_TESTE11" || evs[1].MediaMimePayload != "audio/ogg; codecs=opus" {
-			t.Errorf("irma: MediaID=%q Mime=%q", evs[1].MediaID, evs[1].MediaMimePayload)
+			t.Errorf("sibling: MediaID=%q Mime=%q", evs[1].MediaID, evs[1].MediaMimePayload)
 		}
 		if evs[1].Voice == nil || !*evs[1].Voice {
-			t.Errorf("Voice da irma = %v, quero true", evs[1].Voice)
+			t.Errorf("the sibling's Voice = %v, want true", evs[1].Voice)
 		}
 	},
 	"interativo_de_tipo_errado_sintetico.json": func(t *testing.T, evs []Event, err error) {
 		if err != nil || len(evs) != 2 {
-			t.Fatalf("err=%v len=%d, quero nil e 2", err, len(evs))
+			t.Fatalf("err=%v len=%d, want nil and 2", err, len(evs))
 		}
 		if evs[0].WaMessageID != "wamid.TESTE025" {
-			t.Errorf("WaMessageID = %q, quero wamid.TESTE025", evs[0].WaMessageID)
+			t.Errorf("WaMessageID = %q, want wamid.TESTE025", evs[0].WaMessageID)
 		}
 		if evs[0].ButtonPayload != "" || evs[0].ButtonText != "" {
-			t.Errorf("ButtonPayload=%q ButtonText=%q, quero os dois vazios",
+			t.Errorf("ButtonPayload=%q ButtonText=%q, want both empty",
 				evs[0].ButtonPayload, evs[0].ButtonText)
 		}
 		if evs[1].ButtonPayload != "confirmar" || evs[1].ButtonText != "Confirmar" {
-			t.Errorf("irma: ButtonPayload=%q ButtonText=%q", evs[1].ButtonPayload, evs[1].ButtonText)
+			t.Errorf("sibling: ButtonPayload=%q ButtonText=%q", evs[1].ButtonPayload, evs[1].ButtonText)
 		}
 	},
 	"reacao_de_tipo_errado_sintetico.json": func(t *testing.T, evs []Event, err error) {
@@ -259,35 +259,35 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 		// TestParseWebhookAReactionWithoutATargetIsACountedParseError —, but it
 		// cannot reach a block only WE failed to read.
 		if err != nil || len(evs) != 2 {
-			t.Fatalf("err=%v len=%d, quero nil e 2 — reacao ilegivel nao e' reacao ausente", err, len(evs))
+			t.Fatalf("err=%v len=%d, want nil and 2 — an unreadable reaction is not an absent reaction", err, len(evs))
 		}
 		if evs[0].WaMessageID != "wamid.TESTE027" {
-			t.Errorf("WaMessageID = %q, quero wamid.TESTE027", evs[0].WaMessageID)
+			t.Errorf("WaMessageID = %q, want wamid.TESTE027", evs[0].WaMessageID)
 		}
 		// "wamid.TESTE001" is written in the block and does NOT become
 		// the target: guessing the target would make the consumer
 		// attribute the reaction to the wrong message.
 		if evs[0].Reaction != nil {
-			t.Errorf("Reaction = %+v, quero nil — nao se inventa reacao a partir de bytes ilegiveis", evs[0].Reaction)
+			t.Errorf("Reaction = %+v, want nil — a reaction is not invented from unreadable bytes", evs[0].Reaction)
 		}
 		if evs[1].Reaction == nil || evs[1].Reaction.Target != "wamid.TESTE001" {
-			t.Errorf("irma: Reaction = %+v", evs[1].Reaction)
+			t.Errorf("sibling: Reaction = %+v", evs[1].Reaction)
 		}
 	},
 	"botao_de_tipo_errado_sintetico.json": func(t *testing.T, evs []Event, err error) {
 		if err != nil || len(evs) != 2 {
-			t.Fatalf("err=%v len=%d, quero nil e 2", err, len(evs))
+			t.Fatalf("err=%v len=%d, want nil and 2", err, len(evs))
 		}
 		if evs[0].WaMessageID != "wamid.TESTE029" {
-			t.Errorf("WaMessageID = %q, quero wamid.TESTE029", evs[0].WaMessageID)
+			t.Errorf("WaMessageID = %q, want wamid.TESTE029", evs[0].WaMessageID)
 		}
 		if evs[0].ButtonPayload != "" || evs[0].Text != "" {
-			t.Errorf("ButtonPayload=%q Text=%q, quero os dois vazios", evs[0].ButtonPayload, evs[0].Text)
+			t.Errorf("ButtonPayload=%q Text=%q, want both empty", evs[0].ButtonPayload, evs[0].Text)
 		}
 		// payload and text DIFFERENT in the sibling, for the same reason
 		// botao_de_template_sintetico.json exists.
 		if evs[1].ButtonPayload != "PAYLOAD_INTERNO_7C1" || evs[1].ButtonText != "Falar com a gente" {
-			t.Errorf("irma: ButtonPayload=%q ButtonText=%q", evs[1].ButtonPayload, evs[1].ButtonText)
+			t.Errorf("sibling: ButtonPayload=%q ButtonText=%q", evs[1].ButtonPayload, evs[1].ButtonText)
 		}
 	},
 	// --- T-068: the LEVELS ABOVE the message, one file per struct ---
@@ -311,13 +311,13 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 		// phone_number_id erased the customer's whole batch — messages
 		// and statuses together.
 		if err != nil || len(evs) != 2 {
-			t.Fatalf("err=%v len=%d, quero nil e 2 (a mensagem E o status do mesmo change)", err, len(evs))
+			t.Fatalf("err=%v len=%d, want nil and 2 (the message AND the status of the same change)", err, len(evs))
 		}
 		if evs[0].WaMessageID != "wamid.TESTE031" || evs[0].Text != "Mensagem sa" {
-			t.Errorf("evs[0] = %q/%q — a mensagem do change sumiu", evs[0].WaMessageID, evs[0].Text)
+			t.Errorf("evs[0] = %q/%q — the change's message vanished", evs[0].WaMessageID, evs[0].Text)
 		}
 		if evs[1].Type != EventTypeStatus || evs[1].WaMessageID != "wamid.TESTE032" {
-			t.Errorf("evs[1] = %q/%q — o status do MESMO change sumiu", evs[1].Type, evs[1].WaMessageID)
+			t.Errorf("evs[1] = %q/%q — the status of the SAME change vanished", evs[1].Type, evs[1].WaMessageID)
 		}
 		// The block degrades whole: "PNID_TESTE" sits right there,
 		// readable in plain sight, and still doesn't become
@@ -325,12 +325,12 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 		// audio_de_tipo_errado_sintetico.json).
 		for i, e := range evs {
 			if e.PhoneNumberID != "" {
-				t.Errorf("evs[%d].PhoneNumberID = %q, quero vazio — bloco que nao deu para ler nao existe", i, e.PhoneNumberID)
+				t.Errorf("evs[%d].PhoneNumberID = %q, want empty — a block that couldn't be read doesn't exist", i, e.PhoneNumberID)
 			}
 		}
 		// contacts is still read: what degrades is the block, not its sibling.
 		if evs[0].ContactName != "Fulana de Teste" {
-			t.Errorf("ContactName = %q — o metadata ilegivel levou junto o contacts", evs[0].ContactName)
+			t.Errorf("ContactName = %q — the unreadable metadata took contacts down with it", evs[0].ContactName)
 		}
 	},
 	"contacts_de_tipo_errado_sintetico.json": func(t *testing.T, evs []Event, err error) {
@@ -340,21 +340,21 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 		// batch, silently, with a 200 answered to Meta. It's
 		// docs/ARMADILHAS.md's Critical #1 under another name.
 		if err != nil || len(evs) != 2 {
-			t.Fatalf("err=%v len=%d, quero nil e 2 — contacts ilegivel nao pode apagar mensagem nenhuma", err, len(evs))
+			t.Fatalf("err=%v len=%d, want nil and 2 — unreadable contacts must not erase any message", err, len(evs))
 		}
 		if evs[0].WaMessageID != "wamid.TESTE033" || evs[0].Text != "Mensagem sa" {
 			t.Errorf("evs[0] = %q/%q", evs[0].WaMessageID, evs[0].Text)
 		}
 		if evs[1].WaMessageID != "wamid.TESTE034" {
-			t.Errorf("evs[1] = %q — o status do mesmo change sumiu", evs[1].WaMessageID)
+			t.Errorf("evs[1] = %q — the same change's status vanished", evs[1].WaMessageID)
 		}
 		// The envelope loses the PROFILE, not the message — the task's
 		// sentence, turned into an assertion.
 		if evs[0].ContactName != "" {
-			t.Errorf("ContactName = %q, quero vazio — nao se adivinha nome de um bloco ilegivel", evs[0].ContactName)
+			t.Errorf("ContactName = %q, want empty — the name of an unreadable block isn't guessed at", evs[0].ContactName)
 		}
 		if evs[0].PhoneNumberID != "PNID_TESTE" {
-			t.Errorf("PhoneNumberID = %q — o contacts ilegivel levou junto o metadata", evs[0].PhoneNumberID)
+			t.Errorf("PhoneNumberID = %q — the unreadable contacts took metadata down with it", evs[0].PhoneNumberID)
 		}
 	},
 	"field_de_tipo_errado_sintetico.json": func(t *testing.T, evs []Event, err error) {
@@ -368,13 +368,13 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 		// model. The messages arrive (best effort), and `parse_error`
 		// says something couldn't be classified.
 		if !errors.Is(err, ErrPartialParse) {
-			t.Fatalf("err = %v, quero ErrPartialParse — `field` ilegivel tem de ser CONTADO", err)
+			t.Fatalf("err = %v, want ErrPartialParse — an unreadable `field` has to be COUNTED", err)
 		}
 		if len(evs) != 2 {
-			t.Fatalf("len(evs) = %d, quero 2 — as mensagens dos DOIS changes tem de chegar", len(evs))
+			t.Fatalf("len(evs) = %d, want 2 — the messages of BOTH changes have to arrive", len(evs))
 		}
 		if evs[0].WaMessageID != "wamid.TESTE035" {
-			t.Errorf("evs[0] = %q — a mensagem do change sem field legivel sumiu", evs[0].WaMessageID)
+			t.Errorf("evs[0] = %q — the message of the change without a readable field vanished", evs[0].WaMessageID)
 		}
 		if evs[1].WaMessageID != "wamid.TESTE036" || evs[1].Text != "Irma sa" {
 			t.Errorf("evs[1] = %q/%q", evs[1].WaMessageID, evs[1].Text)
@@ -386,20 +386,20 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 		// in the same call. Measured before T-068: the whole entry
 		// vanished.
 		if err != nil || len(evs) != 2 {
-			t.Fatalf("err=%v len=%d, quero nil e 2 — o entry com waba_id ilegivel tambem entrega", err, len(evs))
+			t.Fatalf("err=%v len=%d, want nil and 2 — the entry with an unreadable waba_id also delivers", err, len(evs))
 		}
 		if evs[0].WaMessageID != "wamid.TESTE037" {
-			t.Errorf("evs[0] = %q — a mensagem do entry sem waba_id legivel sumiu", evs[0].WaMessageID)
+			t.Errorf("evs[0] = %q — the message of the entry without a readable waba_id vanished", evs[0].WaMessageID)
 		}
 		// "" is what the handler's guard 5b treats as a NON-MATCH
 		// (T-068). The event exists; who decides whether it leaves this
 		// house is the handler, with an ALARM and a counter — see
 		// TestHandlerRecusaWebhookDeContaComWabaIDIlegivel.
 		if evs[0].WabaID != "" {
-			t.Errorf("evs[0].WabaID = %q, quero vazio — 42 nao vira o waba_id \"42\"", evs[0].WabaID)
+			t.Errorf("evs[0].WabaID = %q, want empty — 42 does not become the waba_id \"42\"", evs[0].WabaID)
 		}
 		if evs[1].WaMessageID != "wamid.TESTE038" || evs[1].WabaID != "WABA_TESTE" {
-			t.Errorf("evs[1] = %q/%q — a irma de OUTRO entry tem de chegar intacta",
+			t.Errorf("evs[1] = %q/%q — the sibling from ANOTHER entry has to arrive intact",
 				evs[1].WaMessageID, evs[1].WabaID)
 		}
 	},
@@ -408,22 +408,22 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 		// embarrassing of the five: an unexpectedly-shaped `status`,
 		// `recipient_id`, and `timestamp` erased the whole status event.
 		if err != nil || len(evs) != 2 {
-			t.Fatalf("err=%v len=%d, quero nil e 2", err, len(evs))
+			t.Fatalf("err=%v len=%d, want nil and 2", err, len(evs))
 		}
 		if evs[0].WaMessageID != "wamid.TESTE039" {
-			t.Errorf("evs[0] = %q — o status degradado sumiu", evs[0].WaMessageID)
+			t.Errorf("evs[0] = %q — the degraded status vanished", evs[0].WaMessageID)
 		}
 		if evs[0].Status != "" || evs[0].ToRaw != "" || evs[0].ToCanonical != "" {
-			t.Errorf("Status=%q ToRaw=%q ToCanonical=%q, quero os tres vazios — 42 nao vira \"42\"",
+			t.Errorf("Status=%q ToRaw=%q ToCanonical=%q, want all three empty — 42 does not become \"42\"",
 				evs[0].Status, evs[0].ToRaw, evs[0].ToCanonical)
 		}
 		// The timestamp is the tolerant EXCEPTION (see statusFromMeta): a
 		// number and text give the same instant, so it survives.
 		if evs[0].Timestamp != 1769000058 {
-			t.Errorf("Timestamp = %d, quero 1769000058 — numero e texto dao o mesmo instante", evs[0].Timestamp)
+			t.Errorf("Timestamp = %d, want 1769000058 — a number and text give the same instant", evs[0].Timestamp)
 		}
 		if evs[1].WaMessageID != "wamid.TESTE040" || evs[1].Status != "delivered" {
-			t.Errorf("evs[1] = %q/%q — o status irmao tem de chegar intacto", evs[1].WaMessageID, evs[1].Status)
+			t.Errorf("evs[1] = %q/%q — the sibling status has to arrive intact", evs[1].WaMessageID, evs[1].Status)
 		}
 	},
 	"template_de_tipo_errado_sintetico.json": func(t *testing.T, evs []Event, err error) {
@@ -432,26 +432,26 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 		// the reclassification warning T-043 exists to give vanished
 		// because of a field that doesn't even enter the decision.
 		if err != nil || len(evs) != 2 {
-			t.Fatalf("err=%v len=%d, quero nil e 2", err, len(evs))
+			t.Fatalf("err=%v len=%d, want nil and 2", err, len(evs))
 		}
 		if evs[0].Template == nil {
-			t.Fatal("evs[0].Template == nil — o evento de template degradado sumiu")
+			t.Fatal("evs[0].Template == nil — the degraded template event vanished")
 		}
 		// What decides (state and category) survives; what degraded is
 		// just what came in unreadable.
 		if evs[0].Template.State != "REJECTED" || evs[0].Template.Category != "MARKETING" {
-			t.Errorf("State=%q Category=%q — o que faz este evento valer a pena tem de sobreviver",
+			t.Errorf("State=%q Category=%q — what makes this event worth having has to survive",
 				evs[0].Template.State, evs[0].Template.Category)
 		}
 		if evs[0].Template.Name != "" || evs[0].Template.Reason != "" {
-			t.Errorf("Name=%q Reason=%q, quero os dois vazios — bloco ilegivel nao se adivinha",
+			t.Errorf("Name=%q Reason=%q, want both empty — an unreadable block isn't guessed at",
 				evs[0].Template.Name, evs[0].Template.Reason)
 		}
 		if evs[0].ID != "template_status:9900000000000001:REJECTED:1769000060" {
-			t.Errorf("ID = %q — a chave tem de sobreviver inteira", evs[0].ID)
+			t.Errorf("ID = %q — the key has to survive whole", evs[0].ID)
 		}
 		if evs[1].Template == nil || evs[1].Template.Name != "irma_sa_v1" || evs[1].Template.Reason != "NONE" {
-			t.Errorf("evs[1].Template = %+v — a irma sa do mesmo lote", evs[1].Template)
+			t.Errorf("evs[1].Template = %+v — the healthy sibling of the same batch", evs[1].Template)
 		}
 	},
 	"botao_de_template_sintetico.json": func(t *testing.T, evs []Event, err error) {
@@ -459,18 +459,18 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 		// "PAYLOAD_INTERNO_9F3" versus "Falar com a gente". The real
 		// capture (botao_de_template.json) has both equal, so it alone
 		// doesn't catch a swapped field read (see the comment further up
-		// and the "Um teste de vazamento passa VERDE quando a fixture
-		// apaga o ramo que vazaria" family in docs/ARMADILHAS.md). This fixture is what
+		// and the "A leak test passes GREEN when the fixture erases the
+		// branch that would leak" family in docs/ARMADILHAS.md). This fixture is what
 		// makes the mutation "swap m.Button.Payload for m.Button.Text"
 		// turn RED.
 		if err != nil || len(evs) != 1 {
 			t.Fatalf("err=%v len=%d", err, len(evs))
 		}
 		if evs[0].ButtonPayload != "PAYLOAD_INTERNO_9F3" {
-			t.Errorf("ButtonPayload = %q, quero PAYLOAD_INTERNO_9F3", evs[0].ButtonPayload)
+			t.Errorf("ButtonPayload = %q, want PAYLOAD_INTERNO_9F3", evs[0].ButtonPayload)
 		}
 		if evs[0].ButtonText != "Falar com a gente" {
-			t.Errorf("ButtonText = %q, quero \"Falar com a gente\"", evs[0].ButtonText)
+			t.Errorf("ButtonText = %q, want \"Falar com a gente\"", evs[0].ButtonText)
 		}
 	},
 	"botao_interativo.json": func(t *testing.T, evs []Event, err error) {
@@ -485,13 +485,13 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 		// NOT need a synthetic sibling like
 		// botao_de_template_sintetico.json needed.
 		if evs[0].ButtonPayload != "confirmar" {
-			t.Errorf("ButtonPayload = %q, quero \"confirmar\" (o id, nao o title)", evs[0].ButtonPayload)
+			t.Errorf("ButtonPayload = %q, want \"confirmar\" (the id, not the title)", evs[0].ButtonPayload)
 		}
 		if evs[0].ButtonText != "Confirmar" {
-			t.Errorf("ButtonText = %q, quero \"Confirmar\"", evs[0].ButtonText)
+			t.Errorf("ButtonText = %q, want \"Confirmar\"", evs[0].ButtonText)
 		}
 		if evs[0].ButtonPayload == evs[0].ButtonText {
-			t.Fatalf("ButtonPayload == ButtonText — perderam a capacidade de distinguir leitura de campo trocada")
+			t.Fatalf("ButtonPayload == ButtonText — they lost the ability to catch a swapped field read")
 		}
 	},
 	"audio_nota_de_voz.json": func(t *testing.T, evs []Event, err error) {
@@ -499,7 +499,7 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 			t.Fatalf("err=%v len=%d", err, len(evs))
 		}
 		if evs[0].MediaMimePayload != "audio/ogg; codecs=opus" {
-			t.Errorf("MediaMimePayload = %q — o parametro codecs foi cortado, e e ele que faz a nota de voz existir",
+			t.Errorf("MediaMimePayload = %q — the codecs parameter was cut, and it's what makes the voice note exist",
 				evs[0].MediaMimePayload)
 		}
 	},
@@ -528,21 +528,21 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 		// the normal case; whoever counts by billing category (T-063)
 		// needs to know this BEFORE writing the counter, not after.
 		if err != nil || len(evs) != 1 {
-			t.Fatalf("err=%v len=%d, quero nil e 1", err, len(evs))
+			t.Fatalf("err=%v len=%d, want nil and 1", err, len(evs))
 		}
 		if evs[0].ID != "status:wamid.TESTE041:sent" {
-			t.Errorf("ID = %q — a chave composta e obrigatoria", evs[0].ID)
+			t.Errorf("ID = %q — the composite key is mandatory", evs[0].ID)
 		}
 		if evs[0].Status != "sent" {
-			t.Errorf("Status = %q, quero sent", evs[0].Status)
+			t.Errorf("Status = %q, want sent", evs[0].Status)
 		}
 		// The task's assertion: absent, never zeroed. This is the one
 		// that turns RED if someone makes the parse require `pricing`.
 		if evs[0].Billing != nil {
-			t.Errorf("Billing = %+v, quero nil — `pricing` e opcional no sent, e este e o caso real sem ele", evs[0].Billing)
+			t.Errorf("Billing = %+v, want nil — `pricing` is optional on sent, and this is the real case without it", evs[0].Billing)
 		}
 		if evs[0].Error != nil {
-			t.Errorf("Error = %+v, quero nil — sent nao tem errors[]", evs[0].Error)
+			t.Errorf("Error = %+v, want nil — sent has no errors[]", evs[0].Error)
 		}
 		// `recipient_user_id` (and `contacts[].user_id`) are keys
 		// statusFromMeta/contactMeta do NOT model and that arrived over the
@@ -553,11 +553,11 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 		// TestCorpusARealStatusDoesNotLeakRecipientUserIDIntoTheEnvelope,
 		// below.
 		if evs[0].ToRaw != "553288888888" || evs[0].ToCanonical != "5532988888888" {
-			t.Errorf("ToRaw=%q ToCanonical=%q — as DUAS formas sao obrigatorias",
+			t.Errorf("ToRaw=%q ToCanonical=%q — BOTH forms are mandatory",
 				evs[0].ToRaw, evs[0].ToCanonical)
 		}
 		if evs[0].Timestamp != 1785073298 {
-			t.Errorf("Timestamp = %d, quero 1785073298 (o carimbo real da Meta)", evs[0].Timestamp)
+			t.Errorf("Timestamp = %d, want 1785073298 (Meta's real timestamp)", evs[0].Timestamp)
 		}
 	},
 	"status_sent_com_pricing.json": func(t *testing.T, evs []Event, err error) {
@@ -566,7 +566,7 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 		// "optional" a proven assertion instead of a sentence in the
 		// README.
 		if err != nil || len(evs) != 1 {
-			t.Fatalf("err=%v len=%d, quero nil e 1", err, len(evs))
+			t.Fatalf("err=%v len=%d, want nil and 1", err, len(evs))
 		}
 		if evs[0].ID != "status:wamid.TESTE042:sent" {
 			t.Errorf("ID = %q", evs[0].ID)
@@ -580,16 +580,16 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 		// — swapping the read of one field for the other no longer
 		// slips by unnoticed.
 		if evs[0].Billing.Category != "service" {
-			t.Errorf("Category = %q, quero service", evs[0].Billing.Category)
+			t.Errorf("Category = %q, want service", evs[0].Billing.Category)
 		}
 		if evs[0].Billing.Billable == nil {
-			t.Fatal("Billable == nil — a Meta disse `billable:false`, e ausente NAO e a mesma informacao")
+			t.Fatal("Billable == nil — Meta said `billable:false`, and absent is NOT the same information")
 		}
 		if *evs[0].Billing.Billable {
-			t.Errorf("Billable = true, quero false — `billable:false` nao pode virar true")
+			t.Errorf("Billable = true, want false — `billable:false` must not become true")
 		}
 		if evs[0].Timestamp != 1785072102 {
-			t.Errorf("Timestamp = %d, quero 1785072102", evs[0].Timestamp)
+			t.Errorf("Timestamp = %d, want 1785072102", evs[0].Timestamp)
 		}
 	},
 	"status_delivered.json": func(t *testing.T, evs []Event, err error) {
@@ -602,12 +602,12 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 			t.Fatalf("err=%v len=%d", err, len(evs))
 		}
 		if evs[0].ID != "status:wamid.TESTE042:delivered" {
-			t.Errorf("ID = %q — a chave composta e obrigatoria", evs[0].ID)
+			t.Errorf("ID = %q — the composite key is mandatory", evs[0].ID)
 		}
 		// Non-regression (T-028): a delivered status doesn't gain Error
 		// just because the type now exists.
 		if evs[0].Error != nil {
-			t.Errorf("Error = %+v, quero nil — delivered nao tem errors[]", evs[0].Error)
+			t.Errorf("Error = %+v, want nil — delivered has no errors[]", evs[0].Error)
 		}
 		// The "no pricing -> absent Billing" non-regression this file
 		// carried until T-041 MOVED ADDRESS, and didn't vanish: it now
@@ -618,10 +618,10 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 			t.Fatal("Billing == nil — o delivered real veio COM pricing")
 		}
 		if evs[0].Billing.Category != "service" {
-			t.Errorf("Category = %q, quero service", evs[0].Billing.Category)
+			t.Errorf("Category = %q, want service", evs[0].Billing.Category)
 		}
 		if evs[0].Timestamp != 1785072102 {
-			t.Errorf("Timestamp = %d, quero 1785072102", evs[0].Timestamp)
+			t.Errorf("Timestamp = %d, want 1785072102", evs[0].Timestamp)
 		}
 	},
 	"status_failed.json": func(t *testing.T, evs []Event, err error) {
@@ -629,7 +629,7 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 			t.Fatalf("err=%v len=%d", err, len(evs))
 		}
 		if evs[0].Status != "failed" {
-			t.Errorf("Status = %q, quero failed", evs[0].Status)
+			t.Errorf("Status = %q, want failed", evs[0].Status)
 		}
 		if evs[0].Error == nil {
 			t.Fatal("Error == nil — status failed com errors[] tem de produzir StatusError")
@@ -639,7 +639,7 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 		// whole task — before it was derived from the doc's generic
 		// example (code 131049).
 		if evs[0].Error.Code != 131026 {
-			t.Errorf("Error.Code = %d, quero 131026", evs[0].Error.Code)
+			t.Errorf("Error.Code = %d, want 131026", evs[0].Error.Code)
 		}
 		if evs[0].Error.Message != "Message undeliverable" {
 			t.Errorf("Error.Message = %q", evs[0].Error.Message)
@@ -652,12 +652,12 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 		// payload — the message failed, Meta doesn't charge for it, and
 		// Billing stays absent.
 		if evs[0].Billing != nil {
-			t.Errorf("Billing = %+v, quero nil — este status nao tem pricing", evs[0].Billing)
+			t.Errorf("Billing = %+v, want nil — this status has no pricing", evs[0].Billing)
 		}
 	},
 	"status_read_com_cobranca.json": func(t *testing.T, evs []Event, err error) {
 		if err != nil || len(evs) != 1 {
-			t.Fatalf("err=%v len=%d, quero nil e 1", err, len(evs))
+			t.Fatalf("err=%v len=%d, want nil and 1", err, len(evs))
 		}
 		// consumer-a's real capture (2026-07-26, T-041), pasted into the
 		// bilateral channel (consumer-a-STATUS.local.md, gitignored): 145
@@ -668,10 +668,10 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 			t.Fatal("Billing == nil — status com pricing tem de produzir Billing")
 		}
 		if evs[0].Billing.Category != "utility" {
-			t.Errorf("Category = %q, quero utility", evs[0].Billing.Category)
+			t.Errorf("Category = %q, want utility", evs[0].Billing.Category)
 		}
 		if evs[0].Billing.Billable == nil || !*evs[0].Billing.Billable {
-			t.Errorf("Billable = %v, quero um *bool apontando para true", evs[0].Billing.Billable)
+			t.Errorf("Billable = %v, want a *bool pointing to true", evs[0].Billing.Billable)
 		}
 	},
 	"status_de_template.json": func(t *testing.T, evs []Event, err error) {
@@ -681,27 +681,27 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 		// this corpus's standard envelope, because what was delivered
 		// didn't include that level. See testdata/corpus/README.md.
 		if err != nil || len(evs) != 1 {
-			t.Fatalf("err=%v len=%d, quero nil e 1 — o webhook de template TEM de virar evento", err, len(evs))
+			t.Fatalf("err=%v len=%d, want nil and 1 — the template webhook HAS to become an event", err, len(evs))
 		}
 		e := evs[0]
 		if e.Type != EventTypeTemplateStatus {
-			t.Errorf("Type = %q, quero template_status", e.Type)
+			t.Errorf("Type = %q, want template_status", e.Type)
 		}
 		if e.Template == nil {
-			t.Fatal("Template == nil — o evento sem conteudo nao serve para nada")
+			t.Fatal("Template == nil — an event with no content is good for nothing")
 		}
 		if e.Template.Category != "UTILITY" {
-			t.Errorf("Category = %q, quero UTILITY — e o campo que faz este evento valer a pena",
+			t.Errorf("Category = %q, want UTILITY — it's the field that makes this event worth having",
 				e.Template.Category)
 		}
 		if e.Template.State != "APPROVED" {
-			t.Errorf("State = %q, quero APPROVED", e.Template.State)
+			t.Errorf("State = %q, want APPROVED", e.Template.State)
 		}
 		// "NONE" is Meta's NORMAL value when there's no reason —
 		// translating to empty would erase the difference between
 		// "Meta said NONE" and "Meta didn't send the field".
 		if e.Template.Reason != "NONE" {
-			t.Errorf("Reason = %q, quero a string NONE como veio", e.Template.Reason)
+			t.Errorf("Reason = %q, want the string NONE as it came", e.Template.Reason)
 		}
 		if e.Template.Name != "aguardando_peca_v2" || e.Template.Language != "pt_BR" {
 			t.Errorf("Name=%q Language=%q", e.Template.Name, e.Template.Language)
@@ -709,15 +709,15 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 		// The time comes from the entry (the `value` has no timestamp
 		// of its own) and enters the key — see templateStatusEvent.
 		if e.Timestamp != 1769000020 {
-			t.Errorf("Timestamp = %d, quero 1769000020 (o entry.time)", e.Timestamp)
+			t.Errorf("Timestamp = %d, want 1769000020 (the entry.time)", e.Timestamp)
 		}
 		if e.ID != "template_status:1384121316897444:APPROVED:1769000020" {
-			t.Errorf("ID = %q — a chave com tempo e obrigatoria", e.ID)
+			t.Errorf("ID = %q — the key with the time is mandatory", e.ID)
 		}
 		// A template webhook has no metadata.phone_number_id: the only
 		// routing key is the waba.
 		if e.PhoneNumberID != "" {
-			t.Errorf("PhoneNumberID = %q, quero vazio — este webhook nao carrega esse campo", e.PhoneNumberID)
+			t.Errorf("PhoneNumberID = %q, want empty — this webhook does not carry that field", e.PhoneNumberID)
 		}
 		if e.WabaID != "WABA_TESTE" {
 			t.Errorf("WabaID = %q", e.WabaID)
@@ -747,21 +747,21 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 		// before this file: UTILITY -> MARKETING raises the price of
 		// every send in the family.
 		if err != nil || len(evs) != 1 {
-			t.Fatalf("err=%v len=%d, quero nil e 1 — o webhook de categoria TEM de virar evento", err, len(evs))
+			t.Fatalf("err=%v len=%d, want nil and 1 — the category webhook HAS to become an event", err, len(evs))
 		}
 		e := evs[0]
 		if e.Type != EventTypeTemplateCategory {
-			t.Errorf("Type = %q, quero template_categoria", e.Type)
+			t.Errorf("Type = %q, want template_categoria", e.Type)
 		}
 		if e.TemplateCategory == nil {
-			t.Fatal("TemplateCategory == nil — o evento sem conteudo nao serve para nada")
+			t.Fatal("TemplateCategory == nil — an event with no content is good for nothing")
 		}
 		c := e.TemplateCategory
 		// The DIRECTION is what this event has that
 		// `message_template_status_update` doesn't. If it's lost, what's
 		// left is what T-043 already gave.
 		if c.PreviousCategory != "UTILITY" || c.NewCategory != "MARKETING" {
-			t.Errorf("anterior=%q nova=%q, quero UTILITY -> MARKETING — a direcao e o que este evento acrescenta",
+			t.Errorf("previous=%q new=%q, want UTILITY -> MARKETING — the direction is what this event adds",
 				c.PreviousCategory, c.NewCategory)
 		}
 		if c.Name != "instrucoes_download_app_v6" || c.Language != "pt_BR" {
@@ -775,7 +775,7 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 		// they degrade to empty here — losing them must not cost the
 		// event.
 		if c.CorrectCategory != "" || c.AppealStatus != "" {
-			t.Errorf("correta=%q recurso=%q, quero os DOIS vazios — a captura real nao trouxe nenhum dos dois",
+			t.Errorf("correct=%q appeal=%q, want BOTH empty — the real capture did not bring either one",
 				c.CorrectCategory, c.AppealStatus)
 		}
 		// The same time-carrying key as template_status, for the
@@ -783,14 +783,14 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 		// template can go and COME BACK from a category, and without
 		// the time the third transition collides with the first.
 		if e.ID != "template_categoria:1563912508540305:UTILITY:MARKETING:1787252135" {
-			t.Errorf("ID = %q — a chave com transicao E tempo e obrigatoria", e.ID)
+			t.Errorf("ID = %q — the key with the transition AND time is mandatory", e.ID)
 		}
 		if e.Timestamp != 1787252135 {
-			t.Errorf("Timestamp = %d, quero 1787252135 (o entry.time)", e.Timestamp)
+			t.Errorf("Timestamp = %d, want 1787252135 (o entry.time)", e.Timestamp)
 		}
 		// Account webhook: the only routing key is the waba (guard 5b).
 		if e.PhoneNumberID != "" {
-			t.Errorf("PhoneNumberID = %q, quero vazio — este webhook nao carrega esse campo", e.PhoneNumberID)
+			t.Errorf("PhoneNumberID = %q, want empty — this webhook does not carry that field", e.PhoneNumberID)
 		}
 		if e.WabaID != "WABA_TESTE" {
 			t.Errorf("WabaID = %q", e.WabaID)
@@ -805,7 +805,7 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 		// This file's value is not this test: it's the PAIR. See
 		// TestTemplateCategoryTheRealPairThereAndBackHasDifferentKeys.
 		if err != nil || len(evs) != 1 {
-			t.Fatalf("err=%v len=%d, quero nil e 1", err, len(evs))
+			t.Fatalf("err=%v len=%d, want nil and 1", err, len(evs))
 		}
 		e := evs[0]
 		c := e.TemplateCategory
@@ -813,21 +813,21 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 			t.Fatal("TemplateCategory == nil")
 		}
 		if c.PreviousCategory != "MARKETING" || c.NewCategory != "UTILITY" {
-			t.Errorf("anterior=%q nova=%q, quero MARKETING -> UTILITY (a volta)",
+			t.Errorf("previous=%q new=%q, want MARKETING -> UTILITY (the way back)",
 				c.PreviousCategory, c.NewCategory)
 		}
 		if c.Name != "instrucoes_download_app_v6" || c.Language != "pt_BR" {
 			t.Errorf("Name=%q Language=%q", c.Name, c.Language)
 		}
 		if c.CorrectCategory != "" || c.AppealStatus != "" {
-			t.Errorf("correta=%q recurso=%q, quero os DOIS vazios — nem na restauracao a Meta mandou",
+			t.Errorf("correct=%q appeal=%q, want BOTH empty — Meta did not send them even on the restoration",
 				c.CorrectCategory, c.AppealStatus)
 		}
 		if e.ID != "template_categoria:1563912508540305:MARKETING:UTILITY:1787305767" {
 			t.Errorf("ID = %q", e.ID)
 		}
 		if e.Timestamp != 1787305767 {
-			t.Errorf("Timestamp = %d, quero 1787305767", e.Timestamp)
+			t.Errorf("Timestamp = %d, want 1787305767", e.Timestamp)
 		}
 		if e.WabaID != "WABA_TESTE" {
 			t.Errorf("WabaID = %q", e.WabaID)
@@ -847,7 +847,7 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 		// distinguishes — see
 		// TestTemplateCategoryWithoutPreviousCategoryStillBecomesAnEvent.
 		if err != nil || len(evs) != 1 {
-			t.Fatalf("err=%v len=%d, quero nil e 1 — a AUSENCIA da direcao nao pode apagar o evento", err, len(evs))
+			t.Fatalf("err=%v len=%d, want nil and 1 — the ABSENCE of the direction must not erase the event", err, len(evs))
 		}
 		e := evs[0]
 		c := e.TemplateCategory
@@ -855,10 +855,10 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 			t.Fatal("TemplateCategory == nil")
 		}
 		if c.PreviousCategory != "" {
-			t.Errorf("PreviousCategory = %q, quero vazio — o payload nao traz previous_category", c.PreviousCategory)
+			t.Errorf("PreviousCategory = %q, want empty — the payload does not carry previous_category", c.PreviousCategory)
 		}
 		if c.NewCategory != "MARKETING" {
-			t.Errorf("NewCategory = %q, quero MARKETING — e o FATO, e o que sustenta o evento sozinho", c.NewCategory)
+			t.Errorf("NewCategory = %q, want MARKETING — it's the FACT, and it sustains the event on its own", c.NewCategory)
 		}
 		if c.Name != "teste_sonda_503_20ago" || c.Language != "pt_BR" {
 			t.Errorf("Name=%q Language=%q", c.Name, c.Language)
@@ -867,10 +867,10 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 		// would collapse this key's shape onto a different one, and two
 		// events would start colliding by construction.
 		if e.ID != "template_categoria:3503097836538248::MARKETING:1787244576" {
-			t.Errorf("ID = %q — o campo vazio fica no MEIO da chave, com os dois-pontos", e.ID)
+			t.Errorf("ID = %q — the empty field sits in the MIDDLE of the key, between the colons", e.ID)
 		}
 		if e.Timestamp != 1787244576 {
-			t.Errorf("Timestamp = %d, quero 1787244576", e.Timestamp)
+			t.Errorf("Timestamp = %d, want 1787244576", e.Timestamp)
 		}
 		if e.WabaID != "WABA_TESTE" {
 			t.Errorf("WabaID = %q", e.WabaID)
@@ -888,30 +888,30 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 		// raises the price of every send, and it's exactly the case
 		// T-043 exists to warn about and didn't cover.
 		if err != nil || len(evs) != 1 {
-			t.Fatalf("err=%v len=%d, quero nil e 1", err, len(evs))
+			t.Fatalf("err=%v len=%d, want nil and 1", err, len(evs))
 		}
 		c := evs[0].TemplateCategory
 		if c == nil {
 			t.Fatal("TemplateCategory == nil")
 		}
 		if c.PreviousCategory != "UTILITY" {
-			t.Errorf("PreviousCategory = %q, quero UTILITY (o previous, nao o correct)", c.PreviousCategory)
+			t.Errorf("PreviousCategory = %q, want UTILITY (the previous, not the correct)", c.PreviousCategory)
 		}
 		if c.NewCategory != "MARKETING" {
-			t.Errorf("NewCategory = %q, quero MARKETING", c.NewCategory)
+			t.Errorf("NewCategory = %q, want MARKETING", c.NewCategory)
 		}
 		if c.CorrectCategory != "AUTHENTICATION" {
-			t.Errorf("CorrectCategory = %q, quero AUTHENTICATION (o correct, nao o previous)", c.CorrectCategory)
+			t.Errorf("CorrectCategory = %q, want AUTHENTICATION (the correct, not the previous)", c.CorrectCategory)
 		}
 		if c.PreviousCategory == c.CorrectCategory {
-			t.Fatal("PreviousCategory == CorrectCategory — este fixture perdeu a capacidade de distinguir leitura de campo trocada, que e a unica razao de ele existir")
+			t.Fatal("PreviousCategory == CorrectCategory — this fixture lost its ability to catch a swapped field read, which is the only reason it exists")
 		}
 		// "NOT_ELIGIBLE" exists in this fixture to prove the field is
 		// TEXT: a derived boolean ("can it be appealed?") would have to
 		// decide today what to do with a value that only shows up
 		// tomorrow.
 		if c.AppealStatus != "NOT_ELIGIBLE" {
-			t.Errorf("AppealStatus = %q, quero NOT_ELIGIBLE como veio", c.AppealStatus)
+			t.Errorf("AppealStatus = %q, want NOT_ELIGIBLE as it came", c.AppealStatus)
 		}
 		// A 16-digit message_template_id, like status_de_template.json's:
 		// doesn't fit in an int32, which is why it's read as TEXT.
@@ -931,11 +931,11 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 		// fictitious number, preserved from the sample — it's no one's
 		// real number.
 		if err != nil || len(evs) != 1 {
-			t.Fatalf("err=%v len=%d, quero nil e 1", err, len(evs))
+			t.Fatalf("err=%v len=%d, want nil and 1", err, len(evs))
 		}
 		e := evs[0]
 		if e.Type != EventTypeNumberQuality {
-			t.Errorf("Type = %q, quero qualidade_do_numero", e.Type)
+			t.Errorf("Type = %q, want qualidade_do_numero", e.Type)
 		}
 		q := e.NumberQuality
 		if q == nil {
@@ -946,11 +946,11 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 		// value is worse than passing it through (see NumberQuality,
 		// types.go).
 		if q.CurrentLimit != "TIER_250" || q.PreviousLimit != "TIER_NOT_SET" {
-			t.Errorf("CurrentLimit=%q PreviousLimit=%q, quero TIER_250 e TIER_NOT_SET literais",
+			t.Errorf("CurrentLimit=%q PreviousLimit=%q, want the literal TIER_250 and TIER_NOT_SET",
 				q.CurrentLimit, q.PreviousLimit)
 		}
 		if q.State != "ONBOARDING" {
-			t.Errorf("State = %q, quero ONBOARDING", q.State)
+			t.Errorf("State = %q, want ONBOARDING", q.State)
 		}
 		if q.DisplayNumber != "16505551111" {
 			t.Errorf("DisplayNumber = %q", q.DisplayNumber)
@@ -959,12 +959,12 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 			t.Errorf("MaxDailyLimit = %q", q.MaxDailyLimit)
 		}
 		if e.ID != "qualidade_do_numero:16505551111:ONBOARDING:TIER_NOT_SET:TIER_250:1769000080" {
-			t.Errorf("ID = %q — a chave leva a TRANSICAO de limite e o tempo", e.ID)
+			t.Errorf("ID = %q — the key carries the limit TRANSITION and the time", e.ID)
 		}
 		// Account webhook: no phone_number_id. `display_phone_number` is
 		// a label, and cannot become a routing key.
 		if e.PhoneNumberID != "" {
-			t.Errorf("PhoneNumberID = %q, quero vazio — display_phone_number NAO e phone_number_id", e.PhoneNumberID)
+			t.Errorf("PhoneNumberID = %q, want empty — display_phone_number is NOT phone_number_id", e.PhoneNumberID)
 		}
 		if e.WabaID != "WABA_TESTE" {
 			t.Errorf("WabaID = %q", e.WabaID)
@@ -982,26 +982,26 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 		// about. The sample freezes an ONBOARDING, which is the one
 		// transition that worries no one.
 		if err != nil || len(evs) != 1 {
-			t.Fatalf("err=%v len=%d, quero nil e 1", err, len(evs))
+			t.Fatalf("err=%v len=%d, want nil and 1", err, len(evs))
 		}
 		q := evs[0].NumberQuality
 		if q == nil {
 			t.Fatal("NumberQuality == nil")
 		}
 		if q.CurrentLimit != "TIER_50" {
-			t.Errorf("CurrentLimit = %q, quero TIER_50 (o current, nao o max_daily)", q.CurrentLimit)
+			t.Errorf("CurrentLimit = %q, want TIER_50 (the current, not the max_daily)", q.CurrentLimit)
 		}
 		if q.PreviousLimit != "TIER_1K" {
-			t.Errorf("PreviousLimit = %q, quero TIER_1K", q.PreviousLimit)
+			t.Errorf("PreviousLimit = %q, want TIER_1K", q.PreviousLimit)
 		}
 		if q.MaxDailyLimit != "TIER_10K" {
-			t.Errorf("MaxDailyLimit = %q, quero TIER_10K (o max_daily, nao o current)", q.MaxDailyLimit)
+			t.Errorf("MaxDailyLimit = %q, want TIER_10K (the max_daily, not the current)", q.MaxDailyLimit)
 		}
 		if q.CurrentLimit == q.MaxDailyLimit {
-			t.Fatal("CurrentLimit == MaxDailyLimit — este fixture perdeu a capacidade de distinguir leitura de campo trocada, que e a unica razao de ele existir")
+			t.Fatal("CurrentLimit == MaxDailyLimit — this fixture lost its ability to catch a swapped field read, which is the only reason it exists")
 		}
 		if q.State != "FLAGGED" {
-			t.Errorf("State = %q, quero FLAGGED", q.State)
+			t.Errorf("State = %q, want FLAGGED", q.State)
 		}
 	},
 	"alerta_de_conta_derivado_da_doc.json": func(t *testing.T, evs []Event, err error) {
@@ -1015,11 +1015,11 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 		// guarantee — the same decision (and the same question) as
 		// botao_interativo.json.
 		if err != nil || len(evs) != 1 {
-			t.Fatalf("err=%v len=%d, quero nil e 1", err, len(evs))
+			t.Fatalf("err=%v len=%d, want nil and 1", err, len(evs))
 		}
 		e := evs[0]
 		if e.Type != EventTypeAccountAlert {
-			t.Errorf("Type = %q, quero alerta_de_conta", e.Type)
+			t.Errorf("Type = %q, want alerta_de_conta", e.Type)
 		}
 		a := e.AccountAlert
 		if a == nil {
@@ -1028,13 +1028,13 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 		// The field that justifies the type existing: without severity,
 		// a serious alert and a routine notice arrive identical.
 		if a.Severity != "INFORMATIONAL" {
-			t.Errorf("Severity = %q, quero INFORMATIONAL como veio", a.Severity)
+			t.Errorf("Severity = %q, want INFORMATIONAL as it came", a.Severity)
 		}
 		if a.Type != "OBA_APPROVED" {
-			t.Errorf("Type = %q, quero OBA_APPROVED (o alert_type, nao o alert_status)", a.Type)
+			t.Errorf("Type = %q, want OBA_APPROVED (the alert_type, not the alert_status)", a.Type)
 		}
 		if a.State != "NONE" {
-			t.Errorf("State = %q, quero a string NONE como veio", a.State)
+			t.Errorf("State = %q, want the string NONE as it came", a.State)
 		}
 		if a.EntityType != "WABA" {
 			t.Errorf("EntityType = %q", a.EntityType)
@@ -1043,16 +1043,16 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 		// TEXT — never an int, for the same reason as the 16-digit
 		// message_template_id.
 		if a.EntityID != "123456" {
-			t.Errorf("EntityID = %q, quero \"123456\" (texto, e a Meta mandou numero)", a.EntityID)
+			t.Errorf("EntityID = %q, want \"123456\" (text, and Meta sent a number)", a.EntityID)
 		}
 		if a.Description != "Sample alert description, informational in nature with no status" {
 			t.Errorf("Description = %q", a.Description)
 		}
 		if e.ID != "alerta_de_conta:123456:OBA_APPROVED:INFORMATIONAL:NONE:1769000084" {
-			t.Errorf("ID = %q — a chave leva severidade e estado, senao uma ESCALADA e deduplicada contra o alerta original", e.ID)
+			t.Errorf("ID = %q — the key carries severity and state, otherwise an ESCALATION gets deduplicated against the original alert", e.ID)
 		}
 		if e.PhoneNumberID != "" {
-			t.Errorf("PhoneNumberID = %q, quero vazio", e.PhoneNumberID)
+			t.Errorf("PhoneNumberID = %q, want empty", e.PhoneNumberID)
 		}
 		if e.WabaID != "WABA_TESTE" {
 			t.Errorf("WabaID = %q", e.WabaID)
@@ -1060,15 +1060,15 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 	},
 	"corpo_null.json": func(t *testing.T, evs []Event, err error) {
 		if err == nil {
-			t.Fatal("corpo null passou sem erro")
+			t.Fatal("null body passed without an error")
 		}
 		if len(evs) != 0 {
-			t.Fatalf("len(evs) = %d, quero 0", len(evs))
+			t.Fatalf("len(evs) = %d, want 0", len(evs))
 		}
 	},
 	"reacao.json": func(t *testing.T, evs []Event, err error) {
 		if err != nil || len(evs) != 1 {
-			t.Fatalf("err=%v len=%d, quero nil e 1", err, len(evs))
+			t.Fatalf("err=%v len=%d, want nil and 1", err, len(evs))
 		}
 		if evs[0].Reaction == nil {
 			t.Fatal("Reaction == nil")
@@ -1079,10 +1079,10 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 		// had before, doc-derived) doesn't exercise the variation
 		// selector path; see docs/ARMADILHAS.md.
 		if evs[0].Reaction.Emoji != "❤️" {
-			t.Errorf("Emoji = %q, quero ❤️ (com variation selector)", evs[0].Reaction.Emoji)
+			t.Errorf("Emoji = %q, want ❤️ (with variation selector)", evs[0].Reaction.Emoji)
 		}
 		if len([]rune(evs[0].Reaction.Emoji)) != 2 {
-			t.Errorf("Emoji tem %d rune(s), quero 2 — o variation selector se perdeu",
+			t.Errorf("Emoji has %d rune(s), want 2 — the variation selector was lost",
 				len([]rune(evs[0].Reaction.Emoji)))
 		}
 		if evs[0].Reaction.Target != "wamid.TESTE001" {
@@ -1093,13 +1093,13 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 		// An emoji ABSENT from Meta's payload is REMOVAL, not
 		// malformation — it cannot become ErrPartialParse.
 		if err != nil || len(evs) != 1 {
-			t.Fatalf("err=%v len=%d — reacao sem emoji e remocao, nao erro", err, len(evs))
+			t.Fatalf("err=%v len=%d — a reaction without an emoji is removal, not an error", err, len(evs))
 		}
 		if evs[0].Reaction == nil {
 			t.Fatal("Reaction == nil — remocao tambem e um evento")
 		}
 		if evs[0].Reaction.Emoji != "" {
-			t.Errorf("Emoji = %q, quero vazio (remocao)", evs[0].Reaction.Emoji)
+			t.Errorf("Emoji = %q, want empty (removal)", evs[0].Reaction.Emoji)
 		}
 		if evs[0].Reaction.Target != "wamid.TESTE001" {
 			t.Errorf("Target = %q", evs[0].Reaction.Target)
@@ -1124,10 +1124,10 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 		// real capture — the doc-derived fixture carried both and
 		// tested the rare case. See docs/ARMADILHAS.md.
 		if evs[0].Location.Name != "" {
-			t.Errorf("Name = %q, quero vazio — a Meta nao mandou nome nesta captura", evs[0].Location.Name)
+			t.Errorf("Name = %q, want empty — Meta did not send a name in this capture", evs[0].Location.Name)
 		}
 		if evs[0].Location.Address != "" {
-			t.Errorf("Address = %q, quero vazio — a Meta nao mandou endereco nesta captura", evs[0].Location.Address)
+			t.Errorf("Address = %q, want empty — Meta did not send an address in this capture", evs[0].Location.Address)
 		}
 	},
 	"documento_com_legenda.json": func(t *testing.T, evs []Event, err error) {
@@ -1141,7 +1141,7 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 		// existed before didn't exercise a long name. See
 		// docs/ARMADILHAS.md.
 		if evs[0].Caption != "PDF teste" {
-			t.Errorf("Caption = %q, quero \"PDF teste\"", evs[0].Caption)
+			t.Errorf("Caption = %q, want \"PDF teste\"", evs[0].Caption)
 		}
 		if evs[0].Filename != "515642-9741-manual-forno-gourmet-grill-rev-43.pdf" {
 			t.Errorf("Filename = %q", evs[0].Filename)
@@ -1152,7 +1152,7 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 			t.Fatalf("err=%v len=%d", err, len(evs))
 		}
 		if evs[0].MediaMimePayload != "image/jpeg" {
-			t.Errorf("MediaMimePayload = %q, quero image/jpeg", evs[0].MediaMimePayload)
+			t.Errorf("MediaMimePayload = %q, want image/jpeg", evs[0].MediaMimePayload)
 		}
 		if evs[0].MediaID != "MEDIA_TESTE3" {
 			t.Errorf("MediaID = %q", evs[0].MediaID)
@@ -1163,7 +1163,7 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 			t.Fatalf("err=%v len=%d", err, len(evs))
 		}
 		if evs[0].MediaMimePayload != "video/mp4" {
-			t.Errorf("MediaMimePayload = %q, quero video/mp4", evs[0].MediaMimePayload)
+			t.Errorf("MediaMimePayload = %q, want video/mp4", evs[0].MediaMimePayload)
 		}
 		if evs[0].MediaID != "MEDIA_TESTE4" {
 			t.Errorf("MediaID = %q", evs[0].MediaID)
@@ -1182,14 +1182,14 @@ func TestTheWholeCorpus(t *testing.T) {
 	// files and passed GREEN without scanning anything. Every guard needs
 	// to prove it checked something.
 	if len(files) == 0 {
-		t.Fatal("nenhum arquivo no corpus — a guarda nao verificou NADA")
+		t.Fatal("no file in the corpus — the guard checked NOTHING")
 	}
 
 	for _, path := range files {
 		name := filepath.Base(path)
 		check, hasTest := corpusExpectations[name]
 		if !hasTest {
-			t.Errorf("%s esta no corpus e nenhum teste o consome", name)
+			t.Errorf("%s is in the corpus and no test consumes it", name)
 			continue
 		}
 		t.Run(name, func(t *testing.T) {
@@ -1203,7 +1203,7 @@ func TestTheWholeCorpus(t *testing.T) {
 	}
 
 	if len(files) != len(corpusExpectations) {
-		t.Errorf("arquivos=%d esperados=%d — a tabela e o diretorio divergiram",
+		t.Errorf("files=%d expected=%d — the table and the directory diverged",
 			len(files), len(corpusExpectations))
 	}
 }
@@ -1223,7 +1223,7 @@ func corpusEvents(t *testing.T, name string) []Event {
 		t.Fatalf("ParseWebhook %s: %v", name, err)
 	}
 	if len(evs) != 1 {
-		t.Fatalf("%s: len(evs) = %d, quero 1", name, len(evs))
+		t.Fatalf("%s: len(evs) = %d, want 1", name, len(evs))
 	}
 	return evs
 }
@@ -1250,15 +1250,15 @@ func TestCorpusSentAndDeliveredOfTheSameWamidHaveTheSameTimestamp(t *testing.T) 
 	delivered := corpusEvents(t, "status_delivered.json")[0]
 
 	if sent.WaMessageID != delivered.WaMessageID {
-		t.Fatalf("wamid sent=%q delivered=%q — os dois fixtures tem de ser o MESMO envio, senao este teste nao prova nada",
+		t.Fatalf("wamid sent=%q delivered=%q — both fixtures have to be the SAME send, otherwise this test proves nothing",
 			sent.WaMessageID, delivered.WaMessageID)
 	}
 	if sent.Timestamp != delivered.Timestamp {
-		t.Errorf("Timestamp sent=%d delivered=%d — a captura real trouxe os DOIS com %d; um fixture que os diferencia esconde o problema do consumidor",
+		t.Errorf("Timestamp sent=%d delivered=%d — the real capture brought BOTH with %d; a fixture that makes them differ hides the consumer's problem",
 			sent.Timestamp, delivered.Timestamp, 1785072102)
 	}
 	if sent.ID == delivered.ID {
-		t.Errorf("ID sent == ID delivered == %q — a chave TEM de incluir o status, senao um dedup por id joga fora um dos dois estados",
+		t.Errorf("ID sent == ID delivered == %q — the key HAS to include the status, otherwise a dedup by id throws away one of the two states",
 			sent.ID)
 	}
 	if sent.Status != "sent" || delivered.Status != "delivered" {
@@ -1290,7 +1290,7 @@ func TestCorpusARealStatusDoesNotLeakRecipientUserIDIntoTheEnvelope(t *testing.T
 		}
 		for _, forbidden := range []string{"user_id", "BR.20000000000000000"} {
 			if strings.Contains(string(output), forbidden) {
-				t.Errorf("%s: o envelope carrega %q — o consumidor le o NOSSO vocabulario, nao o da Meta:\n%s",
+				t.Errorf("%s: the envelope carries %q — the consumer reads OUR vocabulary, not Meta's:\n%s",
 					name, forbidden, output)
 			}
 		}
@@ -1321,7 +1321,7 @@ func TestTemplateCategoryTheRealPairThereAndBackHasDifferentKeys(t *testing.T) {
 		t.Fatal("TemplateCategory == nil em um dos dois")
 	}
 	if downgrade.TemplateCategory.Name != restore.TemplateCategory.Name {
-		t.Fatalf("nomes diferentes (%q vs %q) — os dois fixtures TEM de ser o mesmo template, senao este teste nao prova nada",
+		t.Fatalf("different names (%q vs %q) — both fixtures HAVE to be the same template, otherwise this test proves nothing",
 			downgrade.TemplateCategory.Name, restore.TemplateCategory.Name)
 	}
 	// Deliberately WITHOUT the surrounding colons: this guard is about
@@ -1330,23 +1330,23 @@ func TestTemplateCategoryTheRealPairThereAndBackHasDifferentKeys(t *testing.T) {
 	// Fatalf and hide the collision assertion below — which is the one
 	// that has to speak.
 	if !strings.Contains(downgrade.ID, "1563912508540305") || !strings.Contains(restore.ID, "1563912508540305") {
-		t.Fatalf("message_template_id diferente entre os dois: ida=%q volta=%q — o par perdeu a identidade",
+		t.Fatalf("message_template_id different between the two: there=%q back=%q — the pair lost its identity",
 			downgrade.ID, restore.ID)
 	}
 
 	if downgrade.ID == restore.ID {
-		t.Errorf("ID ida == ID volta == %q — a chave TEM de separar as duas transicoes, senao o dedup do consumidor apaga a volta",
+		t.Errorf("ID there == ID back == %q — the key HAS to separate the two transitions, otherwise the consumer's dedup erases the way back",
 			downgrade.ID)
 	}
 	if downgrade.Timestamp == restore.Timestamp {
-		t.Errorf("Timestamp igual nos dois (%d) — a captura real trouxe 1787252135 e 1787305767",
+		t.Errorf("Timestamp equal on both (%d) — the real capture brought 1787252135 and 1787305767",
 			downgrade.Timestamp)
 	}
 	// The direction is inverted between the two, and that's the whole
 	// point of the event: one raises the price, the other lowers it.
 	if downgrade.TemplateCategory.NewCategory != "MARKETING" ||
 		restore.TemplateCategory.NewCategory != "UTILITY" {
-		t.Errorf("nova ida=%q volta=%q, quero MARKETING e UTILITY — as duas direcoes",
+		t.Errorf("new there=%q back=%q, want MARKETING and UTILITY — both directions",
 			downgrade.TemplateCategory.NewCategory, restore.TemplateCategory.NewCategory)
 	}
 }
@@ -1370,25 +1370,25 @@ func TestTemplateCategoryWithoutPreviousCategoryStillBecomesAnEvent(t *testing.T
 	ev := corpusEvents(t, "categoria_de_template_sem_anterior.json")[0]
 
 	if ev.Type != EventTypeTemplateCategory {
-		t.Fatalf("Type = %q, quero template_categoria", ev.Type)
+		t.Fatalf("Type = %q, want template_categoria", ev.Type)
 	}
 	c := ev.TemplateCategory
 	if c == nil {
-		t.Fatal("TemplateCategory == nil — o evento saiu sem conteudo")
+		t.Fatal("TemplateCategory == nil — the event came out with no content")
 	}
 	if c.PreviousCategory != "" {
-		t.Errorf("PreviousCategory = %q, quero vazio — este payload NAO traz previous_category, e o fixture perdeu a razao de existir se traz",
+		t.Errorf("PreviousCategory = %q, want empty — this payload does NOT carry previous_category, and the fixture lost its reason to exist if it does",
 			c.PreviousCategory)
 	}
 	if c.NewCategory != "MARKETING" {
-		t.Errorf("NewCategory = %q, quero MARKETING", c.NewCategory)
+		t.Errorf("NewCategory = %q, want MARKETING", c.NewCategory)
 	}
 	// The key keeps the empty slot between the two colons. It still
 	// distinguishes: the id and the time are there, and a second event
 	// of the same template in the same second would have to be the same
 	// transition to collide — which is when dedup is the right answer.
 	if ev.ID != "template_categoria:3503097836538248::MARKETING:1787244576" {
-		t.Errorf("ID = %q — a chave tem de manter o campo vazio no meio", ev.ID)
+		t.Errorf("ID = %q — the key has to keep the empty field in the middle", ev.ID)
 	}
 	// And it does not collide with the pair above, which is the same
 	// guarantee looked at from the other side.
@@ -1398,7 +1398,7 @@ func TestTemplateCategoryWithoutPreviousCategoryStillBecomesAnEvent(t *testing.T
 		"categoria_de_template_sintetico.json",
 	} {
 		if another := corpusEvents(t, neighbor)[0]; another.ID == ev.ID {
-			t.Errorf("a chave sem direcao colidiu com %s (%q)", neighbor, ev.ID)
+			t.Errorf("the key without a direction collided with %s (%q)", neighbor, ev.ID)
 		}
 	}
 }
@@ -1433,17 +1433,17 @@ func TestTemplateCategoryNoRealCaptureBroughtAppealNorCorrectCategory(t *testing
 			t.Fatalf("%s: TemplateCategory == nil", name)
 		}
 		if c.CorrectCategory != "" || c.AppealStatus != "" {
-			t.Errorf("%s: correta=%q recurso=%q — se a Meta passou a mandar, ATUALIZE a medicao e a tabela do contrato junto, nao apague a assercao",
+			t.Errorf("%s: correct=%q appeal=%q — if Meta started sending them, UPDATE the measurement and the contract table together, do not delete the assertion",
 				name, c.CorrectCategory, c.AppealStatus)
 		}
 		// Three captures, three keys: the corpus would be lying if two
 		// of them deduplicated into one.
 		if before, duplicate := seenIDs[ev.ID]; duplicate {
-			t.Errorf("%s e %s produziram a MESMA chave %q", before, name, ev.ID)
+			t.Errorf("%s and %s produced the SAME key %q", before, name, ev.ID)
 		}
 		seenIDs[ev.ID] = name
 	}
 	if len(seenIDs) != len(captures) {
-		t.Errorf("chaves distintas = %d, quero %d", len(seenIDs), len(captures))
+		t.Errorf("distinct keys = %d, want %d", len(seenIDs), len(captures))
 	}
 }

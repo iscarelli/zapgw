@@ -18,7 +18,7 @@
 // Instagram login on both hosts (graph.instagram.com and
 // graph.facebook.com), with different errors for each app id/secret
 // combination — see the .py's header for the full account. Asking doesn't
-// work; USING works — that's why DiagnosticoPermissaoInstagram hits the
+// work; USING works — that's why InstagramMessagingPermission hits the
 // endpoint the permission actually gates, instead of inspecting the token.
 package meta
 
@@ -60,7 +60,7 @@ func (c *Client) InstagramTokenAccount(ctx context.Context, base, token string) 
 	}
 	var account InstagramAccount
 	if err := json.Unmarshal(raw, &account); err != nil {
-		return InstagramAccount{}, fmt.Errorf("meta: corpo de /me (instagram) nao entendido: %w", err)
+		return InstagramAccount{}, fmt.Errorf("meta: /me (instagram) body not understood: %w", err)
 	}
 	return account, nil
 }
@@ -304,7 +304,7 @@ func (c *Client) countInstagramConversations(ctx context.Context, base, token, f
 		} `json:"paging"`
 	}
 	if err := json.Unmarshal(raw, &envelope); err != nil {
-		return ConversationCount{}, fmt.Errorf("meta: corpo de /me/conversations (instagram) nao entendido: %w", err)
+		return ConversationCount{}, fmt.Errorf("meta: /me/conversations (instagram) body not understood: %w", err)
 	}
 	return ConversationCount{
 		N:     len(envelope.Data),
@@ -327,7 +327,7 @@ func (c *Client) InstagramWebhookSubscription(ctx context.Context, base, token s
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(raw, &envelope); err != nil {
-		return nil, fmt.Errorf("meta: corpo de /me/subscribed_apps (instagram) nao entendido: %w", err)
+		return nil, fmt.Errorf("meta: /me/subscribed_apps (instagram) body not understood: %w", err)
 	}
 	var fields []string
 	for _, item := range envelope.Data {
@@ -347,7 +347,7 @@ func (c *Client) InstagramWebhookSubscription(ctx context.Context, base, token s
 func (c *Client) readInstagramGraph(ctx context.Context, base, path string, query url.Values, token string) ([]byte, error) {
 	target, err := url.JoinPath(base, path)
 	if err != nil {
-		return nil, fmt.Errorf("meta: montar url de diagnostico: %w", err)
+		return nil, fmt.Errorf("meta: build diagnostic url: %w", err)
 	}
 	if len(query) > 0 {
 		target += "?" + query.Encode()
@@ -355,7 +355,7 @@ func (c *Client) readInstagramGraph(ctx context.Context, base, path string, quer
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, target, nil)
 	if err != nil {
-		return nil, fmt.Errorf("meta: montar requisicao de diagnostico: %w", err)
+		return nil, fmt.Errorf("meta: build diagnostic request: %w", err)
 	}
 	req.Header.Set("Authorization", "Bearer "+token)
 
@@ -363,15 +363,15 @@ func (c *Client) readInstagramGraph(ctx context.Context, base, path string, quer
 	if err != nil {
 		// We do NOT interpolate the error: *url.Error carries the full
 		// URL. Here it doesn't carry the token (it goes in the header),
-		// but it can carry `caminho` — the same caution as the rest of
+		// but it can carry `path` — the same caution as the rest of
 		// the package.
-		return nil, fmt.Errorf("meta: falha de transporte no diagnostico: %w", errWithoutDetail(err))
+		return nil, fmt.Errorf("meta: transport failure during diagnostics: %w", errWithoutDetail(err))
 	}
 	defer resp.Body.Close()
 
 	raw, err := io.ReadAll(io.LimitReader(resp.Body, responseBodyCap))
 	if err != nil {
-		return nil, fmt.Errorf("meta: ler resposta do diagnostico: %w", errWithoutDetail(err))
+		return nil, fmt.Errorf("meta: read diagnostic response: %w", errWithoutDetail(err))
 	}
 	if metaError := ClassifyResponse(resp.StatusCode, raw); metaError != nil {
 		return nil, metaError

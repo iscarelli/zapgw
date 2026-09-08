@@ -28,11 +28,11 @@ import (
 //
 // Classified as RETRYABLE: Meta responded, but didn't answer what was
 // agreed — the same treatment given to a malformed body from it.
-var ErrResponseWithoutID = errors.New("meta: resposta 2xx sem id de mensagem")
+var ErrResponseWithoutID = errors.New("meta: 2xx response without a message id")
 
 // ErrInvalidPhoneNumberID: the identifier has a shape that cannot safely
 // become a URL segment.
-var ErrInvalidPhoneNumberID = errors.New("meta: phone_number_id com forma invalida")
+var ErrInvalidPhoneNumberID = errors.New("meta: phone_number_id has an invalid shape")
 
 const responseBodyCap = 1 << 20 // 1 MiB: the Graph API's response is small
 
@@ -83,17 +83,17 @@ func (c *Client) SendMessage(
 
 	raw, err := json.Marshal(body)
 	if err != nil {
-		return SendResponse{}, fmt.Errorf("meta: montar corpo: %w", err)
+		return SendResponse{}, fmt.Errorf("meta: build body: %w", err)
 	}
 
 	target, err := url.JoinPath(c.base, phoneNumberID, "messages")
 	if err != nil {
-		return SendResponse{}, fmt.Errorf("meta: montar url: %w", err)
+		return SendResponse{}, fmt.Errorf("meta: build url: %w", err)
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, target, bytes.NewReader(raw))
 	if err != nil {
-		return SendResponse{}, fmt.Errorf("meta: montar requisicao: %w", err)
+		return SendResponse{}, fmt.Errorf("meta: build request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+token)
@@ -103,13 +103,13 @@ func (c *Client) SendMessage(
 		// Transport failure. We do NOT interpolate the error: *url.Error
 		// carries the full request URL, and it carries the
 		// phone_number_id.
-		return SendResponse{}, fmt.Errorf("meta: falha de transporte ao enviar: %w", errWithoutDetail(err))
+		return SendResponse{}, fmt.Errorf("meta: transport failure while sending: %w", errWithoutDetail(err))
 	}
 	defer resp.Body.Close()
 
 	rawResponse, err := io.ReadAll(io.LimitReader(resp.Body, responseBodyCap))
 	if err != nil {
-		return SendResponse{}, fmt.Errorf("meta: ler resposta: %w", errWithoutDetail(err))
+		return SendResponse{}, fmt.Errorf("meta: read response: %w", errWithoutDetail(err))
 	}
 
 	if metaError := ClassifyResponse(resp.StatusCode, rawResponse); metaError != nil {
@@ -146,12 +146,12 @@ func (c *Client) CheckCredential(ctx context.Context, phoneNumberID, token strin
 	}
 	target, err := url.JoinPath(c.base, phoneNumberID)
 	if err != nil {
-		return fmt.Errorf("meta: montar url: %w", err)
+		return fmt.Errorf("meta: build url: %w", err)
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, target, nil)
 	if err != nil {
-		return fmt.Errorf("meta: montar requisicao: %w", err)
+		return fmt.Errorf("meta: build request: %w", err)
 	}
 	// The token goes in the HEADER, never in the URL: a token in a query
 	// string leaks into proxy, server, and CDN logs.
@@ -159,13 +159,13 @@ func (c *Client) CheckCredential(ctx context.Context, phoneNumberID, token strin
 
 	resp, err := c.http.Do(req)
 	if err != nil {
-		return fmt.Errorf("meta: falha de transporte ao conferir a credencial: %w", errWithoutDetail(err))
+		return fmt.Errorf("meta: transport failure while checking the credential: %w", errWithoutDetail(err))
 	}
 	defer resp.Body.Close()
 
 	raw, err := io.ReadAll(io.LimitReader(resp.Body, responseBodyCap))
 	if err != nil {
-		return fmt.Errorf("meta: ler resposta: %w", errWithoutDetail(err))
+		return fmt.Errorf("meta: read response: %w", errWithoutDetail(err))
 	}
 	// ClassifyResponse reads ONLY error.message and error.code — never
 	// the rest of the body, which can echo client data.
@@ -222,7 +222,7 @@ func sendResponse(raw []byte) (SendResponse, error) {
 		} `json:"messages"`
 	}
 	if err := json.Unmarshal(raw, &envelope); err != nil {
-		return SendResponse{}, fmt.Errorf("%w: corpo nao entendido", ErrResponseWithoutID)
+		return SendResponse{}, fmt.Errorf("%w: body not understood", ErrResponseWithoutID)
 	}
 	if len(envelope.Messages) == 0 {
 		return SendResponse{}, ErrResponseWithoutID

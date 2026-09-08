@@ -3,8 +3,8 @@
 //
 // The Cloud API has its own endpoint for the business to stop RECEIVING
 // from an abusive number, and the gateway didn't reach it — a consumer who
-// needed this had no path, and under this house's rule ("NINGUÉM fala direto
-// com a Meta") couldn't go direct either. Source:
+// needed this had no path, and under this house's rule ("nobody talks
+// directly to Meta") couldn't go direct either. Source:
 // developers.facebook.com/docs/whatsapp/cloud-api/block-users/, read
 // 2026-08-20.
 //
@@ -39,7 +39,7 @@ import (
 // ErrBlockResponseNotUnderstood: Meta answered 2xx with a body that
 // doesn't have the minimum expected shape (neither `block_users`, nor
 // `data`/`paging`, depending on the call).
-var ErrBlockResponseNotUnderstood = errors.New("meta: resposta de bloqueio nao entendida")
+var ErrBlockResponseNotUnderstood = errors.New("meta: block response not understood")
 
 // BlockedUser is a number that ENTERED or LEFT the block list
 // successfully — the `input` (phone number we sent) and the `wa_id` Meta
@@ -123,17 +123,17 @@ func (c *Client) callBlockUsers(
 	}
 	raw, err := json.Marshal(body)
 	if err != nil {
-		return BlockResult{}, fmt.Errorf("meta: montar corpo do bloqueio: %w", err)
+		return BlockResult{}, fmt.Errorf("meta: build block body: %w", err)
 	}
 
 	target, err := url.JoinPath(c.base, phoneNumberID, "block_users")
 	if err != nil {
-		return BlockResult{}, fmt.Errorf("meta: montar url: %w", err)
+		return BlockResult{}, fmt.Errorf("meta: build url: %w", err)
 	}
 
 	req, err := http.NewRequestWithContext(ctx, method, target, bytes.NewReader(raw))
 	if err != nil {
-		return BlockResult{}, fmt.Errorf("meta: montar requisicao: %w", err)
+		return BlockResult{}, fmt.Errorf("meta: build request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 	// The token goes in the HEADER, never in the URL: a token in a query
@@ -144,13 +144,13 @@ func (c *Client) callBlockUsers(
 	if err != nil {
 		// We do NOT interpolate the error: *url.Error carries the full
 		// URL, and it carries the client's phone_number_id.
-		return BlockResult{}, fmt.Errorf("meta: falha de transporte ao falar com block_users: %w", errWithoutDetail(err))
+		return BlockResult{}, fmt.Errorf("meta: transport failure talking to block_users: %w", errWithoutDetail(err))
 	}
 	defer resp.Body.Close()
 
 	rawResponse, err := io.ReadAll(io.LimitReader(resp.Body, responseBodyCap))
 	if err != nil {
-		return BlockResult{}, fmt.Errorf("meta: ler resposta: %w", errWithoutDetail(err))
+		return BlockResult{}, fmt.Errorf("meta: read response: %w", errWithoutDetail(err))
 	}
 
 	// ClassifyResponse only sees the ENVELOPE (the HTTP STATUS and
@@ -180,7 +180,7 @@ func blockResult(raw []byte) (BlockResult, error) {
 		} `json:"block_users"`
 	}
 	if err := json.Unmarshal(raw, &envelope); err != nil {
-		return BlockResult{}, fmt.Errorf("%w: corpo nao entendido", ErrBlockResponseNotUnderstood)
+		return BlockResult{}, fmt.Errorf("%w: body not understood", ErrBlockResponseNotUnderstood)
 	}
 
 	succeeded := make([]BlockedUser, 0, len(envelope.BlockUsers.AddedUsers)+len(envelope.BlockUsers.RemovedUsers))
@@ -207,7 +207,7 @@ func blockResult(raw []byte) (BlockResult, error) {
 	return BlockResult{Succeeded: succeeded, Failed: failures}, nil
 }
 
-// BlockUsers blocks `telefones` (already canonicalized by the caller)
+// BlockUsers blocks `phones` (already canonicalized by the caller)
 // on the `phoneNumberID` instance. Returns the PER-NUMBER verdict — see
 // BlockResult.
 func (c *Client) BlockUsers(
@@ -248,7 +248,7 @@ func (c *Client) ListBlocks(
 	}
 	target, err := url.JoinPath(c.base, phoneNumberID, "block_users")
 	if err != nil {
-		return BlockPage{}, fmt.Errorf("meta: montar url: %w", err)
+		return BlockPage{}, fmt.Errorf("meta: build url: %w", err)
 	}
 
 	q := url.Values{}
@@ -267,19 +267,19 @@ func (c *Client) ListBlocks(
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, target, nil)
 	if err != nil {
-		return BlockPage{}, fmt.Errorf("meta: montar requisicao: %w", err)
+		return BlockPage{}, fmt.Errorf("meta: build request: %w", err)
 	}
 	req.Header.Set("Authorization", "Bearer "+token)
 
 	resp, err := c.http.Do(req)
 	if err != nil {
-		return BlockPage{}, fmt.Errorf("meta: falha de transporte ao listar bloqueios: %w", errWithoutDetail(err))
+		return BlockPage{}, fmt.Errorf("meta: transport failure while listing blocks: %w", errWithoutDetail(err))
 	}
 	defer resp.Body.Close()
 
 	raw, err := io.ReadAll(io.LimitReader(resp.Body, responseBodyCap))
 	if err != nil {
-		return BlockPage{}, fmt.Errorf("meta: ler resposta: %w", errWithoutDetail(err))
+		return BlockPage{}, fmt.Errorf("meta: read response: %w", errWithoutDetail(err))
 	}
 	if metaError := ClassifyResponse(resp.StatusCode, raw); metaError != nil {
 		return BlockPage{}, metaError
@@ -297,7 +297,7 @@ func (c *Client) ListBlocks(
 		} `json:"paging"`
 	}
 	if err := json.Unmarshal(raw, &envelope); err != nil {
-		return BlockPage{}, fmt.Errorf("%w: corpo nao entendido", ErrBlockResponseNotUnderstood)
+		return BlockPage{}, fmt.Errorf("%w: body not understood", ErrBlockResponseNotUnderstood)
 	}
 
 	items := make([]BlockedItem, 0, len(envelope.Data))

@@ -30,17 +30,17 @@ func TestReadProfileBuildsTheRightPathAndFields(t *testing.T) {
 	}
 
 	if path != "/PNID1/whatsapp_business_profile" {
-		t.Fatalf("caminho = %q, quero /PNID1/whatsapp_business_profile", path)
+		t.Fatalf("path = %q, want /PNID1/whatsapp_business_profile", path)
 	}
 	if !strings.Contains(query, "fields=") {
-		t.Fatalf("query = %q, esperava fields=", query)
+		t.Fatalf("query = %q, expected fields=", query)
 	}
 	if authorization != "Bearer token-envio" {
 		t.Fatalf("Authorization = %q", authorization)
 	}
 	if p.About != "Loja de teste" || p.Address != "Rua Um, 1" || p.Description != "Descricao" ||
 		p.Email != "a@b.com" || p.ProfilePictureURL != "https://exemplo/x.jpg" || p.Vertical != "RETAIL" {
-		t.Fatalf("perfil = %+v", p)
+		t.Fatalf("profile = %+v", p)
 	}
 	if len(p.Websites) != 2 || p.Websites[0] != "https://a.com" || p.Websites[1] != "https://b.com" {
 		t.Fatalf("websites = %v", p.Websites)
@@ -63,32 +63,32 @@ func TestReadProfileWithAnEmptyDataReturnsAnEmptyProfileWithoutError(t *testing.
 	}
 	if p.About != "" || p.Address != "" || p.Description != "" || p.Email != "" ||
 		p.ProfilePictureURL != "" || p.Vertical != "" || p.Websites != nil {
-		t.Fatalf("perfil = %+v, quero zero-value", p)
+		t.Fatalf("profile = %+v, want zero-value", p)
 	}
 }
 
 func TestReadProfileWithAnUnreadableBodyReturnsAnError(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`nao e json`))
+		_, _ = w.Write([]byte(`not json`))
 	}))
 	defer srv.Close()
 
 	_, err := testClient(srv).ReadProfile(context.Background(), "PNID1", "token")
 	if !errors.Is(err, ErrProfileNotUnderstood) {
-		t.Fatalf("err = %v, quero ErrProfileNotUnderstood", err)
+		t.Fatalf("err = %v, want ErrProfileNotUnderstood", err)
 	}
 }
 
 func TestReadProfileWithAnInvalidNodeRefusesWithoutCallingMeta(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		t.Fatal("a Meta nao devia ser chamada com um node invalido")
+		t.Fatal("Meta should not be called with an invalid node")
 	}))
 	defer srv.Close()
 
 	_, err := testClient(srv).ReadProfile(context.Background(), "../fora", "token")
 	if !errors.Is(err, ErrInvalidProfileNode) {
-		t.Fatalf("err = %v, quero ErrInvalidProfileNode", err)
+		t.Fatalf("err = %v, want ErrInvalidProfileNode", err)
 	}
 }
 
@@ -117,8 +117,8 @@ func TestWriteProfileSendsOnlyThePresentFields(t *testing.T) {
 
 	const want = `{"messaging_product":"whatsapp","about":"Nova descricao curta"}`
 	if receivedBody != want {
-		t.Fatalf("corpo = %s\nquero  = %s\n(um campo ausente em ProfilePatch NAO pode aparecer no corpo — "+
-			"aparecer apagaria o valor que a Meta ja guarda)", receivedBody, want)
+		t.Fatalf("body = %s\nwant  = %s\n(a field absent from ProfilePatch must NOT appear in the body — "+
+			"appearing would erase the value Meta already holds)", receivedBody, want)
 	}
 }
 
@@ -145,7 +145,7 @@ func TestWriteProfileWithAnEmptyWebsitesListErases(t *testing.T) {
 	}
 	const want = `{"messaging_product":"whatsapp","websites":[]}`
 	if receivedBody != want {
-		t.Fatalf("corpo = %s\nquero  = %s", receivedBody, want)
+		t.Fatalf("body = %s\nwant  = %s", receivedBody, want)
 	}
 }
 
@@ -172,20 +172,20 @@ func TestWriteProfileWithEveryFieldBuildsTheCompleteBody(t *testing.T) {
 		`"description":"Descricao","email":"a@b.com","websites":["https://a.com"],` +
 		`"vertical":"RETAIL","profile_picture_handle":"MEDIA-HANDLE-1"}`
 	if receivedBody != want {
-		t.Fatalf("corpo = %s\nquero  = %s", receivedBody, want)
+		t.Fatalf("body = %s\nwant  = %s", receivedBody, want)
 	}
 }
 
 func TestWriteProfileWithAnInvalidNodeRefusesWithoutCallingMeta(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		t.Fatal("a Meta nao devia ser chamada com um node invalido")
+		t.Fatal("Meta should not be called with an invalid node")
 	}))
 	defer srv.Close()
 
 	about := "x"
 	err := testClient(srv).WriteProfile(context.Background(), "../fora", "token", ProfilePatch{About: &about})
 	if !errors.Is(err, ErrInvalidProfileNode) {
-		t.Fatalf("err = %v, quero ErrInvalidProfileNode", err)
+		t.Fatalf("err = %v, want ErrInvalidProfileNode", err)
 	}
 }
 
@@ -200,9 +200,9 @@ func TestWriteProfilePassesOnMetasClassifiedError(t *testing.T) {
 	err := testClient(srv).WriteProfile(context.Background(), "PNID1", "token", ProfilePatch{About: &about})
 	var me *MetaError
 	if !errors.As(err, &me) {
-		t.Fatalf("err = %v, quero *MetaError", err)
+		t.Fatalf("err = %v, want *MetaError", err)
 	}
 	if me.MetaCode != 100 {
-		t.Fatalf("MetaCode = %d, quero 100", me.MetaCode)
+		t.Fatalf("MetaCode = %d, want 100", me.MetaCode)
 	}
 }

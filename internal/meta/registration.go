@@ -43,7 +43,7 @@ import (
 // ASCII digits. Checked HERE, before any network call, so as not to spend a
 // call (and a Meta error that might echo the rejected format) on a defect
 // that can be caught without leaving the machine.
-var ErrInvalidPin = errors.New("meta: pin invalido — a Meta exige exatamente 6 digitos")
+var ErrInvalidPin = errors.New("meta: invalid pin — Meta requires exactly 6 digits")
 
 // PinValid accepts ONLY 6 ASCII digits.
 //
@@ -78,7 +78,7 @@ func (c *Client) Register(ctx context.Context, phoneNumberID, token, pin string)
 	return c.postRegistration(ctx, phoneNumberID, "register", map[string]any{
 		"messaging_product": "whatsapp",
 		"pin":               pin,
-	}, token, "registrar")
+	}, token, "register")
 }
 
 // Deregister takes the number offline at Meta — after it, no message goes
@@ -89,7 +89,7 @@ func (c *Client) Register(ctx context.Context, phoneNumberID, token, pin string)
 func (c *Client) Deregister(ctx context.Context, phoneNumberID, token string) error {
 	return c.postRegistration(ctx, phoneNumberID, "deregister", map[string]any{
 		"messaging_product": "whatsapp",
-	}, token, "desregistrar")
+	}, token, "deregister")
 }
 
 // SetPin changes the two-step verification PIN of a number that's
@@ -105,13 +105,13 @@ func (c *Client) SetPin(ctx context.Context, phoneNumberID, token, pin string) e
 	}
 	target, err := url.JoinPath(c.base, phoneNumberID)
 	if err != nil {
-		return fmt.Errorf("meta: montar url: %w", err)
+		return fmt.Errorf("meta: build url: %w", err)
 	}
 	body, err := json.Marshal(map[string]any{"pin": pin})
 	if err != nil {
-		return fmt.Errorf("meta: montar corpo do pin: %w", err)
+		return fmt.Errorf("meta: build pin body: %w", err)
 	}
-	return c.sendRegistration(ctx, target, body, token, "trocar o pin")
+	return c.sendRegistration(ctx, target, body, token, "change the pin")
 }
 
 // postRegistration is the shared body of Register and Deregister — same URL
@@ -126,11 +126,11 @@ func (c *Client) postRegistration(
 	}
 	target, err := url.JoinPath(c.base, phoneNumberID, suffix)
 	if err != nil {
-		return fmt.Errorf("meta: montar url: %w", err)
+		return fmt.Errorf("meta: build url: %w", err)
 	}
 	body, err := json.Marshal(bodyMap)
 	if err != nil {
-		return fmt.Errorf("meta: montar corpo do %s: %w", label, err)
+		return fmt.Errorf("meta: build %s body: %w", label, err)
 	}
 	return c.sendRegistration(ctx, target, body, token, label)
 }
@@ -144,7 +144,7 @@ func (c *Client) postRegistration(
 func (c *Client) sendRegistration(ctx context.Context, target string, body []byte, token, label string) error {
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, target, bytes.NewReader(body))
 	if err != nil {
-		return fmt.Errorf("meta: montar requisicao: %w", err)
+		return fmt.Errorf("meta: build request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 	// The token goes in the HEADER, never in the URL: a token in a query
@@ -156,13 +156,13 @@ func (c *Client) sendRegistration(ctx context.Context, target string, body []byt
 		// We do NOT interpolate the error: *url.Error carries the full URL
 		// (with the phone_number_id), but never the body — the PIN doesn't
 		// leak through here.
-		return fmt.Errorf("meta: falha de transporte ao %s: %w", label, errWithoutDetail(err))
+		return fmt.Errorf("meta: transport failure to %s: %w", label, errWithoutDetail(err))
 	}
 	defer resp.Body.Close()
 
 	raw, err := io.ReadAll(io.LimitReader(resp.Body, responseBodyCap))
 	if err != nil {
-		return fmt.Errorf("meta: ler resposta: %w", errWithoutDetail(err))
+		return fmt.Errorf("meta: read response: %w", errWithoutDetail(err))
 	}
 	if metaError := ClassifyResponse(resp.StatusCode, raw); metaError != nil {
 		return metaError

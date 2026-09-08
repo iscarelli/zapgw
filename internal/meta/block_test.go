@@ -30,17 +30,17 @@ func TestBlockUsersBuildsTheRightBody(t *testing.T) {
 		t.Fatalf("BlockUsers: %v", err)
 	}
 	if receivedMethod != http.MethodPost {
-		t.Fatalf("metodo = %s, quero POST", receivedMethod)
+		t.Fatalf("method = %s, want POST", receivedMethod)
 	}
 	const want = `{"block_users":[{"user":"5511999990000"}],"messaging_product":"whatsapp"}`
 	if receivedBody != want {
-		t.Fatalf("corpo = %s\nquero  = %s", receivedBody, want)
+		t.Fatalf("body = %s\nwant  = %s", receivedBody, want)
 	}
 	if len(result.Succeeded) != 1 || result.Succeeded[0].Phone != "5511999990000" || result.Succeeded[0].WaID != "5511999990000" {
 		t.Fatalf("Succeeded = %+v", result.Succeeded)
 	}
 	if len(result.Failed) != 0 {
-		t.Fatalf("Failed = %+v, quero nenhuma", result.Failed)
+		t.Fatalf("Failed = %+v, want none", result.Failed)
 	}
 }
 
@@ -64,11 +64,11 @@ func TestUnblockUsersUsesDeleteWithTheSameBody(t *testing.T) {
 		t.Fatalf("UnblockUsers: %v", err)
 	}
 	if receivedMethod != http.MethodDelete {
-		t.Fatalf("metodo = %s, quero DELETE", receivedMethod)
+		t.Fatalf("method = %s, want DELETE", receivedMethod)
 	}
 	const want = `{"block_users":[{"user":"5511999990000"}],"messaging_product":"whatsapp"}`
 	if receivedBody != want {
-		t.Fatalf("corpo = %s\nquero  = %s", receivedBody, want)
+		t.Fatalf("body = %s\nwant  = %s", receivedBody, want)
 	}
 	if len(result.Succeeded) != 1 || result.Succeeded[0].WaID != "5511999990000" {
 		t.Fatalf("Succeeded = %+v", result.Succeeded)
@@ -100,13 +100,13 @@ func TestBlockUsersPartialSuccessComesPerNumber(t *testing.T) {
 	result, err := testClient(srv).BlockUsers(context.Background(), "PNID1", "token",
 		[]string{"5511999990000", "5511999990001"})
 	if err != nil {
-		t.Fatalf("BlockUsers nao pode devolver erro para um 200 com sucesso parcial: %v", err)
+		t.Fatalf("BlockUsers must not return an error for a 200 with partial success: %v", err)
 	}
 	if len(result.Succeeded) != 1 || result.Succeeded[0].Phone != "5511999990000" {
-		t.Fatalf("Succeeded = %+v, quero exatamente 5511999990000", result.Succeeded)
+		t.Fatalf("Succeeded = %+v, want exactly 5511999990000", result.Succeeded)
 	}
 	if len(result.Failed) != 1 {
-		t.Fatalf("Failed = %+v, quero exatamente uma", result.Failed)
+		t.Fatalf("Failed = %+v, want exactly one", result.Failed)
 	}
 	f := result.Failed[0]
 	if f.Phone != "5511999990001" || f.MetaCode != 139001 ||
@@ -129,7 +129,7 @@ func TestBlockUsersAnErrorEnvelopeReturnsAMetaError(t *testing.T) {
 	_, err := testClient(srv).BlockUsers(context.Background(), "PNID1", "token", []string{"5511999990000"})
 	var me *MetaError
 	if !errors.As(err, &me) {
-		t.Fatalf("err = %v, quero *MetaError", err)
+		t.Fatalf("err = %v, want *MetaError", err)
 	}
 	if me.Class != ClassConfig || me.MetaCode != 190 {
 		t.Fatalf("MetaError = %+v", me)
@@ -142,7 +142,7 @@ func TestListBlocksPassesOnTheCursors(t *testing.T) {
 	var receivedQuery string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
-			t.Fatalf("metodo = %s, quero GET", r.Method)
+			t.Fatalf("method = %s, want GET", r.Method)
 		}
 		receivedQuery = r.URL.RawQuery
 		w.Header().Set("Content-Type", "application/json")
@@ -168,7 +168,7 @@ func TestListBlocksPassesOnTheCursors(t *testing.T) {
 		t.Fatalf("Items = %+v", page.Items)
 	}
 	if page.CursorAfter != "CURSOR_DEPOIS" || page.CursorBefore != "CURSOR_ANTES" {
-		t.Fatalf("cursores = depois=%q antes=%q", page.CursorAfter, page.CursorBefore)
+		t.Fatalf("cursors = after=%q before=%q", page.CursorAfter, page.CursorBefore)
 	}
 }
 
@@ -188,6 +188,6 @@ func TestListBlocksWithoutParametersSendsNoQuery(t *testing.T) {
 		t.Fatalf("ListBlocks: %v", err)
 	}
 	if receivedQuery != "" {
-		t.Fatalf("query = %q, quero vazia", receivedQuery)
+		t.Fatalf("query = %q, want empty", receivedQuery)
 	}
 }

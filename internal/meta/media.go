@@ -33,15 +33,15 @@ import (
 
 var (
 	// ErrUnsupportedMime: the mime isn't in this file's table.
-	ErrUnsupportedMime = errors.New("meta: mime nao suportado")
+	ErrUnsupportedMime = errors.New("meta: unsupported mime")
 	// ErrUploadWithoutID: Meta answered 2xx and didn't send a media_id. Same
 	// trap (and same outcome) as ErrResponseWithoutID on send.
-	ErrUploadWithoutID = errors.New("meta: resposta 2xx sem media_id")
+	ErrUploadWithoutID = errors.New("meta: 2xx response without a media_id")
 	// ErrInvalidMediaID: the id has a shape that cannot become a URL
 	// segment.
-	ErrInvalidMediaID = errors.New("meta: media_id com forma invalida")
+	ErrInvalidMediaID = errors.New("meta: media_id has an invalid shape")
 	// ErrBadMediaURL: the download URL Meta returned is no good.
-	ErrBadMediaURL = errors.New("meta: url de download da midia invalida")
+	ErrBadMediaURL = errors.New("meta: invalid media download url")
 )
 
 // Category is OUR OWN name for the media family. It appears in the
@@ -155,7 +155,7 @@ func indexMimes() map[string]Category {
 	for cat, rules := range categories {
 		for _, m := range rules.mimes {
 			if other, repeated := index[m]; repeated {
-				panic(fmt.Sprintf("meta: mime %q declarado em %q e %q", m, other, cat))
+				panic(fmt.Sprintf("meta: mime %q declared in %q and %q", m, other, cat))
 			}
 			index[m] = cat
 		}
@@ -171,7 +171,7 @@ func indexMimes() map[string]Category {
 func CategoryOfMime(mimeType string) (Category, error) {
 	base, _, err := mime.ParseMediaType(mimeType)
 	if err != nil {
-		return "", fmt.Errorf("%w: %q nao e um mime valido", ErrUnsupportedMime, mimeType)
+		return "", fmt.Errorf("%w: %q is not a valid mime", ErrUnsupportedMime, mimeType)
 	}
 	cat, known := categoryByMime[base]
 	if !known {
@@ -229,7 +229,7 @@ func (c *Client) UploadMedia(
 	}
 	target, err := url.JoinPath(c.base, phoneNumberID, "media")
 	if err != nil {
-		return "", fmt.Errorf("meta: montar url: %w", err)
+		return "", fmt.Errorf("meta: build url: %w", err)
 	}
 
 	reader, writer := io.Pipe()
@@ -270,7 +270,7 @@ func (c *Client) UploadMedia(
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, target, reader)
 	if err != nil {
 		_ = reader.CloseWithError(err) // frees the goroutine that's writing
-		return "", fmt.Errorf("meta: montar requisicao: %w", err)
+		return "", fmt.Errorf("meta: build request: %w", err)
 	}
 	req.Header.Set("Content-Type", multi.FormDataContentType())
 	// The token goes in the HEADER, never in the URL: a token in a query
@@ -281,13 +281,13 @@ func (c *Client) UploadMedia(
 	if err != nil {
 		// We do NOT interpolate the error: *url.Error carries the full
 		// URL, and it carries the client's phone_number_id.
-		return "", fmt.Errorf("meta: falha de transporte no upload: %w", errWithoutDetail(err))
+		return "", fmt.Errorf("meta: transport failure during upload: %w", errWithoutDetail(err))
 	}
 	defer resp.Body.Close()
 
 	raw, err := io.ReadAll(io.LimitReader(resp.Body, responseBodyCap))
 	if err != nil {
-		return "", fmt.Errorf("meta: ler resposta do upload: %w", errWithoutDetail(err))
+		return "", fmt.Errorf("meta: read upload response: %w", errWithoutDetail(err))
 	}
 	if metaError := ClassifyResponse(resp.StatusCode, raw); metaError != nil {
 		return "", metaError
@@ -304,7 +304,7 @@ func uploadID(raw []byte) (string, error) {
 		ID string `json:"id"`
 	}
 	if err := json.Unmarshal(raw, &envelope); err != nil {
-		return "", fmt.Errorf("%w: corpo nao entendido", ErrUploadWithoutID)
+		return "", fmt.Errorf("%w: body not understood", ErrUploadWithoutID)
 	}
 	id := strings.TrimSpace(envelope.ID)
 	if id == "" {
@@ -341,24 +341,24 @@ func (c *Client) DescribeMedia(ctx context.Context, mediaID, token string) (Medi
 	}
 	target, err := url.JoinPath(c.base, mediaID)
 	if err != nil {
-		return Media{}, fmt.Errorf("meta: montar url: %w", err)
+		return Media{}, fmt.Errorf("meta: build url: %w", err)
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, target, nil)
 	if err != nil {
-		return Media{}, fmt.Errorf("meta: montar requisicao: %w", err)
+		return Media{}, fmt.Errorf("meta: build request: %w", err)
 	}
 	req.Header.Set("Authorization", "Bearer "+token)
 
 	resp, err := c.http.Do(req)
 	if err != nil {
-		return Media{}, fmt.Errorf("meta: falha de transporte ao descrever a midia: %w", errWithoutDetail(err))
+		return Media{}, fmt.Errorf("meta: transport failure while describing the media: %w", errWithoutDetail(err))
 	}
 	defer resp.Body.Close()
 
 	raw, err := io.ReadAll(io.LimitReader(resp.Body, responseBodyCap))
 	if err != nil {
-		return Media{}, fmt.Errorf("meta: ler descricao da midia: %w", errWithoutDetail(err))
+		return Media{}, fmt.Errorf("meta: read media description: %w", errWithoutDetail(err))
 	}
 	if metaError := ClassifyResponse(resp.StatusCode, raw); metaError != nil {
 		return Media{}, metaError
@@ -370,7 +370,7 @@ func (c *Client) DescribeMedia(ctx context.Context, mediaID, token string) (Medi
 	// cost the webhook parser a Critical.
 	var fields map[string]json.RawMessage
 	if err := json.Unmarshal(raw, &fields); err != nil || fields == nil {
-		return Media{}, fmt.Errorf("%w: a descricao nao e um objeto JSON", ErrBadMediaURL)
+		return Media{}, fmt.Errorf("%w: the description is not a JSON object", ErrBadMediaURL)
 	}
 	m := Media{
 		URL:         textOf(fields["url"]),
@@ -399,18 +399,18 @@ func textOf(raw json.RawMessage) string {
 func (c *Client) OpenMedia(ctx context.Context, m Media, token string) (io.ReadCloser, error) {
 	target, err := url.Parse(strings.TrimSpace(m.URL))
 	if err != nil || target.Scheme != "https" || target.Host == "" {
-		return nil, fmt.Errorf("%w: so https com host", ErrBadMediaURL)
+		return nil, fmt.Errorf("%w: https with a host only", ErrBadMediaURL)
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, target.String(), nil)
 	if err != nil {
-		return nil, fmt.Errorf("meta: montar requisicao: %w", err)
+		return nil, fmt.Errorf("meta: build request: %w", err)
 	}
 	req.Header.Set("Authorization", "Bearer "+token)
 
 	resp, err := c.http.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("meta: falha de transporte ao baixar a midia: %w", errWithoutDetail(err))
+		return nil, fmt.Errorf("meta: transport failure while downloading the media: %w", errWithoutDetail(err))
 	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		// The body is only read here: it's an ERROR body, small, and

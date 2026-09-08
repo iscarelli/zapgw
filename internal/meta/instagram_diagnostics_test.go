@@ -26,7 +26,7 @@ func (c *conversationCounter) server(t *testing.T) *httptest.Server {
 	c.byFolder = map[string]int{}
 	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/me/conversations" {
-			t.Errorf("caminho inesperado: %s", r.URL.Path)
+			t.Errorf("unexpected path: %s", r.URL.Path)
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
@@ -87,11 +87,11 @@ func TestInstagramMessagingPermissionSweepsTheFourFoldersWhenUnknown(t *testing.
 	}
 
 	if got := g.total(); got != 5 {
-		t.Errorf("total de chamadas a /me/conversations = %d, quero 5 (caixa padrao + 4 pastas)", got)
+		t.Errorf("total calls to /me/conversations = %d, want 5 (default inbox + 4 folders)", got)
 	}
 	for _, folder := range []string{"", "other", "page_done", "spam", "requests"} {
 		if g.byFolder[folder] != 1 {
-			t.Errorf("folder %q chamado %d vez(es), quero exatamente 1", folder, g.byFolder[folder])
+			t.Errorf("folder %q called %d time(s), want exactly 1", folder, g.byFolder[folder])
 		}
 	}
 }
@@ -115,14 +115,14 @@ func TestInstagramMessagingPermissionStopsSweepingWhenFolderIgnored(t *testing.T
 	}
 
 	if got := g.total(); got != 1 {
-		t.Errorf("total de chamadas a /me/conversations = %d, quero 1 (so a caixa padrao) com FolderIgnored", got)
+		t.Errorf("total calls to /me/conversations = %d, want 1 (default inbox only) with FolderIgnored", got)
 	}
 	if g.byFolder[""] != 1 {
-		t.Errorf("a caixa padrao nao foi chamada com FolderIgnored: %v", g.byFolder)
+		t.Errorf("the default inbox was not called with FolderIgnored: %v", g.byFolder)
 	}
 	for _, folder := range []string{"other", "page_done", "spam", "requests"} {
 		if n := g.byFolder[folder]; n != 0 {
-			t.Errorf("pasta %q foi chamada %d vez(es) com FolderIgnored — a varredura tinha de ter parado", folder, n)
+			t.Errorf("folder %q was called %d time(s) with FolderIgnored — the sweep should have stopped", folder, n)
 		}
 	}
 }
@@ -145,7 +145,7 @@ func TestInstagramMessagingPermissionFolderHonoredAloneDoesNotChangeTheSweep(t *
 	}
 
 	if got := g.total(); got != 5 {
-		t.Errorf("total de chamadas a /me/conversations = %d, quero 5 (FolderHonored sozinho nao reduz a varredura)", got)
+		t.Errorf("total calls to /me/conversations = %d, want 5 (FolderHonored alone does not reduce the sweep)", got)
 	}
 }
 
@@ -169,14 +169,14 @@ func TestProbeInvalidInstagramFolderUsesAFolderMetaNeverDocumented(t *testing.T)
 	}
 	for _, folder := range []string{"", "other", "page_done", "spam", "requests"} {
 		if receivedFolder == folder {
-			t.Errorf("a sonda usou %q — um folder DOCUMENTADO pela Meta, nao mede a hipotese do item 1", receivedFolder)
+			t.Errorf("the probe used %q — a folder Meta DOCUMENTS, it does not measure item 1's hypothesis", receivedFolder)
 		}
 	}
 	if receivedFolder == "" {
-		t.Error("a sonda nao mandou `folder` nenhum")
+		t.Error("the probe did not send any `folder`")
 	}
 	if probe.N != 2 {
-		t.Errorf("N = %d, quero 2 (o corpo de teste tem 2 itens)", probe.N)
+		t.Errorf("N = %d, want 2 (the test body has 2 items)", probe.N)
 	}
 }
 
@@ -194,6 +194,6 @@ func TestProbeInvalidInstagramFolderReturnsTheErrorWhenMetaRefuses(t *testing.T)
 
 	_, err := testClient(srv).ProbeInvalidInstagramFolder(context.Background(), srv.URL, "token")
 	if err == nil {
-		t.Fatal("a sonda nao devolveu erro apesar de a Meta ter recusado o folder invalido")
+		t.Fatal("the probe did not return an error even though Meta rejected the invalid folder")
 	}
 }

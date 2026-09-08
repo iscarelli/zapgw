@@ -475,7 +475,7 @@ type Event struct {
 	// discarded WHOLE, and the message is delivered without this field —
 	// before, the WHOLE message was lost. See messageBlock (parse.go,
 	// called contextoDaMensagem until T-062) and
-	// docs/CONTRATO-CONSUMIDOR.md, "Mudanças que quebram".
+	// docs/CONTRATO-CONSUMIDOR.md, "Breaking changes".
 	ReplyTo string `json:"reply_to,omitempty"`
 
 	// Forwarded and FrequentlyForwarded come from
@@ -623,7 +623,7 @@ type Event struct {
 	// field from Template, and not a Template with more fields, because
 	// the two events can arrive for the SAME template on the same day
 	// saying different things — merging the vocabularies would make a
-	// consumer read "estado" off an event that isn't about state at all.
+	// consumer read "state" off an event that isn't about state at all.
 	TemplateCategory *TemplateCategory `json:"template_category,omitempty"`
 
 	// --- number quota and quality (Type == EventTypeNumberQuality) ---

@@ -207,31 +207,31 @@ func TestUploadMediaKeepsTheMimesParameterOnTheWire(t *testing.T) {
 		t.Fatalf("UploadMedia: %v", err)
 	}
 	if id != "MEDIA-123" {
-		t.Errorf("media_id = %q, quero %q", id, "MEDIA-123")
+		t.Errorf("media_id = %q, want %q", id, "MEDIA-123")
 	}
 
 	v := m.seen()
 	if v.declaredType != "audio/ogg; codecs=opus" {
-		t.Errorf("campo `type` no fio = %q, quero %q — o parametro do mime foi cortado, "+
-			"e e ele que faz a nota de voz existir", v.declaredType, "audio/ogg; codecs=opus")
+		t.Errorf("`type` field on the wire = %q, want %q — the mime parameter was cut, "+
+			"and it's what makes the voice note exist", v.declaredType, "audio/ogg; codecs=opus")
 	}
 	if v.partMime != "audio/ogg; codecs=opus" {
-		t.Errorf("Content-Type da parte = %q, quero %q", v.partMime, "audio/ogg; codecs=opus")
+		t.Errorf("part's Content-Type = %q, want %q", v.partMime, "audio/ogg; codecs=opus")
 	}
 	if v.product != "whatsapp" {
-		t.Errorf("messaging_product = %q, quero \"whatsapp\"", v.product)
+		t.Errorf("messaging_product = %q, want \"whatsapp\"", v.product)
 	}
 	if v.filename != "nota.ogg" {
-		t.Errorf("filename = %q, quero \"nota.ogg\"", v.filename)
+		t.Errorf("filename = %q, want \"nota.ogg\"", v.filename)
 	}
 	if string(v.receivedContent) != "OggS-bytes-de-audio" {
-		t.Errorf("bytes recebidos = %q, quero %q", v.receivedContent, "OggS-bytes-de-audio")
+		t.Errorf("received bytes = %q, want %q", v.receivedContent, "OggS-bytes-de-audio")
 	}
 	if v.authorizationUpload != "Bearer t-lojinha" {
-		t.Errorf("Authorization = %q, quero \"Bearer t-lojinha\"", v.authorizationUpload)
+		t.Errorf("Authorization = %q, want \"Bearer t-lojinha\"", v.authorizationUpload)
 	}
 	if strings.Contains(v.uploadURL, "t-lojinha") {
-		t.Errorf("o token foi para a URL: %q", v.uploadURL)
+		t.Errorf("the token went into the URL: %q", v.uploadURL)
 	}
 }
 
@@ -260,14 +260,14 @@ func TestUploadMediaStreamsWithoutBufferingEverything(t *testing.T) {
 	_, err := c.UploadMedia(context.Background(), "P-lojinha", "t-lojinha",
 		"audio/ogg; codecs=opus", "nota.ogg", producer)
 	if buffered.Load() {
-		t.Fatalf("o upload segurou os bytes: o servidor nao viu nada enquanto o produtor esperava — " +
-			"os bytes foram bufferizados em vez de atravessarem em streaming")
+		t.Fatalf("the upload held the bytes: the server saw nothing while the producer waited — " +
+			"the bytes were buffered instead of crossing in streaming")
 	}
 	if err != nil {
 		t.Fatalf("UploadMedia: %v", err)
 	}
 	if got := string(m.seen().receivedContent); got != "OggS-resto-do-audio" {
-		t.Errorf("bytes recebidos = %q, quero %q", got, "OggS-resto-do-audio")
+		t.Errorf("received bytes = %q, want %q", got, "OggS-resto-do-audio")
 	}
 }
 
@@ -296,7 +296,7 @@ func (l *twoStepReader) Read(p []byte) (int, error) {
 			l.released = true
 		case <-time.After(l.deadline):
 			l.flaggedStall.Store(true)
-			return 0, errors.New("o servidor nao recebeu nada: upload bufferizado")
+			return 0, errors.New("the server received nothing: buffered upload")
 		}
 	}
 	rest := l.pos - len(l.first)
@@ -312,7 +312,7 @@ func (l *twoStepReader) Read(p []byte) (int, error) {
 // with it. Returning "" as success would make the consumer store an empty
 // media_id and the defect would show up far from here.
 func TestUploadMediaWith2xxAndNoIDReturnsANamedError(t *testing.T) {
-	for _, body := range []string{`{}`, `{"id":""}`, `{"id":"   "}`, `{"id":123}`, `nao e json`} {
+	for _, body := range []string{`{}`, `{"id":""}`, `{"id":"   "}`, `{"id":123}`, `not json`} {
 		m := newFakeMediaMeta()
 		m.uploadResponse = body
 		c := mediaClient(t, m)
@@ -320,7 +320,7 @@ func TestUploadMediaWith2xxAndNoIDReturnsANamedError(t *testing.T) {
 		id, err := c.UploadMedia(context.Background(), "P-lojinha", "t", "image/png", "a.png",
 			strings.NewReader("x"))
 		if !errors.Is(err, ErrUploadWithoutID) {
-			t.Errorf("corpo %q: erro = %v, quero ErrUploadWithoutID (id devolvido = %q)", body, err, id)
+			t.Errorf("body %q: err = %v, want ErrUploadWithoutID (returned id = %q)", body, err, id)
 		}
 	}
 }
@@ -335,10 +335,10 @@ func TestUploadMediaWithAMetaErrorReturnsAClassifiedError(t *testing.T) {
 		strings.NewReader("x"))
 	var me *MetaError
 	if !errors.As(err, &me) {
-		t.Fatalf("erro = %v, quero *MetaError", err)
+		t.Fatalf("err = %v, want *MetaError", err)
 	}
 	if me.Class != ClassConfig {
-		t.Errorf("classe = %q, quero %q", me.Class, ClassConfig)
+		t.Errorf("class = %q, want %q", me.Class, ClassConfig)
 	}
 }
 
@@ -362,7 +362,7 @@ func TestDescribeMediaReturnsTheGetsMimeWithoutNormalizing(t *testing.T) {
 			t.Fatalf("DescribeMedia: %v", err)
 		}
 		if media.MimeFromGet != metaMime {
-			t.Errorf("MimeFromGet = %q, quero %q — o gateway nao normaliza mime nenhum",
+			t.Errorf("MimeFromGet = %q, want %q — the gateway does not normalize any mime",
 				media.MimeFromGet, metaMime)
 		}
 	}
@@ -384,13 +384,13 @@ func TestDownloadMediaSendsTheTokenInTheHeaderAndReturnsTheBytes(t *testing.T) {
 
 	bytes, err := io.ReadAll(body)
 	if err != nil {
-		t.Fatalf("ler os bytes: %v", err)
+		t.Fatalf("read the bytes: %v", err)
 	}
 	if string(bytes) != "OggS-bytes-de-audio" {
-		t.Errorf("bytes = %q, quero %q", bytes, "OggS-bytes-de-audio")
+		t.Errorf("bytes = %q, want %q", bytes, "OggS-bytes-de-audio")
 	}
 	if v := m.seen(); v.authorizationGet != "Bearer t-lojinha" {
-		t.Errorf("Authorization no download = %q, quero \"Bearer t-lojinha\"", v.authorizationGet)
+		t.Errorf("Authorization on download = %q, want \"Bearer t-lojinha\"", v.authorizationGet)
 	}
 }
 
@@ -412,10 +412,10 @@ func TestOpenMediaRefusesAURLThatIsNotHTTPS(t *testing.T) {
 
 		_, err := c.OpenMedia(context.Background(), Media{URL: bad, MimeFromGet: "audio/ogg"}, "t-lojinha")
 		if !errors.Is(err, ErrBadMediaURL) {
-			t.Errorf("url %q: erro = %v, quero ErrBadMediaURL", bad, err)
+			t.Errorf("url %q: err = %v, want ErrBadMediaURL", bad, err)
 		}
 		if n := m.downloads.Load(); n != 0 {
-			t.Errorf("url %q: houve %d download — o token saiu antes da guarda", bad, n)
+			t.Errorf("url %q: there were %d download(s) — the token went out before the guard", bad, n)
 		}
 	}
 }
@@ -431,10 +431,10 @@ func TestDescribeMediaRefusesAMediaIDOfInvalidShape(t *testing.T) {
 
 		_, err := c.DescribeMedia(context.Background(), bad, "t-lojinha")
 		if !errors.Is(err, ErrInvalidMediaID) {
-			t.Errorf("media_id %q: erro = %v, quero ErrInvalidMediaID", bad, err)
+			t.Errorf("media_id %q: err = %v, want ErrInvalidMediaID", bad, err)
 		}
 		if n := m.description.Load(); n != 0 {
-			t.Errorf("media_id %q: o gateway chamou a Meta %d vez(es) antes da guarda", bad, n)
+			t.Errorf("media_id %q: the gateway called Meta %d time(s) before the guard", bad, n)
 		}
 	}
 }
@@ -464,7 +464,7 @@ func TestCategoryOfMimeIgnoresTheParameterWithoutRewritingTheName(t *testing.T) 
 			continue
 		}
 		if got != c.want {
-			t.Errorf("CategoryOfMime(%q) = %q, quero %q", c.mimeType, got, c.want)
+			t.Errorf("CategoryOfMime(%q) = %q, want %q", c.mimeType, got, c.want)
 		}
 	}
 }
@@ -474,11 +474,11 @@ func TestCategoryOfMimeRefusesWhatItDoesNotKnow(t *testing.T) {
 		"application/x-msdownload",
 		"text/html",
 		"",
-		"nao-e-mime",
+		"not-a-mime",
 		"application/octet-stream", // the default for a multipart part with no Content-Type
 	} {
 		if cat, err := CategoryOfMime(bad); !errors.Is(err, ErrUnsupportedMime) {
-			t.Errorf("CategoryOfMime(%q) = (%q, %v), quero ErrUnsupportedMime", bad, cat, err)
+			t.Errorf("CategoryOfMime(%q) = (%q, %v), want ErrUnsupportedMime", bad, cat, err)
 		}
 	}
 }
@@ -492,17 +492,17 @@ func TestTheCategoryTableIsComplete(t *testing.T) {
 	}
 	for _, cat := range allOf {
 		if CategoryCap(cat) <= 0 {
-			t.Errorf("CategoryCap(%q) = %d, quero > 0", cat, CategoryCap(cat))
+			t.Errorf("CategoryCap(%q) = %d, want > 0", cat, CategoryCap(cat))
 		}
 		if GraphAPIType(cat) == "" {
-			t.Errorf("GraphAPIType(%q) esta vazio", cat)
+			t.Errorf("GraphAPIType(%q) is empty", cat)
 		}
 		if markedRead, ok := KnownCategory(string(cat)); !ok || markedRead != cat {
-			t.Errorf("KnownCategory(%q) = (%q, %v), quero (%q, true)", cat, markedRead, ok, cat)
+			t.Errorf("KnownCategory(%q) = (%q, %v), want (%q, true)", cat, markedRead, ok, cat)
 		}
 	}
 	if _, ok := KnownCategory("audiozinho"); ok {
-		t.Error("KnownCategory aceitou uma categoria que nao existe")
+		t.Error("KnownCategory accepted a category that doesn't exist")
 	}
 	// audio and sticker have no caption in the Graph API body, and only
 	// document has a file name. Whoever validates (message.go) and
@@ -510,17 +510,17 @@ func TestTheCategoryTableIsComplete(t *testing.T) {
 	// rules, one would accept the field the other throws away — and the
 	// consumer would see the text vanish with no error at all.
 	if AcceptsCaption(CategoryAudio) || AcceptsCaption(CategorySticker) {
-		t.Error("audio/sticker nao tem legenda no corpo montado; aceitar o campo o descartaria em silencio")
+		t.Error("audio/sticker have no caption in the built body; accepting the field would silently discard it")
 	}
 	if !AcceptsCaption(CategoryImage) || !AcceptsCaption(CategoryVideo) || !AcceptsCaption(CategoryDocument) {
-		t.Error("imagem, video e documento tem legenda")
+		t.Error("image, video and document have a caption")
 	}
 	if !AcceptsFilename(CategoryDocument) {
-		t.Error("documento tem nome de arquivo")
+		t.Error("document has a file name")
 	}
 	for _, cat := range []Category{CategoryImage, CategoryVideo, CategoryAudio, CategorySticker} {
 		if AcceptsFilename(cat) {
-			t.Errorf("%q nao tem nome de arquivo no corpo montado", cat)
+			t.Errorf("%q has no file name in the built body", cat)
 		}
 	}
 }
@@ -530,7 +530,7 @@ func TestTheCategoryTableIsComplete(t *testing.T) {
 // phrase in the comment.
 func TestCapsDifferPerCategory(t *testing.T) {
 	if CategoryCap(CategorySticker) >= CategoryCap(CategoryVideo) {
-		t.Errorf("maxBytes de sticker (%d) >= maxBytes de video (%d) — o limite nao e por categoria",
+		t.Errorf("sticker's maxBytes (%d) >= video's maxBytes (%d) — the limit is not per category",
 			CategoryCap(CategorySticker), CategoryCap(CategoryVideo))
 	}
 }

@@ -28,26 +28,26 @@ import (
 var (
 	// ErrInvalidWabaID: the WABA identifier has a shape that cannot
 	// safely become a URL segment.
-	ErrInvalidWabaID = errors.New("meta: waba_id com forma invalida")
+	ErrInvalidWabaID = errors.New("meta: waba_id has an invalid shape")
 
 	// ErrIncompleteCatalog: pagination exceeded the page ceiling.
 	//
 	// It IS an error, never a partial list: a short list returned as if
 	// it were complete is exactly the defect that took the old gateway
 	// out of production.
-	ErrIncompleteCatalog = errors.New("meta: o catalogo de templates nao coube no teto de paginas; a lista seria INCOMPLETA")
+	ErrIncompleteCatalog = errors.New("meta: the template catalog did not fit within the page ceiling; the list would be INCOMPLETE")
 
 	// ErrPageFromAnotherOrigin: the response's `paging.next` points outside
 	// the configured Graph API.
-	ErrPageFromAnotherOrigin = errors.New("meta: paging.next aponta para outra origem")
+	ErrPageFromAnotherOrigin = errors.New("meta: paging.next points to another origin")
 
 	// ErrCatalogNotUnderstood: the page (or one of its items) doesn't
 	// have a template's minimum shape.
-	ErrCatalogNotUnderstood = errors.New("meta: pagina do catalogo de templates nao entendida")
+	ErrCatalogNotUnderstood = errors.New("meta: template catalog page not understood")
 
 	// ErrTemplateWithoutID: Meta answered the creation with 2xx but no
 	// template id.
-	ErrTemplateWithoutID = errors.New("meta: resposta 2xx sem id de template")
+	ErrTemplateWithoutID = errors.New("meta: 2xx response without a template id")
 
 	// ErrDeletionNotConfirmed: Meta answered the deletion with 2xx but
 	// did NOT say `success: true`.
@@ -61,7 +61,7 @@ var (
 	// worst outcome available here: the consumer crosses the name off its
 	// cleanup list and the template stays on the account, invisible until
 	// somebody counts the catalog again.
-	ErrDeletionNotConfirmed = errors.New("meta: resposta 2xx sem success:true ao apagar template")
+	ErrDeletionNotConfirmed = errors.New("meta: 2xx response without success:true when deleting a template")
 )
 
 const (
@@ -163,7 +163,7 @@ func (c *Client) ListTemplates(ctx context.Context, wabaID, token, status string
 	}
 	target, err := url.JoinPath(c.base, wabaID, "message_templates")
 	if err != nil {
-		return nil, fmt.Errorf("meta: montar url: %w", err)
+		return nil, fmt.Errorf("meta: build url: %w", err)
 	}
 
 	// Uppercase before sending: if Meta compares the status
@@ -197,7 +197,7 @@ func (c *Client) ListTemplates(ctx context.Context, wabaID, token, status string
 			// returning what's already there — is the 25-item truncation
 			// with a different number, and this time with the
 			// appearance of a deliberate decision.
-			return nil, fmt.Errorf("%w (teto de %d paginas, %d templates lidos ate aqui)",
+			return nil, fmt.Errorf("%w (ceiling of %d pages, %d templates read so far)",
 				ErrIncompleteCatalog, pageCap, len(all))
 		}
 		items, following, err := c.templatePage(ctx, next, token)
@@ -230,7 +230,7 @@ func (c *Client) ListTemplates(ctx context.Context, wabaID, token, status string
 func (c *Client) templatePage(ctx context.Context, target, token string) ([]Template, string, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, target, nil)
 	if err != nil {
-		return nil, "", fmt.Errorf("meta: montar requisicao: %w", err)
+		return nil, "", fmt.Errorf("meta: build request: %w", err)
 	}
 	// The token goes in the HEADER, never in the URL: a token in a query
 	// string leaks into proxy, server, and CDN logs.
@@ -238,13 +238,13 @@ func (c *Client) templatePage(ctx context.Context, target, token string) ([]Temp
 
 	resp, err := c.http.Do(req)
 	if err != nil {
-		return nil, "", fmt.Errorf("meta: falha de transporte ao listar templates: %w", errWithoutDetail(err))
+		return nil, "", fmt.Errorf("meta: transport failure while listing templates: %w", errWithoutDetail(err))
 	}
 	defer resp.Body.Close()
 
 	raw, err := io.ReadAll(io.LimitReader(resp.Body, catalogBodyCap))
 	if err != nil {
-		return nil, "", fmt.Errorf("meta: ler resposta: %w", errWithoutDetail(err))
+		return nil, "", fmt.Errorf("meta: read response: %w", errWithoutDetail(err))
 	}
 	if metaError := ClassifyResponse(resp.StatusCode, raw); metaError != nil {
 		return nil, "", metaError
@@ -267,7 +267,7 @@ func pageTemplates(raw []byte) ([]Template, string, error) {
 		} `json:"paging"`
 	}
 	if err := json.Unmarshal(raw, &envelope); err != nil {
-		return nil, "", fmt.Errorf("%w: corpo nao entendido", ErrCatalogNotUnderstood)
+		return nil, "", fmt.Errorf("%w: body not understood", ErrCatalogNotUnderstood)
 	}
 
 	items := make([]Template, 0, len(envelope.Data))
@@ -289,7 +289,7 @@ func pageTemplates(raw []byte) ([]Template, string, error) {
 		// a null item would become a ghost template, with an empty name,
 		// in the consumer's catalog.
 		if strings.TrimSpace(t.Name) == "" {
-			return nil, "", fmt.Errorf("%w: item %d sem nome", ErrCatalogNotUnderstood, i)
+			return nil, "", fmt.Errorf("%w: item %d without a name", ErrCatalogNotUnderstood, i)
 		}
 		items = append(items, Template{
 			// No empty check, unlike the name: see the comment on
@@ -322,7 +322,7 @@ func (c *Client) CreateTemplate(
 	}
 	target, err := url.JoinPath(c.base, wabaID, "message_templates")
 	if err != nil {
-		return CreatedTemplate{}, fmt.Errorf("meta: montar url: %w", err)
+		return CreatedTemplate{}, fmt.Errorf("meta: build url: %w", err)
 	}
 
 	body := map[string]any{
@@ -340,25 +340,25 @@ func (c *Client) CreateTemplate(
 	}
 	raw, err := json.Marshal(body)
 	if err != nil {
-		return CreatedTemplate{}, fmt.Errorf("meta: montar corpo: %w", err)
+		return CreatedTemplate{}, fmt.Errorf("meta: build body: %w", err)
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, target, bytes.NewReader(raw))
 	if err != nil {
-		return CreatedTemplate{}, fmt.Errorf("meta: montar requisicao: %w", err)
+		return CreatedTemplate{}, fmt.Errorf("meta: build request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+token)
 
 	resp, err := c.http.Do(req)
 	if err != nil {
-		return CreatedTemplate{}, fmt.Errorf("meta: falha de transporte ao criar template: %w", errWithoutDetail(err))
+		return CreatedTemplate{}, fmt.Errorf("meta: transport failure while creating the template: %w", errWithoutDetail(err))
 	}
 	defer resp.Body.Close()
 
 	rawResponse, err := io.ReadAll(io.LimitReader(resp.Body, responseBodyCap))
 	if err != nil {
-		return CreatedTemplate{}, fmt.Errorf("meta: ler resposta: %w", errWithoutDetail(err))
+		return CreatedTemplate{}, fmt.Errorf("meta: read response: %w", errWithoutDetail(err))
 	}
 	if metaError := ClassifyResponse(resp.StatusCode, rawResponse); metaError != nil {
 		return CreatedTemplate{}, metaError
@@ -373,7 +373,7 @@ func (c *Client) CreateTemplate(
 		Category string `json:"category"`
 	}
 	if err := json.Unmarshal(rawResponse, &r); err != nil {
-		return CreatedTemplate{}, fmt.Errorf("%w: corpo nao entendido", ErrTemplateWithoutID)
+		return CreatedTemplate{}, fmt.Errorf("%w: body not understood", ErrTemplateWithoutID)
 	}
 	id := strings.TrimSpace(r.ID)
 	if id == "" {
@@ -395,7 +395,7 @@ func (c *Client) CreateTemplate(
 // `DELETE /{waba}/message_templates?name=<nome>`, and only that shape. Meta
 // also accepts `hsm_id` (one template, one language) and a batch by
 // `hsm_ids`; NEITHER is used here, on purpose. This gateway does ONE Meta
-// action per call (CLAUDE.md, "o gateway faz UMA ação da Meta por chamada"):
+// action per call (CLAUDE.md, "the gateway does ONE Meta action per call"):
 // the loop over dozens of names belongs to the consumer, which is the side
 // that knows the order to do it in and what to do when one of them fails.
 //
@@ -416,14 +416,14 @@ func (c *Client) DeleteTemplate(ctx context.Context, wabaID, token, name string)
 	}
 	target, err := url.JoinPath(c.base, wabaID, "message_templates")
 	if err != nil {
-		return fmt.Errorf("meta: montar url: %w", err)
+		return fmt.Errorf("meta: build url: %w", err)
 	}
 	q := url.Values{}
 	q.Set("name", name)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, target+"?"+q.Encode(), nil)
 	if err != nil {
-		return fmt.Errorf("meta: montar requisicao: %w", err)
+		return fmt.Errorf("meta: build request: %w", err)
 	}
 	// The token goes in the HEADER, never in the URL — the same reason as
 	// every other call in this package: a token in a query string leaks
@@ -436,13 +436,13 @@ func (c *Client) DeleteTemplate(ctx context.Context, wabaID, token, name string)
 	if err != nil {
 		// errWithoutDetail because *url.Error carries the FULL URL, and the
 		// full URL carries the waba_id.
-		return fmt.Errorf("meta: falha de transporte ao apagar template: %w", errWithoutDetail(err))
+		return fmt.Errorf("meta: transport failure while deleting the template: %w", errWithoutDetail(err))
 	}
 	defer resp.Body.Close()
 
 	raw, err := io.ReadAll(io.LimitReader(resp.Body, responseBodyCap))
 	if err != nil {
-		return fmt.Errorf("meta: ler resposta: %w", errWithoutDetail(err))
+		return fmt.Errorf("meta: read response: %w", errWithoutDetail(err))
 	}
 	if metaError := ClassifyResponse(resp.StatusCode, raw); metaError != nil {
 		return metaError
@@ -457,7 +457,7 @@ func (c *Client) DeleteTemplate(ctx context.Context, wabaID, token, name string)
 		Success *bool `json:"success"`
 	}
 	if err := json.Unmarshal(raw, &r); err != nil {
-		return fmt.Errorf("%w: corpo nao entendido", ErrDeletionNotConfirmed)
+		return fmt.Errorf("%w: body not understood", ErrDeletionNotConfirmed)
 	}
 	if r.Success == nil || !*r.Success {
 		return ErrDeletionNotConfirmed
@@ -476,7 +476,7 @@ func (c *Client) DeleteTemplate(ctx context.Context, wabaID, token, name string)
 func sameGraphOrigin(base, next string) error {
 	b, err := url.Parse(base)
 	if err != nil {
-		return fmt.Errorf("meta: base da Graph API invalida: %w", errors.New("nao e URL"))
+		return fmt.Errorf("meta: invalid Graph API base: %w", errors.New("not a URL"))
 	}
 	p, err := url.Parse(next)
 	if err != nil {

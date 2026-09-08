@@ -25,7 +25,7 @@ func TestRenewInstagramTokenReturnsTheNewAccessToken(t *testing.T) {
 		t.Fatalf("RenewInstagramToken: %v", err)
 	}
 	if fresh != "IGQ-TOKEN-NOVO" {
-		t.Errorf("token novo = %q, quero IGQ-TOKEN-NOVO", fresh)
+		t.Errorf("new token = %q, want IGQ-TOKEN-NOVO", fresh)
 	}
 }
 
@@ -39,7 +39,7 @@ func TestRenewInstagramTokenRefuses200WithoutAnAccessToken(t *testing.T) {
 		`{"access_token":123}`,
 		`null`,
 		``,
-		`nao e json`,
+		`not json`,
 	}
 	for _, body := range cases {
 		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -50,14 +50,14 @@ func TestRenewInstagramTokenRefuses200WithoutAnAccessToken(t *testing.T) {
 		srv.Close()
 
 		if err == nil {
-			t.Errorf("corpo %q devolveu SUCESSO com token %q", body, fresh)
+			t.Errorf("body %q returned SUCCESS with token %q", body, fresh)
 			continue
 		}
 		if !errors.Is(err, ErrRenewalWithoutAccessToken) {
-			t.Errorf("corpo %q: erro = %v, quero ErrRenewalWithoutAccessToken", body, err)
+			t.Errorf("body %q: err = %v, want ErrRenewalWithoutAccessToken", body, err)
 		}
 		if fresh != "" {
-			t.Errorf("corpo %q devolveu token %q junto com erro", body, fresh)
+			t.Errorf("body %q returned token %q together with an error", body, fresh)
 		}
 	}
 }
@@ -73,10 +73,10 @@ func TestRenewInstagramTokenClassifiesMetasError(t *testing.T) {
 
 	var me *MetaError
 	if !errors.As(err, &me) {
-		t.Fatalf("erro = %v, quero *MetaError", err)
+		t.Fatalf("err = %v, want *MetaError", err)
 	}
 	if me.MetaCode != 190 {
-		t.Errorf("MetaCode = %d, quero 190", me.MetaCode)
+		t.Errorf("MetaCode = %d, want 190", me.MetaCode)
 	}
 }
 
@@ -101,16 +101,16 @@ func TestRenewInstagramTokenBuildsTheExactRequest(t *testing.T) {
 		t.Fatalf("RenewInstagramToken: %v", err)
 	}
 	if method != http.MethodGet {
-		t.Errorf("metodo = %q, quero GET", method)
+		t.Errorf("method = %q, want GET", method)
 	}
 	if path != "/refresh_access_token" {
-		t.Errorf("caminho = %q, quero /refresh_access_token", path)
+		t.Errorf("path = %q, want /refresh_access_token", path)
 	}
 	if got := query.Get("grant_type"); got != "ig_refresh_token" {
-		t.Errorf("grant_type = %q, quero ig_refresh_token", got)
+		t.Errorf("grant_type = %q, want ig_refresh_token", got)
 	}
 	if got := query.Get("access_token"); got != "token-atual-de-verdade" {
-		t.Errorf("access_token = %q, quero token-atual-de-verdade", got)
+		t.Errorf("access_token = %q, want token-atual-de-verdade", got)
 	}
 }
 
@@ -121,10 +121,10 @@ func TestRenewInstagramTokenTransportFailure(t *testing.T) {
 	c := NewClient(http.DefaultClient, "http://127.0.0.1:1")
 	_, err := c.RenewInstagramToken(context.Background(), "http://127.0.0.1:1", "token-atual")
 	if err == nil {
-		t.Fatal("quero erro de transporte contra um endereco morto")
+		t.Fatal("want a transport error against a dead address")
 	}
 	var me *MetaError
 	if errors.As(err, &me) {
-		t.Fatalf("erro classificado como MetaError (%v) — falha de TRANSPORTE nao pode parecer resposta da Meta", me)
+		t.Fatalf("error classified as MetaError (%v) — a TRANSPORT failure must not look like a Meta response", me)
 	}
 }
