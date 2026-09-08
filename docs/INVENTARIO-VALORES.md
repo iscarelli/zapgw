@@ -29,7 +29,7 @@ four things that sweep cannot see, because none of them is a struct tag:
 
 **11 vocabularies found, one per section below.** Value count per section: 1.1=11, 1.2=6, 1.3=2,
 1.4=2, 1.5=5, 1.6=4, 1.7=6, 1.8=3, 1.9=5, 1.10=1, 1.11=19 — **64 value occurrences in total**. Two
-values (`desconhecido` and `nao_se_aplica`) are shared, by aliasing, across more than one of these
+values (`unknown` and `nao_se_aplica`) are shared, by aliasing, across more than one of these
 sections (noted inline in 1.7-1.10); this count is per-section, not a deduplicated global count of
 distinct strings, because a translator working section by section needs to know how many times each
 occurrence must be handled, not how many unique words exist.
@@ -142,24 +142,31 @@ at all**, `"texto"` (`internal/outbound/message.go:1085`, hardcoded, checked bef
 table is consulted). So `cabecalho.tipo` accepts exactly `{texto, imagem, video, documento}` — 4
 of the 6 possible tokens across the two sources, not a fifth vocabulary of its own.
 
-### 1.6 `classe` — error classification (`meta.ErrorClass`)
+### 1.6 `class` — error classification (`meta.ErrorClass`)
 
-Direction: **SAIDA-RESPOSTA**. Field: `classe`, `internal/outbound/handler.go:277`
+🔴 **Updated by T-222 (2026-09-08): this row is no longer `A DECIDIR` — it SHIPPED with T-209,**
+before this document's own `A DECIDIR` framing was written. The `value` and `english` columns below
+were measured against the code as it stands today, not as it stood at T-206's original measurement;
+every other section of this document is still an accurate T-206 snapshot and still genuinely
+`A DECIDIR` (T-189 step 4). See `docs/CONTRATO-CONSUMIDOR.md` (`### What each error means`) for the
+consumer-facing writeup of this same vocabulary, which T-222 corrected to match.
+
+Direction: **SAIDA-RESPOSTA**. Field: `class`, `internal/outbound/handler.go:277`
 (`errorResponse.Error.Class`, the shared-error struct that
 `docs/INVENTARIO-CHAVES.md` row 5 already lists as a KEY — this is its VALUE vocabulary, which
 that document does not cover). Values, `const` block:
 
 | value | arquivo:linha | english |
 |---|---|---|
-| `retentavel` | internal/meta/errors.go:29 | A DECIDIR |
-| `permanente` | internal/meta/errors.go:31 | A DECIDIR |
+| `retryable` | internal/meta/errors.go:29 | (shipped — T-209) |
+| `permanent` | internal/meta/errors.go:31 | (shipped — T-209) |
 | `config` | internal/meta/errors.go:33 | (unchanged — already English) |
-| `desconhecido` | internal/meta/errors.go:46 | A DECIDIR |
+| `unknown` | internal/meta/errors.go:46 | (shipped — T-209) |
 
 **4 values.** This is the closed vocabulary the `Why` of this task called out by name: *"decide se
-eles reenviam"* — every consumer that reads `classe` to decide whether to retry reads one of these
-four strings. `desconhecido` (`meta.ClassUnknown`) is reused, by aliasing, in three of the
-vocabularies below (1.8, 1.9) — see the cross-reference in each.
+eles reenviam"* — every consumer that reads `class` to decide whether to retry reads one of these
+four strings. `unknown` (`meta.ClassUnknown`) is reused, by aliasing, in three of the
+vocabularies below (1.7, 1.8) — see the cross-reference in each.
 
 ### 1.7 `estado` — observation-state family (shared across several state blocks)
 
@@ -179,14 +186,17 @@ below is the union, with the canonical definition of each literal:
 | `observado` | internal/outbound/state.go:295 (`CertObserved`) | `ConnectorObserved` (internal/outbound/ingress.go:155), `ReachStateObserved` (internal/outbound/external_probe.go:100) | A DECIDIR |
 | `nao_se_aplica` | internal/outbound/state.go:316 (`NotApplicable`) | `VerdictIGTokenNotApplicable` (internal/outbound/state.go:474) | A DECIDIR |
 | `nao_configurado` | internal/outbound/ingress.go:170 (`ConnectorNotConfigured`) | `ReachStateNotConfigured` (internal/outbound/external_probe.go:106) | A DECIDIR |
-| `desconhecido` | internal/meta/errors.go:46 (`meta.ClassUnknown`, see 1.6) | `VerdictUnknown` (internal/outbound/watchdog.go:70), `ConnectorUnknown` (internal/outbound/ingress.go:160) | A DECIDIR |
+| `unknown` | internal/meta/errors.go:46 (`meta.ClassUnknown`, see 1.6) | `VerdictUnknown` (internal/outbound/watchdog.go:70), `ConnectorUnknown` (internal/outbound/ingress.go:160) | (shipped — same literal as 1.6, T-209) |
 | `nao_consegui_verificar` | internal/outbound/external_probe.go:115 (`ReachStateCouldNotVerify`) | — | A DECIDIR |
 
-**6 values.** `desconhecido` is the SAME literal as 1.6's `classe` value, reused on purpose
+**6 values.** `unknown` is the SAME literal as 1.6's `class` value, reused on purpose
 (comment at `internal/outbound/watchdog.go:52-55`: *"not new vocabulary… a second vocabulary for the
-same concept would force the consumer to learn two tables"*) — a translation of `classe` that
-doesn't also touch every `estado`/`veredito` occurrence of `desconhecido` breaks the "same word,
-same meaning" guarantee the comment describes.
+same concept would force the consumer to learn two tables"*) — 🔴 **T-222 (2026-09-08) confirmed this
+row against the code and found it had gone stale: the row used to read `desconhecido`/`A DECIDIR`
+here even though T-209 had already shipped `unknown` for 1.6 — exactly the risk this paragraph warns
+about** (translating `class` without also touching every `estado`/`veredito` occurrence of the same
+literal breaks the "same word, same meaning" guarantee the comment describes). The other five values
+in this table are untouched by T-209 and remain genuinely `A DECIDIR`.
 
 ### 1.8 `veredito` — WhatsApp token verdict (`MetaToken.Verdict`, `token_meta` block)
 
@@ -197,7 +207,7 @@ Direction: **SAIDA-RESPOSTA**. Field: `veredito`, `internal/outbound/watchdog.go
 |---|---|---|
 | `ok` | internal/outbound/watchdog.go:60 | (unchanged — already English) |
 | `recusado` | internal/outbound/watchdog.go:66 | A DECIDIR |
-| `desconhecido` | internal/outbound/watchdog.go:70 (`= string(meta.ClassUnknown)`, canonical definition at internal/meta/errors.go:46) | A DECIDIR |
+| `unknown` | internal/outbound/watchdog.go:70 (`= string(meta.ClassUnknown)`, canonical definition at internal/meta/errors.go:46) | (shipped — same literal as 1.6, T-209) |
 
 **3 values** — a DIFFERENT closed vocabulary than 1.9 below, even though both live under the same
 JSON key `veredito`: comment at `internal/outbound/state.go:459-462` states explicitly *"they are

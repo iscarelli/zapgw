@@ -1429,7 +1429,7 @@ Sending released the idempotency key on **any** error from Meta. But a transport
 `2xx` without an id do not prove the message was not created — they only prove that we do not know. A released key
 turns the consumer's legitimate retry into a **second** message on a real customer's phone. Only a **known-negative**
 outcome (Meta answered with an error status, or the request never left here) gives the key back; an unknown one
-retains it and answers with the class `desconhecido` (`502`), not `retentavel` — calling `retentavel` a case that
+retains it and answers with the class `unknown` (`502`), not `retryable` — calling `retryable` a case that
 will produce a `409` tells the consumer to do the opposite of the right thing.
 *Cost: caught in plan 2's final review, before going to production. Fix: `errors.As` against `*meta.ErroMeta`.*
 **The exact boundary is a choice, not a fact — and the doc cannot pretend it is a fact.** A `5xx` from Meta **also**
@@ -1487,9 +1487,9 @@ still true the SECOND time?"** — and it is a sibling of this file's mother pit
 this sentence be true?".*
 
 **An I/O error became "body too large" because the code only looked at the fact that there was an error.** `ReadRaw`
-returns two different errors; the handler mapped both to `413 permanente`. A connection that dropped mid-upload
+returns two different errors; the handler mapped both to `413 permanent`. A connection that dropped mid-upload
 became "shrink the body" (which was perfect) + "do not try again" (when trying again was the right thing). *Fix:
-`errors.Is(err, httpx.ErrCorpoGrande)`, and the rest becomes `400` `retentavel`.*
+`errors.Is(err, httpx.ErrCorpoGrande)`, and the rest becomes `400` `retryable`.*
 
 **A method that CAN return an error invites somebody, one day, to treat that error as fatal — the strongest defence
 is the SIGNATURE, not the caller's discipline.** T-035 (instance counters) has a hard rule: counting is monitoring,
@@ -2105,12 +2105,12 @@ red, even without changing anything visible in the HTTP body (the distinction on
 
 **Classifying a third party's error by the ENVELOPE (HTTP status) instead of by the CONTENT (code) works until the
 third party changes the envelope — and the change generates no error at all, only a silently wrong
-classification.** `classOfStatus` (`internal/meta/errors.go`) decided `retentavel` × `permanente` × `config` looking
+classification.** `classOfStatus` (`internal/meta/errors.go`) decided `retryable` × `permanent` × `config` looking
 only at the HTTP status; no Meta error code was consulted on the sending path. The official error-code doc
 (`developers.facebook.com/docs/whatsapp/cloud-api/support/error-codes`, section *Throttling errors*, read on
 2026-08-20) **does not declare** with which status the rate-limit family arrives, and the Marketing Messages API
 shows an error of the same shape arriving as a `400`. If a throttling error arrived wrapped in a `400`, it fell into
-the default (`permanente`) and the consumer stopped trying — exactly when waiting and trying again was the solution.
+the default (`permanent`) and the consumer stopped trying — exactly when waiting and trying again was the solution.
 *This project had already seen the same defect shape, in the SAME file: `classOfStatus` treats `408` and `425` as
 retryable "by HTTP definition" precisely because letting them fall into the default would make the consumer give up
 on something recoverable — the comment there already recorded the risk of an unexpected status carrying a meaning
@@ -2303,7 +2303,7 @@ are indistinguishable if you only look at the status.** A production proof sent 
 
 Two rules come out of this, and the second is the one that saves you:
 
-1. **A gateway error is `Content-Type: application/json` with `{"erro":{…}}`.** `text/plain` + `Connection: close` is
+1. **A gateway error is `Content-Type: application/json` with `{"error":{…}}`.** `text/plain` + `Connection: close` is
    the HTTP server, not the code. Look at the body, never just the status.
 2. **Every proof needs a CONTROL case that only passes if the credential and the route are right** — a request that
    must fail in a *named and different* way. Without it, "it refused" and "it never arrived" produce the same output,
