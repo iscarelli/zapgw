@@ -96,13 +96,13 @@ func TestHandlerInstagramSendTextBuildsTheExactRequest(t *testing.T) {
 	rec := ask(t, h, "token-do-a", "k1", request)
 
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
 	}
 	if method != http.MethodPost {
-		t.Errorf("metodo = %q, quero POST", method)
+		t.Errorf("method = %q, want POST", method)
 	}
 	if path != "/IGID1/messages" {
-		t.Errorf("caminho = %q, quero /IGID1/messages", path)
+		t.Errorf("path = %q, want /IGID1/messages", path)
 	}
 	var sent struct {
 		Recipient struct {
@@ -113,19 +113,19 @@ func TestHandlerInstagramSendTextBuildsTheExactRequest(t *testing.T) {
 		} `json:"message"`
 	}
 	if err := json.Unmarshal(body, &sent); err != nil {
-		t.Fatalf("corpo enviado a Meta nao e JSON: %s", body)
+		t.Fatalf("body sent to Meta is not JSON: %s", body)
 	}
 	if sent.Recipient.ID != "IGSID_SINTETICO_1" {
-		t.Errorf("recipient.id = %q, quero IGSID_SINTETICO_1", sent.Recipient.ID)
+		t.Errorf("recipient.id = %q, want IGSID_SINTETICO_1", sent.Recipient.ID)
 	}
 	if sent.Message.Text != "oi" {
-		t.Errorf("message.text = %q, quero \"oi\"", sent.Message.Text)
+		t.Errorf("message.text = %q, want \"oi\"", sent.Message.Text)
 	}
 	// The body must have NOTHING of WhatsApp (messaging_product, recipient_type,
 	// type, to) — that would prove SendInstagramMessage assembles the WRONG shape.
 	for _, whatsappField := range []string{"messaging_product", "recipient_type", `"to"`, `"type"`} {
 		if strings.Contains(string(body), whatsappField) {
-			t.Errorf("corpo enviado ao Instagram traz campo de WHATSAPP %q: %s", whatsappField, body)
+			t.Errorf("body sent to Instagram carries a WHATSAPP field %q: %s", whatsappField, body)
 		}
 	}
 
@@ -134,7 +134,7 @@ func TestHandlerInstagramSendTextBuildsTheExactRequest(t *testing.T) {
 	}
 	_ = json.Unmarshal(rec.Body.Bytes(), &resp)
 	if resp.WaMessageID != "IG-TESTE-1" {
-		t.Errorf("wa_message_id = %q, quero IG-TESTE-1 (o message_id que a Meta devolveu)", resp.WaMessageID)
+		t.Errorf("wa_message_id = %q, want IG-TESTE-1 (the message_id Meta returned)", resp.WaMessageID)
 	}
 }
 
@@ -159,17 +159,17 @@ func TestHandlerInstagramTransitWritesTheIGSIDIntactEvenWhenPhoneShaped(t *testi
 	request := `{"instancia":"insta-loja","para":"` + igsidShapedLikePhone + `","tipo":"texto","texto":"oi"}`
 	rec := ask(t, h, "token-do-a", "k1", request)
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
 	}
 
 	var counterpart string
 	if err := store.DB().QueryRow(
 		`SELECT contraparte FROM transito WHERE slug = 'insta-loja' ORDER BY carimbo DESC LIMIT 1`).
 		Scan(&counterpart); err != nil {
-		t.Fatalf("ler linha de transito: %v", err)
+		t.Fatalf("read transit row: %v", err)
 	}
 	if counterpart != igsidShapedLikePhone {
-		t.Errorf("transito.contraparte = %q, quero %q INTACTO (Canonicalize teria inserido um digito)",
+		t.Errorf("transito.contraparte = %q, want %q INTACT (Canonicalize would have inserted a digit)",
 			counterpart, igsidShapedLikePhone)
 	}
 }
@@ -190,13 +190,13 @@ func TestHandlerWhatsAppKeepsBuildingTheWhatsAppBody(t *testing.T) {
 
 	rec := ask(t, h, "token-do-a", "k1", textBody)
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
 	}
 	if !strings.Contains(string(body), `"messaging_product":"whatsapp"`) {
-		t.Errorf("corpo enviado a Meta nao tem messaging_product=whatsapp: %s", body)
+		t.Errorf("body sent to Meta does not have messaging_product=whatsapp: %s", body)
 	}
 	if strings.Contains(string(body), `"recipient":`) {
-		t.Errorf("corpo enviado a Meta tem `recipient`, forma de INSTAGRAM: %s", body)
+		t.Errorf("body sent to Meta has `recipient`, an INSTAGRAM shape: %s", body)
 	}
 }
 
@@ -240,15 +240,15 @@ func TestHandlerPicksTheHostByInstanceType(t *testing.T) {
 	request := `{"instancia":"insta-loja","para":"IGSID_SINTETICO_1","tipo":"texto","texto":"oi"}`
 	rec := ask(t, h, "token-do-a", "k1", request)
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
 	}
 
 	if clientBaseCalled {
-		t.Error("uma instancia INSTAGRAM chamou o servidor de c.base (o host do WhatsApp) — " +
-			"e exatamente o defeito que a T-104 corrigiu")
+		t.Error("an INSTAGRAM instance called the c.base server (WhatsApp's host) — " +
+			"this is exactly the defect T-104 fixed")
 	}
 	if !instagramBaseCalled {
-		t.Error("uma instancia INSTAGRAM NUNCA chamou o servidor de baseInstagram (graph.instagram.com)")
+		t.Error("an INSTAGRAM instance NEVER called the baseInstagram server (graph.instagram.com)")
 	}
 
 	var resp struct {
@@ -256,7 +256,7 @@ func TestHandlerPicksTheHostByInstanceType(t *testing.T) {
 	}
 	_ = json.Unmarshal(rec.Body.Bytes(), &resp)
 	if resp.WaMessageID != "IG-HOST-CERTO" {
-		t.Errorf("wa_message_id = %q, quero IG-HOST-CERTO (o id que o servidor CERTO devolveu)", resp.WaMessageID)
+		t.Errorf("wa_message_id = %q, want IG-HOST-CERTO (the id the RIGHT server returned)", resp.WaMessageID)
 	}
 }
 
@@ -287,13 +287,13 @@ func TestHandlerWhatsAppKeepsUsingCBaseEvenWithADifferentInstagramBase(t *testin
 
 	rec := ask(t, h, "token-do-a", "k1", textBody)
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
 	}
 	if !clientBaseCalled {
-		t.Error("uma instancia WHATSAPP NUNCA chamou o servidor de c.base")
+		t.Error("a WHATSAPP instance NEVER called the c.base server")
 	}
 	if instagramBaseCalled {
-		t.Error("uma instancia WHATSAPP chamou o servidor de baseInstagram — nao deveria nem saber que ele existe")
+		t.Error("a WHATSAPP instance called the baseInstagram server — it should not even know it exists")
 	}
 }
 
@@ -324,13 +324,13 @@ func TestSmokeRouteActivatesInstagramInstanceOnlyAfterSendingAMessage(t *testing
 
 	rec := askSmoke(t, h, "token-do-a", smokeBody("insta-loja", "IGSID_SINTETICO_1"))
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
 	}
 	if g.gets.Load() != 0 {
-		t.Errorf("gets = %d, quero 0 — o passo 2 (CheckCredential) e PULADO para Instagram (T-104)", g.gets.Load())
+		t.Errorf("gets = %d, want 0 — step 2 (CheckCredential) is SKIPPED for Instagram (T-104)", g.gets.Load())
 	}
 	if g.posts.Load() != 1 {
-		t.Errorf("mensagens enviadas = %d, quero 1", g.posts.Load())
+		t.Errorf("messages sent = %d, want 1", g.posts.Load())
 	}
 
 	inst, err := store.FindInstance("insta-loja")
@@ -338,6 +338,6 @@ func TestSmokeRouteActivatesInstagramInstanceOnlyAfterSendingAMessage(t *testing
 		t.Fatalf("FindInstance: %v", err)
 	}
 	if !inst.Active {
-		t.Error("instancia Instagram continua PAUSADA depois de um envio de teste aceito")
+		t.Error("Instagram instance is still PAUSED after an accepted test send")
 	}
 }
