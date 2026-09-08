@@ -4,6 +4,19 @@ One line per version shipped, in the same commit as the bump. The entry states t
 
 ## Unreleased
 
+- **T-238 — Close the doc-pointer gate's bare-filename hole** — the gate required a directory
+  component, so a fixture cited by bare name was invisible to it; seven dead pointers were hiding in
+  exactly that gap. Step 0 excluded `docs/CHANGELOG.md` from the sweep structurally — a changelog is
+  a record, and "fixing" it to please a gate fabricates history — which alone returned `main` to
+  green. The seven were fixed against the T-228 rename commit rather than guessed, and two written in
+  ellipsis shorthand were expanded to full paths. Widening surfaced **31** findings rather than 7,
+  most of them legitimate false positives now carrying a written reason (glob patterns, a `.json()`
+  method call, a gitignored channel file, workspace docs cited with backslashes, third-party repos).
+  The limits block was updated in **both** directions: the retired limit removed, two new ones added.
+  One real fix was deferred rather than written over a concurrent implementer's file — see T-239.
+  _Completed 2026-09-08 04:19._
+
+
 - **T-230 — Rename the Portuguese directories and script names** — `cmd/grafo-falso/` →
   `cmd/fakegraph/`, `implanta/` → `deploy/`, `valida-lideranca.sh` → `check-leadership.sh`, all by
   `git mv`, plus the binary's own log prefix. The referencer sweep ran BEFORE the rename, which is

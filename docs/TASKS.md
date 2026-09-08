@@ -300,55 +300,28 @@ Verify:  Para cada uma das quatro familias, cole no relatorio a prova contra o c
          E liste, uma a uma, as ocorrencias que voce DEIXOU e em qual dos casos (b)/(c) cada uma cai.
          `CGO_ENABLED=0 go build ./... && go test ./...` (so' garantia; nada de codigo muda).
 
-## [ ] T-238  Close the doc-pointer gate's bare-filename hole — seven dead pointers are hiding in it
-After:   T-230
-Why:     A T-234 alargou o portao para alem de `.go` e ele achou dois ponteiros mortos. Bom. Mas ele
-         exige um componente de DIRETORIO (`internal/config/doc_pointers_test.go:359`,
-         `strings.Contains(pathPart, "/")`), e a propria T-234 escreveu esse limite no teste — o que
-         foi a coisa certa a fazer, e e' o que permitiu encontrar isto.
-🔴 **O limite nao e' teorico: ele esconde SETE ponteiros mortos hoje**, medidos em
-         2026-09-08 varrendo os docs por `` `nome.json` `` e conferindo cada um contra o disco:
-         `botao_de_template.json`, `categoria_de_template_sintetico.json`, `localizacao.json`,
-         `qualidade_do_numero_sintetico.json`, `reacao.json`, `status_sent_com_pricing.json`,
-         `texto_de_tipo_errado_sintetico.json`. Todos sao nomes que a T-228 renomeou.
-         ➡️ **E a licao e' o proprio portao se provando:** *um portao e' exatamente tao largo quanto
-         o padrao dele, e a largura e' invisivel de fora.* A T-234 provou isso no portao anterior; o
-         portao dela caiu na mesma regra uma tarefa depois. Isso nao e' falha da T-234 — e' a razao
-         pela qual escrever o limite dentro do teste vale tanto quanto o teste.
-Files:   internal/config/doc_pointers_test.go, docs/ARMADILHAS.md, docs/META-CAMPOS-DE-WEBHOOK.md,
-         e qualquer outro doc que a varredura acusar
-Do:      0. 🔴 PRIMEIRO, E E' O QUE DESTRAVA O `main`: exclua `docs/CHANGELOG.md` da varredura, por
-            ESTRUTURA, do mesmo jeito que `docs/TASKS.md` ja e' excluido em
-            `docsFilesExcludedFromTheSweep` — com a razao escrita ao lado.
-            **A razao:** changelog e' REGISTRO. Ele cita `implanta/deploy.sh` em quatro linhas porque
-            aquele caminho era verdade no dia em que a entrada foi escrita; a T-230 renomeou o
-            diretorio para `deploy/`. Consertar o registro seria inventar historia, e acrescentar uma
-            excecao a cada rename faz a lista crescer para sempre. Excluir o arquivo inteiro, uma vez,
-            com a razao, e' a regra certa — e e' a que ja vale para o `docs/TASKS.md`.
-            Isto e' decisao do planner, ja tomada; voce implementa.
-         1. Depois CONSERTE os sete, um a um. Confirme o destino com `ls` antes de escrever, nunca
-            por parecenca. Use `git log --follow` se precisar achar para onde o arquivo foi.
-            🔴 **Cuidado com o caso legitimo:** um doc que NARRA o rename cita o nome velho de
-            proposito (`docs/ARMADILHAS.md` tem uma entrada de 2026-09-07 escrita exatamente assim:
-            "`localizacao.json` → `location.json`"). Esse fica. Distinga narrativa de ponteiro.
-         2. Depois ALARGUE o portao: um nome solto com extensao reconhecida passa a ser conferido
-            contra o conjunto de BASENAMES de arquivos do repositorio. Se o basename nao existe em
-            lugar nenhum, e' ponteiro morto.
-            🔴 O risco continua sendo falso positivo, e ele e' pior que o buraco. Use o mesmo
-            mecanismo que ja esta la: excecao por texto EXATO do ponteiro, uma entrada por caso, com
-            a razao escrita ao lado. E **nunca** uma excecao chamada "bug conhecido" — se e' bug,
-            conserta (foi a T-236 que teve de limpar duas dessas).
-         3. Atualize o bloco de limites no topo do teste: tire o que deixou de ser limite, e
-            acrescente o que passou a ser. **O bloco de limites e' parte do portao, nao comentario.**
-Verify:  🔴 Prova contra dado real, obrigatoria: cite num doc um nome solto que nao existe
-         (`fixture_que_nao_existe_t238.json`), rode o portao, mostre que ele REPROVA nomeando
-         `doc:linha`, e desfaca. Cole a mensagem.
-         E a varredura que me achou os sete tem de vir vazia depois:
-         `grep -ohP '\x60[a-z_]+\.json\x60' docs/*.md | tr -d '\x60' | sort -u` e, para cada nome,
-         conferir que existe em `testdata/corpus/` ou `internal/inbound/testdata/` — exceto os que
-         voce declarou como narrativa no passo 1, que devem estar listados no relatorio.
-         `CGO_ENABLED=0 go build ./... && go test ./... && go vet ./... && gofmt -l cmd internal`,
-         sete pacotes `ok`.
+## [ ] T-239  Remove the one exemption T-238 had to leave behind
+After:   T-237
+Why:     A T-238 achou um ponteiro morto real em `docs/CONTRATO-CONSUMIDOR.md:4886` e no espelho
+         `.pt-BR.md:4829`: `status_sent_com_pricing.json`, que a T-228 renomeou para
+         `status_sent_with_pricing.json`. Ela NAO consertou, e agiu certo: a T-237 estava reescrevendo
+         esses dois arquivos no mesmo momento, e escrever por cima do trabalho de outro agente e' o
+         custo que a regra de trabalho concorrente existe para evitar.
+         Entao ela declarou uma excecao no portao **com a razao verdadeira escrita ao lado**
+         (conflito de sessao), explicitamente diferente de um "bug conhecido".
+🔴 MAS EXCECAO COM PRAZO SO' VALE SE ALGUEM RECOLHER. Sem esta tarefa, a razao
+         ("outro agente esta no arquivo") deixa de ser verdade em uma hora, e o que sobra e' uma
+         excecao escondendo um ponteiro morto — exatamente o que a T-236 teve de limpar.
+Files:   docs/CONTRATO-CONSUMIDOR.md, docs/CONTRATO-CONSUMIDOR.pt-BR.md,
+         internal/config/doc_pointers_test.go
+Do:      1. Conserte o ponteiro nos dois arquivos: `status_sent_com_pricing.json` ->
+            `status_sent_with_pricing.json`. Confirme com `ls testdata/corpus/` antes.
+         2. APAGUE a entrada correspondente de `deadDocPointerExceptions`.
+         3. Se o portao acusar mais alguma coisa depois, conserte o ponteiro — nao acrescente excecao.
+Verify:  `go test ./internal/config/ -run TestDocPointers` verde COM a excecao ausente, e
+         `grep -c 'status_sent_com_pricing' internal/config/doc_pointers_test.go docs/*.md` dando 0
+         em todos (exceto `docs/CHANGELOG.md`, que e' registro e esta fora da varredura).
+         `CGO_ENABLED=0 go build ./... && go test ./... && go vet ./... && gofmt -l cmd internal`.
 
 ## [ ] T-231  Translate the English side of the docs that is still Portuguese
 After:   T-230
