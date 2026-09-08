@@ -4826,7 +4826,7 @@ estado e não sabe o que já passou. **Nunca deixe um estado anterior sobrescrev
 *Esta obrigação dizia "use o `timestamp` do evento para ordenar" até 2026-07-28, e **contradizia
 frontalmente o aviso 🔴 deste mesmo documento** (ver a seção de status): `sent` e `delivered` da mesma
 mensagem chegam com o **mesmo** `timestamp` — medido em tráfego real, com os dois fixtures congelados
-(`status_sent_com_pricing.json` e `status_delivered.json`, mesmo `wa_message_id`, `timestamp`
+(`status_sent_with_pricing.json` e `status_delivered.json`, mesmo `wa_message_id`, `timestamp`
 `1785072102` nos dois). Quem seguisse esta seção construiria exatamente o defeito que o aviso existe
 para impedir, e ele é **invisível**: nenhum erro em lugar nenhum, só a tela mostrando `delivered`
 antes de `sent` metade das vezes. A contradição estava na seção NORMATIVA, que é de onde um

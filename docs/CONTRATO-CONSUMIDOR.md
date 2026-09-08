@@ -4883,7 +4883,7 @@ state and does not know what has already passed. **Never let an earlier state ov
 *This obligation said "use the event's `timestamp` to order" until 2026-07-28, and **flatly
 contradicted the 🔴 warning in this same document** (see the status section): `sent` and `delivered` of
 the same message arrive with the **same** `timestamp` — measured in real traffic, with both fixtures
-frozen (`status_sent_com_pricing.json` and `status_delivered.json`, same `wa_message_id`, `timestamp`
+frozen (`status_sent_with_pricing.json` and `status_delivered.json`, same `wa_message_id`, `timestamp`
 `1785072102` on both). Anyone following this section would build exactly the defect the warning exists
 to prevent, and it is **invisible**: no error anywhere, just the screen showing `delivered` before
 `sent` half the time. The contradiction was in the NORMATIVE section, which is where an integrator
