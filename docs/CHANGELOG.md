@@ -1,8 +1,8 @@
 # Changelog
 
-Uma linha por versao entregue, no mesmo commit do bump. A entrada diz o **efeito**, nao o diff.
+One line per version shipped, in the same commit as the bump. The entry states the **effect**, not the diff.
 
-## Nao lancado
+## Unreleased
 
 - **T-235 — Fix the two shell/Go log couplings, and build the gate that has never existed** — fixed
   `valida-lideranca.sh` (grepped a leadership line the Go stopped emitting at T-219, producing a false
@@ -87,171 +87,175 @@ Uma linha por versao entregue, no mesmo commit do bump. A entrada diz o **efeito
   _Completed 2026-09-07 23:57._
 
 
-- **T-219 — Translate the operator-facing strings of the CLI** — traduziu para ingles as strings de
-  saida e de erro de `cmd/zapgw/*.go` e `cmd/grafo-falso/*.go` (nao-teste), com os testes que casam
-  ajustados junto (13 arquivos de producao + 9 de teste). Confirmado antes de tocar em cada arquivo
-  contra `docs/INVENTARIO-STRINGS.md` (T-213): os dois binarios sao LOG por construcao, nenhum alcanca
-  o consumidor. `internal/outbound/`, `internal/config/`, `internal/meta/` e `internal/inbound/` NAO
-  foram tocados — la moram as mensagens que o consumidor pode estar comparando (decisao do dono ainda
-  pendente). Ficaram em portugues, deliberadamente, os pontos que sao vocabulario COMPARTILHADO com
-  esses pacotes fora de escopo (`PRECISA DE GENTE`, `ALARME zapgw`, os valores `sim`/`nao`,
-  `nao_configurado`, `nao_se_aplica`) e os que sao CONTRATO de CLI, nao texto humano: as grafias dos
-  verbos e sub-verbos (`instancia`, `consumidor`, `provisionar`, `fumaca`, `diagnostico` e afins —
-  territorio da T-220) e os NOMES das flags (`--instancia`, `--telefone`, `--confirmo`, `--tipo`
-  etc.), alem dos valores do enum `--falha-de-template` do `grafo-falso`, documentados em
-  `docs/ARMADILHAS.md`. A varredura `grep -rnE '(nao|voce|instancia|segredo|obrigatorio|invalido)'
-  cmd/ --include=*.go | grep -v _test` nao veio vazia, mas todo resto que sobrou e' uma dessas duas
-  categorias. Verify completo (`go build`, `go test ./...`, `go vet`, `gofmt -l cmd internal`) verde.
+- **T-219 — Translate the operator-facing strings of the CLI** — translated to English the output and
+  error strings of `cmd/zapgw/*.go` and `cmd/grafo-falso/*.go` (non-test), with the tests that match
+  them adjusted together (13 production files + 9 test files). Confirmed before touching each file
+  against `docs/INVENTARIO-STRINGS.md` (T-213): both binaries are LOG by construction, neither reaches
+  the consumer. `internal/outbound/`, `internal/config/`, `internal/meta/` and `internal/inbound/` were
+  NOT touched — that is where the messages the consumer may be comparing against live (owner's decision
+  still pending). Left in Portuguese, deliberately, were the points that are vocabulary SHARED with
+  those out-of-scope packages (`PRECISA DE GENTE`, `ALARME zapgw`, the values `sim`/`nao`,
+  `nao_configurado`, `nao_se_aplica`) and the ones that are CLI CONTRACT, not human text: the spellings
+  of the verbs and sub-verbs (`instancia`, `consumidor`, `provisionar`, `fumaca`, `diagnostico` and the
+  like — T-220's territory) and the flag NAMES (`--instancia`, `--telefone`, `--confirmo`, `--tipo`
+  etc.), plus the enum values of `grafo-falso`'s `--falha-de-template`, documented in
+  `docs/ARMADILHAS.md`. The sweep `grep -rnE '(nao|voce|instancia|segredo|obrigatorio|invalido)'
+  cmd/ --include=*.go | grep -v _test` did not come back empty, but everything left over falls into
+  one of those two categories. Full verify (`go build`, `go test ./...`, `go vet`,
+  `gofmt -l cmd internal`) green.
   _Completed 2026-09-06 21:18._
 
 ## v0.65.0 — 2026-09-06
 
-- **T-221 — Accept the English spelling of every top-level request key** — `contacts`, `flow` e
-  `sections` passam a existir; antes um consumidor 100% em ingles ainda tinha de mandar uma chave
-  em portugues, e um exemplo inteiro do contrato em ingles era impossivel de escrever. Nada saiu do
-  fio: a grafia portuguesa continua valendo e mandar as duas no mesmo pedido continua sendo
-  `ErrConflictingAlias`. O que vale mais que as tres linhas e' o portao invertido
-  (`TestRequestTopLevelKeysAreAllAccountedFor`): ele le as tags do `Request` e exige apelido ingles
-  ou presenca em `docs/contrato-chaves-que-nao-mudam.txt` — o teste antigo percorria a propria
-  tabela e por isso nao enxergava linha AUSENTE, que foi como as tres sobreviveram a T-203.
-  Reprovou contra dado real duas vezes (tirando `secoes`, e de novo `contacts` no main).
+- **T-221 — Accept the English spelling of every top-level request key** — `contacts`, `flow` and
+  `sections` now exist; before, a 100%-English consumer still had to send one key in Portuguese, and
+  a whole example of the contract in English was impossible to write. Nothing left the wire: the
+  Portuguese spelling keeps working and sending both in the same request is still
+  `ErrConflictingAlias`. What matters more than the three lines is the inverted gate
+  (`TestRequestTopLevelKeysAreAllAccountedFor`): it reads `Request`'s tags and requires an English
+  alias or a presence in `docs/contrato-chaves-que-nao-mudam.txt` — the old test walked the table
+  itself and so could not see a MISSING row, which is how the three survived T-203. It failed
+  against real data twice (removing `secoes`, and then `contacts` again on main).
   _Completed 2026-09-06 21:05._
 
-- **T-218 — English aliases for the CLI sub-verbs** — aditivo, sem remover nenhuma grafia
-  portuguesa. T-214 so' tinha migrado os 4 verbos de TOPO; esta tarefa desce um nivel: 10 pares de
-  sub-verbo passam a aceitar a grafia inglesa ao lado da portuguesa, com o MESMO mecanismo
-  (`warnOldVerb`) — `rotacionar`/`rotate`, `listar`/`list`, `mostrar`/`show`, `pausar`/`pause`,
-  `remover`/`remove`, `registrar`/`register`, `desregistrar`/`deregister`,
+- **T-218 — English aliases for the CLI sub-verbs** — additive, without removing any Portuguese
+  spelling. T-214 had only migrated the 4 TOP-level verbs; this task goes one level down: 10
+  sub-verb pairs now accept the English spelling alongside the Portuguese one, with the SAME
+  mechanism (`warnOldVerb`) — `rotacionar`/`rotate`, `listar`/`list`, `mostrar`/`show`,
+  `pausar`/`pause`, `remover`/`remove`, `registrar`/`register`, `desregistrar`/`deregister`,
   `reabrir-cadastro`/`reopen-enrollment`, `provisionar`/`provision`, `diagnostico`/`diagnostics`
-  (`pin` ja' era ingles). As mensagens de erro que ENUMERAM os sub-verbos conhecidos (em
-  `instanceCommand`, `consumerCommand` e no `dispatch` de topo) foram atualizadas junto, senao
-  passariam a mentir sobre o que o binario aceita. Novo teste
-  `TestDispatchAcceptsEnglishSubVerbsSilently` (`cmd/zapgw/provision_test.go`) prova, para CADA par,
-  as DUAS metades: a grafia inglesa despacha para a mesma funcao (comparado byte a byte apos tirar
-  o aviso da saida velha) e a portuguesa continua despachando E emitindo o aviso T-214.
+  (`pin` was already English). The error messages that ENUMERATE the known sub-verbs (in
+  `instanceCommand`, `consumerCommand` and the top-level `dispatch`) were updated together, or they
+  would start lying about what the binary accepts. New test
+  `TestDispatchAcceptsEnglishSubVerbsSilently` (`cmd/zapgw/provision_test.go`) proves, for EACH pair,
+  BOTH halves: the English spelling dispatches to the same function (compared byte for byte after
+  stripping the old-spelling warning from the output) and the Portuguese one keeps dispatching AND
+  emitting the T-214 warning.
   _Completed 2026-09-05 21:10._
 
 - **T-216 — The obsolete-name warning never reaches the operator — surface it on a SUCCESSFUL
-  deploy** — `implanta/deploy.sh` so' mostrava o journal do arranque quando o `/v1/health` FALHAVA;
-  no caminho de sucesso (o caso normal) o aviso da T-214 sobre variavel de ambiente com nome velho
-  ficava invisivel. Nova funcao `avisos_nome_obsoleto()`, chamada logo apos o `VERSAO CONFERE`, le o
-  journal e filtra so' pela linha do aviso ("esta obsoleta -- use") — nunca despeja o journal
-  inteiro. Tres saidas distinguiveis: havia aviso -> mostra as linhas; nao havia -> "nenhuma
-  variavel com nome obsoleto em uso"; nao deu para ler o journal -> "NAO CONSEGUI LER". Provado sem
-  producao extraindo a funcao verbatim de `implanta/deploy.sh` (`sed -n '246,259p'`) e exercitando
-  com um `ct()` simulado nos tres casos (journal com aviso, journal limpo, leitura falhando). O
-  caminho de FALHA nao foi tocado. `bash -n implanta/deploy.sh` e o verify de sempre (`go build`,
-  `go test -count=1 ./...`, `go vet`, `gofmt -l cmd internal`) limpos. _Completed 2026-08-31 23:07._
+  deploy** — `implanta/deploy.sh` only showed the boot journal when `/v1/health` FAILED; on the
+  success path (the normal case) the T-214 warning about an environment variable with an old name
+  stayed invisible. New function `avisos_nome_obsoleto()`, called right after `VERSAO CONFERE`,
+  reads the journal and filters just for the warning line ("esta obsoleta -- use") — it never dumps
+  the whole journal. Three distinguishable outputs: there was a warning -> shows the lines; there
+  was none -> "nenhuma variavel com nome obsoleto em uso"; the journal could not be read ->
+  "NAO CONSEGUI LER". Proved without production by extracting the function verbatim from
+  `implanta/deploy.sh` (`sed -n '246,259p'`) and exercising it with a simulated `ct()` in the three
+  cases (journal with a warning, clean journal, read failing). The FAILURE path was not touched.
+  `bash -n implanta/deploy.sh` and the usual verify (`go build`, `go test -count=1 ./...`, `go vet`,
+  `gofmt -l cmd internal`) clean. _Completed 2026-08-31 23:07._
 
 - **T-217 — Half the doc pointers are dead after the rename — fix them, and build the gate that
-  stops it recurring** — dos 113 ponteiros `.go` em `docs/*.md`, 50 apontavam para arquivo que a
-  T-212 tinha renomeado; cada mapeamento foi confirmado por `git log --follow` (nunca por nome
-  parecido) antes do conserto. Novo portao (`internal/config/doc_pointers_test.go`,
-  `TestNoDeadGoPointerInDocs`) varre `docs/*.md` atras de todo ponteiro `.go` (caminho e
-  `arquivo.go:linha` isolado) e reprova nomeando doc/linha/ponteiro quando o arquivo nao existe;
-  falha fechada se a varredura nao achar ponteiro nenhum
-  (`TestDeadDocPointerGateFailsClosedOnZeroPointers`). Prova por mutacao real contra
-  `docs/MODELO-DE-USO.md` (reprovou citando `docs/MODELO-DE-USO.md:7`, desfeita em seguida) e
-  positivo permanente em `TestDeadDocPointerGateFailsOnAMutatedPointer`. Lista de excecoes por
-  caminho completo comeca vazia. _Completed 2026-08-31 23:02._
+  stops it recurring** — of the 113 `.go` pointers in `docs/*.md`, 50 pointed to a file T-212 had
+  renamed; each mapping was confirmed by `git log --follow` (never by a similar-looking name)
+  before the fix. New gate (`internal/config/doc_pointers_test.go`, `TestNoDeadGoPointerInDocs`)
+  sweeps `docs/*.md` for every `.go` pointer (a path, and an isolated `file.go:line`) and fails,
+  naming doc/line/pointer, when the file does not exist; fails closed if the sweep finds no pointer
+  at all (`TestDeadDocPointerGateFailsClosedOnZeroPointers`). Proved by a real mutation against
+  `docs/MODELO-DE-USO.md` (failed citing `docs/MODELO-DE-USO.md:7`, undone right after) and a
+  permanent positive control in `TestDeadDocPointerGateFailsOnAMutatedPointer`. The full-path
+  exception list starts empty. _Completed 2026-08-31 23:02._
 
 ## v0.64.0 — 2026-08-31
 
-- **T-214 — CAMADA 4: `ZAPGW_*` and the CLI accept both names, and count the old one** — aditivo, sem
-  remover nenhum nome velho. **16 variaveis `ZAPGW_*` ganharam par em ingles** (`BANCO`, `CHAVE_CIFRA`,
-  `CONECTOR_READY`, `DIAGNOSTICO_SONDAR_FOLDER`, `ENDERECO`, `ENTRADA_VIA`, `LIDERANCA_ARQUIVO`,
-  `LIDERANCA_VALIDADE`, `MAX_CORPO_BYTES`, `SEGREDO_ENTREGA`, `SONDA_EXTERNA_URL`, `TOKEN_ENVIO`,
-  `TTL_CONTADORES_DIAS`, `TTL_IDEMPOTENCIA_HORAS`, `TTL_TRANSITO_DIAS`, `URL_PUBLICA`) e **4 verbos de
-  CLI** (`fumaca`/`smoke`, `instancia`/`instance`, `consumidor`/`consumer`, `estado`/`state`) — as
-  outras 8 `ZAPGW_*` encontradas ja' eram em ingles ou sao so' de ferramenta local (`ZAPGW_APP_SECRET`,
-  `ZAPGW_VERIFY_TOKEN`, `ZAPGW_PIN`, `ZAPGW_GRAPH_BASE`, `ZAPGW_INSTAGRAM_REFRESH_BASE`,
-  `ZAPGW_FORBIDDEN_NAMES`, `ZAPGW_PREPUSH_NEW_SHA`, `ZAPGW_PREPUSH_OLD_SHA`), fora de escopo. O NOVO
-  nome sempre vence quando os dois vierem (testado par a par, inclusive os dois nomes da guarda de
-  lideranca resolvidos de forma independente). O aviso — "variavel de ambiente X esta obsoleta -- use Y
-  no lugar (T-214)" — sai pelo `log` padrao, uma vez por variavel por processo; **provado com o binario
-  real**: arrancado com os 12 nomes velhos que o servidor le no boot, o stderr cita os 12; arrancado com
-  os pares novos, fica mudo. Nenhum nome velho foi removido. Verify de sempre limpo (`go build`,
-  `go test -count=1 ./...`, `go vet`, `gofmt -l cmd internal`), com testes novos em
-  `internal/config/env_alias_test.go`, `cmd/zapgw/env_aliases_test.go` e nos pacotes `outbound`/`config`
-  que ja' possuiam a variavel. _Completed 2026-08-31 16:20._
+- **T-214 — LAYER 4: `ZAPGW_*` and the CLI accept both names, and count the old one** — additive,
+  without removing any old name. **16 `ZAPGW_*` variables gained an English pair** (`BANCO`,
+  `CHAVE_CIFRA`, `CONECTOR_READY`, `DIAGNOSTICO_SONDAR_FOLDER`, `ENDERECO`, `ENTRADA_VIA`,
+  `LIDERANCA_ARQUIVO`, `LIDERANCA_VALIDADE`, `MAX_CORPO_BYTES`, `SEGREDO_ENTREGA`,
+  `SONDA_EXTERNA_URL`, `TOKEN_ENVIO`, `TTL_CONTADORES_DIAS`, `TTL_IDEMPOTENCIA_HORAS`,
+  `TTL_TRANSITO_DIAS`, `URL_PUBLICA`) and **4 CLI verbs** (`fumaca`/`smoke`, `instancia`/`instance`,
+  `consumidor`/`consumer`, `estado`/`state`) — the other 8 `ZAPGW_*` variables found were already in
+  English or are just for local tooling (`ZAPGW_APP_SECRET`, `ZAPGW_VERIFY_TOKEN`, `ZAPGW_PIN`,
+  `ZAPGW_GRAPH_BASE`, `ZAPGW_INSTAGRAM_REFRESH_BASE`, `ZAPGW_FORBIDDEN_NAMES`,
+  `ZAPGW_PREPUSH_NEW_SHA`, `ZAPGW_PREPUSH_OLD_SHA`), out of scope. The NEW name always wins when
+  both are provided (tested pair by pair, including the two leadership-guard names resolved
+  independently). The warning — "variavel de ambiente X esta obsoleta -- use Y no lugar (T-214)" —
+  goes out through the standard `log`, once per variable per process; **proved with the real
+  binary**: started with the 12 old names the server reads on boot, stderr cites the 12; started
+  with the new pairs, it stays silent. No old name was removed. Verify clean as always (`go build`,
+  `go test -count=1 ./...`, `go vet`, `gofmt -l cmd internal`), with new tests in
+  `internal/config/env_alias_test.go`, `cmd/zapgw/env_aliases_test.go` and in the `outbound`/`config`
+  packages that already had the variable. _Completed 2026-08-31 16:20._
 
-- **T-213 — CAMADA 3, primeira metade: measure which Portuguese strings REACH the consumer** —
-  medido, nao traduzido, em `docs/INVENTARIO-STRINGS.md`. A busca so' por acento (o metodo que a
-  estimativa original de 207 provavelmente usou) achou 164 strings de codigo reais — mas a maior
-  fonte de strings deste projeto NAO usa acento (`"invalido"`, `"obrigatorio"`, `"corpo grande
-  demais"`), entao rastreei os ~226 call sites de `respondError`/`logRejection` em
-  `internal/outbound` mais o corpo inteiro de `message.go`, que sozinho tem **103 pontos de
-  `fmt.Errorf`/`errors.New` em portugues, nenhum acentuado** — confirmados AMBOS (mesmo texto no
-  log E na resposta) via 4 call sites diferentes que logam `err.Error()` cru antes de responde-lo
-  cru. **~44 padroes SAIDA-CONSUMIDOR + ~132 AMBOS = ~176 padroes de mensagem decidem o proximo
-  passo**, mais que os 207 originais em pontos de codigo totais (~394, CLI incluido) mas o numero
-  que importa (consumer-facing) e' esse. Achado que ninguem esperaria: dez strings vivem em corpo
-  de SUCESSO, nao de erro — o campo `NextStep` de `registration_handler.go` e nove `const`
-  `Warning*`/`Message*` de `templates_handler.go`, que escapam de uma varredura que so' olha
-  `respondError`. Achado a parte: 7 strings sao construidas por `fmt.Errorf` e nunca chegam a
-  lugar nenhum (nem log, nem resposta) — `auth.go`'s `ErrNoToken`/`ErrInvalidToken` e as 4 de
-  `external_probe.go`, cujo erro e' descartado por `record()`. Verify de sempre limpo, incluindo o
-  portao de telefone (o doc novo nao carrega nenhum). _Completed 2026-08-31 15:39._
+- **T-213 — LAYER 3, first half: measure which Portuguese strings REACH the consumer** —
+  measured, not translated, in `docs/INVENTARIO-STRINGS.md`. Searching only for accented characters
+  (the method the original estimate of 207 likely used) found 164 real code strings — but this
+  project's biggest source of strings does NOT use accented characters (`"invalido"`,
+  `"obrigatorio"`, `"corpo grande demais"`), so I traced the ~226 call sites of
+  `respondError`/`logRejection` in `internal/outbound` plus the whole body of `message.go`, which
+  alone has **103 `fmt.Errorf`/`errors.New` points in Portuguese, none accented** — confirmed as
+  BOTH (same text in the log AND in the response) via 4 different call sites that log a raw
+  `err.Error()` before responding with it raw. **~44 CONSUMER-OUTPUT patterns + ~132 BOTH = ~176
+  message patterns decide the next step**, more than the original 207 in total code points (~394,
+  CLI included), but that (consumer-facing) is the number that matters. A finding nobody would
+  expect: ten strings live in a SUCCESS body, not an error one — the `NextStep` field of
+  `registration_handler.go` and nine `Warning*`/`Message*` `const`s of `templates_handler.go`, which
+  escape a sweep that only looks at `respondError`. A separate finding: 7 strings are built by
+  `fmt.Errorf` and never reach anywhere (not the log, not the response) — `auth.go`'s
+  `ErrNoToken`/`ErrInvalidToken` and the 4 in `external_probe.go`, whose error is discarded by
+  `record()`. Verify clean as always, including the phone gate (the new doc carries none).
+  _Completed 2026-08-31 15:39._
 
-- **T-212 — CAMADA 1: file names and identifiers stop speaking Portuguese** —
-  **86 arquivos `.go` renomeados** (`git mv`, historico preservado — mais que os 69 medidos na
-  spec; a medicao original parece ter contado so' um subconjunto, e esta tarefa mediu de novo lendo
-  o codigo atual) e **exatos 38 identificadores** corrigidos: `translateEntradaOrReject` ->
-  `translateInputOrReject` e 37 `TestEntrada*`/`oldNameCounterTodayInEstado` ->
-  `TestInput*`/`oldNameCounterTodayInState` em `internal/outbound/input_aliases_test.go`, o unico
-  lugar onde a palavra "Entrada"/"Estado" sobrevivia num identificador — o resto do codigo ja
-  estava em ingles antes desta tarefa comecar (o numero bate exatamente com os 38 da spec).
-  Todo comentario que apontava o nome antigo do arquivo foi corrigido no mesmo lote (substituicao
-  mecanica string-a-string, nunca tocando tag `json`, verbo de CLI, nome `ZAPGW_*` nem mensagem).
-  `git diff -U0 | grep 'json:"'` saiu vazio e `TestOutputContractHasNoPortugueseKeyOrValue`
-  continuou verde sem edicao de logica (so' o header `Código:` de
-  `internal/outbound/english_contract_test.go`, que apontava dois arquivos renomeados, foi
-  atualizado). Verify completo (`build`, `test -count=1`, `vet`, `gofmt`) limpo. Achado e NAO
-  tocado, por ficar fora desta camada: o diretorio `cmd/grafo-falso` (nome em portugues, "grafo
-  falso") — seus `.go` ja se chamavam `main.go`/`main_test.go` em ingles, o nome so' vive no
-  diretorio, e mudar isso arrastaria dois docs grandes (`docs/ARMADILHAS.md`/`.pt-BR.md`) para fora
-  do escopo "arquivo e identificador" desta tarefa. _Completed 2026-08-31 15:11._
+- **T-212 — LAYER 1: file names and identifiers stop speaking Portuguese** —
+  **86 `.go` files renamed** (`git mv`, history preserved — more than the 69 measured in the spec;
+  the original measurement seems to have counted only a subset, and this task measured again by
+  reading the current code) and **exactly 38 identifiers** fixed: `translateEntradaOrReject` ->
+  `translateInputOrReject` and 37 `TestEntrada*`/`oldNameCounterTodayInEstado` ->
+  `TestInput*`/`oldNameCounterTodayInState` in `internal/outbound/input_aliases_test.go`, the only
+  place where the word "Entrada"/"Estado" survived in an identifier — the rest of the code was
+  already in English before this task began (the number matches exactly the 38 in the spec). Every
+  comment that pointed to the old file name was fixed in the same batch (a mechanical
+  string-for-string substitution, never touching a `json` tag, a CLI verb, a `ZAPGW_*` name or a
+  message). `git diff -U0 | grep 'json:"'` came back empty and
+  `TestOutputContractHasNoPortugueseKeyOrValue` stayed green with no logic edit (only the
+  `Código:` header of `internal/outbound/english_contract_test.go`, which pointed to two renamed
+  files, was updated). Full verify (`build`, `test -count=1`, `vet`, `gofmt`) clean. Found and NOT
+  touched, for being outside this layer: the `cmd/grafo-falso` directory (a Portuguese name,
+  "grafo falso") — its `.go` files were already called `main.go`/`main_test.go` in English, the name
+  only lives in the directory, and changing it would drag two big docs (`docs/ARMADILHAS.md`/
+  `.pt-BR.md`) outside this task's "file and identifier" scope. _Completed 2026-08-31 15:11._
 
 - **T-211 — The CI is flaky on a wall-clock test** — `TestHandlerRespectsTheInstanceTimeoutMs`
-  media agora a PASSAGEM do valor, nao a duracao: um `http.RoundTripper` falso que nunca toca a
-  rede captura `req.Context().Deadline()` e confere que ela cai na janela `[antes+50ms,
-  depois+50ms]`. A primeira tentativa (ler o deadline no `r.Context()` de um servidor mock real)
-  nao funciona — `context.WithTimeout` e' um valor local do cliente, nunca vai para a rede — e
-  travou (`go test -c` + `-test.timeout=10s` mostrou o goroutine do servidor preso para sempre em
-  `<-r.Context().Done()`). Verde 20/20 em ~2.5s, sem sono e sem corrida de relogio. Achados dois
-  irmaos do mesmo risco (medidos, nao consertados — fora do escopo desta tarefa):
+  now measures the PASSING of the value, not the duration: a fake `http.RoundTripper` that never
+  touches the network captures `req.Context().Deadline()` and checks that it falls in the window
+  `[before+50ms, after+50ms]`. The first attempt (reading the deadline on the `r.Context()` of a
+  real mock server) does not work — `context.WithTimeout` is a client-side local value, it never
+  goes over the network — and it hung (`go test -c` + `-test.timeout=10s` showed the server's
+  goroutine stuck forever on `<-r.Context().Done()`). Green 20/20 in ~2.5s, no sleeping and no
+  clock race. Found two siblings of the same risk (measured, not fixed — out of this task's scope):
   `TestWaitWithContextStopsEarlyIfTheContextIsCancelled`
-  (`internal/outbound/templates_handler_test.go:1362`, margem de 135ms) e
+  (`internal/outbound/templates_handler_test.go:1362`, a 135ms margin) and
   `TestStateRouteDoesNotHangWithTheExternalProbeStuck`
-  (`internal/outbound/external_probe_test.go:368`, margem de 500ms). _Completed 2026-08-31 14:50._
+  (`internal/outbound/external_probe_test.go:368`, a 500ms margin). _Completed 2026-08-31 14:50._
 
-- **T-215 — The two sibling flakes** — os dois irmaos que a T-211 apontou e nao consertou agora
-  provam o MECANISMO, nao o relogio. `TestWaitWithContextStopsEarlyIfTheContextIsCancelled`
-  (`internal/outbound/templates_handler_test.go`) cancela o contexto ANTES de chamar
-  `waitWithContext` e passa `d=5s`: o `select` interno so tem UM caminho pronto (`ctx.Done()` ja
-  fechado; o timer de 5s nao pode ter disparado), entao a escolha e' deterministica pela semantica
-  do Go, nao uma corrida — o `time.After(500ms)` do teste e' um detector de trava, nao a asserção.
+- **T-215 — The two sibling flakes** — the two siblings T-211 pointed out and did not fix now prove
+  the MECHANISM, not the clock. `TestWaitWithContextStopsEarlyIfTheContextIsCancelled`
+  (`internal/outbound/templates_handler_test.go`) cancels the context BEFORE calling
+  `waitWithContext` and passes `d=5s`: the internal `select` has only ONE ready path (`ctx.Done()`
+  already closed; the 5s timer cannot have fired), so the choice is deterministic by Go's own
+  semantics, not a race — the test's `time.After(500ms)` is a hang detector, not the assertion.
   `TestStateRouteDoesNotHangWithTheExternalProbeStuck`
-  (`internal/outbound/external_probe_test.go`) trocou o teto `elapsed > 500ms` por uma contagem
-  atomica de conexoes aceitas pelo listener travado: como `ExternalProbe.Read` so le uma struct em
-  memoria (sem I/O algum), o contador tem de ficar em zero, e essa conferencia nao depende da
-  velocidade do runner. Verde 20/20 nos dois, `go test -count=1 ./...` limpo. Sobram tres
-  asserções de tempo de parede no pacote, revisadas e seguras porque nenhuma e teto apertado: um
-  limite so inferior (`TestWaitWithContextWaitsTheRequestedTimeWithoutCancellation`, um scheduler
-  so' pode atrasar, nunca encurtar), uma janela simetrica de 1 minuto
-  (`health_handler_test.go:148`), e a janela de VALOR (nao duracao) que a propria T-211 deixou em
-  `handler_test.go`. _Completed 2026-08-31 14:57._
+  (`internal/outbound/external_probe_test.go`) swapped the `elapsed > 500ms` ceiling for an atomic
+  count of connections accepted by the stuck listener: since `ExternalProbe.Read` only reads a
+  struct in memory (no I/O at all), the counter has to stay at zero, and that check does not depend
+  on the runner's speed. Green 20/20 on both, `go test -count=1 ./...` clean. Three wall-clock
+  assertions remain in the package, reviewed and safe because none is a tight ceiling: a
+  lower-bound-only limit (`TestWaitWithContextWaitsTheRequestedTimeWithoutCancellation`, a scheduler
+  can only delay, never shorten), a symmetric 1-minute window (`health_handler_test.go:148`), and
+  the VALUE (not duration) window that T-211 itself left in `handler_test.go`.
+  _Completed 2026-08-31 14:57._
 
 ## v0.63.0 — 2026-08-31
 
-- **O contrato passa a falar ingles — leitor tolerante do lado deles, apelido so na ENTRADA** (T-189)
-  — a migracao inteira do contrato, em quatro passos e sem uma mensagem perdida: leitores tolerantes
-  do lado do consumidor, o gateway aceitando os dois idiomas na entrada (chave e valor), os
-  escritores do consumidor em ingles, e a virada da saida. **Provada contra producao pelo
-  consumidor:** `"observed"` chega e vira `"observado"` nos 7 pontos de leitura dele **sem uma linha
-  de codigo dele ter mudado**, 80 templates lidos, zero evento preso. Ficam de fora, nomeados: o
-  apelido de entrada (que continua no ar, e cuja remocao e decisao do dono) e os 18 nomes de
-  contador (sem par decidido — o doc que dizia o contrario era falso). _Completed 2026-08-31 14:16._
+- **The contract starts speaking English — a tolerant reader on their side, alias only on ENTRADA
+  (input)** (T-189) — the whole contract migration, in four steps and without a single message lost:
+  tolerant readers on the consumer's side, the gateway accepting both languages on input (key and
+  value), the consumer's writers in English, and the output flip. **Proved against production by the
+  consumer:** `"observed"` arrives and turns into `"observado"` at its 7 reading points **without a
+  single line of its own code changing**, 80 templates read, zero event stuck. Left out, named: the
+  input alias (which stays live, and whose removal is the owner's decision) and the 18 counter names
+  (no pair decided — the doc that said otherwise was false). _Completed 2026-08-31 14:16._
 
 - **T-210 — The output sweep is BLIND to the webhook event — fix it before v0.63.0 ships** — root
   cause found: `TestOutputContractHasNoPortugueseKeyOrValue` checks `forbiddenOutputTokens` with a
@@ -440,168 +444,170 @@ future, dono-authorized decision.
 
 ## v0.61.0 — 2026-08-31
 
-- **The gateway accepts English key names on ENTRADA input, and counts the old ones** (T-203, passo
-  2 de 4 da T-189) — as 30 chaves de direcao ENTRADA de `docs/MIGRACAO-CONTRATO-EN.md` ganharam
-  apelido em ingles, POR POSICAO (`internal/outbound/input_aliases.go`), nas 7 rotas que
-  decodificam corpo: `POST /v1/messages` (com descida nos 4 objetos aninhados —
-  `cabecalho`/`reacao`/`localizacao`/`fluxo` — e em cada item de `botoes_template`),
+- **The gateway accepts English key names on ENTRADA input, and counts the old ones** (T-203, step
+  2 of 4 of T-189) — the 30 ENTRADA-direction keys of `docs/MIGRACAO-CONTRATO-EN.md` gained an
+  English alias, BY POSITION (`internal/outbound/input_aliases.go`), on the 7 routes that decode a
+  body: `POST /v1/messages` (descending into the 4 nested objects —
+  `cabecalho`/`reacao`/`localizacao`/`fluxo` — and into each `botoes_template` item),
   `POST /v1/templates`, `POST /v1/cadastro`, `POST /v1/pausa`, `POST/DELETE /v1/bloqueios`,
-  `POST /v1/leituras`, `POST /v1/fumaca`. A saida NAO muda. A traducao roda ANTES do
-  `json.Unmarshal` e ANTES do `RequestHash`, entao o hash de idempotencia ve a forma CANONICA —
-  provado com um teste que manda o MESMO pedido em PT e em EN sob a MESMA `Idempotency-Key` e exige
-  UM envio a Meta com o MESMO `wa_message_id` (`TestEntradaIdempotencyCrossesLanguages`). Os dois
-  nomes juntos no mesmo pedido viram `400` nomeando as duas chaves — testado chave por chave, nao
-  por amostra, nas 30 linhas ENTRADA (incluindo os 4 objetos aninhados e o item de
-  `botoes_template`). Nenhuma chave de `docs/contrato-chaves-que-nao-mudam.txt` ganhou apelido, e
-  nenhuma chave fora da tabela foi inventada. Contador `config.CounterOldNameUsed`
-  (`nome_antigo_usado`) sobe por instancia quando o pedido ainda usa a grafia velha e aparece em
-  `GET /v1/estado` — e' o numero que vai autorizar o passo 4. ⚠️ **Nao esta em toda rota:**
-  `/v1/cadastro`, `/v1/pausa` e `POST/DELETE /v1/bloqueios` aceitam o apelido em ingles mas ainda
-  NAO tem `*config.Counter` plugado (mudanca estrutural maior, fora do escopo desta tarefa) — nelas
-  o apelido funciona e o contador fica de fora por enquanto. Verify: `CGO_ENABLED=0 go build ./...`,
-  `go test ./...`, `go vet ./...`, `gofmt -l cmd internal` limpos; suite inteira (`internal/inbound`
-  incluido, onde vive o teste do `cru` byte a byte) verde sem alteracao nenhuma la.
+  `POST /v1/leituras`, `POST /v1/fumaca`. Output does NOT change. The translation runs BEFORE
+  `json.Unmarshal` and BEFORE `RequestHash`, so the idempotency hash sees the CANONICAL form —
+  proved with a test that sends the SAME request in PT and in EN under the SAME `Idempotency-Key`
+  and requires ONE send to Meta with the SAME `wa_message_id`
+  (`TestEntradaIdempotencyCrossesLanguages`). The two names together in the same request become
+  `400`, naming both keys — tested key by key, not by sample, across the 30 ENTRADA rows (including
+  the 4 nested objects and the `botoes_template` item). No key from
+  `docs/contrato-chaves-que-nao-mudam.txt` gained an alias, and no key outside the table was
+  invented. Counter `config.CounterOldNameUsed` (`nome_antigo_usado`) goes up per instance when the
+  request still uses the old spelling and shows up on `GET /v1/estado` — it is the number that will
+  authorize step 4. ⚠️ **Not on every route:** `/v1/cadastro`, `/v1/pausa` and
+  `POST/DELETE /v1/bloqueios` accept the English alias but do NOT yet have `*config.Counter` wired
+  in (a bigger structural change, out of this task's scope) — on those the alias works and the
+  counter stays out for now. Verify: `CGO_ENABLED=0 go build ./...`, `go test ./...`,
+  `go vet ./...`, `gofmt -l cmd internal` clean; the whole suite (`internal/inbound` included, where
+  the byte-for-byte `cru` test lives) green with no change there at all.
   _Completed 2026-08-31 09:17._
 - **The migration table becomes a versioned document, with DIRECTION and what does NOT change**
-  (T-202) — `docs/MIGRACAO-CONTRATO-EN.md` (par `docs/MIGRACAO-CONTRATO-EN.pt-BR.md`) nasceram
-  juntos, montando 119 linhas de chave a partir de duas fontes ja existentes: 90 pares ja propostos
-  ao `consumer-b` no canal privado (Fonte A — medido, nao os 89 estimados na spec: sem duplicata,
-  contagem batida com `sed -n` linha a linha), mais 29 chaves medidas contra o codigo sem par
-  decidido (Fonte B, `docs/INVENTARIO-CHAVES.md`, inglês = `A DECIDIR`), sem sobreposicao entre as
-  duas. **Toda linha tem direcao** (`SAIDA-EVENTO`/`SAIDA-RESPOSTA`/`ENTRADA`, `A MEDIR` quando
-  medido e inconclusivo) — 21 chaves sao multi-direcao (14 na Tabela A, 7 na B), e 6 da Tabela A sao
-  `A MEDIR` porque a string proposta nao corresponde a nenhum campo real do contrato hoje (3 so
-  existem num vetor de teste interno, uma e' o envelope de paginacao da propria Meta, uma e' flag de
-  CLI, uma nao existe). Secao "O que NAO muda" trouxe as 23 linhas ja-em-ingles do item 4 do
-  inventario, com a regra de colisao do `consumer-b` creditada. Nenhum nome foi decidido pela
-  tarefa. Todos os 119 ponteiros `arquivo:linha` foram conferidos mecanicamente contra o codigo
-  (script Python de verificacao, nao so amostragem); um erro de arquivo achado nessa conferencia
-  (`conector` apontava para `state.go` em vez de `ingress.go`) foi corrigido antes do commit.
-  Zero dado identificavel copiado do canal privado (so as linhas de tabela chave/valor). Verify:
-  `CGO_ENABLED=0 go build ./...`, `go test ./...` (os dois portoes de dado pessoal varreram `docs/`
-  e passaram), `go vet ./...`, `gofmt -l cmd internal` limpos. _Completed 2026-08-31 08:18._
+  (T-202) — `docs/MIGRACAO-CONTRATO-EN.md` (paired with `docs/MIGRACAO-CONTRATO-EN.pt-BR.md`) were
+  born together, assembling 119 key rows from two already-existing sources: 90 pairs already
+  proposed to `consumer-b` on the private channel (Source A — measured, not the 89 estimated in the
+  spec: no duplicate, count checked with `sed -n` line by line), plus 29 keys measured against the
+  code with no pair decided (Source B, `docs/INVENTARIO-CHAVES.md`, English = `A DECIDIR`), with no
+  overlap between the two. **Every row has a direction** (`SAIDA-EVENTO`/`SAIDA-RESPOSTA`/`ENTRADA`,
+  `A MEDIR` when measured and inconclusive) — 21 keys are multi-direction (14 in Table A, 7 in B),
+  and 6 in Table A are `A MEDIR` because the proposed string does not match any real field of
+  today's contract (3 only exist in an internal test vector, one is Meta's own pagination envelope,
+  one is a CLI flag, one does not exist). The "What does NOT change" section brought in the 23
+  already-in-English rows from item 4 of the inventory, with `consumer-b`'s collision rule credited.
+  No name was decided by this task. All 119 `file:line` pointers were checked mechanically against
+  the code (a Python verification script, not just sampling); a file error found during that check
+  (`conector` pointed to `state.go` instead of `ingress.go`) was fixed before the commit. Zero
+  identifiable data copied from the private channel (only the key/value table rows). Verify:
+  `CGO_ENABLED=0 go build ./...`, `go test ./...` (both personal-data gates swept `docs/` and
+  passed), `go vet ./...`, `gofmt -l cmd internal` clean. _Completed 2026-08-31 08:18._
 - **The pre-push gate looks inside merge commits too** (T-201) — `filesChangedInCommit`
-  (`internal/config/prepush_test.go`) passou a decidir pelo numero de pais do commit: 0/1 pai
-  mantem o diff de sempre (com `--root` para o genesis), 2+ pais (merge) muda para
-  `git diff-tree -c`. Escolhido com numero na mao, nao por suposicao: contra um merge real
-  construido num clone descartavel deste repositorio (nunca `origin`), um merge LIMPO mediu **12
-  arquivos com `-m`** (reinspeciona tudo que as duas branches ja tinham, redundante com o que a
-  varredura por commit ja olhou) contra **0 com `-c`** (nada de novo — tudo bate trivialmente com
-  um dos pais); um merge com CONFLITO DE VERDADE (agulha so' existe na resolucao, em nenhum dos
-  dois pais) mediu **1 arquivo em ambos** — `-c` acha tudo que `-m` acha, ao custo de zero
-  redundancia no caso limpo. Prova de que `-c` nao esconde nada: um arquivo que ele omite bate
-  com um pai cujo commit ja esta na lista varrida (ou ja estava publico antes deste push), entao
-  o conteudo ja passou por um olhar — `-c` so' remove o SEGUNDO olhar redundante, nunca o unico.
-  Dois testes novos contra repo descartavel: `TestPrePushGateBlocksNeedleOnlyInMergeResolution`
-  (agulha so' na resolucao de um conflito real; bloqueio nomeia o commit de MERGE e o arquivo, nao
-  "nao consegui verificar") e `TestPrePushGateCleanMergeOnMainPasses` (merge limpo passa, sweep em
-  ~160ms). Entrada em `docs/ARMADILHAS.md` (par pt-BR): o comentario que declarava o buraco em
-  `filesChangedInCommit` foi atualizado — descrevia limitacao ja consertada, doc falso. Verify:
-  `CGO_ENABLED=0 go build ./...`, `go test ./...`, `go vet ./...`, `gofmt -l cmd internal` limpos.
-  _Completed 2026-08-31 07:55._
-- **The pre-push gate must not make the legitimate path impossible** (T-200) — o primeiro push de
-  QUALQUER ref nova (sha remoto = zeros) parava de ser recusado de saida e passou a ter o intervalo
-  calculado por `git rev-list <sha-novo> --not --remotes` (`commitsForPushedInterval`, em
-  `internal/config/prepush_test.go`) — exatamente "o que este push acrescenta ao `origin`", sem
-  adivinhar merge-base; sem remoto nenhum a formula se reduz sozinha a varrer todos os commits
-  alcancaveis (fallback seguro, sem codigo especial). Provado contra dado real, nao afirmado: push
-  de branch nova e limpa passa; push de branch cujo commit A introduz uma agulha e o commit B apaga
-  o arquivo de novo continua bloqueando, citando o commit A e o arquivo (nao "nao consegui
-  verificar") — tres testes novos (`TestPrePushGateNewRefCleanBranchPasses`,
-  `TestPrePushGateNewRefBlocksNeedleDeletedLater`, `TestPrePushGateNewRefNoRemoteAtAllSweepsEverything`)
-  e um ensaio manual contra um repo bare descartavel. Entrada em `docs/ARMADILHAS.md` (par pt-BR),
-  marcada com o fogo: falha fechada que torna o caminho legitimo impossivel nao protege, ensina o
-  desvio — e o primeiro controle do planner tinha "passado" pelo motivo errado (sha zerado, nao
-  agulha achada). Verify: `CGO_ENABLED=0 go build ./...`, `go test ./...`, `go vet ./...`, `gofmt -l
-  cmd internal` limpos. _Completed 2026-08-31 06:41._
+  (`internal/config/prepush_test.go`) now decides by the commit's number of parents: 0/1 parent
+  keeps the usual diff (with `--root` for the genesis commit), 2+ parents (a merge) switches to
+  `git diff-tree -c`. Chosen with a measured number in hand, not by assumption: against a real merge
+  built in a disposable clone of this repository (never `origin`), a CLEAN merge measured **12 files
+  with `-m`** (re-inspects everything both branches already had, redundant with what the per-commit
+  sweep already looked at) against **0 with `-c`** (nothing new — everything trivially matches one
+  of the parents); a merge with a REAL CONFLICT (the needle only exists in the resolution, in
+  neither parent) measured **1 file in both** — `-c` finds everything `-m` finds, at the cost of
+  zero redundancy in the clean case. Proof that `-c` hides nothing: a file it omits matches a parent
+  whose commit is already in the swept list (or was already public before this push), so the
+  content already had a look — `-c` only removes the redundant SECOND look, never the only one. Two
+  new tests against a disposable repo: `TestPrePushGateBlocksNeedleOnlyInMergeResolution` (the
+  needle exists only in the resolution of a real conflict; the block names the MERGE commit and the
+  file, not "could not verify") and `TestPrePushGateCleanMergeOnMainPasses` (a clean merge passes,
+  sweep in ~160ms). Entry in `docs/ARMADILHAS.md` (pt-BR pair): the comment that declared the hole
+  in `filesChangedInCommit` was updated — it described a limitation already fixed, a false doc.
+  Verify: `CGO_ENABLED=0 go build ./...`, `go test ./...`, `go vet ./...`, `gofmt -l cmd internal`
+  clean. _Completed 2026-08-31 07:55._
+- **The pre-push gate must not make the legitimate path impossible** (T-200) — the first push of
+  ANY new ref (remote sha = zeros) stopped being refused outright and now has its interval computed
+  by `git rev-list <new-sha> --not --remotes` (`commitsForPushedInterval`, in
+  `internal/config/prepush_test.go`) — exactly "what this push adds to `origin`", without guessing a
+  merge-base; with no remote at all the formula reduces on its own to sweeping every reachable
+  commit (a safe fallback, no special-case code). Proved against real data, not just asserted: a
+  push of a new, clean branch passes; a push of a branch whose commit A introduces a needle and
+  whose commit B deletes the file again still blocks, citing commit A and the file (not "could not
+  verify") — three new tests (`TestPrePushGateNewRefCleanBranchPasses`,
+  `TestPrePushGateNewRefBlocksNeedleDeletedLater`,
+  `TestPrePushGateNewRefNoRemoteAtAllSweepsEverything`) plus a manual trial against a disposable bare
+  repo. Entry in `docs/ARMADILHAS.md` (pt-BR pair), marked with fire: a fail-closed gate that makes
+  the legitimate path impossible does not protect, it teaches the workaround — and the planner's
+  first check had "passed" for the wrong reason (a zeroed sha, not a needle found). Verify:
+  `CGO_ENABLED=0 go build ./...`, `go test ./...`, `go vet ./...`, `gofmt -l cmd internal` clean.
+  _Completed 2026-08-31 06:41._
 - **A pre-push gate: nothing personal leaves this machine, not even in a commit that a later
-  commit fixes** (T-199) — `.githooks/pre-push` (ativado por clone com `git config core.hooksPath
-  .githooks`) roda `internal/config/prepush_test.go`'s `TestPrePushGate` para cada ref sendo
-  empurrada: materializa o que CADA commit do intervalo introduziu (nao a arvore final) e reusa,
-  sem duplicar, `sweepPhoneNumbersOutsideTheAllowlist` e `sweepForbiddenNamesOutsideTheGate` — as
-  mesmas funcoes dos dois portoes de arvore ja existentes. Controle positivo de intervalo provado:
-  dois commits descartaveis (um acrescenta um numero sintetico fora da allowlist — nao repetido
-  aqui, ver o proprio portao de telefone para o porque de nao crescer a allowlist por um valor
-  de controle descartado — o outro apaga o arquivo, arvore final limpa) tiveram o push BLOQUEADO,
-  nomeando o commit e o arquivo (`CONTROLE-T199-AGULHA.md:1`). Controle de "nao consegui verificar" provado escondendo
-  `~/.zapgw/forbidden-names.txt` (push bloqueado com a mensagem propria; arquivo devolvido, 17
-  linhas confirmadas). Push legitimo mede ~1.7s. Falha fechada em todos os caminhos: `go` ausente,
-  lista de agulhas ausente, intervalo incalculavel, e primeiro push de ref nova (sha remoto todo
-  zeros, sem base segura para calcular o intervalo) bloqueiam, nunca liberam. Limite documentado no
-  proprio codigo: um commit de MERGE mostra diff vazio para `git diff-tree` sem `-m`/`-c`, entao
-  conteudo reintroduzido so' numa resolucao de merge nao e' inspecionado por este gate. Verify:
-  `CGO_ENABLED=0 go build ./...`, `go test ./...`, `go vet ./...`, `gofmt -l cmd internal` limpos.
-  _Completed 2026-08-31 06:29._
+  commit fixes** (T-199) — `.githooks/pre-push` (activated per clone with `git config
+  core.hooksPath .githooks`) runs `internal/config/prepush_test.go`'s `TestPrePushGate` for every
+  ref being pushed: it materializes what EACH commit in the interval introduced (not the final
+  tree) and reuses, without duplicating, `sweepPhoneNumbersOutsideTheAllowlist` and
+  `sweepForbiddenNamesOutsideTheGate` — the same functions the two existing tree gates use. A
+  positive interval control was proved: two disposable commits (one adds a synthetic number outside
+  the allowlist — not repeated here, see the phone gate itself for why the allowlist should not
+  grow by a discarded control value — the other deletes the file, leaving the final tree clean) had
+  their push BLOCKED, naming the commit and the file (`CONTROLE-T199-AGULHA.md:1`). A "could not
+  verify" control was proved by hiding `~/.zapgw/forbidden-names.txt` (push blocked with its own
+  message; file restored, 17 lines confirmed). A legitimate push measures ~1.7s. Fail-closed on
+  every path: `go` missing, the needle list missing, an uncomputable interval, and the first push of
+  a new ref (remote sha all zeros, no safe base to compute the interval) all block, never let
+  through. A limit is documented in the code itself: a MERGE commit shows an empty diff to
+  `git diff-tree` without `-m`/`-c`, so content reintroduced only in a merge resolution is not
+  inspected by this gate. Verify: `CGO_ENABLED=0 go build ./...`, `go test ./...`, `go vet ./...`,
+  `gofmt -l cmd internal` clean. _Completed 2026-08-31 06:29._
 - **Inventory every contract key the consumer reads, with its direction and file:line** (T-198) —
-  `docs/INVENTARIO-CHAVES.md` criado: 47 pontos de emissao medidos para as 29 chaves pedidas (18
-  chaves repetem por aparecerem em mais de uma direcao/rota), zero ausentes do codigo, zero ja em
-  ingles entre as 29. A varredura inversa (item 4) achou 20+ chaves de SAIDA ja em ingles
-  (`media_id`, `wa_id`, `id`, `status`, `ok`, os campos de `meta.Profile`/`ProfilePatch` etc.),
-  incluindo a localizacao exata e corrigida do exemplo do `Why` — a resposta de `POST /v1/media`
-  emite `media_id` em `internal/outbound/media_handler.go:260` (nao em `message.go:179,626`, que
-  sao usos de ENTRADA do mesmo nome). Nao decide nome nenhum, nao edita tabela de contrato. Verify:
-  `go test ./...`, `go vet ./...`, `CGO_ENABLED=0 go build ./...`, `gofmt -l cmd internal` limpos;
-  amostra de 7 `arquivo:linha` conferida com `sed -n`. _Completed 2026-08-31 06:02._
-- **Settle whether the instance-type gate exists, and make the row say what is true** (T-197) — o
-  mecanismo EXISTE: `internal/outbound/types.go` (`AcceptedTypes`, T-111), parametro posicional
-  obrigatorio no ultimo lugar de todo construtor `outbound.New*Handler`. Provado removendo
-  `outbound.WhatsAppOnly` da chamada de `NewReadsHandler` em `cmd/zapgw/main.go:430` e rodando
-  `go build ./...`: `not enough arguments in call to outbound.NewReadsHandler`; restaurado, `git
-  diff` vazio. A varredura anterior (T-196) tinha olhado no lugar errado. `CLAUDE.md` e
-  `CLAUDE.pt-BR.md` corrigidos juntos, com ponteiro e evidencia. _Completed 2026-08-31 01:07._
+  `docs/INVENTARIO-CHAVES.md` created: 47 emission points measured for the 29 requested keys (18
+  keys repeat because they appear in more than one direction/route), zero missing from the code,
+  zero already in English among the 29. The reverse sweep (item 4) found 20+ OUTPUT keys already in
+  English (`media_id`, `wa_id`, `id`, `status`, `ok`, `meta.Profile`/`ProfilePatch`'s fields, etc.),
+  including the exact, corrected location of the `Why`'s example — `POST /v1/media`'s response
+  emits `media_id` in `internal/outbound/media_handler.go:260` (not in `message.go:179,626`, which
+  are ENTRADA/input uses of the same name). It decides no name and edits no contract table. Verify:
+  `go test ./...`, `go vet ./...`, `CGO_ENABLED=0 go build ./...`, `gofmt -l cmd internal` clean; a
+  sample of 7 `file:line`s checked with `sed -n`. _Completed 2026-08-31 06:02._
+- **Settle whether the instance-type gate exists, and make the row say what is true** (T-197) — the
+  mechanism EXISTS: `internal/outbound/types.go` (`AcceptedTypes`, T-111), a mandatory positional
+  parameter in the last position of every `outbound.New*Handler` constructor. Proved by removing
+  `outbound.WhatsAppOnly` from the `NewReadsHandler` call in `cmd/zapgw/main.go:430` and running
+  `go build ./...`: `not enough arguments in call to outbound.NewReadsHandler`; restored, `git diff`
+  empty. The earlier sweep (T-196) had looked in the wrong place. `CLAUDE.md` and
+  `CLAUDE.pt-BR.md` fixed together, with a pointer and the evidence. _Completed 2026-08-31 01:07._
 - **The PT-BR pair of CLAUDE.md stops describing a repository that no longer exists** (T-196) —
-  o par em portugues voltou a bater com o `CLAUDE.md`: a tabela de regras duras (os dois portoes de
-  dado pessoal, TLS, isolamento de rota), a secao das tres fundacoes reescrita, a dos portoes
-  passando de dois para tres, e o "Estado hoje" que ainda dizia *"so o scaffold, sem codigo, e ainda
-  privado"*. **Tres afirmacoes falsas foram achadas TAMBEM no lado ingles** ao conferir contra o
-  codigo — tres portoes marcados como "existe no zapgw-dev, migra com o codigo" depois de o codigo
-  ter migrado. Dois deles foram localizados aqui e ganharam ponteiro; o terceiro nao foi encontrado
-  e virou a T-197 em vez de virar afirmacao. _Completed 2026-08-31 01:03._
+  the Portuguese pair went back to matching `CLAUDE.md`: the hard-rules table (the two personal-data
+  gates, TLS, route isolation), the three-foundations section rewritten, the gates section going
+  from two to three, and the "State today" that still said *"just the scaffold, no code, and still
+  private"*. **Three false statements were found ALSO on the English side** while checking against
+  the code — three gates marked as "exists in zapgw-dev, migrates with the code" after the code had
+  already migrated. Two of them were located here and got a pointer; the third was not found and
+  became T-197 instead of becoming a statement. _Completed 2026-08-31 01:03._
 
 - **CI carries the name gate, and says so when it cannot verify** (T-195) — `ZAPGW_FORBIDDEN_NAMES`
-  entregue como `env:` no nivel do JOB em `.github/workflows/verify.yml`, alcancando tanto o
-  `go test ./...` quanto um passo proprio novo (`-run TestNoCustomerNameOutsideTheGateInTheRepo`),
-  espelhando o portao de telefone. Comentario no workflow documenta que PR de fork falha fechado
-  ("nao consegui verificar") de proposito. `CLAUDE.md` corrigido: a CI ja existe, nao "volta em
-  2026-09-01". _Completed 2026-08-31 00:50._
-- **A gate for customer names, and the tree it cleans** (T-193) — novo portao
-  (`internal/config/names_allowlist_test.go`) sem allowlist e sem isencao por arquivo: qualquer
-  agulha e reprovacao. A lista mora fora do repositorio (`ZAPGW_FORBIDDEN_NAMES` ou
-  `~/.zapgw/forbidden-names.txt`); sem uma das duas, falha dizendo que nao conseguiu verificar,
-  nunca verde. Reprovou contra a arvore suja (25 ocorrencias, 6 arquivos) antes da limpeza; depois
-  da limpeza, `go test ./...` inteiro `ok`. `CLAUDE.md` e `docs/ARMADILHAS.md` (+ par pt-BR)
-  atualizados. _Completed 2026-08-31 00:37._
-- **A real customer name in a test argument becomes a synthetic one** (T-192) — trocado o valor de
-  `cmd/zapgw/provision_test.go:2392`; varredura da agulha na arvore inteira (rastreados e
-  nao-rastreados-nao-ignorados) nao achou mais nenhuma ocorrencia. _Completed 2026-08-31 00:15._
-- **The personal-data gate sweeps the whole repository, minus a declared exclusion** (T-191) — o
-  portao de telefone trocou a lista fixa de diretorios (`scannedTargets`) por `filesGitSeesFromRoot`:
-  `git ls-files` + `git ls-files --others --exclude-standard`, o mesmo conjunto que um `git add -A`
-  levaria. Controle positivo na raiz reprovou contra dado real; controle negativo (`*.local.md`)
-  confirmou que o arquivo do canal continua fora da varredura. _Completed 2026-08-31 00:21._
+  delivered as a JOB-level `env:` in `.github/workflows/verify.yml`, reaching both `go test ./...`
+  and a new step of its own (`-run TestNoCustomerNameOutsideTheGateInTheRepo`), mirroring the phone
+  gate. A comment in the workflow documents that a fork PR fails closed ("could not verify") on
+  purpose. `CLAUDE.md` fixed: the CI already exists, it does not "come back on 2026-09-01".
+  _Completed 2026-08-31 00:50._
+- **A gate for customer names, and the tree it cleans** (T-193) — new gate
+  (`internal/config/names_allowlist_test.go`) with no allowlist and no per-file exemption: any
+  needle is a failure. The list lives outside the repository (`ZAPGW_FORBIDDEN_NAMES` or
+  `~/.zapgw/forbidden-names.txt`); without one of the two, it fails saying it could not verify,
+  never green. It failed against the dirty tree (25 occurrences, 6 files) before the cleanup; after
+  the cleanup, the whole `go test ./...` is `ok`. `CLAUDE.md` and `docs/ARMADILHAS.md` (+ pt-BR
+  pair) updated. _Completed 2026-08-31 00:37._
+- **A real customer name in a test argument becomes a synthetic one** (T-192) — swapped the value
+  of `cmd/zapgw/provision_test.go:2392`; a sweep for the needle across the whole tree (tracked and
+  untracked-and-not-ignored) found no more occurrences. _Completed 2026-08-31 00:15._
+- **The personal-data gate sweeps the whole repository, minus a declared exclusion** (T-191) — the
+  phone gate swapped its fixed list of directories (`scannedTargets`) for `filesGitSeesFromRoot`:
+  `git ls-files` + `git ls-files --others --exclude-standard`, the same set a `git add -A` would
+  take. A positive control at the root failed against real data; a negative control (`*.local.md`)
+  confirmed the channel file stays outside the sweep. _Completed 2026-08-31 00:21._
 
 ## v0.60.1 — 2026-08-30
 
-**O primeiro release deste repositorio, e o primeiro que existe fora do privado.** Nao ha mudanca de
-comportamento em relacao a `v0.60.0`, que esta em producao desde 2026-08-29: o contrato com os
-consumidores e' byte a byte o mesmo — 322 tags `json` e 2.081 literais de string de producao
-identicos, medidos, nao afirmados. **Por isso PATCH e nao MINOR:** SemVer fala do contrato, e o
-contrato nao se moveu, por maior que tenha sido a mudanca por dentro.
+**This repository's first release, and the first one that exists outside the private repo.** There
+is no behavior change relative to `v0.60.0`, which has been in production since 2026-08-29: the
+contract with consumers is byte-for-byte the same — 322 `json` tags and 2,081 production string
+literals identical, measured, not just asserted. **That is why it's PATCH and not MINOR:** SemVer
+speaks about the contract, and the contract did not move, no matter how big the change was on the
+inside.
 
-O que esta versao carrega:
+What this version carries:
 
-- **O codigo inteiro em ingles.** 3.818 declaracoes em sete pacotes; sobra uma palavra portuguesa,
-  num nome de teste que cita o nome de uma parte multipart **no fio** — o teste nomeia o contrato
-  que guarda.
-- **O portao de dado pessoal, com a lista de isencoes VAZIA.** Ele varre `cmd/`, `internal/`,
-  `testdata/`, `docs/` e o `README.md`, decodificando o base64 de todo `wamid.` — porque o `wamid`
-  carrega o telefone do destinatario dentro dele, e um `grep` pelo numero como um humano o escreve
-  passa limpo por cima.
-- **Texto de diagnostico que descreve comportamento em vez de nomear constante interna** — o
-  ponteiro que nenhum compilador confere.
+- **The entire codebase in English.** 3,818 declarations across seven packages; one Portuguese word
+  is left, in a test name that cites the name of a multipart part **on the wire** — the test names
+  the contract it guards.
+- **The personal-data gate, with an EMPTY exemption list.** It sweeps `cmd/`, `internal/`,
+  `testdata/`, `docs/` and `README.md`, decoding the base64 of every `wamid.` — because the `wamid`
+  carries the recipient's phone number inside it, and a `grep` for the number the way a human writes
+  it passes right over them.
+- **Diagnostic text that describes behavior instead of naming an internal constant** — a pointer no
+  compiler checks.
 
-**Binarios:** `zapgw-linux-amd64` e `zapgw-linux-arm64`, os dois estaticos (`CGO_ENABLED=0`).
-🔴 **O amd64 foi EXECUTADO** num host Linux real (`x86_64`): respondeu `0.60.1` e `ldd` devolveu
-*"not a dynamic executable"*. **O arm64 apenas compilou e NAO foi executado em lugar nenhum** —
-*compilar nao e' rodar*, e por isso ele vai marcado como nao testado em vez de anunciado como
-suportado.
+**Binaries:** `zapgw-linux-amd64` and `zapgw-linux-arm64`, both static (`CGO_ENABLED=0`).
+🔴 **The amd64 was RUN** on a real Linux host (`x86_64`): it answered `0.60.1` and `ldd` returned
+*"not a dynamic executable"*. **The arm64 only compiled and was NOT run anywhere** — *compiling is
+not running*, and that's why it is marked untested rather than announced as supported.
