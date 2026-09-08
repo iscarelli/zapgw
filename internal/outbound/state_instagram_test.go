@@ -23,7 +23,7 @@ func testInertWatchdog(store *config.Store) *Watchdog {
 	return NewWatchdog(store, meta.NewClient(nil, "http://127.0.0.1:1"))
 }
 
-// --- nao_se_aplica: WHATSAPP instance -----------------------------------
+// --- not_applicable: WHATSAPP instance -----------------------------------
 
 func TestStateInstagramTokenIsNotApplicableForWhatsapp(t *testing.T) {
 	store, _ := storeWithConsumer(t) // creates "lojinha", tipo=whatsapp
@@ -33,15 +33,15 @@ func TestStateInstagramTokenIsNotApplicableForWhatsapp(t *testing.T) {
 	}
 	ti := e.InstagramToken
 	if ti.Verdict != VerdictIGTokenNotApplicable {
-		t.Errorf("veredito = %q, quero %q", ti.Verdict, VerdictIGTokenNotApplicable)
+		t.Errorf("verdict = %q, want %q", ti.Verdict, VerdictIGTokenNotApplicable)
 	}
 	// ASSERTED ABSENCE: the verdict says "does not apply", and the date fields
 	// stay null — never a number calculated over a deadline that doesn't exist.
 	if ti.SetAt != nil || ti.ExpiresAt != nil || ti.DaysLeft != nil || ti.RenewedAt != nil || ti.FailingSince != nil {
-		t.Errorf("campo de data/renovacao preenchido numa instancia nao_se_aplica: %+v", ti)
+		t.Errorf("date/renewal field filled on a not_applicable instance: %+v", ti)
 	}
 	if ti.Instruction != nil {
-		t.Errorf("instrucao presente sem problema nenhum: %q", *ti.Instruction)
+		t.Errorf("instruction present with no problem at all: %q", *ti.Instruction)
 	}
 }
 
@@ -58,23 +58,23 @@ func TestStateInstagramTokenWaitingWhenItHasNotRenewedYet(t *testing.T) {
 	}
 	ti := e.InstagramToken
 	if ti.Verdict != VerdictIGTokenWaiting {
-		t.Errorf("veredito = %q, quero %q", ti.Verdict, VerdictIGTokenWaiting)
+		t.Errorf("verdict = %q, want %q", ti.Verdict, VerdictIGTokenWaiting)
 	}
 	if ti.SetAt == nil || *ti.SetAt != setAt.Format(time.RFC3339) {
-		t.Errorf("SetAt = %v, quero %s", ti.SetAt, setAt.Format(time.RFC3339))
+		t.Errorf("SetAt = %v, want %s", ti.SetAt, setAt.Format(time.RFC3339))
 	}
 	want := setAt.Add(InstagramTokenValidity).Format(time.RFC3339)
 	if ti.ExpiresAt == nil || *ti.ExpiresAt != want {
-		t.Errorf("ExpiresAt = %v, quero %s", ti.ExpiresAt, want)
+		t.Errorf("ExpiresAt = %v, want %s", ti.ExpiresAt, want)
 	}
 	if ti.DaysLeft == nil || *ti.DaysLeft != 51 { // 60 - 9
-		t.Errorf("DaysLeft = %v, quero 51", ti.DaysLeft)
+		t.Errorf("DaysLeft = %v, want 51", ti.DaysLeft)
 	}
 	if ti.RenewedAt != nil {
-		t.Errorf("RenewedAt = %v, quero nil — o laco nunca renovou este token", ti.RenewedAt)
+		t.Errorf("RenewedAt = %v, want nil — the loop never renewed this token", ti.RenewedAt)
 	}
 	if ti.Instruction != nil {
-		t.Errorf("instrucao presente sem problema nenhum: %q", *ti.Instruction)
+		t.Errorf("instruction present with no problem at all: %q", *ti.Instruction)
 	}
 }
 
@@ -94,13 +94,13 @@ func TestStateInstagramTokenOkAfterRenewingSuccessfully(t *testing.T) {
 	}
 	ti := e.InstagramToken
 	if ti.Verdict != VerdictIGTokenOK {
-		t.Errorf("veredito = %q, quero %q — o laco ja renovou com sucesso", ti.Verdict, VerdictIGTokenOK)
+		t.Errorf("verdict = %q, want %q — the loop already renewed successfully", ti.Verdict, VerdictIGTokenOK)
 	}
 	if ti.RenewedAt == nil || *ti.RenewedAt != renewedAt.Format(time.RFC3339) {
-		t.Errorf("RenewedAt = %v, quero %s", ti.RenewedAt, renewedAt.Format(time.RFC3339))
+		t.Errorf("RenewedAt = %v, want %s", ti.RenewedAt, renewedAt.Format(time.RFC3339))
 	}
 	if ti.Instruction != nil {
-		t.Errorf("instrucao presente sem problema nenhum: %q", *ti.Instruction)
+		t.Errorf("instruction present with no problem at all: %q", *ti.Instruction)
 	}
 }
 
@@ -126,23 +126,23 @@ func TestStateInstagramTokenFailingCarriesInstructionAndFailingSince(t *testing.
 	}
 	ti := e.InstagramToken
 	if ti.Verdict != VerdictIGTokenFailing {
-		t.Errorf("veredito = %q, quero %q", ti.Verdict, VerdictIGTokenFailing)
+		t.Errorf("verdict = %q, want %q", ti.Verdict, VerdictIGTokenFailing)
 	}
 	if ti.FailingSince == nil || *ti.FailingSince != failingSince.Format(time.RFC3339) {
-		t.Errorf("FailingSince = %v, quero %s", ti.FailingSince, failingSince.Format(time.RFC3339))
+		t.Errorf("FailingSince = %v, want %s", ti.FailingSince, failingSince.Format(time.RFC3339))
 	}
 	// THE CENTRAL ASSERTION OF THE OWNER'S REQUEST: the "falhando" LABEL is not
 	// enough — the INSTRUCTION of what to do has to come with it, and it has to
 	// say that the resolution is MANUAL (the consumer does not have the token
 	// to fix it alone).
 	if ti.Instruction == nil {
-		t.Fatal("Instruction ausente com veredito falhando — o consumidor nao tem como saber o que fazer")
+		t.Fatal("Instruction absent with a failing verdict — the consumer has no way to know what to do")
 	}
 	if !strings.Contains(*ti.Instruction, "MANUAL") {
-		t.Errorf("Instruction = %q, esperava mencionar que a resolucao e MANUAL", *ti.Instruction)
+		t.Errorf("Instruction = %q, expected to mention that the resolution is MANUAL", *ti.Instruction)
 	}
 	if *ti.Instruction != InstructionIGTokenFailing {
-		t.Errorf("Instruction = %q, quero a constante InstructionIGTokenFailing", *ti.Instruction)
+		t.Errorf("Instruction = %q, want the constant InstructionIGTokenFailing", *ti.Instruction)
 	}
 }
 
@@ -159,19 +159,19 @@ func TestStateInstagramTokenExpiredCarriesInstruction(t *testing.T) {
 	}
 	ti := e.InstagramToken
 	if ti.Verdict != VerdictIGTokenExpired {
-		t.Errorf("veredito = %q, quero %q", ti.Verdict, VerdictIGTokenExpired)
+		t.Errorf("verdict = %q, want %q", ti.Verdict, VerdictIGTokenExpired)
 	}
 	if ti.DaysLeft == nil || *ti.DaysLeft >= 0 {
-		t.Errorf("DaysLeft = %v, quero negativo (ja passou do prazo)", ti.DaysLeft)
+		t.Errorf("DaysLeft = %v, want negative (already past deadline)", ti.DaysLeft)
 	}
 	if ti.Instruction == nil {
-		t.Fatal("Instruction ausente com veredito expirado")
+		t.Fatal("Instruction absent with an expired verdict")
 	}
 	if !strings.Contains(strings.ToLower(*ti.Instruction), "manual") {
-		t.Errorf("Instruction = %q, esperava mencionar login MANUAL na Meta", *ti.Instruction)
+		t.Errorf("Instruction = %q, expected to mention MANUAL login on Meta", *ti.Instruction)
 	}
 	if *ti.Instruction != InstructionIGTokenExpired {
-		t.Errorf("Instruction = %q, quero a constante InstructionIGTokenExpired", *ti.Instruction)
+		t.Errorf("Instruction = %q, want the constant InstructionIGTokenExpired", *ti.Instruction)
 	}
 }
 
@@ -195,7 +195,7 @@ func TestStateInstagramTokenExpiredTakesPrecedenceOverFailing(t *testing.T) {
 		t.Fatalf("BuildState: %v", err)
 	}
 	if e.InstagramToken.Verdict != VerdictIGTokenExpired {
-		t.Errorf("veredito = %q, quero %q (expirado vence falhando)", e.InstagramToken.Verdict, VerdictIGTokenExpired)
+		t.Errorf("verdict = %q, want %q (expired beats failing)", e.InstagramToken.Verdict, VerdictIGTokenExpired)
 	}
 }
 
@@ -211,31 +211,31 @@ func TestGETStateInstagramExposesInstagramTokenInTheJSON(t *testing.T) {
 
 	rec := askState(t, h, "token-do-a", "insta-loja")
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, corpo: %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, body: %s", rec.Code, rec.Body.String())
 	}
 	var body map[string]any
 	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
-		t.Fatalf("JSON invalido: %v\n%s", err, rec.Body.String())
+		t.Fatalf("invalid JSON: %v\n%s", err, rec.Body.String())
 	}
 	ti, ok := body["instagram_token"].(map[string]any)
 	if !ok {
-		t.Fatalf("token_instagram ausente ou de outro tipo no JSON: %v", body["instagram_token"])
+		t.Fatalf("instagram_token absent or of another type in the JSON: %v", body["instagram_token"])
 	}
 	if ti["verdict"] != VerdictIGTokenWaiting {
-		t.Errorf("veredito = %v, quero %q", ti["verdict"], VerdictIGTokenWaiting)
+		t.Errorf("verdict = %v, want %q", ti["verdict"], VerdictIGTokenWaiting)
 	}
 	if ti["definido_em"] == nil {
-		t.Error("definido_em ausente — a instancia insta-loja tem token desde a criacao")
+		t.Error("definido_em absent — instance insta-loja has had a token since creation")
 	}
 	if ti["expires_at"] == nil {
-		t.Error("expira_em ausente")
+		t.Error("expires_at absent")
 	}
 	if _, has := ti["days_left"]; !has {
-		t.Error("dias_restantes ausente")
+		t.Error("days_left absent")
 	}
 }
 
-// And the SAME endpoint, on a WHATSAPP instance, has to say nao_se_aplica IN
+// And the SAME endpoint, on a WHATSAPP instance, has to say not_applicable IN
 // THE REAL JSON — not just in the Go struct.
 func TestGETStateWhatsappInstagramTokenIsNotApplicableInTheJSON(t *testing.T) {
 	store, path := storeWithConsumer(t)
@@ -246,23 +246,23 @@ func TestGETStateWhatsappInstagramTokenIsNotApplicableInTheJSON(t *testing.T) {
 
 	rec := askState(t, h, "token-do-a", "lojinha")
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, corpo: %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, body: %s", rec.Code, rec.Body.String())
 	}
 	var body map[string]any
 	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
-		t.Fatalf("JSON invalido: %v\n%s", err, rec.Body.String())
+		t.Fatalf("invalid JSON: %v\n%s", err, rec.Body.String())
 	}
 	ti, ok := body["instagram_token"].(map[string]any)
 	if !ok {
-		t.Fatalf("token_instagram ausente ou de outro tipo no JSON: %v", body["instagram_token"])
+		t.Fatalf("instagram_token absent or of another type in the JSON: %v", body["instagram_token"])
 	}
 	if ti["verdict"] != VerdictIGTokenNotApplicable {
-		t.Errorf("veredito = %v, quero %q — token_instagram NAO PODE sumir nem vir zerado numa instancia whatsapp",
+		t.Errorf("verdict = %v, want %q — instagram_token CANNOT vanish nor come zeroed on a whatsapp instance",
 			ti["verdict"], VerdictIGTokenNotApplicable)
 	}
 }
 
-// --- T-099: nao_se_aplica in the REVERSE DIRECTION — WhatsApp blocks on an ------
+// --- T-099: not_applicable in the REVERSE DIRECTION — WhatsApp blocks on an ------
 // --- INSTAGRAM instance. It's the SAME mother pitfall that T-098 closed on one
 // side (above) and left open on the other: measured in production (tenant-two-ig,
 // v0.36.0, 2026-07-30 21:11), numero_na_meta said `nunca_observado` — the
@@ -278,21 +278,21 @@ func TestStateNumberAtMetaIsNotApplicableForInstagram(t *testing.T) {
 	}
 	n := e.NumberAtMeta
 	if n.Quality.State != NotApplicable {
-		t.Errorf("qualidade.estado = %q, quero %q", n.Quality.State, NotApplicable)
+		t.Errorf("quality.state = %q, want %q", n.Quality.State, NotApplicable)
 	}
 	if n.MessageLimit.State != NotApplicable {
-		t.Errorf("limite_de_mensagens.estado = %q, quero %q", n.MessageLimit.State, NotApplicable)
+		t.Errorf("message_limit.state = %q, want %q", n.MessageLimit.State, NotApplicable)
 	}
 	// ASSERTED ABSENCE, like in token_instagram on a whatsapp instance: the
 	// fields that only make sense with a real observation stay null.
 	if n.Quality.Value != nil || n.Quality.ObservedAt != nil || n.Quality.Source != nil {
-		t.Errorf("qualidade com campo preenchido numa instancia nao_se_aplica: %+v", n.Quality)
+		t.Errorf("quality with a field filled on a not_applicable instance: %+v", n.Quality)
 	}
 	if n.MessageLimit.Value != nil || n.MessageLimit.ObservedAt != nil || n.MessageLimit.Source != nil {
-		t.Errorf("limite_de_mensagens com campo preenchido numa instancia nao_se_aplica: %+v", n.MessageLimit)
+		t.Errorf("message_limit with a field filled on a not_applicable instance: %+v", n.MessageLimit)
 	}
 	if n.CheckedAt != nil {
-		t.Errorf("conferido_em = %v, quero nil — nunca ha tentativa de medir numa instancia Instagram", n.CheckedAt)
+		t.Errorf("checked_at = %v, want nil — there is never an attempt to measure on an Instagram instance", n.CheckedAt)
 	}
 }
 
@@ -316,7 +316,7 @@ func TestStateMetaTokenIsNotApplicableForInstagramEvenIfTheWatchdogMeasuredRefus
 	// prove anything — we need the watchdog to have actually measured
 	// "recusado" by mistake for the override to have something to fix.
 	if read := watchdog.Read("insta-loja"); read.Verdict != VerdictRefused {
-		t.Fatalf("pre-condicao do achado: vigia.Read = %q, quero %q — sem isto o teste nao exercita o override",
+		t.Fatalf("finding's pre-condition: watchdog.Read = %q, want %q — without this the test does not exercise the override",
 			read.Verdict, VerdictRefused)
 	}
 
@@ -325,11 +325,11 @@ func TestStateMetaTokenIsNotApplicableForInstagramEvenIfTheWatchdogMeasuredRefus
 		t.Fatalf("BuildState: %v", err)
 	}
 	if e.MetaToken.Verdict != NotApplicable {
-		t.Errorf("token_meta.veredito = %q, quero %q — o achado do watchdog.go NAO PODE vazar para o consumidor",
+		t.Errorf("meta_token.verdict = %q, want %q — the finding from watchdog.go CANNOT leak to the consumer",
 			e.MetaToken.Verdict, NotApplicable)
 	}
 	if e.MetaToken.MeasuredAt != nil || e.MetaToken.CheckedAt != nil || e.MetaToken.CheckFailingSince != nil {
-		t.Errorf("token_meta com carimbo preenchido numa instancia nao_se_aplica: %+v", e.MetaToken)
+		t.Errorf("meta_token with a timestamp filled on a not_applicable instance: %+v", e.MetaToken)
 	}
 }
 
@@ -343,7 +343,7 @@ func TestGETStateInstagramNumberAtMetaAndMetaTokenAreNotApplicableInTheJSON(t *t
 
 	rec := askState(t, h, "token-do-a", "insta-loja")
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, corpo: %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, body: %s", rec.Code, rec.Body.String())
 	}
 	var body struct {
 		NumberAtMeta struct {
@@ -356,20 +356,20 @@ func TestGETStateInstagramNumberAtMetaAndMetaTokenAreNotApplicableInTheJSON(t *t
 		} `json:"meta_token"`
 	}
 	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
-		t.Fatalf("JSON invalido: %v\n%s", err, rec.Body.String())
+		t.Fatalf("invalid JSON: %v\n%s", err, rec.Body.String())
 	}
 	for name, block := range map[string]map[string]any{
 		"quality": body.NumberAtMeta.Quality, "message_limit": body.NumberAtMeta.MessageLimit,
 	} {
 		if block["state"] != NotApplicable {
-			t.Errorf("%s.estado = %v, quero %q", name, block["state"], NotApplicable)
+			t.Errorf("%s.state = %v, want %q", name, block["state"], NotApplicable)
 		}
 	}
 	if body.NumberAtMeta.CheckedAt != nil {
-		t.Errorf("numero_na_meta.conferido_em = %v, quero null", *body.NumberAtMeta.CheckedAt)
+		t.Errorf("number_at_meta.checked_at = %v, want null", *body.NumberAtMeta.CheckedAt)
 	}
 	if body.MetaToken.Verdict != NotApplicable {
-		t.Errorf("token_meta.veredito = %q, quero %q", body.MetaToken.Verdict, NotApplicable)
+		t.Errorf("meta_token.verdict = %q, want %q", body.MetaToken.Verdict, NotApplicable)
 	}
 }
 
@@ -384,10 +384,10 @@ func TestStatePublishesTypeAndIgIDWithValueForInstagram(t *testing.T) {
 		t.Fatalf("BuildState: %v", err)
 	}
 	if e.Type != config.TypeInstagram {
-		t.Errorf("tipo = %q, quero %q", e.Type, config.TypeInstagram)
+		t.Errorf("tipo = %q, want %q", e.Type, config.TypeInstagram)
 	}
 	if e.IgID != "IGID1" {
-		t.Errorf("ig_id = %q, quero o valor cadastrado %q", e.IgID, "IGID1")
+		t.Errorf("ig_id = %q, want the registered value %q", e.IgID, "IGID1")
 	}
 }
 
@@ -398,10 +398,10 @@ func TestStatePublishesTypeAndIgIDAsNotApplicableForWhatsapp(t *testing.T) {
 		t.Fatalf("BuildState: %v", err)
 	}
 	if e.Type != config.TypeWhatsApp {
-		t.Errorf("tipo = %q, quero %q", e.Type, config.TypeWhatsApp)
+		t.Errorf("tipo = %q, want %q", e.Type, config.TypeWhatsApp)
 	}
 	if e.IgID != NotApplicable {
-		t.Errorf("ig_id = %q, quero %q — instancia whatsapp nao tem ig_id, e a ausencia tem de ser AFIRMADA",
+		t.Errorf("ig_id = %q, want %q — a whatsapp instance has no ig_id, and the absence has to be ASSERTED",
 			e.IgID, NotApplicable)
 	}
 }
@@ -417,17 +417,17 @@ func TestGETStateInstagramExposesTypeAndIgIDInTheJSON(t *testing.T) {
 
 	rec := askState(t, h, "token-do-a", "insta-loja")
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, corpo: %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, body: %s", rec.Code, rec.Body.String())
 	}
 	var body map[string]any
 	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
-		t.Fatalf("JSON invalido: %v\n%s", err, rec.Body.String())
+		t.Fatalf("invalid JSON: %v\n%s", err, rec.Body.String())
 	}
 	if body["kind"] != config.TypeInstagram {
-		t.Errorf("tipo = %v, quero %q", body["kind"], config.TypeInstagram)
+		t.Errorf("tipo = %v, want %q", body["kind"], config.TypeInstagram)
 	}
 	if body["ig_id"] != "IGID1" {
-		t.Errorf("ig_id = %v, quero %q", body["ig_id"], "IGID1")
+		t.Errorf("ig_id = %v, want %q", body["ig_id"], "IGID1")
 	}
 }
 
@@ -440,17 +440,17 @@ func TestGETStateWhatsappExposesTypeAndIgIDAsNotApplicableInTheJSON(t *testing.T
 
 	rec := askState(t, h, "token-do-a", "lojinha")
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, corpo: %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, body: %s", rec.Code, rec.Body.String())
 	}
 	var body map[string]any
 	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
-		t.Fatalf("JSON invalido: %v\n%s", err, rec.Body.String())
+		t.Fatalf("invalid JSON: %v\n%s", err, rec.Body.String())
 	}
 	if body["kind"] != config.TypeWhatsApp {
-		t.Errorf("tipo = %v, quero %q", body["kind"], config.TypeWhatsApp)
+		t.Errorf("tipo = %v, want %q", body["kind"], config.TypeWhatsApp)
 	}
 	if body["ig_id"] != NotApplicable {
-		t.Errorf("ig_id = %v, quero %q — o campo tem de vir SEMPRE, nunca ausente nem string vazia",
+		t.Errorf("ig_id = %v, want %q — the field always has to come, never absent nor an empty string",
 			body["ig_id"], NotApplicable)
 	}
 }
@@ -467,14 +467,14 @@ func TestGETStateWhatsappExposesTypeAndIgIDAsNotApplicableInTheJSON(t *testing.T
 // mother pitfall ("the rule holds in one place and not in the next")
 // applied to a single word.
 func TestStateNotApplicableIsTheSameWordInBothSenses(t *testing.T) {
-	// Direction 1 (T-098): token_instagram on a WHATSAPP instance.
+	// Direction 1 (T-098): instagram_token on a WHATSAPP instance.
 	storeWA, _ := storeWithConsumer(t) // creates "lojinha", tipo=whatsapp
 	eWA, err := BuildState(storeWA, testInertWatchdog(storeWA), nil, IngressSource{}, nil, nil, testVersion, "lojinha", time.Now())
 	if err != nil {
 		t.Fatalf("BuildState (whatsapp): %v", err)
 	}
 
-	// Direction 2 (T-099): numero_na_meta and token_meta on an INSTAGRAM instance.
+	// Direction 2 (T-099): number_at_meta and meta_token on an INSTAGRAM instance.
 	storeIG, slugIG := storeWithInstagram(t, time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC))
 	eIG, err := BuildState(storeIG, testInertWatchdog(storeIG), nil, IngressSource{}, nil, nil, testVersion, slugIG, time.Now())
 	if err != nil {
@@ -482,15 +482,15 @@ func TestStateNotApplicableIsTheSameWordInBothSenses(t *testing.T) {
 	}
 
 	findings := map[string]string{
-		"token_instagram.veredito (instancia whatsapp)":               eWA.InstagramToken.Verdict,
-		"numero_na_meta.qualidade.estado (instancia instagram)":       eIG.NumberAtMeta.Quality.State,
-		"numero_na_meta.limite_de_mensagens.estado (inst. instagram)": eIG.NumberAtMeta.MessageLimit.State,
-		"token_meta.veredito (instancia instagram)":                   eIG.MetaToken.Verdict,
+		"instagram_token.verdict (whatsapp instance)":             eWA.InstagramToken.Verdict,
+		"number_at_meta.quality.state (instagram instance)":       eIG.NumberAtMeta.Quality.State,
+		"number_at_meta.message_limit.state (instagram instance)": eIG.NumberAtMeta.MessageLimit.State,
+		"meta_token.verdict (instagram instance)":                 eIG.MetaToken.Verdict,
 	}
 	for label, value := range findings {
 		if value != NotApplicable {
-			t.Errorf("%s = %q, quero %q — os DOIS sentidos da armadilha-mae tem de falar a MESMA palavra "+
-				"(comparado contra NotApplicable, a fonte unica de internal/outbound/state.go)", label, value, NotApplicable)
+			t.Errorf("%s = %q, want %q — the TWO senses of the mother pitfall have to speak the SAME word "+
+				"(compared against NotApplicable, the single source in internal/outbound/state.go)", label, value, NotApplicable)
 		}
 	}
 	// AND THE FOUR AGAINST EACH OTHER, without depending on the constant: if
@@ -502,8 +502,8 @@ func TestStateNotApplicableIsTheSameWordInBothSenses(t *testing.T) {
 	firstOne := eWA.InstagramToken.Verdict
 	for label, value := range findings {
 		if value != firstOne {
-			t.Errorf("%s = %q diverge de token_instagram.veredito (whatsapp) = %q — os dois sentidos "+
-				"desta armadilha tem de usar a MESMA palavra entre si", label, value, firstOne)
+			t.Errorf("%s = %q diverges from instagram_token.verdict (whatsapp) = %q — the two senses "+
+				"of this pitfall have to use the SAME word between them", label, value, firstOne)
 		}
 	}
 }
