@@ -4,6 +4,17 @@ One line per version shipped, in the same commit as the bump. The entry states t
 
 ## Unreleased
 
+- **T-237 — The consumer contract still describes four families of key the gateway stopped
+  emitting** — the worst was the discriminator of **every** webhook event: the code emits `kind` with
+  value `message`, the doc said `"tipo": "mensagem"`. The implementer widened past the 12 places the
+  planner had measured, correctly: `tipo` is one field shared by all six event kinds, so fixing only
+  `mensagem` would have left the doc contradicting itself. It also fixed the status error sub-object,
+  the `GET /v1/estado` ingress/watchdog vocabulary, and three of the four keys in the `/v1/bloqueios`
+  success body — leaving `operacao`, which really is Portuguese in the code. A global replace would
+  have written a lie in exactly that cell. Surfaced a **fifth** family, re-measured by the planner
+  and queued as T-240. _Completed 2026-09-08 04:41._
+
+
 - **T-238 — Close the doc-pointer gate's bare-filename hole** — the gate required a directory
   component, so a fixture cited by bare name was invisible to it; seven dead pointers were hiding in
   exactly that gap. Step 0 excluded `docs/CHANGELOG.md` from the sweep structurally — a changelog is

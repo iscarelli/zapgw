@@ -245,61 +245,6 @@ instancias foram rotacionadas. Duas licoes que custaram na hora e valem alem des
 
 > A fila do periodo privado esta em `iscarelli/zapgw-dev`, congelada. Tarefa nova nasce aqui.
 
-## [ ] T-237  The consumer contract still describes four families of key the gateway stopped emitting
-After:   T-236
-Why:     A T-222 consertou o vocabulario de ERRO e, no caminho, encontrou que a mesma doenca esta em
-         mais quatro lugares do `docs/CONTRATO-CONSUMIDOR.md` — o documento que consumidores reais
-         leem para integrar. **Eu re-medi cada um contra o codigo em 2026-09-08**, porque o relatorio
-         errou num deles (ver o item 4). Doc falso aqui nao e' desleixo: quem escreve um parser a
-         partir dele nunca casa, e o sintoma aparece na producao do outro.
-🔴 O ITEM 1 E' O MAIS GRAVE DE TODOS e vale sozinho a tarefa: e' o discriminador de
-         TODO evento de webhook. Errar nele nao quebra um campo, quebra o roteamento inteiro.
-Files:   docs/CONTRATO-CONSUMIDOR.md, docs/CONTRATO-CONSUMIDOR.pt-BR.md
-Do:      Va familia por familia. Em cada uma, o codigo e' a fonte e o `arquivo:linha` esta aqui —
-         **mas confira mesmo assim antes de escrever, porque estes ponteiros envelhecem.**
-
-         **1. O discriminador do evento.** O codigo emite a chave `kind` com o valor `message`
-            (`internal/meta/types.go:413` -> `Type EventType \`json:"kind"\``, e a constante em
-            `internal/meta/types.go:9` -> `EventTypeMessage EventType = "message"`).
-            O doc diz `"tipo": "mensagem"` em **12 lugares** medidos no `CONTRATO-CONSUMIDOR.md`.
-
-         **2. O sub-objeto de erro do evento de status.** O codigo emite `code` / `message` /
-            `details` (`internal/meta/types.go:141-151`, `type StatusError`).
-            O doc diz `erro` / `codigo` / `mensagem` / `detalhes`.
-
-         **3. Os blocos do `GET /v1/estado`.** O codigo esta em ingles em
-            `internal/outbound/ingress.go` e `internal/outbound/watchdog.go` (`via`, `connector`,
-            `state`, `observed`, `unknown`, `not_configured`, `verdict`, `ok`, `refused`).
-            O doc ainda usa `veredito` / `conector` / `estado` / `observado` / `desconhecido` /
-            `nao_configurado` / `entrada`.
-            ⚠️ Esta familia e' a maior e a menos conferida das quatro. Se ela sozinha ficar grande
-            demais, faca as familias 1, 2 e 4, PARE, e relate — nao entregue meia familia calada.
-
-         **4. O corpo de sucesso de `POST`/`DELETE /v1/bloqueios`.** 🔴 **ARMADILHA, e um `sed`
-            global escreve uma mentira aqui.** O struct e' MISTO
-            (`internal/outbound/block_handler.go:164-169`):
-            `json:"instance"`, `json:"operacao"`, `json:"processed"`, `json:"failures"`.
-            Tres chaves inglesas e **uma portuguesa**. O doc descreve as quatro em portugues, entao
-            ele esta **errado em tres e CERTO em uma**. Corrija as tres e **deixe `operacao`**.
-            *(O relatorio da T-222 afirmou que o codigo emite `operation`. Nao emite. Foi por isso
-            que esta tarefa traz os `arquivo:linha` re-medidos.)*
-
-         🔴 REGRAS QUE VALEM NAS QUATRO:
-         - **Nao e' sed global.** Toda ocorrencia cai num de tres casos, os mesmos da T-222:
-           (a) descreve o que o gateway emite HOJE -> corrija; (b) e' registro historico ou tabela de
-           migracao citando a forma velha de proposito -> nao toque; (c) e' prosa portuguesa usando a
-           palavra como palavra, no arquivo `.pt-BR.md` -> nao toque.
-         - **O `.pt-BR.md` traduz a PROSA, nunca a CHAVE.** Um exemplo de JSON no doc portugues mostra
-           a chave que vai no fio, que e' inglesa. Foi assim que a T-222 quase trocou `erro` por
-           `error` em duas frases de prosa comum — ela pegou e reverteu; voce confira igual.
-         - **NAO MEXA EM CODIGO.** Se voce achar que o codigo e' que esta errado (por exemplo o
-           `operacao` do item 4), **pare e relate** — mudar chave de fio tem terceiro do outro lado e
-           e' decisao do dono.
-Verify:  Para cada uma das quatro familias, cole no relatorio a prova contra o codigo (o comando e a
-         saida) ANTES da correcao, e depois o `grep` mostrando que o doc passou a casar.
-         E liste, uma a uma, as ocorrencias que voce DEIXOU e em qual dos casos (b)/(c) cada uma cai.
-         `CGO_ENABLED=0 go build ./... && go test ./...` (so' garantia; nada de codigo muda).
-
 ## [ ] T-239  Remove the one exemption T-238 had to leave behind
 After:   T-237
 Why:     A T-238 achou um ponteiro morto real em `docs/CONTRATO-CONSUMIDOR.md:4886` e no espelho
@@ -322,6 +267,38 @@ Verify:  `go test ./internal/config/ -run TestDocPointers` verde COM a excecao a
          `grep -c 'status_sent_com_pricing' internal/config/doc_pointers_test.go docs/*.md` dando 0
          em todos (exceto `docs/CHANGELOG.md`, que e' registro e esta fora da varredura).
          `CGO_ENABLED=0 go build ./... && go test ./... && go vet ./... && gofmt -l cmd internal`.
+
+
+## [ ] T-240  The `GET /v1/estado` blocks the contract still names in Portuguese
+After:   T-239
+Why:     A T-237 consertou quatro familias do `docs/CONTRATO-CONSUMIDOR.md` e, no caminho, achou uma
+         QUINTA — os NOMES DOS BLOCOS do `GET /v1/estado`, nao so' o vocabulario dentro deles.
+         **Re-medido por mim contra o codigo em 2026-09-08**, chave por chave:
+         | o codigo emite | o doc ainda diz | onde |
+         |---|---|---|
+         | `instance` | `instancia` | `internal/outbound/state.go:44` |
+         | `kind` | `tipo` | `internal/outbound/state.go:51` |
+         | `meta_token` | `token_meta` | `internal/outbound/state.go:169` |
+         | `ingress` | `entrada` | `internal/outbound/state.go:207` |
+         | `ready_connections` | `conexoes_prontas` | `internal/outbound/ingress.go:217` |
+         | `measured_at` | `medido_em` | `internal/outbound/ingress.go:223` |
+         | `failing_since` | `falhando_desde` | `internal/outbound/ingress.go:230` |
+         E a lista de bloqueios: `GET /v1/bloqueios` emite `instance`/`total`/`blocked`
+         (`internal/outbound/block_handler.go`), e o doc mostra `instancia`/`bloqueados`.
+Files:   docs/CONTRATO-CONSUMIDOR.md, docs/CONTRATO-CONSUMIDOR.pt-BR.md
+Do:      Mesmo metodo da T-237, que funcionou: familia por familia, prova contra o codigo antes e o
+         `grep` depois. Os tres casos continuam valendo — (a) descreve o que sai hoje, corrija;
+         (b) registro/tabela de migracao citando a forma velha de proposito, nao toque; (c) prosa
+         portuguesa no `.pt-BR.md` usando a palavra como palavra, nao toque.
+         🔴 **Confira os blocos vizinhos que a T-237 declarou fora de escopo e que ninguem mediu
+         ainda:** `certificado_do_callback`, `numero_na_meta`, `token_instagram`, `alcance_externo`.
+         Eles usam o mesmo vocabulario (`observado`, `nao_configurado`) mas vem de OUTROS arquivos
+         (`state.go`, `instagram_renewer.go`, `external_probe.go`). Meça cada um contra o seu proprio
+         arquivo antes de mexer — **nao presuma que seguem o mesmo padrao dos outros dois.**
+         🔴 NAO MEXA EM CODIGO. Se achar chave que parece errada no codigo, pare e relate.
+Verify:  Por familia, a prova contra o codigo antes e o `grep` depois, coladas no relatorio.
+         E a lista, uma a uma, das ocorrencias que voce deixou, com o caso (b)/(c) de cada.
+         `CGO_ENABLED=0 go build ./... && go test ./...` (so' garantia).
 
 ## [ ] T-231  Translate the English side of the docs that is still Portuguese
 After:   T-230
