@@ -6,6 +6,72 @@
 > Escrito ao fim de 2026-08-30, o dia em que o repositorio virou publico. Bloco de retomada
 > mentindo e' pior que bloco nenhum: e' o primeiro texto que a proxima sessao le.
 
+### 📌 2026-09-08 06:35 — FIM DA SESSAO DA TRADUCAO. Leia este bloco inteiro antes de tocar em nada.
+
+**A sessao parou por orcamento do dono, nao por problema.** `main` = `a0b0d52`, empurrado, e o
+**verify de repo inteiro estava VERDE nos 7 pacotes no ultimo merge** — medido, nao afirmado.
+
+**17 tarefas aposentadas nesta sessao:** T-222, T-223, T-224, T-225, T-226, T-227, T-228, T-229,
+T-230, T-232, T-233, T-234, T-235, T-236, T-237, T-238, T-239. Todas com entrada no
+`docs/CHANGELOG.md`, sob `## Unreleased`.
+
+#### O que foi medido, com a mesma varredura antes e depois
+
+- **Codigo Go: 5.023 -> 2.262 linhas** carregando palavra portuguesa (−55%). O resto e' quase todo
+  deliberado: tag `json:` de contrato, vocabulario que o consumidor enxerga, prefixo `ALARME`.
+- `testdata/corpus/README.md`: 378 -> 2. `docs/CHANGELOG.md`: 220 -> 51. `deploy/deploy.sh`: 162 -> 55.
+- **ZERO nome de arquivo ou diretorio em portugues.** `implanta/` -> `deploy/`,
+  `cmd/grafo-falso/` -> `cmd/fakegraph/`, `valida-lideranca.sh` -> `check-leadership.sh`, 40 fixtures.
+- **Espelho pt-BR cortado de 11 para 4 docs** (−6.113 linhas). Criterio no `CLAUDE.md`.
+
+#### 🔴 A FILA — TRES tarefas, nesta ordem
+
+1. **T-240** — a quinta familia do contrato do consumidor. **Nao chegou a escrever nada**; a worktree
+   dela ja foi limpa. Comece do zero.
+2. **T-231** — o lado ingles dos docs. ⚠️ **TEM TRABALHO PARCIAL SALVO, NAO REVISADO:** commit
+   `8d3fd43` na branch `worktree-agent-af905375f3c5ebcb1`, um arquivo
+   (`docs/INVENTARIO-STRINGS.md`) traduzido pela metade. **Nao mescle sem revisar.** O agente tinha
+   reportado que `docs/ARMADILHAS.md` ja esta integralmente traduzido (o portugues que sobra la e'
+   literal legitimo) — **isso e' afirmacao dele, nao medicao minha; confira.**
+3. **T-220** — os verbos da CLI. E' a unica que termina em PRODUCAO, e a ordem e' a garantia:
+   mesclar -> deployar -> atualizar `/root/rotaciona-token.sh` no CT 125, no mesmo movimento.
+
+#### 🔴 ANTES DE QUALQUER DEPLOY — duas coisas medidas hoje
+
+- **`main` NAO esta implantado.** O CT roda a `v0.65.0`; tudo desta sessao esta no `main` e nao subiu.
+- **O `VERSION` continua `0.65.0` e nao foi bumpado.** As 17 entradas estao sob `## Unreleased`.
+  **Deployar sem bumpar faz o `/v1/health` responder `0.65.0` para um binario que nao e' a `0.65.0`** —
+  e a prova do proprio deploy (`VERSAO CONFERE`) passaria mentindo. **Bumpe antes.**
+
+#### Fora do repositorio: uma ponta fechada, uma ABERTA
+
+- ✅ **Fechada:** `~/.zapgw/deploy-zapgw.sh` (maquina do dono) passou a ler `deploy/deploy.sh`. Tres
+  linhas. A linha 25, que aponta para o repo PRIVADO antigo (`/c/dev/zapgw-dev/implanta/deploy.sh`),
+  **nao foi tocada de proposito** — aquele repo nao foi renomeado, e um `sed` global quebraria ali.
+  Backup em `~/.zapgw/deploy-zapgw.sh.antes-do-rename-2026-09-08`. `bash -n` limpo.
+- 🔴 **ABERTA:** a unit do systemd no CT 125 pode citar o caminho `implanta/`. **Ninguem foi ver.**
+  Isso e' pergunta, nao estado: confira antes do proximo deploy.
+
+#### Tres mecanismos novos, todos com prova contra dado real
+
+- **Portao de acoplamento shell/Go** (`internal/config/shell_log_coupling_test.go`, T-235) — virou
+  linha propria na tabela de regras duras do `CLAUDE.md`. Reprovou duas vezes: uma pelo implementador,
+  uma re-provada pelo planner em vez de aceita do relatorio.
+- **Portao de ponteiro de doc alargado** para alem de `.go` (T-234) e depois para nome de arquivo
+  solto (T-238). Hoje reporta o proprio alcance: *"swept 15 doc file(s), 1115 pointer(s) examined, 0
+  dead"*. **Zero excecoes pendentes.**
+- **Quatro guardas vacuosas consertadas**, duas delas guardando contra vazamento de campo interno da
+  Meta no corpo da resposta — passariam num vazamento real.
+
+#### 🙋 A METADE QUE E' DECISAO DO DONO, e nao corre sozinha
+
+Ficou **fora** desta sessao de proposito, e ele pediu reavaliacao quando a primeira metade terminar:
+tags `json:` portuguesas, os **18 nomes de contador** (o consumidor alarma em 8), os verbos e flags da
+CLI, e as seis `ZAPGW_*` obsoletas do CT.
+📌 **Uma inconsistencia de fio medida hoje e nao tocada:** `internal/outbound/block_handler.go:166`
+emite `json:"operacao"` no meio de `instance`/`processed`/`failures`. Tres inglesas e uma portuguesa
+no mesmo objeto. **Nao mude sem ele** — tem consumidor do outro lado.
+
 ### 📌 2026-09-07/08 — a traducao do codigo para ingles: 4 pacotes fechados, so' o que foi medido
 
 ✅ **`internal/meta`, `internal/config`, `internal/inbound` e `internal/outbound` estao traduzidos e
