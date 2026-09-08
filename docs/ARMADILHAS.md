@@ -2534,6 +2534,19 @@ does not move with a rename; the compiler cannot help.
 (a constant, a struct tag read through reflection) rather than to a typed-out string, so the rename either updates
 it or breaks the build.
 
+**Four of these were found in a single day — 2026-09-07 — and the count is the finding.** Two by T-226 (the leak
+guards above) and two more by T-227, in a different shape but the same class: `cmd/zapgw/menu_test.go` searched the
+`-h` output for `desconhecido` and `provision_test.go` searched for `o valor NAO e mostrado`, both of which T-219 had
+translated the day before to `unknown subcommand` and `the value is NOT shown`. All four were found by a human-style
+read during an unrelated translation pass, **none by anything failing**.
+
+➡️ **So the general form is not about renames at all — it is about asserting on a string you do not own.**
+`Contains("some text")` asserts a fact about *another* piece of code, and the day that code changes its wording the
+assertion does not break: it stops being able to fail. **Every string literal in a test that came from somewhere
+else is a guard with an expiry date nobody wrote down.** The cheap defence, in order of strength: reference the
+emitting constant instead of retyping it; or, when the text must be typed, assert both that the expected string is
+present AND that the code path actually ran, so a silent no-match cannot masquerade as a pass.
+
 ### The doc-pointer gate only sees `.go` — renaming anything else leaves a dead pointer it cannot find (2026-09-07)
 
 `internal/config/doc_pointers_test.go` is T-217's gate, and it works: it caught the 50 dead `.go` pointers that

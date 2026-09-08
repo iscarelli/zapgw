@@ -4,6 +4,17 @@ Uma linha por versao entregue, no mesmo commit do bump. A entrada diz o **efeito
 
 ## Nao lancado
 
+- **T-227 — Translate the Portuguese comments left in cmd/** — 12 files. T-219 had translated `cmd/`'s
+  strings; this finished the comments and test messages. The CLI verb spellings, the flag names, the
+  `ALARME`/`PRECISA DE GENTE` prefixes and the `sim`/`nao`/`ativa`/`pausada` contract values stayed,
+  each checked against the package that emits it rather than from memory. 🔥 **Found two more vacuous
+  guards** — `menu_test.go` searching `-h` output for `desconhecido` and `provision_test.go` searching
+  for `o valor NAO e mostrado`, both translated by T-219 the day before, so neither check could fire.
+  That makes **four in one day**, which is what turned the pitfall entry from "renames break guards"
+  into "asserting on a string you do not own is a guard with an unwritten expiry date".
+  _Completed 2026-09-08 02:11._
+
+
 - **T-229 — Translate the deploy scripts, the CI and the env example** — 7 files: `implanta/deploy.sh`,
   `profile-zapgw.sh`, `valida-lideranca.sh`, `zapgw.service`, `.githooks/pre-push`,
   `.github/workflows/verify.yml`, `.env.example`. Comments and operator-facing output in English;

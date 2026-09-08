@@ -281,14 +281,6 @@ Verify:  Para cada nome novo, prove contra o codigo que ele e' o emitido:
          a uma, as que voce deixou e em qual dos casos (b)/(c) cada uma cai.
          `CGO_ENABLED=0 go build ./... && go test ./...` (nao deve mudar nada, e' so' garantia).
 
-## [ ] T-227  Translate the Portuguese comments left in cmd/
-After:   T-226
-Why:     a T-219 traduziu as STRINGS de `cmd/`, nao os comentarios. E' o resto do mesmo trabalho.
-Files:   cmd/zapgw/*.go, cmd/grafo-falso/*.go
-Do:      So' comentarios e mensagens de teste. 🔴 As grafias dos VERBOS e os NOMES das flags sao
-         contrato de CLI e territorio da T-220 — nao toque nelas aqui.
-Verify:  CGO_ENABLED=0 go build ./... && go test ./... && go vet ./... && gofmt -l cmd internal
-
 ## [ ] T-235  Fix the two shell/Go log couplings, and build the gate that has never existed
 Why:     🔥 CUSTO MEDIDO EM 2026-09-07, e o modo de falha e' SILENCIO. Dois scripts de `implanta/`
          decidem o que reportar rodando `grep` na saida do proprio gateway, e o `go test ./...` nao
