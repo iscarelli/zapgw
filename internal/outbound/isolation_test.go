@@ -53,7 +53,7 @@ const (
 	slugOfA     = "lojinha"
 	slugOfB     = "clinica"
 	tokenOfB    = "token-do-b"
-	missingSlug = "nao-existe-em-lugar-nenhum"
+	missingSlug = "does-not-exist-anywhere"
 )
 
 // outboundRoute is a package route and the MINIMAL request that reaches its
@@ -295,12 +295,12 @@ func TestNoOutboundRouteLetsBTouchAsInstance(t *testing.T) {
 		t.Run(r.route, func(t *testing.T) {
 			rec := askWithToken(t, h, r.build(slugOfA), tokenOfB)
 			if rec.Code != http.StatusForbidden {
-				t.Fatalf("%s com o token de B apontando para %q: status = %d, quero 403; corpo = %s",
+				t.Fatalf("%s with B's token pointing at %q: status = %d, want 403; body = %s",
 					r.route, slugOfA, rec.Code, rec.Body.String())
 			}
 			// The rejection cannot tell the name, number, or anything about someone else's instance.
 			if body := rec.Body.String(); strings.Contains(body, testDisplayNumbers[slugOfA]) {
-				t.Errorf("%s vazou o numero exibido da instancia alheia na recusa: %s", r.route, body)
+				t.Errorf("%s leaked the other instance's display number in the refusal: %s", r.route, body)
 			}
 		})
 	}
@@ -321,12 +321,12 @@ func TestNoOutboundRouteSaysWhetherAFOREIGNSlugExists(t *testing.T) {
 			missing := askWithToken(t, h, r.build(missingSlug), tokenOfB)
 
 			if missing.Code != http.StatusForbidden {
-				t.Fatalf("%s com slug inexistente: status = %d, quero 403 — 404 aqui responde"+
-					" \"este slug existe?\" a quem tem um token qualquer; corpo = %s",
+				t.Fatalf("%s with a nonexistent slug: status = %d, want 403 — a 404 here answers"+
+					" \"does this slug exist?\" to whoever has any token; body = %s",
 					r.route, missing.Code, missing.Body.String())
 			}
 			if foreign.Code != missing.Code {
-				t.Fatalf("%s distingue instancia alheia (%d) de inexistente (%d) — a diferenca E' o oraculo",
+				t.Fatalf("%s distinguishes another's instance (%d) from a nonexistent one (%d) — the difference IS the oracle",
 					r.route, foreign.Code, missing.Code)
 			}
 		})
@@ -348,8 +348,8 @@ func TestOutboundRoutesDoNotRefuseBOnBsOWNInstance(t *testing.T) {
 		t.Run(r.route, func(t *testing.T) {
 			rec := askWithToken(t, h, r.build(slugOfB), tokenOfB)
 			if rec.Code == http.StatusForbidden {
-				t.Fatalf("%s recusou o consumidor na instancia DELE (403) — a guarda esta invertida;"+
-					" corpo = %s", r.route, rec.Body.String())
+				t.Fatalf("%s refused the consumer on THEIR OWN instance (403) — the guard is inverted;"+
+					" body = %s", r.route, rec.Body.String())
 			}
 		})
 	}
@@ -375,19 +375,19 @@ func TestIsolationTableCOVERSEveryRouteRegisteredInThePackage(t *testing.T) {
 
 	registeredRoutes := routesRegisteredInPackage(t)
 	if len(registeredRoutes) == 0 {
-		t.Fatal("nenhuma rota encontrada no pacote — a conferencia parou de conferir," +
-			" e uma conferencia que nao acha nada passa verde para sempre")
+		t.Fatal("no route found in the package — the check stopped checking, and a check " +
+			"that finds nothing passes green forever")
 	}
 	for _, route := range registeredRoutes {
 		if !inTable[route] {
-			t.Errorf("a rota %q e registrada neste pacote e NAO esta na tabela de isolamento:"+
-				" ninguem prova que o consumidor B leva 403 nela", route)
+			t.Errorf("route %q is registered in this package and is NOT in the isolation table:"+
+				" nobody proves consumer B gets 403 on it", route)
 		}
 	}
 	for route := range inTable {
 		if !contains(registeredRoutes, route) {
-			t.Errorf("a tabela de isolamento cobre %q, que nao e mais registrada no pacote —"+
-				" a entrada esta provando uma rota que nao existe", route)
+			t.Errorf("the isolation table covers %q, which is no longer registered in the package —"+
+				" the entry is proving a route that does not exist", route)
 		}
 	}
 }
@@ -419,7 +419,7 @@ func routesRegisteredInPackage(t *testing.T) []string {
 
 	entries, err := os.ReadDir(".")
 	if err != nil {
-		t.Fatalf("ler o diretorio do pacote: %v", err)
+		t.Fatalf("read the package directory: %v", err)
 	}
 
 	sources := map[string]string{}
@@ -431,7 +431,7 @@ func routesRegisteredInPackage(t *testing.T) []string {
 		}
 		b, err := os.ReadFile(name)
 		if err != nil {
-			t.Fatalf("ler %s: %v", name, err)
+			t.Fatalf("read %s: %v", name, err)
 		}
 		sources[name] = string(b)
 		for _, m := range reConstant.FindAllStringSubmatch(string(b), -1) {
@@ -451,8 +451,8 @@ func routesRegisteredInPackage(t *testing.T) []string {
 			if !ok {
 				// Fail loud: an argument this reader cannot resolve
 				// would hide an entire route from the check.
-				t.Fatalf("%s registra uma rota por %q, e esta conferencia nao sabe resolver esse valor —"+
-					" ensine-a antes de seguir, senao a rota fica fora da tabela sem ninguem notar", name, arg)
+				t.Fatalf("%s registers a route via %q, and this check does not know how to resolve that value —"+
+					" teach it before continuing, or the route stays out of the table without anyone noticing", name, arg)
 			}
 			routes = append(routes, value)
 		}
