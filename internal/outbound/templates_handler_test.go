@@ -854,7 +854,7 @@ func createTemplateWithAmbiguousOutcome(
 }
 
 // THE REAL OUTCOME OF 2026-07-28: `pedido_avaliacao_v2` WAS created and the
-// response did not arrive. The consumer got `502 desconhecido` and only
+// response did not arrive. The consumer got `502 unknown` and only
 // found out the truth because it still had direct access to the Graph API —
 // access the "NINGUÉM fala direto com a Meta" rule has just forbidden. Now
 // who checks is the gateway, and the consumer gets the `201` the first call
@@ -1048,7 +1048,7 @@ func TestCreateTemplateAmbiguousMissingOnTheFirstRereadAppearsOnTheSecond(t *tes
 	}
 }
 
-// Third outcome: the re-read also failed. Here the `502 desconhecido`
+// Third outcome: the re-read also failed. Here the `502 unknown`
 // remains the right response — and BOTH failures have to be in the log,
 // which is what makes the next occurrence diagnosable.
 func TestCreateTemplateAmbiguousWithARereadThatAlsoFailsLOGSBOTH(t *testing.T) {
