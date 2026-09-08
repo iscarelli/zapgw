@@ -21,9 +21,9 @@ import (
 
 var (
 	// ErrNoToken: no Authorization came, or it did not come in the Bearer scheme.
-	ErrNoToken = errors.New("outbound: sem token Bearer")
+	ErrNoToken = errors.New("outbound: no Bearer token")
 	// ErrInvalidToken: a token came, but no consumer recognizes it.
-	ErrInvalidToken = errors.New("outbound: token invalido")
+	ErrInvalidToken = errors.New("outbound: invalid token")
 )
 
 const bearerScheme = "bearer "
