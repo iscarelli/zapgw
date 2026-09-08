@@ -50,7 +50,7 @@ import (
 	"github.com/iscarelli/zapgw/internal/meta"
 )
 
-// The THREE verdicts. `desconhecido` is NOT new vocabulary: it's the same
+// The THREE verdicts. `unknown` is NOT new vocabulary: it's the same
 // word, with the same meaning, from the send error taxonomy
 // (meta.ClassUnknown) — "we don't know" is an answer, and disguising
 // it as either of the other two is what causes harm. A second vocabulary
@@ -83,10 +83,10 @@ const (
 const watchdogInterval = 5 * time.Minute
 
 // verdictValidity is how long a measured verdict keeps being presented.
-// Past that it degrades to `desconhecido`.
+// Past that it degrades to `unknown`.
 //
 // WHY IT EXPIRES: a cache that never expires is a lie with a timestamp on
-// it. A `{"veredito":"ok","medido_em":"15:20"}` that never ages is
+// it. A `{"verdict":"ok","measured_at":"15:20"}` that never ages is
 // AMBIGUOUS between two opposite states — "I checked at 15:20 and didn't
 // need to check again" and "I checked at 15:20 and EVERY attempt since
 // then has failed". In the second case the consumer's dashboard paints
@@ -136,8 +136,8 @@ type measurement struct {
 // question.
 //
 // THE ALARM RULE THIS GIVES THE CONSUMER, and it doesn't require knowing
-// our volume or our internals: `veredito` different from `ok`, or
-// `conferido_em` gone stale.
+// our volume or our internals: `verdict` different from `ok`, or
+// `checked_at` gone stale.
 type MetaToken struct {
 	Verdict           string  `json:"verdict"`
 	MeasuredAt        *string `json:"measured_at"`
@@ -166,7 +166,7 @@ type Watchdog struct {
 	// mu protects measurements: the timer writes from one goroutine and the
 	// HTTP handler reads from another, one per request. This project
 	// already paid a Critical for an unlocked counter in a shared handler
-	// (docs/ARMADILHAS.md, "Go / concorrência").
+	// (docs/ARMADILHAS.md, "Go / concurrency").
 	mu           sync.Mutex
 	measurements map[string]measurement
 
@@ -212,7 +212,7 @@ func (v *Watchdog) Start() {
 			func() {
 				defer func() {
 					if rec := recover(); rec != nil {
-						log.Printf("zapgw: vigia do token sofreu panico (recuperado): %v", rec)
+						log.Printf("zapgw: token watchdog suffered a panic (recovered): %v", rec)
 					}
 				}()
 				v.work(context.Background())
@@ -227,13 +227,13 @@ func (v *Watchdog) Start() {
 //
 // A PAUSED instance is not checked — it doesn't send, so spending a call
 // for it would be measuring a channel that can't fail. Its verdict expires
-// on its own to `desconhecido`, which is the truth: nobody is measuring it.
+// on its own to `unknown`, which is the truth: nobody is measuring it.
 func (v *Watchdog) Check(ctx context.Context) {
 	instances, err := v.store.ListInstances()
 	if err != nil {
 		// Just logs. The watcher never brings anything down: it's
 		// monitoring, and the next tick tries again.
-		log.Printf("zapgw: vigia do token nao conseguiu listar instancias: %v", err)
+		log.Printf("zapgw: token watchdog could not list instances: %v", err)
 		return
 	}
 	for _, r := range instances {
@@ -249,7 +249,7 @@ func (v *Watchdog) Check(ctx context.Context) {
 // WHO NEEDS THIS IS `zapgw estado` (cmd/zapgw/state.go), and the reason
 // is structural: the watcher keeps its measurements in MEMORY, in the
 // server's process — a command-line process that just started has an
-// EMPTY cache, and would read `desconhecido` for everything, always.
+// EMPTY cache, and would read `unknown` for everything, always.
 // "Unknown forever" on the screen of someone in the middle of an incident
 // is worse than not showing the block at all: it looks like a broken
 // watcher. The CLI therefore MEASURES before reading, with this method,
@@ -267,7 +267,7 @@ func (v *Watchdog) CheckInstance(ctx context.Context, slug string) {
 func (v *Watchdog) checkOne(ctx context.Context, slug string) {
 	inst, err := v.store.FindInstance(slug)
 	if err != nil {
-		log.Printf("zapgw: vigia do token nao conseguiu ler a instancia %q: %v", slug, err)
+		log.Printf("zapgw: token watchdog could not read instance %q: %v", slug, err)
 		v.record(slug, err)
 		return
 	}
@@ -326,13 +326,13 @@ func (v *Watchdog) checkOne(ctx context.Context, slug string) {
 	//
 	// THE ATTEMPT IS ALWAYS STAMPED, with a value or without — when the
 	// call fails, `obs` is empty and the UPSERT only moves
-	// `conferido_em`. That's what makes `conferido_em` advance while
-	// `observado_em` stays put, which is the signal for "the measurement
+	// `checked_at`. That's what makes `checked_at` advance while
+	// `observed_at` stays put, which is the signal for "the measurement
 	// is going back and forth without bringing anything back". Registering
 	// only on success would make "the measurement is broken"
 	// indistinguishable from "nobody measured", which is exactly the
 	// ambiguity the two timestamps exist to close — and it's the same rule
-	// token_meta.conferido_em already follows.
+	// meta_token.checked_at already follows.
 	v.number.Record(slug, config.NumberUpdate{
 		Quality: obs.Quality,
 		Limit:   obs.Limit,
@@ -379,7 +379,7 @@ func (v *Watchdog) record(slug string, err error) {
 // doesn't work.
 //
 //   - *meta.MetaError of class config (401/403) — Meta rejected the token;
-//   - *meta.MetaError of class permanente (remaining 4xx) — it responded
+//   - *meta.MetaError of class permanent (remaining 4xx) — it responded
 //     and retrying repeats the same error; in both cases only a human can
 //     fix it;
 //   - ErrInvalidPhoneNumberID — the call never left here, and no send
@@ -398,7 +398,7 @@ func definitiveOutcome(err error) bool {
 	return false
 }
 
-// Read returns the `token_meta` block for an instance — ALWAYS from cache,
+// Read returns the `meta_token` block for an instance — ALWAYS from cache,
 // never talking to Meta.
 //
 // This is where a stale verdict EXPIRES. Expiration applies to `ok` and to
@@ -406,9 +406,9 @@ func definitiveOutcome(err error) bool {
 // measurement doesn't describe now. In practice it almost only ever bites
 // `ok`, because a rejected instance keeps being checked every tick and
 // `recusado` arrives fresh every time — and both sides alarm the same way
-// for the consumer (`veredito != "ok"`).
+// for the consumer (`verdict != "ok"`).
 //
-// `medido_em` keeps pointing to Meta's last REAL response even after the
+// `measured_at` keeps pointing to Meta's last REAL response even after the
 // verdict expires: that's what tells the consumer how long the gateway
 // hasn't heard from Meta, information that zeroing the field would destroy.
 func (v *Watchdog) Read(slug string) MetaToken {

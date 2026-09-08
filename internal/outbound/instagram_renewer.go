@@ -21,7 +21,7 @@
 // channel (no notification, no escalation, no queue) — "the consumer is the
 // one who'll alarm, because they already have a channel to talk to me."
 // This task's main product is the STATE in GET /v1/estado (state.go),
-// honest FROM THE FIRST failure: verdict, falhando_desde, when the token
+// honest FROM THE FIRST failure: verdict, failing_since, when the token
 // expires, and how many days are left. The `ALARME` line in the journal
 // STAYS — and ONLY that: one log line, by this project's usual convention
 // (ALARME = needs a person), with no escalation threshold, no second
@@ -171,7 +171,7 @@ type InstagramRenewer struct {
 	// falhas holds, per slug, the FIRST attempt of the CURRENT run of
 	// failures — zero (absent from the map) when the last attempt
 	// succeeded, or there was never an attempt. It's what GET /v1/estado
-	// shows as `falhando_desde`, honestly, FROM the first failure — there's
+	// shows as `failing_since`, honestly, FROM the first failure — there's
 	// no threshold that delays this information (owner's decision: the
 	// loop doesn't escalate, it only records).
 	failures map[string]time.Time
@@ -218,7 +218,7 @@ func (rv *InstagramRenewer) Start() {
 			func() {
 				defer func() {
 					if rec := recover(); rec != nil {
-						log.Printf("zapgw: renovador do token instagram sofreu panico (recuperado): %v", rec)
+						log.Printf("zapgw: instagram token renewer suffered a panic (recovered): %v", rec)
 					}
 				}()
 				rv.work(context.Background())
@@ -244,7 +244,7 @@ func (rv *InstagramRenewer) Check(ctx context.Context) {
 		// Just logs. The renewer never brings anything down: it's
 		// monitoring, and the next tick tries again — SAME rule as
 		// Watchdog.Check.
-		log.Printf("zapgw: renovador do token instagram nao conseguiu listar instancias: %v", err)
+		log.Printf("zapgw: instagram token renewer could not list instances: %v", err)
 		return
 	}
 	for _, r := range instances {
@@ -259,7 +259,7 @@ func (rv *InstagramRenewer) Check(ctx context.Context) {
 func (rv *InstagramRenewer) checkOne(ctx context.Context, slug string) {
 	inst, err := rv.store.FindInstance(slug)
 	if err != nil {
-		log.Printf("zapgw: renovador do token instagram nao conseguiu ler a instancia %q: %v", slug, err)
+		log.Printf("zapgw: instagram token renewer could not read instance %q: %v", slug, err)
 		return
 	}
 
@@ -327,7 +327,7 @@ func (rv *InstagramRenewer) checkOne(ctx context.Context, slug string) {
 	}
 
 	rv.clearFailure(slug)
-	log.Printf("zapgw: token do instagram da instancia %q renovado — validade reiniciada por %s a partir de agora",
+	log.Printf("zapgw: instagram token for instance %q renewed — validity restarted for %s from now",
 		slug, InstagramTokenValidity)
 }
 
@@ -335,7 +335,7 @@ func (rv *InstagramRenewer) markFailure(slug string, now time.Time) {
 	rv.mu.Lock()
 	defer rv.mu.Unlock()
 	// Only the FIRST failure of the run gets recorded — later ones can't
-	// push the date forward, otherwise `falhando_desde` would say "failing
+	// push the date forward, otherwise `failing_since` would say "failing
 	// for one tick" after days of failing. SAME rule as Watchdog.record.
 	if rv.failures[slug].IsZero() {
 		rv.failures[slug] = now
@@ -351,7 +351,7 @@ func (rv *InstagramRenewer) clearFailure(slug string) {
 // FailingSince returns the FIRST attempt of instance `slug`'s CURRENT run
 // of failures — zero when the last attempt succeeded, or there was never an
 // attempt. It's what GET /v1/estado (state.go, via
-// IGRenewalFailureReader) publishes as `falhando_desde`, ALWAYS from the
+// IGRenewalFailureReader) publishes as `failing_since`, ALWAYS from the
 // cache, never triggering a call to Meta — SAME discipline as Watchdog.Read.
 func (rv *InstagramRenewer) FailingSince(slug string) time.Time {
 	rv.mu.Lock()

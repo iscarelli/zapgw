@@ -65,12 +65,12 @@ func activateInstance(t *testing.T, path, slug string) {
 	t.Helper()
 	db, err := sql.Open("sqlite", path)
 	if err != nil {
-		t.Fatalf("abrir banco para ativar: %v", err)
+		t.Fatalf("open database to activate: %v", err)
 	}
 	defer db.Close()
 
 	if _, err := db.Exec(`UPDATE instancia SET ativo = 1 WHERE slug = ?`, slug); err != nil {
-		t.Fatalf("ativar instancia %q: %v", slug, err)
+		t.Fatalf("activate instance %q: %v", slug, err)
 	}
 }
 
@@ -89,7 +89,7 @@ func TestTokenFromHeaderAcceptsBearer(t *testing.T) {
 
 	for _, c := range cases {
 		if got := TokenFromHeader(c.header); got != c.want {
-			t.Errorf("TokenFromHeader(%q) = %q, quero %q", c.header, got, c.want)
+			t.Errorf("TokenFromHeader(%q) = %q, want %q", c.header, got, c.want)
 		}
 	}
 }
@@ -112,10 +112,10 @@ func TestAuthenticateRefusesMissingAndInvalidToken(t *testing.T) {
 	a := NewAuthenticator(store)
 
 	if _, err := a.Authenticate(""); !errors.Is(err, ErrNoToken) {
-		t.Errorf("header vazio: erro = %v, quero ErrNoToken", err)
+		t.Errorf("empty header: err = %v, want ErrNoToken", err)
 	}
 	if _, err := a.Authenticate("Bearer token-errado"); !errors.Is(err, ErrInvalidToken) {
-		t.Errorf("token errado: erro = %v, quero ErrInvalidToken", err)
+		t.Errorf("wrong token: err = %v, want ErrInvalidToken", err)
 	}
 }
 
@@ -127,16 +127,16 @@ func TestCanUseBindsTheConsumerToHisOwnInstances(t *testing.T) {
 	c := config.Consumer{Name: "sistema-a", Instances: []string{"lojinha"}}
 
 	if !CanUse(c, "lojinha") {
-		t.Error("o consumidor nao pode usar a propria instancia")
+		t.Error("the consumer could not use its own instance")
 	}
 	if CanUse(c, "clinica") {
-		t.Fatal("o consumidor usou a instancia de OUTRO sistema")
+		t.Fatal("the consumer used ANOTHER system's instance")
 	}
 	if CanUse(c, "") {
-		t.Error("slug vazio foi aceito")
+		t.Error("empty slug was accepted")
 	}
 	if CanUse(config.Consumer{Name: "x"}, "lojinha") {
-		t.Error("consumidor SEM instancia nenhuma usou uma instancia")
+		t.Error("consumer with NO instance at all used an instance")
 	}
 }
 
@@ -147,7 +147,7 @@ func TestCanUseDoesNotMatchByPrefix(t *testing.T) {
 
 	for _, slug := range []string{"lojinha-teste", "lojinhaX", "loj", "LOJINHA"} {
 		if CanUse(c, slug) {
-			t.Errorf("slug %q foi aceito por parecido com lojinha", slug)
+			t.Errorf("slug %q was accepted for looking similar to lojinha", slug)
 		}
 	}
 }

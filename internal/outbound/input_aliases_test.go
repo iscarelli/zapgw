@@ -53,10 +53,10 @@ func TestInputAcceptsEnglishAliasWithIdenticalResponse(t *testing.T) {
 	en := ask(t, h, "token-do-a", "chave-en-paridade", enTextBody)
 
 	if pt.Code != http.StatusOK || en.Code != http.StatusOK {
-		t.Fatalf("status PT=%d EN=%d — corpo PT=%s EN=%s", pt.Code, en.Code, pt.Body, en.Body)
+		t.Fatalf("status PT=%d EN=%d — body PT=%s EN=%s", pt.Code, en.Code, pt.Body, en.Body)
 	}
 	if pt.Body.String() != en.Body.String() {
-		t.Errorf("respostas diferentes:\nPT: %s\nEN: %s", pt.Body, en.Body)
+		t.Errorf("different responses:\nPT: %s\nEN: %s", pt.Body, en.Body)
 	}
 }
 
@@ -74,10 +74,10 @@ func TestInputCreateTemplateAcceptsEnglishAliasWithIdenticalResponse(t *testing.
 	rEN := createTemplate(t, h, "token-do-a", en)
 
 	if rPT.Code != rEN.Code {
-		t.Fatalf("status PT=%d EN=%d — corpo PT=%s EN=%s", rPT.Code, rEN.Code, rPT.Body, rEN.Body)
+		t.Fatalf("status PT=%d EN=%d — body PT=%s EN=%s", rPT.Code, rEN.Code, rPT.Body, rEN.Body)
 	}
 	if rPT.Body.String() != rEN.Body.String() {
-		t.Errorf("respostas diferentes:\nPT: %s\nEN: %s", rPT.Body, rEN.Body)
+		t.Errorf("different responses:\nPT: %s\nEN: %s", rPT.Body, rEN.Body)
 	}
 }
 
@@ -104,16 +104,16 @@ func TestInputIdempotencyCrossesLanguages(t *testing.T) {
 	second := ask(t, h, "token-do-a", "mesma-chave-dois-idiomas", enTextBody)
 
 	if sends != 1 {
-		t.Fatalf("a Meta recebeu %d envios para o MESMO pedido em dois idiomas sob a MESMA "+
-			"Idempotency-Key — quero 1: acima disso e a mesma mensagem saindo duas vezes "+
-			"para a cliente", sends)
+		t.Fatalf("Meta received %d sends for the SAME request in two languages under the SAME "+
+			"Idempotency-Key — want 1: above that is the same message going out twice "+
+			"to the customer", sends)
 	}
 	if first.Code != http.StatusOK || second.Code != http.StatusOK {
-		t.Fatalf("status = %d (PT) e %d (EN), quero 200 nos dois — corpo PT=%s EN=%s",
+		t.Fatalf("status = %d (PT) and %d (EN), want 200 on both — body PT=%s EN=%s",
 			first.Code, second.Code, first.Body, second.Body)
 	}
 	if first.Body.String() != second.Body.String() {
-		t.Errorf("respostas diferentes entre PT e EN sob a mesma chave:\nPT: %s\nEN: %s",
+		t.Errorf("different responses between PT and EN under the same key:\nPT: %s\nEN: %s",
 			first.Body, second.Body)
 	}
 	var r1, r2 struct {
@@ -122,7 +122,7 @@ func TestInputIdempotencyCrossesLanguages(t *testing.T) {
 	_ = json.Unmarshal(first.Body.Bytes(), &r1)
 	_ = json.Unmarshal(second.Body.Bytes(), &r2)
 	if r1.WaMessageID != "wamid.IDIOMAS" || r2.WaMessageID != "wamid.IDIOMAS" {
-		t.Fatalf("wa_message_id PT=%q EN=%q, quero os dois iguais a wamid.IDIOMAS",
+		t.Fatalf("wa_message_id PT=%q EN=%q, want both equal to wamid.IDIOMAS",
 			r1.WaMessageID, r2.WaMessageID)
 	}
 }
@@ -146,11 +146,11 @@ func assertConflictRejected(t *testing.T, ask func(body string) *httptest.Respon
 	t.Helper()
 	rec := ask(requestConflictBody(pt, en))
 	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("status = %d, quero 400 (corpo: %s)", rec.Code, rec.Body)
+		t.Fatalf("status = %d, want 400 (body: %s)", rec.Code, rec.Body)
 	}
 	body := rec.Body.String()
 	if !strings.Contains(body, pt) || !strings.Contains(body, en) {
-		t.Errorf("a mensagem de erro nao nomeia as duas chaves (%q e %q): %s", pt, en, body)
+		t.Errorf("the error message does not name both keys (%q and %q): %s", pt, en, body)
 	}
 }
 
@@ -160,7 +160,7 @@ func assertConflictRejected(t *testing.T, ask func(body string) *httptest.Respon
 // (message.go), not a sample of them.
 func TestInputConflictingAliasIsRejectedForEveryRequestTopLevelKey(t *testing.T) {
 	metaSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		t.Error("a Meta foi CHAMADA com um pedido em conflito de apelido")
+		t.Error("Meta was CALLED with a request in alias conflict")
 		_, _ = w.Write([]byte(`{"messages":[{"id":"wamid.NUNCA"}]}`))
 	}))
 	defer metaSrv.Close()
@@ -178,7 +178,7 @@ func TestInputConflictingAliasIsRejectedForEveryRequestTopLevelKey(t *testing.T)
 		})
 	}
 	if i != len(requestAliasAtTopLevel) {
-		t.Fatalf("percorreu %d chaves, esperava %d", i, len(requestAliasAtTopLevel))
+		t.Fatalf("walked %d keys, expected %d", i, len(requestAliasAtTopLevel))
 	}
 }
 
@@ -189,7 +189,7 @@ func TestInputConflictingAliasIsRejectedForEveryRequestTopLevelKey(t *testing.T)
 // generic top-of-tree rename.
 func TestInputConflictingAliasIsRejectedForEveryNestedRequestKey(t *testing.T) {
 	metaSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		t.Error("a Meta foi CHAMADA com um pedido em conflito de apelido")
+		t.Error("Meta was CALLED with a request in alias conflict")
 		_, _ = w.Write([]byte(`{"messages":[{"id":"wamid.NUNCA"}]}`))
 	}))
 	defer metaSrv.Close()
@@ -211,11 +211,11 @@ func TestInputConflictingAliasIsRejectedForEveryNestedRequestKey(t *testing.T) {
 				body := `{"instancia":"lojinha","` + outer + `":{"` + pt + `":"x","` + en + `":"y"}}`
 				rec := ask(t, h, "token-do-a", "conflito-"+outer+"-"+pt, body)
 				if rec.Code != http.StatusBadRequest {
-					t.Fatalf("status = %d, quero 400 (corpo: %s)", rec.Code, rec.Body)
+					t.Fatalf("status = %d, want 400 (body: %s)", rec.Code, rec.Body)
 				}
 				b := rec.Body.String()
 				if !strings.Contains(b, pt) || !strings.Contains(b, en) {
-					t.Errorf("a mensagem de erro nao nomeia as duas chaves (%q e %q): %s", pt, en, b)
+					t.Errorf("the error message does not name both keys (%q and %q): %s", pt, en, b)
 				}
 			})
 		}
@@ -227,7 +227,7 @@ func TestInputConflictingAliasIsRejectedForEveryNestedRequestKey(t *testing.T) {
 // to EACH ITEM, positionally, never to the list's own key.
 func TestInputConflictingAliasIsRejectedInsideEachTemplateButton(t *testing.T) {
 	metaSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		t.Error("a Meta foi CHAMADA com um pedido em conflito de apelido")
+		t.Error("Meta was CALLED with a request in alias conflict")
 		_, _ = w.Write([]byte(`{"messages":[{"id":"wamid.NUNCA"}]}`))
 	}))
 	defer metaSrv.Close()
@@ -239,11 +239,11 @@ func TestInputConflictingAliasIsRejectedInsideEachTemplateButton(t *testing.T) {
 			body := `{"instancia":"lojinha","botoes_template":[{"` + pt + `":"x","` + en + `":"y"}]}`
 			rec := ask(t, h, "token-do-a", "conflito-botao-"+pt, body)
 			if rec.Code != http.StatusBadRequest {
-				t.Fatalf("status = %d, quero 400 (corpo: %s)", rec.Code, rec.Body)
+				t.Fatalf("status = %d, want 400 (body: %s)", rec.Code, rec.Body)
 			}
 			b := rec.Body.String()
 			if !strings.Contains(b, pt) || !strings.Contains(b, en) {
-				t.Errorf("a mensagem de erro nao nomeia as duas chaves (%q e %q): %s", pt, en, b)
+				t.Errorf("the error message does not name both keys (%q and %q): %s", pt, en, b)
 			}
 		})
 	}
@@ -266,11 +266,11 @@ func TestInputConflictingAliasIsRejectedOnCreateTemplate(t *testing.T) {
 			}
 			rec := createTemplate(t, h, "token-do-a", body)
 			if rec.Code != http.StatusBadRequest {
-				t.Fatalf("status = %d, quero 400 (corpo: %s)", rec.Code, rec.Body)
+				t.Fatalf("status = %d, want 400 (body: %s)", rec.Code, rec.Body)
 			}
 			b := rec.Body.String()
 			if !strings.Contains(b, pt) || !strings.Contains(b, en) {
-				t.Errorf("a mensagem de erro nao nomeia as duas chaves (%q e %q): %s", pt, en, b)
+				t.Errorf("the error message does not name both keys (%q and %q): %s", pt, en, b)
 			}
 		})
 	}
@@ -295,11 +295,11 @@ func TestInputConflictingAliasIsRejectedOnRegistration(t *testing.T) {
 			}
 			rec := register(t, h, "token-do-a", body)
 			if rec.Code != http.StatusBadRequest {
-				t.Fatalf("status = %d, quero 400 (corpo: %s)", rec.Code, rec.Body)
+				t.Fatalf("status = %d, want 400 (body: %s)", rec.Code, rec.Body)
 			}
 			b := rec.Body.String()
 			if !strings.Contains(b, pt) || !strings.Contains(b, en) {
-				t.Errorf("a mensagem de erro nao nomeia as duas chaves (%q e %q): %s", pt, en, b)
+				t.Errorf("the error message does not name both keys (%q and %q): %s", pt, en, b)
 			}
 		})
 	}
@@ -318,11 +318,11 @@ func TestInputConflictingAliasIsRejectedOnInstanceOnlyRoutes(t *testing.T) {
 	for en, pt := range instanceOnlyAlias {
 		rec := askPause(t, h, "token-do-a", `{"`+pt+`":"x","`+en+`":"y"}`)
 		if rec.Code != http.StatusBadRequest {
-			t.Fatalf("status = %d, quero 400 (corpo: %s)", rec.Code, rec.Body)
+			t.Fatalf("status = %d, want 400 (body: %s)", rec.Code, rec.Body)
 		}
 		b := rec.Body.String()
 		if !strings.Contains(b, pt) || !strings.Contains(b, en) {
-			t.Errorf("a mensagem de erro nao nomeia as duas chaves (%q e %q): %s", pt, en, b)
+			t.Errorf("the error message does not name both keys (%q and %q): %s", pt, en, b)
 		}
 	}
 }
@@ -337,7 +337,7 @@ func TestInputAcceptsEnglishInstanceAliasOnPause(t *testing.T) {
 	}
 	rec := askPause(t, h, "token-do-a", `{"instance":"lojinha"}`)
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, corpo = %s", rec.Code, rec.Body)
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body)
 	}
 }
 
@@ -357,7 +357,7 @@ func TestInputAcceptsEnglishInstanceAliasOnBlock(t *testing.T) {
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, corpo = %s", rec.Code, rec.Body)
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body)
 	}
 }
 
@@ -377,7 +377,7 @@ func TestInputAcceptsEnglishInstanceAliasOnReads(t *testing.T) {
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, corpo = %s", rec.Code, rec.Body)
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body)
 	}
 }
 
@@ -395,7 +395,7 @@ func TestInputAcceptsEnglishInstanceAliasOnSmoke(t *testing.T) {
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, corpo = %s", rec.Code, rec.Body)
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body)
 	}
 }
 
@@ -434,35 +434,35 @@ func TestInputOldNameCounterCountsAndAppearsInState(t *testing.T) {
 	// A request in the OLD (Portuguese) spelling — key AND value — counts.
 	pt := ask(t, send, "token-do-a", "chave-pt-contador", textBody)
 	if pt.Code != http.StatusOK {
-		t.Fatalf("PT: status = %d, corpo = %s", pt.Code, pt.Body)
+		t.Fatalf("PT: status = %d, body = %s", pt.Code, pt.Body)
 	}
 	// English KEY, but the discriminator VALUE is still Portuguese — this
 	// is the scenario Do item 5 names by hand, and it counts too (T-207).
 	en := ask(t, send, "token-do-a", "chave-en-contador", enTextBody)
 	if en.Code != http.StatusOK {
-		t.Fatalf("EN (chave em ingles, valor em portugues): status = %d, corpo = %s", en.Code, en.Body)
+		t.Fatalf("EN (English key, Portuguese value): status = %d, body = %s", en.Code, en.Body)
 	}
 	// English key AND English value — fully migrated — must NOT count.
 	enFull := ask(t, send, "token-do-a", "chave-en-completo-contador", enTextBodyFullyEnglish)
 	if enFull.Code != http.StatusOK {
-		t.Fatalf("EN completo: status = %d, corpo = %s", enFull.Code, enFull.Body)
+		t.Fatalf("EN complete: status = %d, body = %s", enFull.Code, enFull.Body)
 	}
 
 	recState := askState(t, state, "token-do-a", "lojinha")
 	if recState.Code != http.StatusOK {
-		t.Fatalf("GET /v1/estado: status = %d, corpo = %s", recState.Code, recState.Body)
+		t.Fatalf("GET /v1/estado: status = %d, body = %s", recState.Code, recState.Body)
 	}
 	var r testStateResponse
 	if err := json.Unmarshal(recState.Body.Bytes(), &r); err != nil {
-		t.Fatalf("decodificar /v1/estado: %v", err)
+		t.Fatalf("decode /v1/estado: %v", err)
 	}
 	c, has := r.Counters[config.CounterOldNameUsed]
 	if !has {
-		t.Fatalf("contador %q nao aparece em /v1/estado", config.CounterOldNameUsed)
+		t.Fatalf("counter %q does not appear in /v1/estado", config.CounterOldNameUsed)
 	}
 	if c.Today != 2 {
-		t.Errorf("contadores[%q].hoje = %d, quero 2 (PT conta, EN-chave/PT-valor conta, "+
-			"EN completo NAO conta)", config.CounterOldNameUsed, c.Today)
+		t.Errorf("contadores[%q].hoje = %d, want 2 (PT counts, EN-key/PT-value counts, "+
+			"full EN does NOT count)", config.CounterOldNameUsed, c.Today)
 	}
 }
 
@@ -497,11 +497,11 @@ func oldNameCounterTodayInState(t *testing.T, store *config.Store, slug string) 
 	t.Helper()
 	rec := askState(t, stateHandlerFor(t, store), "token-do-a", slug)
 	if rec.Code != http.StatusOK {
-		t.Fatalf("GET /v1/estado: status = %d, corpo = %s", rec.Code, rec.Body)
+		t.Fatalf("GET /v1/estado: status = %d, body = %s", rec.Code, rec.Body)
 	}
 	var r testStateResponse
 	if err := json.Unmarshal(rec.Body.Bytes(), &r); err != nil {
-		t.Fatalf("decodificar /v1/estado: %v", err)
+		t.Fatalf("decode /v1/estado: %v", err)
 	}
 	return r.Counters[config.CounterOldNameUsed].Today
 }
@@ -514,10 +514,10 @@ func TestInputOldNameCounterOnRegistration(t *testing.T) {
 	// of registrationAlias's keys.
 	pt := register(t, h, "token-do-a", registrationBody("terceiro", nil))
 	if pt.Code != http.StatusOK {
-		t.Fatalf("PT: status = %d, corpo = %s", pt.Code, pt.Body)
+		t.Fatalf("PT: status = %d, body = %s", pt.Code, pt.Body)
 	}
 	if got := oldNameCounterTodayInState(t, store, "terceiro"); got != 1 {
-		t.Fatalf("apos o pedido em PORTUGUES: contador = %d, quero 1", got)
+		t.Fatalf("after the PORTUGUESE request: counter = %d, want 1", got)
 	}
 
 	// The SAME re-registration, fully in English (T-079: re-registering
@@ -527,10 +527,10 @@ func TestInputOldNameCounterOnRegistration(t *testing.T) {
 		`"send_token":"` + testEncryptedValue["token_envio"] + `","callback_url":"` + testEncryptedValue["callback_url"] + `"}`
 	en := register(t, h, "token-do-a", enBody)
 	if en.Code != http.StatusOK {
-		t.Fatalf("EN: status = %d, corpo = %s", en.Code, en.Body)
+		t.Fatalf("EN: status = %d, body = %s", en.Code, en.Body)
 	}
 	if got := oldNameCounterTodayInState(t, store, "terceiro"); got != 1 {
-		t.Fatalf("apos o pedido em INGLES: contador = %d, quero 1 (nao pode subir de novo)", got)
+		t.Fatalf("after the ENGLISH request: counter = %d, want 1 (cannot go up again)", got)
 	}
 }
 
@@ -542,18 +542,18 @@ func TestInputOldNameCounterOnPause(t *testing.T) {
 
 	pt := askPause(t, h, "token-do-a", `{"instancia":"lojinha"}`)
 	if pt.Code != http.StatusOK {
-		t.Fatalf("PT: status = %d, corpo = %s", pt.Code, pt.Body)
+		t.Fatalf("PT: status = %d, body = %s", pt.Code, pt.Body)
 	}
 	if got := oldNameCounterTodayInState(t, store, "lojinha"); got != 1 {
-		t.Fatalf("apos o pedido em PORTUGUES: contador = %d, quero 1", got)
+		t.Fatalf("after the PORTUGUESE request: counter = %d, want 1", got)
 	}
 
 	en := askPause(t, h, "token-do-a", `{"instance":"lojinha"}`)
 	if en.Code != http.StatusOK {
-		t.Fatalf("EN: status = %d, corpo = %s", en.Code, en.Body)
+		t.Fatalf("EN: status = %d, body = %s", en.Code, en.Body)
 	}
 	if got := oldNameCounterTodayInState(t, store, "lojinha"); got != 1 {
-		t.Fatalf("apos o pedido em INGLES: contador = %d, quero 1 (nao pode subir de novo)", got)
+		t.Fatalf("after the ENGLISH request: counter = %d, want 1 (cannot go up again)", got)
 	}
 }
 
@@ -563,10 +563,10 @@ func TestInputOldNameCounterOnBlock(t *testing.T) {
 
 	pt := askBlock(t, h, http.MethodPost, "token-do-a", `{"instancia":"lojinha","telefones":["5511999990000"]}`)
 	if pt.Code != http.StatusOK {
-		t.Fatalf("PT: status = %d, corpo = %s", pt.Code, pt.Body)
+		t.Fatalf("PT: status = %d, body = %s", pt.Code, pt.Body)
 	}
 	if got := oldNameCounterTodayInState(t, store, "lojinha"); got != 1 {
-		t.Fatalf("apos o pedido em PORTUGUES: contador = %d, quero 1", got)
+		t.Fatalf("after the PORTUGUESE request: counter = %d, want 1", got)
 	}
 
 	// T-208: `phones` (not `telefones`) — `telefones` had no published pair
@@ -574,10 +574,10 @@ func TestInputOldNameCounterOnBlock(t *testing.T) {
 	// count as "fully migrated" now.
 	en := askBlock(t, h, http.MethodPost, "token-do-a", `{"instance":"lojinha","phones":["5511999990000"]}`)
 	if en.Code != http.StatusOK {
-		t.Fatalf("EN: status = %d, corpo = %s", en.Code, en.Body)
+		t.Fatalf("EN: status = %d, body = %s", en.Code, en.Body)
 	}
 	if got := oldNameCounterTodayInState(t, store, "lojinha"); got != 1 {
-		t.Fatalf("apos o pedido em INGLES: contador = %d, quero 1 (nao pode subir de novo)", got)
+		t.Fatalf("after the ENGLISH request: counter = %d, want 1 (cannot go up again)", got)
 	}
 }
 
@@ -705,14 +705,14 @@ func parseOutboundPackageForGuard(t *testing.T) (*token.FileSet, []*ast.File) {
 		for name := range pkgs {
 			names = append(names, name)
 		}
-		t.Fatalf("pacote \"outbound\" nao encontrado em . — pacotes vistos: %v", names)
+		t.Fatalf("package \"outbound\" not found in . — packages seen: %v", names)
 	}
 	files := make([]*ast.File, 0, len(pkg.Files))
 	for _, f := range pkg.Files {
 		files = append(files, f)
 	}
 	if len(files) == 0 {
-		t.Fatal("nenhum arquivo .go de producao encontrado — este teste nao verificaria nada")
+		t.Fatal("no production .go file found — this test would verify nothing")
 	}
 	return fset, files
 }
@@ -730,7 +730,7 @@ func TestOldNameCounterGuardCoversEveryAliasRoute(t *testing.T) {
 	for _, v := range violations {
 		msgs = append(msgs, fmt.Sprintf("%s (chamada em %s)", v.route, v.pos))
 	}
-	t.Fatalf("rota(s) aceitam apelido de entrada e NAO contam config.CounterOldNameUsed: %s",
+	t.Fatalf("route(s) accept an input alias and DO NOT count config.CounterOldNameUsed: %s",
 		strings.Join(msgs, "; "))
 }
 
@@ -758,14 +758,14 @@ func (h *FakeHandler) fake(w http.ResponseWriter, r *http.Request) {
 	fset := token.NewFileSet()
 	f, err := parser.ParseFile(fset, "sintetico_esquecida.go", forgotten, 0)
 	if err != nil {
-		t.Fatalf("parser.ParseFile do fixture sintetico: %v", err)
+		t.Fatalf("parser.ParseFile of the synthetic fixture: %v", err)
 	}
 	violations := findOldNameCounterViolations(fset, []*ast.File{f})
 	if len(violations) != 1 {
-		t.Fatalf("a guarda nao pegou a rota sintetica sem contador: %d violacoes, queria exatamente 1", len(violations))
+		t.Fatalf("the guard did not catch the synthetic route without a counter: %d violations, wanted exactly 1", len(violations))
 	}
 	if !strings.Contains(violations[0].route, "rota-nova-esquecida") {
-		t.Errorf("a guarda pegou a violacao mas NAO NOMEIA a rota: %q", violations[0].route)
+		t.Errorf("the guard caught the violation but does NOT NAME the route: %q", violations[0].route)
 	}
 	t.Logf("guarda reprovou como esperado, nomeando a rota: %q (em %s)", violations[0].route, violations[0].pos)
 
@@ -789,14 +789,14 @@ func (h *FakeHandler) fake(w http.ResponseWriter, r *http.Request) {
 `
 	f2, err := parser.ParseFile(fset, "sintetico_capturada.go", capturedButNeverRecorded, 0)
 	if err != nil {
-		t.Fatalf("parser.ParseFile do segundo fixture sintetico: %v", err)
+		t.Fatalf("parser.ParseFile of the second synthetic fixture: %v", err)
 	}
 	v2 := findOldNameCounterViolations(fset, []*ast.File{f2})
 	if len(v2) != 1 {
-		t.Fatalf("a guarda nao pegou a rota que CAPTURA oldNames mas nunca conta: %d violacoes, queria exatamente 1", len(v2))
+		t.Fatalf("the guard did not catch the route that CAPTURES oldNames but never counts: %d violations, wanted exactly 1", len(v2))
 	}
 	if !strings.Contains(v2[0].route, "rota-capturada-sem-contar") {
-		t.Errorf("a guarda pegou a violacao mas NAO NOMEIA a rota: %q", v2[0].route)
+		t.Errorf("the guard caught the violation but does NOT NAME the route: %q", v2[0].route)
 	}
 }
 
@@ -825,10 +825,10 @@ func (h *FakeHandler) fake(w http.ResponseWriter, r *http.Request) {
 	fset := token.NewFileSet()
 	f, err := parser.ParseFile(fset, "sintetico_correta.go", wired, 0)
 	if err != nil {
-		t.Fatalf("parser.ParseFile do fixture sintetico: %v", err)
+		t.Fatalf("parser.ParseFile of the synthetic fixture: %v", err)
 	}
 	if v := findOldNameCounterViolations(fset, []*ast.File{f}); len(v) != 0 {
-		t.Fatalf("a guarda reprovou uma rota CORRETAMENTE ligada ao contador: %+v", v)
+		t.Fatalf("the guard failed a route CORRECTLY linked to the counter: %+v", v)
 	}
 }
 
@@ -949,7 +949,7 @@ func TestInputValueAliasWithIdenticalResponse(t *testing.T) {
 
 	cases := allValueAliasCases()
 	if len(cases) != 18 {
-		t.Fatalf("montei %d casos, queria 18 (11 + 2 + 5, secao 8.1/8.3/8.5)", len(cases))
+		t.Fatalf("built %d cases, wanted 18 (11 + 2 + 5, section 8.1/8.3/8.5)", len(cases))
 	}
 	for _, c := range cases {
 		c := c
@@ -957,10 +957,10 @@ func TestInputValueAliasWithIdenticalResponse(t *testing.T) {
 			pt := ask(t, h, "token-do-a", "valor-pt-"+c.name, c.ptBody)
 			en := ask(t, h, "token-do-a", "valor-en-"+c.name, c.enBody)
 			if pt.Code != en.Code {
-				t.Fatalf("status PT=%d EN=%d - corpo PT=%s EN=%s", pt.Code, en.Code, pt.Body, en.Body)
+				t.Fatalf("status PT=%d EN=%d - body PT=%s EN=%s", pt.Code, en.Code, pt.Body, en.Body)
 			}
 			if pt.Body.String() != en.Body.String() {
-				t.Errorf("respostas diferentes:\nPT: %s\nEN: %s", pt.Body, en.Body)
+				t.Errorf("different responses:\nPT: %s\nEN: %s", pt.Body, en.Body)
 			}
 		})
 	}
@@ -993,16 +993,16 @@ func TestInputValueIdempotencyCrossesLanguages(t *testing.T) {
 	second := ask(t, h, "token-do-a", "mesma-chave-valor-dois-idiomas", enValueBody)
 
 	if sends != 1 {
-		t.Fatalf("a Meta recebeu %d envios para o MESMO pedido com o MESMO valor escrito em dois "+
-			"idiomas sob a MESMA Idempotency-Key - quero 1: acima disso e a mesma mensagem saindo "+
-			"duas vezes para a cliente", sends)
+		t.Fatalf("Meta received %d sends for the SAME request with the SAME value written in two "+
+			"languages under the SAME Idempotency-Key - want 1: above that is the same message "+
+			"going out twice to the customer", sends)
 	}
 	if first.Code != http.StatusOK || second.Code != http.StatusOK {
-		t.Fatalf("status = %d (PT) e %d (EN), quero 200 nos dois - corpo PT=%s EN=%s",
+		t.Fatalf("status = %d (PT) and %d (EN), want 200 on both - body PT=%s EN=%s",
 			first.Code, second.Code, first.Body, second.Body)
 	}
 	if first.Body.String() != second.Body.String() {
-		t.Errorf("respostas diferentes entre PT e EN sob a mesma chave:\nPT: %s\nEN: %s",
+		t.Errorf("different responses between PT and EN under the same key:\nPT: %s\nEN: %s",
 			first.Body, second.Body)
 	}
 	var r1, r2 struct {
@@ -1011,7 +1011,7 @@ func TestInputValueIdempotencyCrossesLanguages(t *testing.T) {
 	_ = json.Unmarshal(first.Body.Bytes(), &r1)
 	_ = json.Unmarshal(second.Body.Bytes(), &r2)
 	if r1.WaMessageID != "wamid.VALORIDIOMAS" || r2.WaMessageID != "wamid.VALORIDIOMAS" {
-		t.Fatalf("wa_message_id PT=%q EN=%q, quero os dois iguais a wamid.VALORIDIOMAS",
+		t.Fatalf("wa_message_id PT=%q EN=%q, want both equal to wamid.VALORIDIOMAS",
 			r1.WaMessageID, r2.WaMessageID)
 	}
 }
@@ -1024,7 +1024,7 @@ func TestInputValueIdempotencyCrossesLanguages(t *testing.T) {
 // object, even though both share the JSON key name "tipo".
 func TestInputValueAliasIsScopedPerObject(t *testing.T) {
 	metaSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		t.Error("a Meta foi CHAMADA com um pedido que deveria ter sido recusado")
+		t.Error("Meta was CALLED with a request that should have been refused")
 		_, _ = w.Write([]byte(`{"messages":[{"id":"wamid.NUNCA"}]}`))
 	}))
 	defer metaSrv.Close()
@@ -1037,11 +1037,11 @@ func TestInputValueAliasIsScopedPerObject(t *testing.T) {
 	// doesn't know it either.
 	rec := ask(t, h, "token-do-a", "escopo-media-no-botao", templateButtonValueBody("media"))
 	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("status = %d, quero 400 (\"media\" do vocabulario do topo nao deveria valer "+
-			"dentro de botoes_template) - corpo: %s", rec.Code, rec.Body)
+		t.Fatalf("status = %d, want 400 (\"media\" from the top-level vocabulary should not be valid "+
+			"inside botoes_template) - body: %s", rec.Code, rec.Body)
 	}
 	if !strings.Contains(rec.Body.String(), "media") {
-		t.Errorf("a mensagem de erro deveria citar o valor recusado \"media\": %s", rec.Body)
+		t.Errorf("the error message should cite the refused value \"media\": %s", rec.Body)
 	}
 
 	// "quick_reply" is a VALID button-scope value (8.3:
@@ -1049,11 +1049,11 @@ func TestInputValueAliasIsScopedPerObject(t *testing.T) {
 	// means nothing: requestTypeValueAlias has no "quick_reply" entry.
 	rec2 := ask(t, h, "token-do-a", "escopo-quickreply-no-topo", topLevelValueBody("quick_reply"))
 	if rec2.Code != http.StatusBadRequest {
-		t.Fatalf("status = %d, quero 400 (\"quick_reply\" do vocabulario do botao nao deveria "+
-			"valer no topo) - corpo: %s", rec2.Code, rec2.Body)
+		t.Fatalf("status = %d, want 400 (\"quick_reply\" from the button vocabulary should not be "+
+			"valid at the top) - body: %s", rec2.Code, rec2.Body)
 	}
 	if !strings.Contains(rec2.Body.String(), "quick_reply") {
-		t.Errorf("a mensagem de erro deveria citar o valor recusado \"quick_reply\": %s", rec2.Body)
+		t.Errorf("the error message should cite the refused value \"quick_reply\": %s", rec2.Body)
 	}
 }
 
@@ -1068,13 +1068,13 @@ func TestInputInventedValueStillRejected(t *testing.T) {
 
 	rec := ask(t, h, "token-do-a", "valor-inventado", topLevelValueBody("bugigangue"))
 	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("status = %d, quero 400 - corpo: %s", rec.Code, rec.Body)
+		t.Fatalf("status = %d, want 400 - body: %s", rec.Code, rec.Body)
 	}
 	if !strings.Contains(rec.Body.String(), ErrUnknownType.Error()) {
-		t.Errorf("a mensagem de erro nao e a de ErrUnknownType (%q): %s", ErrUnknownType.Error(), rec.Body)
+		t.Errorf("the error message is not ErrUnknownType's (%q): %s", ErrUnknownType.Error(), rec.Body)
 	}
 	if !strings.Contains(rec.Body.String(), "bugigangue") {
-		t.Errorf("a mensagem de erro deveria citar o valor recusado: %s", rec.Body)
+		t.Errorf("the error message should cite the refused value: %s", rec.Body)
 	}
 }
 
@@ -1096,15 +1096,15 @@ func TestInputOldNameCounterCountsOldValueUsage(t *testing.T) {
 
 	oldValue := ask(t, send, "token-do-a", "valor-velho-contador", categoryValueBody("imagem"))
 	if oldValue.Code != http.StatusOK {
-		t.Fatalf("valor velho: status = %d, corpo = %s", oldValue.Code, oldValue.Body)
+		t.Fatalf("old value: status = %d, body = %s", oldValue.Code, oldValue.Body)
 	}
 	newValue := ask(t, send, "token-do-a", "valor-novo-contador", categoryValueBody("image"))
 	if newValue.Code != http.StatusOK {
-		t.Fatalf("valor novo: status = %d, corpo = %s", newValue.Code, newValue.Body)
+		t.Fatalf("new value: status = %d, body = %s", newValue.Code, newValue.Body)
 	}
 
 	if got := oldNameCounterTodayInState(t, store, "lojinha"); got != 1 {
-		t.Errorf("contadores[%q].hoje = %d, quero 1 (so o valor velho conta)",
+		t.Errorf("contadores[%q].hoje = %d, want 1 (only the old value counts)",
 			config.CounterOldNameUsed, got)
 	}
 }
@@ -1156,18 +1156,18 @@ func TestInputButtonTitleOldNameCounts(t *testing.T) {
 
 	old := ask(t, h, "token-do-a", "titulo-velho-208", buttonTitleBody("titulo"))
 	if old.Code != http.StatusOK {
-		t.Fatalf("titulo (PT): status = %d, corpo = %s", old.Code, old.Body)
+		t.Fatalf("titulo (PT): status = %d, body = %s", old.Code, old.Body)
 	}
 	if got := oldNameCounterTodayInState(t, store, "lojinha"); got != 1 {
-		t.Fatalf("apos botoes[].titulo: contador = %d, quero 1", got)
+		t.Fatalf("after botoes[].titulo: counter = %d, want 1", got)
 	}
 
 	newer := ask(t, h, "token-do-a", "titulo-novo-208", buttonTitleBody("title"))
 	if newer.Code != http.StatusOK {
-		t.Fatalf("title (EN): status = %d, corpo = %s", newer.Code, newer.Body)
+		t.Fatalf("title (EN): status = %d, body = %s", newer.Code, newer.Body)
 	}
 	if got := oldNameCounterTodayInState(t, store, "lojinha"); got != 1 {
-		t.Fatalf("apos botoes[].title: contador = %d, quero 1 (nao pode subir de novo)", got)
+		t.Fatalf("after botoes[].title: counter = %d, want 1 (cannot go up again)", got)
 	}
 }
 
@@ -1192,14 +1192,14 @@ func TestInputConsumerScenarioTitleInPortugueseMovesTheCounter(t *testing.T) {
 		`"buttons":[{"id":"b1","titulo":"Ver mais"}]}`
 	rec := ask(t, h, "token-do-a", "cenario-consumidor-b-208", body)
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, corpo = %s", rec.Code, rec.Body)
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body)
 	}
 
 	after := oldNameCounterTodayInState(t, store, "lojinha")
 	if after != before+1 {
-		t.Fatalf("chaves em ingles + titulo em portugues dentro de botoes[]: contador foi de %d para %d "+
-			"(quero +1) — este e o cenario exato que o consumidor mandou contra producao, e ANTES de "+
-			"T-208 o contador nao se movia com este pedido", before, after)
+		t.Fatalf("English keys + Portuguese titulo inside botoes[]: counter went from %d to %d "+
+			"(want +1) — this is the exact scenario the consumer sent against production, and BEFORE "+
+			"T-208 the counter did not move with this request", before, after)
 	}
 }
 
@@ -1222,18 +1222,18 @@ func TestInputTemplateButtonIndexOldNameCounts(t *testing.T) {
 
 	old := ask(t, h, "token-do-a", "indice-velho-208", templateButtonIndexBody("indice"))
 	if old.Code != http.StatusOK {
-		t.Fatalf("indice (PT): status = %d, corpo = %s", old.Code, old.Body)
+		t.Fatalf("indice (PT): status = %d, body = %s", old.Code, old.Body)
 	}
 	if got := oldNameCounterTodayInState(t, store, "lojinha"); got != 1 {
-		t.Fatalf("apos botoes_template[].indice: contador = %d, quero 1", got)
+		t.Fatalf("after botoes_template[].indice: counter = %d, want 1", got)
 	}
 
 	newer := ask(t, h, "token-do-a", "indice-novo-208", templateButtonIndexBody("index"))
 	if newer.Code != http.StatusOK {
-		t.Fatalf("index (EN): status = %d, corpo = %s", newer.Code, newer.Body)
+		t.Fatalf("index (EN): status = %d, body = %s", newer.Code, newer.Body)
 	}
 	if got := oldNameCounterTodayInState(t, store, "lojinha"); got != 1 {
-		t.Fatalf("apos botoes_template[].index: contador = %d, quero 1 (nao pode subir de novo)", got)
+		t.Fatalf("after botoes_template[].index: counter = %d, want 1 (cannot go up again)", got)
 	}
 }
 
@@ -1249,18 +1249,18 @@ func TestInputBlockPhonesOldNameCounts(t *testing.T) {
 
 	old := askBlock(t, h, http.MethodPost, "token-do-a", `{"instance":"lojinha","telefones":["5511999990000"]}`)
 	if old.Code != http.StatusOK {
-		t.Fatalf("telefones (PT): status = %d, corpo = %s", old.Code, old.Body)
+		t.Fatalf("telefones (PT): status = %d, body = %s", old.Code, old.Body)
 	}
 	if got := oldNameCounterTodayInState(t, store, "lojinha"); got != 1 {
-		t.Fatalf("apos telefones: contador = %d, quero 1", got)
+		t.Fatalf("after telefones: counter = %d, want 1", got)
 	}
 
 	newer := askBlock(t, h, http.MethodPost, "token-do-a", `{"instance":"lojinha","phones":["5511999990000"]}`)
 	if newer.Code != http.StatusOK {
-		t.Fatalf("phones (EN): status = %d, corpo = %s", newer.Code, newer.Body)
+		t.Fatalf("phones (EN): status = %d, body = %s", newer.Code, newer.Body)
 	}
 	if got := oldNameCounterTodayInState(t, store, "lojinha"); got != 1 {
-		t.Fatalf("apos phones: contador = %d, quero 1 (nao pode subir de novo)", got)
+		t.Fatalf("after phones: counter = %d, want 1 (cannot go up again)", got)
 	}
 }
 
@@ -1306,18 +1306,18 @@ func TestInputMediaPartNameOldNameCounts(t *testing.T) {
 
 	old := run(h, newUploadRequestWithQuery(t, "instance=lojinha", "arquivo", "a.ogg", "audio/ogg", []byte("bytes")))
 	if old.Code != http.StatusOK {
-		t.Fatalf("arquivo (PT): status = %d, corpo = %s", old.Code, old.Body)
+		t.Fatalf("arquivo (PT): status = %d, body = %s", old.Code, old.Body)
 	}
 	if got := oldNameCounterTodayInState(t, store, "lojinha"); got != 1 {
-		t.Fatalf("apos a parte arquivo: contador = %d, quero 1", got)
+		t.Fatalf("after the arquivo part: counter = %d, want 1", got)
 	}
 
 	newer := run(h, newUploadRequestWithQuery(t, "instance=lojinha", "file", "b.ogg", "audio/ogg", []byte("bytes")))
 	if newer.Code != http.StatusOK {
-		t.Fatalf("file (EN): status = %d, corpo = %s", newer.Code, newer.Body)
+		t.Fatalf("file (EN): status = %d, body = %s", newer.Code, newer.Body)
 	}
 	if got := oldNameCounterTodayInState(t, store, "lojinha"); got != 1 {
-		t.Fatalf("apos a parte file: contador = %d, quero 1 (nao pode subir de novo)", got)
+		t.Fatalf("after the file part: counter = %d, want 1 (cannot go up again)", got)
 	}
 }
 
@@ -1335,18 +1335,18 @@ func TestInputMediaInstanceQueryOldNameCounts(t *testing.T) {
 
 	old := run(h, newAuthedGetRequest(t, "/v1/media/MEDIA-1?instancia=lojinha"))
 	if old.Code != http.StatusOK {
-		t.Fatalf("instancia (PT): status = %d, corpo = %s", old.Code, old.Body)
+		t.Fatalf("instancia (PT): status = %d, body = %s", old.Code, old.Body)
 	}
 	if got := oldNameCounterTodayInState(t, store, "lojinha"); got != 1 {
-		t.Fatalf("apos ?instancia=: contador = %d, quero 1", got)
+		t.Fatalf("after ?instancia=: counter = %d, want 1", got)
 	}
 
 	newer := run(h, newAuthedGetRequest(t, "/v1/media/MEDIA-2?instance=lojinha"))
 	if newer.Code != http.StatusOK {
-		t.Fatalf("instance (EN): status = %d, corpo = %s", newer.Code, newer.Body)
+		t.Fatalf("instance (EN): status = %d, body = %s", newer.Code, newer.Body)
 	}
 	if got := oldNameCounterTodayInState(t, store, "lojinha"); got != 1 {
-		t.Fatalf("apos ?instance=: contador = %d, quero 1 (nao pode subir de novo)", got)
+		t.Fatalf("after ?instance=: counter = %d, want 1 (cannot go up again)", got)
 	}
 }
 
@@ -1360,18 +1360,18 @@ func TestInputMediaPayloadMimeQueryOldNameCounts(t *testing.T) {
 
 	old := run(h, newAuthedGetRequest(t, "/v1/media/MEDIA-1?instance=lojinha&mime_do_payload=audio/ogg"))
 	if old.Code != http.StatusOK {
-		t.Fatalf("mime_do_payload (PT): status = %d, corpo = %s", old.Code, old.Body)
+		t.Fatalf("mime_do_payload (PT): status = %d, body = %s", old.Code, old.Body)
 	}
 	if got := oldNameCounterTodayInState(t, store, "lojinha"); got != 1 {
-		t.Fatalf("apos mime_do_payload: contador = %d, quero 1", got)
+		t.Fatalf("after mime_do_payload: counter = %d, want 1", got)
 	}
 
 	newer := run(h, newAuthedGetRequest(t, "/v1/media/MEDIA-2?instance=lojinha&payload_mime=audio/ogg"))
 	if newer.Code != http.StatusOK {
-		t.Fatalf("payload_mime (EN): status = %d, corpo = %s", newer.Code, newer.Body)
+		t.Fatalf("payload_mime (EN): status = %d, body = %s", newer.Code, newer.Body)
 	}
 	if got := oldNameCounterTodayInState(t, store, "lojinha"); got != 1 {
-		t.Fatalf("apos payload_mime: contador = %d, quero 1 (nao pode subir de novo)", got)
+		t.Fatalf("after payload_mime: counter = %d, want 1 (cannot go up again)", got)
 	}
 }
 
@@ -1389,19 +1389,19 @@ func TestInputStateInstanceQueryOldNameCounts(t *testing.T) {
 	old := httptest.NewRecorder()
 	h.ServeHTTP(old, newAuthedGetRequest(t, "/v1/estado?instancia=lojinha"))
 	if old.Code != http.StatusOK {
-		t.Fatalf("instancia (PT): status = %d, corpo = %s", old.Code, old.Body)
+		t.Fatalf("instancia (PT): status = %d, body = %s", old.Code, old.Body)
 	}
 	if got := oldNameCounterTodayInState(t, store, "lojinha"); got != 1 {
-		t.Fatalf("apos ?instancia=: contador = %d, quero 1", got)
+		t.Fatalf("after ?instancia=: counter = %d, want 1", got)
 	}
 
 	newer := httptest.NewRecorder()
 	h.ServeHTTP(newer, newAuthedGetRequest(t, "/v1/estado?instance=lojinha"))
 	if newer.Code != http.StatusOK {
-		t.Fatalf("instance (EN): status = %d, corpo = %s", newer.Code, newer.Body)
+		t.Fatalf("instance (EN): status = %d, body = %s", newer.Code, newer.Body)
 	}
 	if got := oldNameCounterTodayInState(t, store, "lojinha"); got != 1 {
-		t.Fatalf("apos ?instance=: contador = %d, quero 1 (nao pode subir de novo)", got)
+		t.Fatalf("after ?instance=: counter = %d, want 1 (cannot go up again)", got)
 	}
 }
 
@@ -1416,19 +1416,19 @@ func TestInputStateSeriesDaysQueryOldNameCounts(t *testing.T) {
 	old := httptest.NewRecorder()
 	h.ServeHTTP(old, newAuthedGetRequest(t, "/v1/estado?instance=lojinha&serie_dias=3"))
 	if old.Code != http.StatusOK {
-		t.Fatalf("serie_dias (PT): status = %d, corpo = %s", old.Code, old.Body)
+		t.Fatalf("serie_dias (PT): status = %d, body = %s", old.Code, old.Body)
 	}
 	if got := oldNameCounterTodayInState(t, store, "lojinha"); got != 1 {
-		t.Fatalf("apos ?serie_dias=: contador = %d, quero 1", got)
+		t.Fatalf("after ?serie_dias=: counter = %d, want 1", got)
 	}
 
 	newer := httptest.NewRecorder()
 	h.ServeHTTP(newer, newAuthedGetRequest(t, "/v1/estado?instance=lojinha&series_days=3"))
 	if newer.Code != http.StatusOK {
-		t.Fatalf("series_days (EN): status = %d, corpo = %s", newer.Code, newer.Body)
+		t.Fatalf("series_days (EN): status = %d, body = %s", newer.Code, newer.Body)
 	}
 	if got := oldNameCounterTodayInState(t, store, "lojinha"); got != 1 {
-		t.Fatalf("apos ?series_days=: contador = %d, quero 1 (nao pode subir de novo)", got)
+		t.Fatalf("after ?series_days=: counter = %d, want 1 (cannot go up again)", got)
 	}
 }
 
@@ -1442,18 +1442,18 @@ func TestInputBlockListInstanceQueryOldNameCounts(t *testing.T) {
 
 	old := listBlocks(t, h, "token-do-a", url.Values{"instancia": {"lojinha"}})
 	if old.Code != http.StatusOK {
-		t.Fatalf("instancia (PT): status = %d, corpo = %s", old.Code, old.Body)
+		t.Fatalf("instancia (PT): status = %d, body = %s", old.Code, old.Body)
 	}
 	if got := oldNameCounterTodayInState(t, store, "lojinha"); got != 1 {
-		t.Fatalf("apos ?instancia=: contador = %d, quero 1", got)
+		t.Fatalf("after ?instancia=: counter = %d, want 1", got)
 	}
 
 	newer := listBlocks(t, h, "token-do-a", url.Values{"instance": {"lojinha"}})
 	if newer.Code != http.StatusOK {
-		t.Fatalf("instance (EN): status = %d, corpo = %s", newer.Code, newer.Body)
+		t.Fatalf("instance (EN): status = %d, body = %s", newer.Code, newer.Body)
 	}
 	if got := oldNameCounterTodayInState(t, store, "lojinha"); got != 1 {
-		t.Fatalf("apos ?instance=: contador = %d, quero 1 (nao pode subir de novo)", got)
+		t.Fatalf("after ?instance=: counter = %d, want 1 (cannot go up again)", got)
 	}
 }
 
@@ -1482,18 +1482,18 @@ func TestInputProfileInstanceQueryOldNameCounts(t *testing.T) {
 
 	old := run(h, newAuthedGetRequest(t, "/v1/perfil?instancia=lojinha"))
 	if old.Code != http.StatusOK {
-		t.Fatalf("instancia (PT): status = %d, corpo = %s", old.Code, old.Body)
+		t.Fatalf("instancia (PT): status = %d, body = %s", old.Code, old.Body)
 	}
 	if got := oldNameCounterTodayInState(t, store, "lojinha"); got != 1 {
-		t.Fatalf("apos ?instancia=: contador = %d, quero 1", got)
+		t.Fatalf("after ?instancia=: counter = %d, want 1", got)
 	}
 
 	newer := run(h, newAuthedGetRequest(t, "/v1/perfil?instance=lojinha"))
 	if newer.Code != http.StatusOK {
-		t.Fatalf("instance (EN): status = %d, corpo = %s", newer.Code, newer.Body)
+		t.Fatalf("instance (EN): status = %d, body = %s", newer.Code, newer.Body)
 	}
 	if got := oldNameCounterTodayInState(t, store, "lojinha"); got != 1 {
-		t.Fatalf("apos ?instance=: contador = %d, quero 1 (nao pode subir de novo)", got)
+		t.Fatalf("after ?instance=: counter = %d, want 1 (cannot go up again)", got)
 	}
 }
 
@@ -1504,18 +1504,18 @@ func TestInputTemplatesListInstanceQueryOldNameCounts(t *testing.T) {
 
 	old := askTemplates(t, h, "token-do-a", "?instancia=lojinha")
 	if old.Code != http.StatusOK {
-		t.Fatalf("instancia (PT): status = %d, corpo = %s", old.Code, old.Body)
+		t.Fatalf("instancia (PT): status = %d, body = %s", old.Code, old.Body)
 	}
 	if got := oldNameCounterTodayInState(t, store, "lojinha"); got != 1 {
-		t.Fatalf("apos ?instancia=: contador = %d, quero 1", got)
+		t.Fatalf("after ?instancia=: counter = %d, want 1", got)
 	}
 
 	newer := askTemplates(t, h, "token-do-a", "?instance=lojinha")
 	if newer.Code != http.StatusOK {
-		t.Fatalf("instance (EN): status = %d, corpo = %s", newer.Code, newer.Body)
+		t.Fatalf("instance (EN): status = %d, body = %s", newer.Code, newer.Body)
 	}
 	if got := oldNameCounterTodayInState(t, store, "lojinha"); got != 1 {
-		t.Fatalf("apos ?instance=: contador = %d, quero 1 (nao pode subir de novo)", got)
+		t.Fatalf("after ?instance=: counter = %d, want 1 (cannot go up again)", got)
 	}
 }
 
@@ -1528,18 +1528,18 @@ func TestInputTemplatesDeleteInstanceQueryOldNameCounts(t *testing.T) {
 
 	old := callDeleteTemplate(t, h, "token-do-a", "?instancia=lojinha&name=inexistente")
 	if old.Code != http.StatusOK {
-		t.Fatalf("instancia (PT): status = %d, corpo = %s", old.Code, old.Body)
+		t.Fatalf("instancia (PT): status = %d, body = %s", old.Code, old.Body)
 	}
 	if got := oldNameCounterTodayInState(t, store, "lojinha"); got != 1 {
-		t.Fatalf("apos ?instancia=: contador = %d, quero 1", got)
+		t.Fatalf("after ?instancia=: counter = %d, want 1", got)
 	}
 
 	newer := callDeleteTemplate(t, h, "token-do-a", "?instance=lojinha&name=inexistente")
 	if newer.Code != http.StatusOK {
-		t.Fatalf("instance (EN): status = %d, corpo = %s", newer.Code, newer.Body)
+		t.Fatalf("instance (EN): status = %d, body = %s", newer.Code, newer.Body)
 	}
 	if got := oldNameCounterTodayInState(t, store, "lojinha"); got != 1 {
-		t.Fatalf("apos ?instance=: contador = %d, quero 1 (nao pode subir de novo)", got)
+		t.Fatalf("after ?instance=: counter = %d, want 1 (cannot go up again)", got)
 	}
 }
 
@@ -1551,18 +1551,18 @@ func TestInputTemplatesDeleteNameQueryOldNameCounts(t *testing.T) {
 
 	old := callDeleteTemplate(t, h, "token-do-a", "?instance=lojinha&nome=inexistente")
 	if old.Code != http.StatusOK {
-		t.Fatalf("nome (PT): status = %d, corpo = %s", old.Code, old.Body)
+		t.Fatalf("nome (PT): status = %d, body = %s", old.Code, old.Body)
 	}
 	if got := oldNameCounterTodayInState(t, store, "lojinha"); got != 1 {
-		t.Fatalf("apos ?nome=: contador = %d, quero 1", got)
+		t.Fatalf("after ?nome=: counter = %d, want 1", got)
 	}
 
 	newer := callDeleteTemplate(t, h, "token-do-a", "?instance=lojinha&name=inexistente2")
 	if newer.Code != http.StatusOK {
-		t.Fatalf("name (EN): status = %d, corpo = %s", newer.Code, newer.Body)
+		t.Fatalf("name (EN): status = %d, body = %s", newer.Code, newer.Body)
 	}
 	if got := oldNameCounterTodayInState(t, store, "lojinha"); got != 1 {
-		t.Fatalf("apos ?name=: contador = %d, quero 1 (nao pode subir de novo)", got)
+		t.Fatalf("after ?name=: counter = %d, want 1 (cannot go up again)", got)
 	}
 }
 
@@ -1594,7 +1594,7 @@ func frozenEnglishKeysForGate(t *testing.T) ([]string, error) {
 	t.Helper()
 	raw, err := os.ReadFile(filepath.Join("..", "..", "docs", "contrato-chaves-que-nao-mudam.txt"))
 	if err != nil {
-		return nil, fmt.Errorf("ler docs/contrato-chaves-que-nao-mudam.txt: %w", err)
+		return nil, fmt.Errorf("read docs/contrato-chaves-que-nao-mudam.txt: %w", err)
 	}
 	var keys []string
 	for _, line := range strings.Split(string(raw), "\n") {
@@ -1605,7 +1605,7 @@ func frozenEnglishKeysForGate(t *testing.T) ([]string, error) {
 		keys = append(keys, line)
 	}
 	if len(keys) == 0 {
-		return nil, fmt.Errorf("docs/contrato-chaves-que-nao-mudam.txt nao tem nenhuma chave")
+		return nil, fmt.Errorf("docs/contrato-chaves-que-nao-mudam.txt has no key at all")
 	}
 	return keys, nil
 }
@@ -1631,7 +1631,7 @@ func requestTopLevelJSONTags(t *testing.T) []string {
 		tags = append(tags, name)
 	}
 	if len(tags) == 0 {
-		t.Fatal("outbound.Request nao tem nenhum campo com json tag — este teste nao provaria nada")
+		t.Fatal("outbound.Request has no field with a json tag at all — this test would prove nothing")
 	}
 	return tags
 }
@@ -1644,7 +1644,7 @@ func requestTopLevelJSONTags(t *testing.T) []string {
 func TestRequestTopLevelKeysAreAllAccountedFor(t *testing.T) {
 	frozen, err := frozenEnglishKeysForGate(t)
 	if err != nil {
-		t.Fatalf("NAO CONSEGUI VERIFICAR (nao e um achado — sem lista de chaves congeladas para comparar): %v", err)
+		t.Fatalf("COULD NOT VERIFY (not a finding — no list of frozen keys to compare): %v", err)
 	}
 	frozenSet := make(map[string]bool, len(frozen))
 	for _, k := range frozen {
@@ -1665,9 +1665,9 @@ func TestRequestTopLevelKeysAreAllAccountedFor(t *testing.T) {
 			if frozenSet[tag] {
 				return // already English by contract — docs/contrato-chaves-que-nao-mudam.txt
 			}
-			t.Errorf("a chave %q de outbound.Request nao tem alias em ingles em "+
-				"requestAliasAtTopLevel NEM esta em docs/contrato-chaves-que-nao-mudam.txt — "+
-				"um consumidor 100%% em ingles nao consegue escrever esta chave", tag)
+			t.Errorf("key %q of outbound.Request has no English alias in "+
+				"requestAliasAtTopLevel NOR is it in docs/contrato-chaves-que-nao-mudam.txt — "+
+				"a consumer 100%% in English cannot write this key", tag)
 		})
 	}
 }
@@ -1718,10 +1718,10 @@ func TestInputAcceptsContactsFlowSectionsEnglishTopLevelKeys(t *testing.T) {
 			pt := ask(t, h, "token-do-a", "contatos-fluxo-secoes-pt-"+c.name, c.ptBody)
 			en := ask(t, h, "token-do-a", "contatos-fluxo-secoes-en-"+c.name, c.enBody)
 			if pt.Code != en.Code {
-				t.Fatalf("status PT=%d EN=%d — corpo PT=%s EN=%s", pt.Code, en.Code, pt.Body, en.Body)
+				t.Fatalf("status PT=%d EN=%d — body PT=%s EN=%s", pt.Code, en.Code, pt.Body, en.Body)
 			}
 			if pt.Body.String() != en.Body.String() {
-				t.Errorf("respostas diferentes:\nPT: %s\nEN: %s", pt.Body, en.Body)
+				t.Errorf("different responses:\nPT: %s\nEN: %s", pt.Body, en.Body)
 			}
 		})
 	}
@@ -1761,17 +1761,17 @@ func TestInputOldNameCounterOnSections(t *testing.T) {
 
 	pt := ask(t, h, "token-do-a", "secoes-contador-pt", ptBody)
 	if pt.Code != http.StatusOK {
-		t.Fatalf("PT (secoes): status = %d, corpo = %s", pt.Code, pt.Body)
+		t.Fatalf("PT (secoes): status = %d, body = %s", pt.Code, pt.Body)
 	}
 	if got := oldNameCounterTodayInState(t, store, "lojinha"); got != 1 {
-		t.Fatalf("apos o pedido com 'secoes': contador = %d, quero 1", got)
+		t.Fatalf("after the request with 'secoes': counter = %d, want 1", got)
 	}
 
 	en := ask(t, h, "token-do-a", "secoes-contador-en", enBody)
 	if en.Code != http.StatusOK {
-		t.Fatalf("EN (sections): status = %d, corpo = %s", en.Code, en.Body)
+		t.Fatalf("EN (sections): status = %d, body = %s", en.Code, en.Body)
 	}
 	if got := oldNameCounterTodayInState(t, store, "lojinha"); got != 1 {
-		t.Fatalf("apos o pedido com 'sections': contador = %d, quero 1 (nao pode subir de novo)", got)
+		t.Fatalf("after the request with 'sections': counter = %d, want 1 (cannot go up again)", got)
 	}
 }

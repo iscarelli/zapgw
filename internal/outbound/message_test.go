@@ -26,11 +26,11 @@ func TestRequestHashIsStableAcross100Calls(t *testing.T) {
 
 	firstOne := RequestHash(p)
 	if firstOne == "" {
-		t.Fatal("RequestHash devolveu vazio")
+		t.Fatal("RequestHash returned empty")
 	}
 	for i := 0; i < 100; i++ {
 		if got := RequestHash(p); got != firstOne {
-			t.Fatalf("chamada %d: hash = %q, quero %q (o mesmo de sempre)", i, got, firstOne)
+			t.Fatalf("call %d: hash = %q, want %q (always the same)", i, got, firstOne)
 		}
 	}
 }
@@ -41,7 +41,7 @@ func TestRequestHashDistinguishesTheText(t *testing.T) {
 	a := RequestHash(Request{Instance: "l", To: "5511999990000", Type: "texto", Text: "lembrete"})
 	b := RequestHash(Request{Instance: "l", To: "5511999990000", Type: "texto", Text: "cobranca"})
 	if a == b {
-		t.Fatalf("pedidos com texto diferente produziram o MESMO hash: %q", a)
+		t.Fatalf("requests with different texto produced the SAME hash: %q", a)
 	}
 }
 
@@ -57,16 +57,16 @@ func TestRequestHashIsEqualForTwoSpellingsOfTheSamePhone(t *testing.T) {
 	canonical := Request{Instance: "lojinha", To: "5511999990000", Type: "texto", Text: "oi"}
 
 	if err := withAreaCode.Validate(); err != nil {
-		t.Fatalf("Validate (formatado): %v", err)
+		t.Fatalf("Validate (formatted): %v", err)
 	}
 	if err := canonical.Validate(); err != nil {
-		t.Fatalf("Validate (canonico): %v", err)
+		t.Fatalf("Validate (canonical): %v", err)
 	}
 
 	a := RequestHash(withAreaCode)
 	b := RequestHash(canonical)
 	if a != b {
-		t.Fatalf("hashes diferentes para o MESMO telefone em grafias diferentes: %q (formatado, To=%q) != %q (canonico, To=%q)",
+		t.Fatalf("different hashes for the SAME phone in different spellings: %q (formatted, To=%q) != %q (canonical, To=%q)",
 			a, withAreaCode.To, b, canonical.To)
 	}
 }
@@ -84,7 +84,7 @@ func TestValidateAcceptsTheFourV1Types(t *testing.T) {
 
 	for _, p := range cases {
 		if err := p.Validate(); err != nil {
-			t.Errorf("tipo %q recusado: %v", p.Type, err)
+			t.Errorf("tipo %q refused: %v", p.Type, err)
 		}
 	}
 }
@@ -98,7 +98,7 @@ func TestValidateRefusesUnknownType(t *testing.T) {
 		p := textRequest()
 		p.Type = kind
 		if err := p.Validate(); !errors.Is(err, ErrUnknownType) {
-			t.Errorf("tipo %q: erro = %v, quero ErrUnknownType", kind, err)
+			t.Errorf("tipo %q: err = %v, want ErrUnknownType", kind, err)
 		}
 	}
 }
@@ -119,7 +119,7 @@ func TestValidateRefusesButtonsMixedWithCtaURL(t *testing.T) {
 	}
 
 	if err := p.Validate(); !errors.Is(err, ErrMixedButtons) {
-		t.Fatalf("erro = %v, quero ErrMixedButtons", err)
+		t.Fatalf("err = %v, want ErrMixedButtons", err)
 	}
 }
 
@@ -137,10 +137,10 @@ func TestValidateRefusesReplyToInTemplate(t *testing.T) {
 
 	err := p.Validate()
 	if !errors.Is(err, ErrFieldForbidden) {
-		t.Fatalf("erro = %v, quero ErrFieldForbidden", err)
+		t.Fatalf("err = %v, want ErrFieldForbidden", err)
 	}
 	if !strings.Contains(err.Error(), "responder_a") {
-		t.Errorf("o erro nao diz QUAL campo: %v", err)
+		t.Errorf("the error does not say WHICH field: %v", err)
 	}
 }
 
@@ -156,7 +156,7 @@ func TestValidateAcceptsReplyToOnTheOtherTypes(t *testing.T) {
 			p.ButtonTitle, p.ButtonURL = "Abrir", "https://exemplo.com"
 		}
 		if err := p.Validate(); err != nil {
-			t.Errorf("tipo %q recusou responder_a: %v", kind, err)
+			t.Errorf("tipo %q refused responder_a: %v", kind, err)
 		}
 	}
 }
@@ -167,23 +167,23 @@ func TestValidateRequiresTheFieldsOfEachType(t *testing.T) {
 		p     Request
 		field string
 	}{
-		{"texto sem texto", Request{Instance: "l", To: "5511999990000", Type: "texto"}, "texto"},
-		{"template sem nome", Request{Instance: "l", To: "5511999990000", Type: "template", Language: "pt_BR"}, "template"},
-		{"template sem idioma", Request{Instance: "l", To: "5511999990000", Type: "template", Template: "x"}, "idioma"},
-		{"botoes sem botao", Request{Instance: "l", To: "5511999990000", Type: "botoes", Text: "?"}, "botoes"},
-		{"cta sem url", Request{Instance: "l", To: "5511999990000", Type: "cta_url", Text: "?", ButtonTitle: "Abrir"}, "botao_url"},
-		{"sem instancia", Request{To: "5511999990000", Type: "texto", Text: "oi"}, "instancia"},
-		{"sem para", Request{Instance: "l", Type: "texto", Text: "oi"}, "para"},
+		{"texto without texto", Request{Instance: "l", To: "5511999990000", Type: "texto"}, "texto"},
+		{"template without nome", Request{Instance: "l", To: "5511999990000", Type: "template", Language: "pt_BR"}, "template"},
+		{"template without idioma", Request{Instance: "l", To: "5511999990000", Type: "template", Template: "x"}, "idioma"},
+		{"botoes without a button", Request{Instance: "l", To: "5511999990000", Type: "botoes", Text: "?"}, "botoes"},
+		{"cta without url", Request{Instance: "l", To: "5511999990000", Type: "cta_url", Text: "?", ButtonTitle: "Abrir"}, "botao_url"},
+		{"missing instancia", Request{To: "5511999990000", Type: "texto", Text: "oi"}, "instancia"},
+		{"missing para", Request{Instance: "l", Type: "texto", Text: "oi"}, "para"},
 	}
 
 	for _, c := range cases {
 		err := c.p.Validate()
 		if !errors.Is(err, ErrFieldRequired) {
-			t.Errorf("%s: erro = %v, quero ErrFieldRequired", c.name, err)
+			t.Errorf("%s: err = %v, want ErrFieldRequired", c.name, err)
 			continue
 		}
 		if !strings.Contains(err.Error(), c.field) {
-			t.Errorf("%s: o erro nao nomeia o campo %q: %v", c.name, c.field, err)
+			t.Errorf("%s: the error does not name field %q: %v", c.name, c.field, err)
 		}
 	}
 }
@@ -198,10 +198,10 @@ func TestValidateRefusesBase64WithANamedError(t *testing.T) {
 
 	err := p.Validate()
 	if !errors.Is(err, ErrBase64) {
-		t.Fatalf("erro = %v, quero ErrBase64", err)
+		t.Fatalf("err = %v, want ErrBase64", err)
 	}
 	if !strings.Contains(err.Error(), "media_id") {
-		t.Errorf("o erro nao diz o que fazer no lugar: %v", err)
+		t.Errorf("the error does not say what to do instead: %v", err)
 	}
 }
 
@@ -216,7 +216,7 @@ func TestValidateDoesNotConfuseNormalTextWithBase64(t *testing.T) {
 		p := textRequest()
 		p.Text = text
 		if err := p.Validate(); err != nil {
-			t.Errorf("texto legitimo %q recusado: %v", text, err)
+			t.Errorf("legitimate texto %q refused: %v", text, err)
 		}
 	}
 }
@@ -240,7 +240,7 @@ func TestValidateRefusesBase64InAnyCaseAndPosition(t *testing.T) {
 		p := textRequest()
 		p.Text = text
 		if err := p.Validate(); !errors.Is(err, ErrBase64) {
-			t.Errorf("texto %.50q: erro = %v, quero ErrBase64", text, err)
+			t.Errorf("texto %.50q: err = %v, want ErrBase64", text, err)
 		}
 	}
 }
@@ -265,7 +265,7 @@ func TestValidateDoesNotRefuseLegitimateTextStartingWithData(t *testing.T) {
 		p := textRequest()
 		p.Text = text
 		if err := p.Validate(); err != nil {
-			t.Errorf("texto legitimo %q recusado: %v", text, err)
+			t.Errorf("legitimate texto %q refused: %v", text, err)
 		}
 	}
 }
@@ -280,10 +280,10 @@ func TestValidateTreatsAWhitespaceOnlyReplyToAsAbsent(t *testing.T) {
 		p := textRequest()
 		p.ReplyTo = blank
 		if err := p.Validate(); err != nil {
-			t.Errorf("responder_a %q deu erro: %v — devia ser tratado como ausente", blank, err)
+			t.Errorf("responder_a %q gave an error: %v — should be treated as absent", blank, err)
 		}
 		if p.ReplyTo != "" {
-			t.Errorf("responder_a %q nao foi normalizado, ficou %q", blank, p.ReplyTo)
+			t.Errorf("responder_a %q was not normalized, ended up %q", blank, p.ReplyTo)
 		}
 	}
 }
@@ -296,7 +296,7 @@ func TestValidateNormalizesReplyToWithSpacesAtTheEnds(t *testing.T) {
 		t.Fatalf("Validate: %v", err)
 	}
 	if p.ReplyTo != "wamid.ABC" {
-		t.Fatalf("ReplyTo = %q — os espacos das pontas seriam propagados para a Meta", p.ReplyTo)
+		t.Fatalf("ReplyTo = %q — the whitespace at the ends would be propagated to Meta", p.ReplyTo)
 	}
 }
 
@@ -306,11 +306,11 @@ func TestValidateRequiresIDAndTitleInEachButton(t *testing.T) {
 		buttons []Button
 		field   string
 	}{
-		{"id vazio", []Button{{ID: "", Title: "Sim"}}, "botoes[0].id"},
-		{"id em branco", []Button{{ID: "   ", Title: "Sim"}}, "botoes[0].id"},
-		{"titulo vazio", []Button{{ID: "SIM", Title: ""}}, "botoes[0].titulo"},
-		{"titulo em branco", []Button{{ID: "SIM", Title: "\t"}}, "botoes[0].titulo"},
-		{"segundo botao ruim", []Button{{ID: "SIM", Title: "Sim"}, {ID: "", Title: "Nao"}}, "botoes[1].id"},
+		{"id empty", []Button{{ID: "", Title: "Sim"}}, "botoes[0].id"},
+		{"id blank", []Button{{ID: "   ", Title: "Sim"}}, "botoes[0].id"},
+		{"titulo empty", []Button{{ID: "SIM", Title: ""}}, "botoes[0].titulo"},
+		{"titulo blank", []Button{{ID: "SIM", Title: "\t"}}, "botoes[0].titulo"},
+		{"second button bad", []Button{{ID: "SIM", Title: "Sim"}, {ID: "", Title: "Nao"}}, "botoes[1].id"},
 	}
 
 	for _, c := range cases {
@@ -319,11 +319,11 @@ func TestValidateRequiresIDAndTitleInEachButton(t *testing.T) {
 
 		err := p.Validate()
 		if !errors.Is(err, ErrFieldRequired) {
-			t.Errorf("%s: erro = %v, quero ErrFieldRequired", c.name, err)
+			t.Errorf("%s: err = %v, want ErrFieldRequired", c.name, err)
 			continue
 		}
 		if !strings.Contains(err.Error(), c.field) {
-			t.Errorf("%s: o erro nao nomeia %q: %v", c.name, c.field, err)
+			t.Errorf("%s: the error does not name %q: %v", c.name, c.field, err)
 		}
 	}
 }
@@ -336,7 +336,7 @@ func TestValidateNormalizesTheButtonsItAccepts(t *testing.T) {
 		t.Fatalf("Validate: %v", err)
 	}
 	if p.Buttons[0].ID != "SIM" || p.Buttons[0].Title != "Sim" {
-		t.Fatalf("botao = %+v — os espacos seriam propagados para a Meta", p.Buttons[0])
+		t.Fatalf("button = %+v — the whitespace would be propagated to Meta", p.Buttons[0])
 	}
 }
 
@@ -358,10 +358,10 @@ func TestValidateTrimsHeaderTextAndFooter(t *testing.T) {
 		t.Fatalf("Validate: %v", err)
 	}
 	if p.HeaderText != "oi" {
-		t.Errorf("cabecalho_texto = %q, quero %q (espacos aparados)", p.HeaderText, "oi")
+		t.Errorf("cabecalho_texto = %q, want %q (whitespace trimmed)", p.HeaderText, "oi")
 	}
 	if p.Footer != "" {
-		t.Errorf("rodape = %q, quero \"\" (so espacos conta como ausente)", p.Footer)
+		t.Errorf("rodape = %q, want \"\" (only whitespace counts as absent)", p.Footer)
 	}
 }
 
@@ -378,10 +378,10 @@ func TestValidateTrimsHeaderTextAndFooterInCtaURL(t *testing.T) {
 		t.Fatalf("Validate: %v", err)
 	}
 	if p.HeaderText != "novidade" {
-		t.Errorf("cabecalho_texto = %q, quero %q", p.HeaderText, "novidade")
+		t.Errorf("cabecalho_texto = %q, want %q", p.HeaderText, "novidade")
 	}
 	if p.Footer != "" {
-		t.Errorf("rodape = %q, quero \"\"", p.Footer)
+		t.Errorf("rodape = %q, want \"\"", p.Footer)
 	}
 }
 
@@ -401,11 +401,11 @@ func TestValidateRefusesLongHeaderTextAndFooter(t *testing.T) {
 		footerField string
 		want        error
 	}{
-		{"cabecalho com 60 runas passa", sixty, "", nil},
-		{"cabecalho com 60 emojis passa", sixtyWithEmoji, "", nil},
-		{"rodape com 60 runas passa", "", sixty, nil},
-		{"cabecalho com 61 runas recusa", sixtyOne, "", ErrFieldTooLong},
-		{"rodape com 61 runas recusa", "", sixtyOne, ErrFieldTooLong},
+		{"header with 60 runes passes", sixty, "", nil},
+		{"header with 60 emoji passes", sixtyWithEmoji, "", nil},
+		{"footer with 60 runes passes", "", sixty, nil},
+		{"header with 61 runes refuses", sixtyOne, "", ErrFieldTooLong},
+		{"footer with 61 runes refuses", "", sixtyOne, ErrFieldTooLong},
 	}
 
 	for _, c := range cases {
@@ -418,12 +418,12 @@ func TestValidateRefusesLongHeaderTextAndFooter(t *testing.T) {
 		err := p.Validate()
 		if c.want == nil {
 			if err != nil {
-				t.Errorf("%s: Validate = %v, quero nil", c.name, err)
+				t.Errorf("%s: Validate = %v, want nil", c.name, err)
 			}
 			continue
 		}
 		if !errors.Is(err, c.want) {
-			t.Errorf("%s: erro = %v, quero %v", c.name, err, c.want)
+			t.Errorf("%s: err = %v, want %v", c.name, err, c.want)
 		}
 	}
 }
@@ -461,10 +461,10 @@ func TestValidateRefusesHeaderTextAndFooterOutsideButtonsAndCtaURL(t *testing.T)
 				field.applies(&p, "valor")
 				err := p.Validate()
 				if !errors.Is(err, ErrFieldForbidden) {
-					t.Fatalf("erro = %v, quero ErrFieldForbidden", err)
+					t.Fatalf("err = %v, want ErrFieldForbidden", err)
 				}
 				if !strings.Contains(err.Error(), field.name) {
-					t.Errorf("o erro nao nomeia %q: %v", field.name, err)
+					t.Errorf("the error does not name %q: %v", field.name, err)
 				}
 			})
 		}
@@ -494,11 +494,11 @@ func TestValidateRefusesLongCtaURLButtonTitle(t *testing.T) {
 		buttonTitle string
 		want        error
 	}{
-		{"20 runas passa", twenty, nil},
-		{"20 runas acentuadas passa", twentyAccented, nil},
-		{"20 emojis passa", twentyWithEmoji, nil},
-		{"21 runas recusa", twentyOne, ErrFieldTooLong},
-		{"21 emojis recusa", twentyOneWithEmoji, ErrFieldTooLong},
+		{"20 runes passes", twenty, nil},
+		{"20 accented runes passes", twentyAccented, nil},
+		{"20 emoji passes", twentyWithEmoji, nil},
+		{"21 runes refuses", twentyOne, ErrFieldTooLong},
+		{"21 emoji refuses", twentyOneWithEmoji, ErrFieldTooLong},
 	}
 
 	for _, c := range cases {
@@ -510,16 +510,16 @@ func TestValidateRefusesLongCtaURLButtonTitle(t *testing.T) {
 		err := p.Validate()
 		if c.want == nil {
 			if err != nil {
-				t.Errorf("%s: Validate = %v, quero nil", c.name, err)
+				t.Errorf("%s: Validate = %v, want nil", c.name, err)
 			}
 			continue
 		}
 		if !errors.Is(err, c.want) {
-			t.Errorf("%s: erro = %v, quero %v", c.name, err, c.want)
+			t.Errorf("%s: err = %v, want %v", c.name, err, c.want)
 			continue
 		}
 		if !strings.Contains(err.Error(), "botao_titulo") {
-			t.Errorf("%s: o erro nao nomeia botao_titulo: %v", c.name, err)
+			t.Errorf("%s: the error does not name botao_titulo: %v", c.name, err)
 		}
 	}
 }
@@ -546,9 +546,9 @@ func TestValidateRefusesLongQuickReplyButtonTitle(t *testing.T) {
 		want    error
 		field   string
 	}{
-		{"20 runas passa", []Button{{ID: "A", Title: twenty}}, nil, ""},
-		{"20 runas acentuadas / 40 bytes passa", []Button{{ID: "A", Title: twentyAccented}}, nil, ""},
-		{"21 runas recusa", []Button{{ID: "A", Title: twentyOne}}, ErrFieldTooLong, "botoes[0].titulo"},
+		{"20 runes passes", []Button{{ID: "A", Title: twenty}}, nil, ""},
+		{"20 accented runes / 40 bytes passes", []Button{{ID: "A", Title: twentyAccented}}, nil, ""},
+		{"21 runes refuses", []Button{{ID: "A", Title: twentyOne}}, ErrFieldTooLong, "botoes[0].titulo"},
 		{
 			"terceiro botao de uma lista de tres recusa nomeando o indice certo",
 			[]Button{
@@ -567,16 +567,16 @@ func TestValidateRefusesLongQuickReplyButtonTitle(t *testing.T) {
 		err := p.Validate()
 		if c.want == nil {
 			if err != nil {
-				t.Errorf("%s: Validate = %v, quero nil", c.name, err)
+				t.Errorf("%s: Validate = %v, want nil", c.name, err)
 			}
 			continue
 		}
 		if !errors.Is(err, c.want) {
-			t.Errorf("%s: erro = %v, quero %v", c.name, err, c.want)
+			t.Errorf("%s: err = %v, want %v", c.name, err, c.want)
 			continue
 		}
 		if !strings.Contains(err.Error(), c.field) {
-			t.Errorf("%s: o erro nao nomeia %q: %v", c.name, c.field, err)
+			t.Errorf("%s: the error does not name %q: %v", c.name, c.field, err)
 		}
 	}
 }
@@ -599,7 +599,7 @@ func TestValidateRefusesMoreThanThreeQuickReplyButtons(t *testing.T) {
 		buttons []Button
 		want    error
 	}{
-		{"1 botao passa", []Button{{ID: "A", Title: "Sim"}}, nil},
+		{"1 button passes", []Button{{ID: "A", Title: "Sim"}}, nil},
 		{
 			"3 botoes passa (teto exato)",
 			[]Button{
@@ -628,22 +628,22 @@ func TestValidateRefusesMoreThanThreeQuickReplyButtons(t *testing.T) {
 		err := p.Validate()
 		if c.want == nil {
 			if err != nil {
-				t.Errorf("%s: Validate = %v, quero nil", c.name, err)
+				t.Errorf("%s: Validate = %v, want nil", c.name, err)
 			}
 			continue
 		}
 		if !errors.Is(err, c.want) {
-			t.Errorf("%s: erro = %v, quero %v", c.name, err, c.want)
+			t.Errorf("%s: err = %v, want %v", c.name, err, c.want)
 			continue
 		}
 		if !strings.Contains(err.Error(), "4") || !strings.Contains(err.Error(), "3") {
-			t.Errorf("%s: o erro nao cita quantos vieram e o maximo: %v", c.name, err)
+			t.Errorf("%s: the error does not cite how many came and the maximum: %v", c.name, err)
 		}
 		// T-144: the QUANTITY guard can't cite "caracteres" — that's the
 		// unit of the text sentinel, and citing it here sends whoever reads
 		// it to measure title length instead of removing a button.
 		if strings.Contains(err.Error(), "caracteres") {
-			t.Errorf("%s: o erro da guarda de quantidade nao pode citar \"caracteres\": %v", c.name, err)
+			t.Errorf("%s: the quantity guard's error cannot cite \"caracteres\": %v", c.name, err)
 		}
 	}
 }
@@ -657,22 +657,22 @@ func TestValidateRefusesBlankFields(t *testing.T) {
 		p     Request
 		field string
 	}{
-		{"texto em branco", Request{Instance: "l", To: "5511999990000", Type: "texto", Text: "   "}, "texto"},
-		{"template em branco", Request{Instance: "l", To: "5511999990000", Type: "template", Template: "  ", Language: "pt_BR"}, "template"},
-		{"idioma em branco", Request{Instance: "l", To: "5511999990000", Type: "template", Template: "t", Language: "\t"}, "idioma"},
-		{"botao_titulo em branco", Request{Instance: "l", To: "5511999990000", Type: "cta_url", Text: "x", ButtonTitle: "  ", ButtonURL: "https://e.com"}, "botao_titulo"},
-		{"botao_url em branco", Request{Instance: "l", To: "5511999990000", Type: "cta_url", Text: "x", ButtonTitle: "Abrir", ButtonURL: " "}, "botao_url"},
-		{"instancia em branco", Request{Instance: "  ", To: "5511999990000", Type: "texto", Text: "oi"}, "instancia"},
+		{"texto blank", Request{Instance: "l", To: "5511999990000", Type: "texto", Text: "   "}, "texto"},
+		{"template blank", Request{Instance: "l", To: "5511999990000", Type: "template", Template: "  ", Language: "pt_BR"}, "template"},
+		{"idioma blank", Request{Instance: "l", To: "5511999990000", Type: "template", Template: "t", Language: "\t"}, "idioma"},
+		{"botao_titulo blank", Request{Instance: "l", To: "5511999990000", Type: "cta_url", Text: "x", ButtonTitle: "  ", ButtonURL: "https://e.com"}, "botao_titulo"},
+		{"botao_url blank", Request{Instance: "l", To: "5511999990000", Type: "cta_url", Text: "x", ButtonTitle: "Abrir", ButtonURL: " "}, "botao_url"},
+		{"instancia blank", Request{Instance: "  ", To: "5511999990000", Type: "texto", Text: "oi"}, "instancia"},
 	}
 
 	for _, c := range cases {
 		err := c.p.Validate()
 		if !errors.Is(err, ErrFieldRequired) {
-			t.Errorf("%s: erro = %v, quero ErrFieldRequired", c.name, err)
+			t.Errorf("%s: err = %v, want ErrFieldRequired", c.name, err)
 			continue
 		}
 		if !strings.Contains(err.Error(), c.field) {
-			t.Errorf("%s: o erro nao nomeia %q: %v", c.name, c.field, err)
+			t.Errorf("%s: the error does not name %q: %v", c.name, c.field, err)
 		}
 	}
 }
@@ -685,7 +685,7 @@ func TestValidateRefusesToWithoutADigit(t *testing.T) {
 		p := Request{Instance: "l", To: to, Type: "texto", Text: "oi"}
 		err := p.Validate()
 		if !errors.Is(err, ErrFieldRequired) {
-			t.Errorf("para %q: erro = %v, quero ErrFieldRequired", to, err)
+			t.Errorf("para %q: err = %v, want ErrFieldRequired", to, err)
 		}
 	}
 }
@@ -695,7 +695,7 @@ func TestValidateAcceptsAFormattedTo(t *testing.T) {
 	for _, to := range []string{"5511999990000", "+55 11 99999-0000", " 5511999990000 "} {
 		p := Request{Instance: "l", To: to, Type: "texto", Text: "oi"}
 		if err := p.Validate(); err != nil {
-			t.Errorf("para legitimo %q recusado: %v", to, err)
+			t.Errorf("legitimate para %q refused: %v", to, err)
 		}
 	}
 }
@@ -709,7 +709,7 @@ func TestValidateNormalizesTheFieldsItAccepts(t *testing.T) {
 	}
 	if p.Instance != "lojinha" || p.Text != "veja" ||
 		p.ButtonTitle != "Abrir" || p.ButtonURL != "https://e.com" {
-		t.Fatalf("campos nao normalizados: %+v", p)
+		t.Fatalf("fields not normalized: %+v", p)
 	}
 }
 
@@ -720,13 +720,13 @@ func TestValidateReportsTheMixtureBeforeAMissingField(t *testing.T) {
 	cta := Request{Instance: "l", To: "5511999990000", Type: "cta_url",
 		Buttons: []Button{{ID: "SIM", Title: "Sim"}}}
 	if err := cta.Validate(); !errors.Is(err, ErrMixedButtons) {
-		t.Errorf("cta_url com botoes: erro = %v, quero ErrMixedButtons", err)
+		t.Errorf("cta_url with botoes: err = %v, want ErrMixedButtons", err)
 	}
 
 	buttons := Request{Instance: "l", To: "5511999990000", Type: "botoes",
 		ButtonURL: "https://exemplo.com"}
 	if err := buttons.Validate(); !errors.Is(err, ErrMixedButtons) {
-		t.Errorf("botoes com botao_url: erro = %v, quero ErrMixedButtons", err)
+		t.Errorf("botoes with botao_url: err = %v, want ErrMixedButtons", err)
 	}
 }
 
@@ -746,7 +746,7 @@ func TestValidateAcceptsMediaInEveryCategory(t *testing.T) {
 		p := mediaRequest()
 		p.Category = cat
 		if err := p.Validate(); err != nil {
-			t.Errorf("categoria %q recusada: %v", cat, err)
+			t.Errorf("categoria %q refused: %v", cat, err)
 		}
 	}
 }
@@ -760,21 +760,21 @@ func TestValidateMediaRequiresMediaIDAndCategory(t *testing.T) {
 		p     Request
 		field string
 	}{
-		{"sem media_id", Request{Instance: "l", To: "5511999990000", Type: "midia",
+		{"missing media_id", Request{Instance: "l", To: "5511999990000", Type: "midia",
 			Category: "imagem"}, "media_id"},
-		{"media_id so com espaco", Request{Instance: "l", To: "5511999990000", Type: "midia",
+		{"media_id with only whitespace", Request{Instance: "l", To: "5511999990000", Type: "midia",
 			Category: "imagem", MediaID: "   "}, "media_id"},
-		{"sem categoria", Request{Instance: "l", To: "5511999990000", Type: "midia",
+		{"missing categoria", Request{Instance: "l", To: "5511999990000", Type: "midia",
 			MediaID: "MEDIA-123"}, "categoria"},
 	}
 	for _, c := range cases {
 		err := c.p.Validate()
 		if !errors.Is(err, ErrFieldRequired) {
-			t.Errorf("%s: erro = %v, quero ErrFieldRequired", c.name, err)
+			t.Errorf("%s: err = %v, want ErrFieldRequired", c.name, err)
 			continue
 		}
 		if !strings.Contains(err.Error(), c.field) {
-			t.Errorf("%s: o erro nao nomeia o campo %q: %v", c.name, c.field, err)
+			t.Errorf("%s: the error does not name field %q: %v", c.name, c.field, err)
 		}
 	}
 }
@@ -787,7 +787,7 @@ func TestValidateMediaRefusesUnknownCategory(t *testing.T) {
 		p := mediaRequest()
 		p.Category = bad
 		if err := p.Validate(); !errors.Is(err, ErrUnknownCategory) {
-			t.Errorf("categoria %q: erro = %v, quero ErrUnknownCategory", bad, err)
+			t.Errorf("categoria %q: err = %v, want ErrUnknownCategory", bad, err)
 		}
 	}
 }
@@ -804,23 +804,23 @@ func TestValidateMediaRefusesAFieldTheCategoryDoesNotCarry(t *testing.T) {
 		p     Request
 		field string
 	}{
-		{"legenda em audio", Request{Instance: "l", To: "5511999990000", Type: "midia",
+		{"legenda on audio", Request{Instance: "l", To: "5511999990000", Type: "midia",
 			Category: "audio", MediaID: "M", Caption: "ouve isso"}, "legenda"},
-		{"legenda em sticker", Request{Instance: "l", To: "5511999990000", Type: "midia",
+		{"legenda on sticker", Request{Instance: "l", To: "5511999990000", Type: "midia",
 			Category: "sticker", MediaID: "M", Caption: "hehe"}, "legenda"},
-		{"nome_arquivo em imagem", Request{Instance: "l", To: "5511999990000", Type: "midia",
+		{"nome_arquivo on imagem", Request{Instance: "l", To: "5511999990000", Type: "midia",
 			Category: "imagem", MediaID: "M", Filename: "foto.png"}, "nome_arquivo"},
-		{"nome_arquivo em audio", Request{Instance: "l", To: "5511999990000", Type: "midia",
+		{"nome_arquivo on audio", Request{Instance: "l", To: "5511999990000", Type: "midia",
 			Category: "audio", MediaID: "M", Filename: "nota.ogg"}, "nome_arquivo"},
 	}
 	for _, c := range cases {
 		err := c.p.Validate()
 		if !errors.Is(err, ErrFieldForbidden) {
-			t.Errorf("%s: erro = %v, quero ErrFieldForbidden", c.name, err)
+			t.Errorf("%s: err = %v, want ErrFieldForbidden", c.name, err)
 			continue
 		}
 		if !strings.Contains(err.Error(), c.field) {
-			t.Errorf("%s: o erro nao nomeia o campo %q: %v", c.name, c.field, err)
+			t.Errorf("%s: the error does not name field %q: %v", c.name, c.field, err)
 		}
 	}
 }
@@ -829,7 +829,7 @@ func TestValidateMediaAcceptsTheFieldsTheCategoryCarries(t *testing.T) {
 	p := Request{Instance: "l", To: "5511999990000", Type: "midia",
 		Category: "documento", MediaID: "M", Caption: "a nota fiscal", Filename: "nota.pdf"}
 	if err := p.Validate(); err != nil {
-		t.Fatalf("documento com legenda e nome_arquivo recusado: %v", err)
+		t.Fatalf("documento with legenda and nome_arquivo refused: %v", err)
 	}
 }
 
@@ -843,21 +843,21 @@ func TestValidateMediaRefusesBase64WithANamedErrorThatCitesTheRoute(t *testing.T
 		name string
 		p    Request
 	}{
-		{"no media_id", Request{Instance: "l", To: "5511999990000", Type: "midia",
+		{"in media_id", Request{Instance: "l", To: "5511999990000", Type: "midia",
 			Category: "imagem", MediaID: "data:image/png;base64,iVBORw0KGgo="}},
-		{"na legenda", Request{Instance: "l", To: "5511999990000", Type: "midia",
+		{"in the legenda", Request{Instance: "l", To: "5511999990000", Type: "midia",
 			Category: "imagem", MediaID: "M", Caption: "veja: DATA:image/png;BASE64,iVBORw0="}},
-		{"no nome_arquivo", Request{Instance: "l", To: "5511999990000", Type: "midia",
+		{"in nome_arquivo", Request{Instance: "l", To: "5511999990000", Type: "midia",
 			Category: "documento", MediaID: "M", Filename: "data:application/pdf;base64,JVBER"}},
 	}
 	for _, c := range cases {
 		err := c.p.Validate()
 		if !errors.Is(err, ErrMediaBase64) {
-			t.Errorf("%s: erro = %v, quero ErrMediaBase64", c.name, err)
+			t.Errorf("%s: err = %v, want ErrMediaBase64", c.name, err)
 			continue
 		}
 		if !strings.Contains(err.Error(), "POST /v1/media") {
-			t.Errorf("%s: o erro nao diz para onde ir: %v", c.name, err)
+			t.Errorf("%s: the error does not say where to go: %v", c.name, err)
 		}
 	}
 }
@@ -876,7 +876,7 @@ func TestValidateMediaDoesNotConfuseLegitimateTextWithBase64(t *testing.T) {
 	}
 	for _, p := range cases {
 		if err := p.Validate(); err != nil {
-			t.Errorf("pedido legitimo recusado (%q): %v", p.Caption+p.Filename, err)
+			t.Errorf("legitimate request refused (%q): %v", p.Caption+p.Filename, err)
 		}
 	}
 }
@@ -890,7 +890,7 @@ func TestValidateMediaNormalizesTheFieldsItAccepts(t *testing.T) {
 	}
 	if p.MediaID != "MEDIA-123" || p.Category != "documento" ||
 		p.Caption != "a nota" || p.Filename != "nota.pdf" {
-		t.Errorf("campos nao aparados: %+v", p)
+		t.Errorf("fields not trimmed: %+v", p)
 	}
 }
 
@@ -920,7 +920,7 @@ func TestVariablesOnlyTemplateHashDidNotChangeWithTheNewFields(t *testing.T) {
 	}
 	const ofToday = "f232a847bfe1b6cc16dc685a30d268d9f531d2a6f5231155909f564cbf9b39fe"
 	if got := RequestHash(p); got != ofToday {
-		t.Errorf("hash mudou: %q, quero %q (todo retry dentro do TTL de 72h viraria 422 falso)", got, ofToday)
+		t.Errorf("hash changed: %q, want %q (every retry within the 72h TTL would turn into a false 422)", got, ofToday)
 	}
 }
 
@@ -945,14 +945,14 @@ func TestValidateRefusesRawComponentsInAnyType(t *testing.T) {
 		p.Components = raw
 		err := p.Validate()
 		if !errors.Is(err, ErrRawComponents) {
-			t.Errorf("tipo %q: erro = %v, quero ErrRawComponents", p.Type, err)
+			t.Errorf("tipo %q: err = %v, want ErrRawComponents", p.Type, err)
 			continue
 		}
 		// The error has to say WHAT TO USE INSTEAD, otherwise whoever reads
 		// it only finds out they can't — and goes back to looking for a way
 		// to pass it through.
 		if !strings.Contains(err.Error(), "cabecalho") || !strings.Contains(err.Error(), "botoes_template") {
-			t.Errorf("tipo %q: o erro nao aponta a saida: %v", p.Type, err)
+			t.Errorf("tipo %q: the error does not point to the output: %v", p.Type, err)
 		}
 	}
 }
@@ -962,27 +962,27 @@ func TestValidateAcceptsHeaderAndTemplateButtonsInTemplate(t *testing.T) {
 		name string
 		p    Request
 	}{
-		{"cabecalho de texto", func() Request {
+		{"text header", func() Request {
 			p := templateRequest()
 			p.Header = &TemplateHeader{Type: "texto", Text: "Pedido 4210"}
 			return p
 		}()},
-		{"cabecalho de documento com nome", func() Request {
+		{"document header with a name", func() Request {
 			p := templateRequest()
 			p.Header = &TemplateHeader{Type: "documento", MediaID: "M1", Filename: "recibo.pdf"}
 			return p
 		}()},
-		{"cabecalho de imagem", func() Request {
+		{"image header", func() Request {
 			p := templateRequest()
 			p.Header = &TemplateHeader{Type: "imagem", MediaID: "M1"}
 			return p
 		}()},
-		{"botao url", func() Request {
+		{"url button", func() Request {
 			p := templateRequest()
 			p.TemplateButtons = []TemplateButtonUnion{{Index: 0, Type: "url", Text: "tok-abc"}}
 			return p
 		}()},
-		{"os tres juntos", func() Request {
+		{"all three together", func() Request {
 			p := templateRequest()
 			p.Variables = []string{"Maria"}
 			p.Header = &TemplateHeader{Type: "documento", MediaID: "M1"}
@@ -995,7 +995,7 @@ func TestValidateAcceptsHeaderAndTemplateButtonsInTemplate(t *testing.T) {
 	}
 	for _, c := range cases {
 		if err := c.p.Validate(); err != nil {
-			t.Errorf("%s: recusado: %v", c.name, err)
+			t.Errorf("%s: refused: %v", c.name, err)
 		}
 	}
 }
@@ -1010,7 +1010,7 @@ func TestValidateHeaderRefusesUnknownType(t *testing.T) {
 		p := templateRequest()
 		p.Header = &TemplateHeader{Type: bad, MediaID: "M1"}
 		if err := p.Validate(); !errors.Is(err, ErrUnknownHeaderType) {
-			t.Errorf("cabecalho.tipo %q: erro = %v, quero ErrUnknownHeaderType", bad, err)
+			t.Errorf("cabecalho.tipo %q: err = %v, want ErrUnknownHeaderType", bad, err)
 		}
 	}
 }
@@ -1021,10 +1021,10 @@ func TestValidateHeaderRequiresTheFieldOfItsType(t *testing.T) {
 		header TemplateHeader
 		field  string
 	}{
-		{"texto sem texto", TemplateHeader{Type: "texto"}, "cabecalho.texto"},
-		{"texto so com espaco", TemplateHeader{Type: "texto", Text: "   "}, "cabecalho.texto"},
-		{"imagem sem media_id", TemplateHeader{Type: "imagem"}, "cabecalho.media_id"},
-		{"documento com media_id so de espaco", TemplateHeader{Type: "documento", MediaID: "  "},
+		{"texto without texto", TemplateHeader{Type: "texto"}, "cabecalho.texto"},
+		{"texto with only whitespace", TemplateHeader{Type: "texto", Text: "   "}, "cabecalho.texto"},
+		{"imagem without media_id", TemplateHeader{Type: "imagem"}, "cabecalho.media_id"},
+		{"documento with a whitespace-only media_id", TemplateHeader{Type: "documento", MediaID: "  "},
 			"cabecalho.media_id"},
 	}
 	for _, c := range cases {
@@ -1033,11 +1033,11 @@ func TestValidateHeaderRequiresTheFieldOfItsType(t *testing.T) {
 		p.Header = &hdr
 		err := p.Validate()
 		if !errors.Is(err, ErrFieldRequired) {
-			t.Errorf("%s: erro = %v, quero ErrFieldRequired", c.name, err)
+			t.Errorf("%s: err = %v, want ErrFieldRequired", c.name, err)
 			continue
 		}
 		if !strings.Contains(err.Error(), c.field) {
-			t.Errorf("%s: o erro nao nomeia %q: %v", c.name, c.field, err)
+			t.Errorf("%s: the error does not name %q: %v", c.name, c.field, err)
 		}
 	}
 }
@@ -1051,15 +1051,15 @@ func TestValidateHeaderRefusesAFieldTheTypeDoesNotCarry(t *testing.T) {
 		header TemplateHeader
 		field  string
 	}{
-		{"media_id em cabecalho de texto",
+		{"media_id in a text header",
 			TemplateHeader{Type: "texto", Text: "oi", MediaID: "M1"}, "cabecalho.media_id"},
-		{"nome_arquivo em cabecalho de texto",
+		{"nome_arquivo in a text header",
 			TemplateHeader{Type: "texto", Text: "oi", Filename: "x.pdf"}, "cabecalho.nome_arquivo"},
-		{"texto em cabecalho de imagem",
+		{"texto in an image header",
 			TemplateHeader{Type: "imagem", MediaID: "M1", Text: "oi"}, "cabecalho.texto"},
-		{"nome_arquivo em cabecalho de imagem",
+		{"nome_arquivo in an image header",
 			TemplateHeader{Type: "imagem", MediaID: "M1", Filename: "foto.png"}, "cabecalho.nome_arquivo"},
-		{"nome_arquivo em cabecalho de video",
+		{"nome_arquivo in a video header",
 			TemplateHeader{Type: "video", MediaID: "M1", Filename: "v.mp4"}, "cabecalho.nome_arquivo"},
 	}
 	for _, c := range cases {
@@ -1068,11 +1068,11 @@ func TestValidateHeaderRefusesAFieldTheTypeDoesNotCarry(t *testing.T) {
 		p.Header = &hdr
 		err := p.Validate()
 		if !errors.Is(err, ErrFieldForbidden) {
-			t.Errorf("%s: erro = %v, quero ErrFieldForbidden", c.name, err)
+			t.Errorf("%s: err = %v, want ErrFieldForbidden", c.name, err)
 			continue
 		}
 		if !strings.Contains(err.Error(), c.field) {
-			t.Errorf("%s: o erro nao nomeia %q: %v", c.name, c.field, err)
+			t.Errorf("%s: the error does not name %q: %v", c.name, c.field, err)
 		}
 	}
 }
@@ -1096,11 +1096,11 @@ func TestValidateHeaderRefusesARawURLInPlaceOfTheMediaID(t *testing.T) {
 		p.Header = &TemplateHeader{Type: "documento", MediaID: url}
 		err := p.Validate()
 		if !errors.Is(err, ErrInvalidMediaID) {
-			t.Errorf("media_id %q: erro = %v, quero ErrInvalidMediaID", url, err)
+			t.Errorf("media_id %q: err = %v, want ErrInvalidMediaID", url, err)
 			continue
 		}
 		if !strings.Contains(err.Error(), "POST /v1/media") {
-			t.Errorf("media_id %q: o erro nao diz para onde ir: %v", url, err)
+			t.Errorf("media_id %q: the error does not say where to go: %v", url, err)
 		}
 	}
 }
@@ -1114,7 +1114,7 @@ func TestValidateHeaderAcceptsALegitimateMediaID(t *testing.T) {
 		p := templateRequest()
 		p.Header = &TemplateHeader{Type: "documento", MediaID: id}
 		if err := p.Validate(); err != nil {
-			t.Errorf("media_id legitimo %q recusado: %v", id, err)
+			t.Errorf("legitimate media_id %q refused: %v", id, err)
 		}
 	}
 }
@@ -1125,10 +1125,10 @@ func TestValidateHeaderRefusesBase64WithAnErrorThatCitesTheRoute(t *testing.T) {
 		MediaID: "data:application/pdf;base64,JVBERi0xLjQK"}
 	err := p.Validate()
 	if !errors.Is(err, ErrMediaBase64) {
-		t.Fatalf("erro = %v, quero ErrMediaBase64", err)
+		t.Fatalf("err = %v, want ErrMediaBase64", err)
 	}
 	if !strings.Contains(err.Error(), "POST /v1/media") {
-		t.Errorf("o erro nao diz para onde ir: %v", err)
+		t.Errorf("the error does not say where to go: %v", err)
 	}
 }
 
@@ -1139,7 +1139,7 @@ func TestValidateTemplateButtonRefusesNegativeIndex(t *testing.T) {
 	p := templateRequest()
 	p.TemplateButtons = []TemplateButtonUnion{{Index: -1, Type: "url", Text: "tok"}}
 	if err := p.Validate(); !errors.Is(err, ErrButtonIndex) {
-		t.Fatalf("erro = %v, quero ErrButtonIndex", err)
+		t.Fatalf("err = %v, want ErrButtonIndex", err)
 	}
 }
 
@@ -1153,23 +1153,23 @@ func TestValidateRefusesHeaderOutsideTemplate(t *testing.T) {
 		p     Request
 		field string
 	}{
-		{"cabecalho em texto", Request{Instance: "l", To: "5511999990000", Type: "texto",
+		{"header on texto", Request{Instance: "l", To: "5511999990000", Type: "texto",
 			Text: "oi", Header: &TemplateHeader{Type: "texto", Text: "x"}}, "cabecalho"},
-		{"cabecalho em cta_url", Request{Instance: "l", To: "5511999990000", Type: "cta_url",
+		{"header on cta_url", Request{Instance: "l", To: "5511999990000", Type: "cta_url",
 			Text: "veja", ButtonTitle: "Abrir", ButtonURL: "https://e.com",
 			Header: &TemplateHeader{Type: "texto", Text: "x"}}, "cabecalho"},
-		{"cabecalho em midia", Request{Instance: "l", To: "5511999990000", Type: "midia",
+		{"header on midia", Request{Instance: "l", To: "5511999990000", Type: "midia",
 			Category: "imagem", MediaID: "M",
 			Header: &TemplateHeader{Type: "imagem", MediaID: "M"}}, "cabecalho"},
 	}
 	for _, c := range cases {
 		err := c.p.Validate()
 		if !errors.Is(err, ErrFieldForbidden) {
-			t.Errorf("%s: erro = %v, quero ErrFieldForbidden", c.name, err)
+			t.Errorf("%s: err = %v, want ErrFieldForbidden", c.name, err)
 			continue
 		}
 		if !strings.Contains(err.Error(), c.field) {
-			t.Errorf("%s: o erro nao nomeia %q: %v", c.name, c.field, err)
+			t.Errorf("%s: the error does not name %q: %v", c.name, c.field, err)
 		}
 	}
 }
@@ -1182,7 +1182,7 @@ func TestValidateReportsUnknownTypeBeforeForbiddenHeader(t *testing.T) {
 	p := Request{Instance: "l", To: "5511999990000", Type: "carrossel",
 		Header: &TemplateHeader{Type: "texto", Text: "x"}}
 	if err := p.Validate(); !errors.Is(err, ErrUnknownType) {
-		t.Fatalf("erro = %v, quero ErrUnknownType", err)
+		t.Fatalf("err = %v, want ErrUnknownType", err)
 	}
 }
 
@@ -1198,7 +1198,7 @@ func TestValidateNormalizesTheNewTemplateFields(t *testing.T) {
 	}
 	if p.Header.Type != "documento" || p.Header.MediaID != "MEDIA-1" ||
 		p.Header.Filename != "recibo.pdf" {
-		t.Errorf("cabecalho nao aparado: %+v", *p.Header)
+		t.Errorf("cabecalho not trimmed: %+v", *p.Header)
 	}
 }
 
@@ -1210,7 +1210,7 @@ func TestValidateAcceptsURLTemplateButton(t *testing.T) {
 	p := templateRequest()
 	p.TemplateButtons = []TemplateButtonUnion{{Index: 0, Type: "url", Text: "BR123456789BR"}}
 	if err := p.Validate(); err != nil {
-		t.Fatalf("botao de template tipo url recusado: %v", err)
+		t.Fatalf("template button of type url refused: %v", err)
 	}
 }
 
@@ -1218,7 +1218,7 @@ func TestValidateAcceptsQuickReplyTemplateButton(t *testing.T) {
 	p := templateRequest()
 	p.TemplateButtons = []TemplateButtonUnion{{Index: 1, Type: "resposta_rapida", Payload: "confirma:41"}}
 	if err := p.Validate(); err != nil {
-		t.Fatalf("botao de template tipo resposta_rapida recusado: %v", err)
+		t.Fatalf("template button of type resposta_rapida refused: %v", err)
 	}
 }
 
@@ -1228,10 +1228,10 @@ func TestValidateTemplateButtonRefusesUnknownType(t *testing.T) {
 	p.TemplateButtons = []TemplateButtonUnion{{Index: 0, Type: "call", Text: "x"}}
 	err := p.Validate()
 	if !errors.Is(err, ErrUnknownTemplateButtonType) {
-		t.Fatalf("erro = %v, quero ErrUnknownTemplateButtonType", err)
+		t.Fatalf("err = %v, want ErrUnknownTemplateButtonType", err)
 	}
 	if !strings.Contains(err.Error(), `"call"`) {
-		t.Errorf("o erro nao cita o tipo recusado: %v", err)
+		t.Errorf("the error does not cite the refused type: %v", err)
 	}
 }
 
@@ -1245,11 +1245,11 @@ func TestValidateQuickReplyTemplateButtonRequiresPayload(t *testing.T) {
 		p.TemplateButtons = []TemplateButtonUnion{{Index: 0, Type: "resposta_rapida", Payload: payload}}
 		err := p.Validate()
 		if !errors.Is(err, ErrFieldRequired) {
-			t.Errorf("payload %q: erro = %v, quero ErrFieldRequired", payload, err)
+			t.Errorf("payload %q: err = %v, want ErrFieldRequired", payload, err)
 			continue
 		}
 		if !strings.Contains(err.Error(), "botoes_template[0].payload") {
-			t.Errorf("payload %q: o erro nao nomeia o campo: %v", payload, err)
+			t.Errorf("payload %q: the error does not name the field: %v", payload, err)
 		}
 	}
 }
@@ -1260,11 +1260,11 @@ func TestValidateURLTemplateButtonRequiresText(t *testing.T) {
 		p.TemplateButtons = []TemplateButtonUnion{{Index: 0, Type: "url", Text: text}}
 		err := p.Validate()
 		if !errors.Is(err, ErrFieldRequired) {
-			t.Errorf("texto %q: erro = %v, quero ErrFieldRequired", text, err)
+			t.Errorf("texto %q: err = %v, want ErrFieldRequired", text, err)
 			continue
 		}
 		if !strings.Contains(err.Error(), "botoes_template[0].texto") {
-			t.Errorf("texto %q: o erro nao nomeia o campo: %v", text, err)
+			t.Errorf("texto %q: the error does not name the field: %v", text, err)
 		}
 	}
 }
@@ -1276,14 +1276,14 @@ func TestValidateTemplateButtonRefusesAFieldTheTypeDoesNotCarry(t *testing.T) {
 		name string
 		b    TemplateButtonUnion
 	}{
-		{"payload em tipo url", TemplateButtonUnion{Index: 0, Type: "url", Text: "x", Payload: "y"}},
-		{"texto em tipo resposta_rapida", TemplateButtonUnion{Index: 0, Type: "resposta_rapida", Payload: "confirma:41", Text: "x"}},
+		{"payload on a url-type button", TemplateButtonUnion{Index: 0, Type: "url", Text: "x", Payload: "y"}},
+		{"texto on a resposta_rapida-type button", TemplateButtonUnion{Index: 0, Type: "resposta_rapida", Payload: "confirma:41", Text: "x"}},
 	}
 	for _, c := range cases {
 		p := templateRequest()
 		p.TemplateButtons = []TemplateButtonUnion{c.b}
 		if err := p.Validate(); !errors.Is(err, ErrFieldForbidden) {
-			t.Errorf("%s: erro = %v, quero ErrFieldForbidden", c.name, err)
+			t.Errorf("%s: err = %v, want ErrFieldForbidden", c.name, err)
 		}
 	}
 }
@@ -1298,12 +1298,12 @@ func TestValidateTemplateButtonRefusesRepeatedIndexInsideTheField(t *testing.T) 
 	}
 	err := p.Validate()
 	if !errors.Is(err, ErrButtonIndex) {
-		t.Fatalf("erro = %v, quero ErrButtonIndex", err)
+		t.Fatalf("err = %v, want ErrButtonIndex", err)
 	}
 	// Which index repeated is what the consumer needs to find the button in
 	// the catalog — without it they only know "some" index repeated.
 	if !strings.Contains(err.Error(), "0") {
-		t.Errorf("o erro nao diz qual indice repetiu: %v", err)
+		t.Errorf("the error does not say which index repeated: %v", err)
 	}
 }
 
@@ -1314,10 +1314,10 @@ func TestValidateRefusesTemplateButtonsOutsideTemplate(t *testing.T) {
 		TemplateButtons: []TemplateButtonUnion{{Index: 0, Type: "url", Text: "x"}}}
 	err := p.Validate()
 	if !errors.Is(err, ErrFieldForbidden) {
-		t.Fatalf("erro = %v, quero ErrFieldForbidden", err)
+		t.Fatalf("err = %v, want ErrFieldForbidden", err)
 	}
 	if !strings.Contains(err.Error(), "botoes_template") {
-		t.Errorf("o erro nao nomeia o campo: %v", err)
+		t.Errorf("the error does not name the field: %v", err)
 	}
 }
 
@@ -1332,10 +1332,10 @@ func TestValidateRefusesInteractiveButtonsInTemplateWithAnErrorPointingAtTemplat
 	p.Buttons = []Button{{ID: "SIM", Title: "Sim"}}
 	err := p.Validate()
 	if !errors.Is(err, ErrFieldForbidden) {
-		t.Fatalf("erro = %v, quero ErrFieldForbidden", err)
+		t.Fatalf("err = %v, want ErrFieldForbidden", err)
 	}
 	if !strings.Contains(err.Error(), "botoes_template") {
-		t.Errorf("o erro nao aponta o campo certo (botoes_template): %v", err)
+		t.Errorf("the error does not point to the right field (botoes_template): %v", err)
 	}
 }
 
@@ -1347,10 +1347,10 @@ func TestValidateRefusesTemplateButtonsInTheInteractiveButtonsType(t *testing.T)
 		TemplateButtons: []TemplateButtonUnion{{Index: 0, Type: "url", Text: "x"}}}
 	err := p.Validate()
 	if !errors.Is(err, ErrFieldForbidden) {
-		t.Fatalf("erro = %v, quero ErrFieldForbidden", err)
+		t.Fatalf("err = %v, want ErrFieldForbidden", err)
 	}
 	if !strings.Contains(err.Error(), "botoes_template") {
-		t.Errorf("o erro nao nomeia o campo: %v", err)
+		t.Errorf("the error does not name the field: %v", err)
 	}
 }
 
@@ -1362,7 +1362,7 @@ func TestValidateNormalizesTemplateButton(t *testing.T) {
 		t.Fatalf("Validate: %v", err)
 	}
 	if p.TemplateButtons[0].Type != "url" || p.TemplateButtons[0].Text != "tok" {
-		t.Errorf("botoes_template[0] nao aparado: %+v", p.TemplateButtons[0])
+		t.Errorf("botoes_template[0] not trimmed: %+v", p.TemplateButtons[0])
 	}
 }
 
@@ -1405,9 +1405,9 @@ func TestRequestHasASINGLETemplateButtonParameterField(t *testing.T) {
 		}
 	}
 	if len(findings) != 1 || !strings.HasPrefix(findings[0], "TemplateButtons") {
-		t.Fatalf("campos de parametro de botao de template = %v; quero exatamente um "+
-			"(TemplateButtons). Dois campos tornam EXPRIMIVEL o mesmo botao declarado "+
-			"duas vezes, que e o estado que a T-045 removeu", findings)
+		t.Fatalf("template button parameter fields = %v; want exactly one "+
+			"(TemplateButtons). Two fields make it EXPRESSIBLE for the same declared "+
+			"button to be declared twice, which is the state T-045 removed", findings)
 	}
 }
 
@@ -1440,18 +1440,18 @@ func TestValidateRefusesURLButtonsWithANamedErrorThatCitesTheSuccessor(t *testin
 		}
 		err := p.Validate()
 		if !errors.Is(err, ErrRemovedURLButtons) {
-			t.Errorf("%s: erro = %v, quero ErrRemovedURLButtons (ignorar em silencio "+
-				"mandaria o template SEM o botao, com 200 na resposta)", name, err)
+			t.Errorf("%s: err = %v, want ErrRemovedURLButtons (silently ignoring it "+
+				"would send the template WITHOUT the button, with 200 in the response)", name, err)
 			continue
 		}
 		// Naming the successor isn't enough: the translation is mechanical and
 		// fits in the message, and without it the consumer opens the contract
 		// in the middle of the incident.
 		if !strings.Contains(err.Error(), "botoes_template") {
-			t.Errorf("%s: o erro nao aponta o sucessor: %v", name, err)
+			t.Errorf("%s: the error does not point to the successor: %v", name, err)
 		}
 		if !strings.Contains(err.Error(), `"tipo":"url"`) {
-			t.Errorf("%s: o erro nao mostra a traducao: %v", name, err)
+			t.Errorf("%s: the error does not show the translation: %v", name, err)
 		}
 	}
 }
@@ -1473,8 +1473,8 @@ func TestIgnoredURLButtonsWouldProduceATemplateWithoutAButton(t *testing.T) {
 	}
 	tpl, _ := MetaBody(p)["template"].(map[string]any)
 	if value, has := tpl["components"]; has {
-		t.Fatalf("botoes_url produziu components: %#v — ele nao deve produzir NADA; "+
-			"a defesa e a recusa em Validate, nao a montagem", value)
+		t.Fatalf("botoes_url produced components: %#v — it must produce NOTHING; "+
+			"the defense is the refusal in Validate, not the assembly", value)
 	}
 }
 
@@ -1493,12 +1493,12 @@ func TestHashOfWhoeverUsesTemplateButtonsDidNotChangeWithTheRemovalOfURLButtons(
 		p      Request
 		before string
 	}{
-		{"so botao de url", Request{
+		{"only a url button", Request{
 			Instance: "lojinha", To: "5511999990000", Type: "template",
 			Template: "equipamento_enviado", Language: "pt_BR",
 			TemplateButtons: []TemplateButtonUnion{{Index: 1, Type: "url", Text: "abc123"}},
 		}, "f14dd6eb107e01fad46e224ca946d9119b78fcaec62a5afa418ff4c9ce56835f"},
-		{"os dois tipos juntos", Request{
+		{"both types together", Request{
 			Instance: "lojinha", To: "5511999990000", Type: "template",
 			Template: "confirma_agendamento", Language: "pt_BR",
 			TemplateButtons: []TemplateButtonUnion{
@@ -1512,8 +1512,8 @@ func TestHashOfWhoeverUsesTemplateButtonsDidNotChangeWithTheRemovalOfURLButtons(
 			t.Fatalf("%s: Validate: %v", c.name, err)
 		}
 		if got := RequestHash(c.p); got != c.before {
-			t.Errorf("%s: hash mudou: %q, quero %q (todo retry dentro do TTL de 72h "+
-				"viraria 422 falso)", c.name, got, c.before)
+			t.Errorf("%s: hash changed: %q, want %q (every retry within the 72h TTL "+
+				"would turn into a false 422)", c.name, got, c.before)
 		}
 	}
 }
@@ -1537,7 +1537,7 @@ func reactionRequest() Request {
 func TestValidateAcceptsReaction(t *testing.T) {
 	p := reactionRequest()
 	if err := p.Validate(); err != nil {
-		t.Fatalf("reacao recusada: %v", err)
+		t.Fatalf("reacao refused: %v", err)
 	}
 }
 
@@ -1545,10 +1545,10 @@ func TestValidateReactionRequiresTheReactionField(t *testing.T) {
 	p := Request{Instance: "l", To: "5511999990000", Type: "reacao"}
 	err := p.Validate()
 	if !errors.Is(err, ErrFieldRequired) {
-		t.Fatalf("erro = %v, quero ErrFieldRequired", err)
+		t.Fatalf("err = %v, want ErrFieldRequired", err)
 	}
 	if !strings.Contains(err.Error(), "reacao") {
-		t.Errorf("o erro nao nomeia o campo: %v", err)
+		t.Errorf("the error does not name the field: %v", err)
 	}
 }
 
@@ -1560,11 +1560,11 @@ func TestValidateReactionRequiresTarget(t *testing.T) {
 		p.Reaction.Target = target
 		err := p.Validate()
 		if !errors.Is(err, ErrFieldRequired) {
-			t.Errorf("alvo %q: erro = %v, quero ErrFieldRequired", target, err)
+			t.Errorf("alvo %q: err = %v, want ErrFieldRequired", target, err)
 			continue
 		}
 		if !strings.Contains(err.Error(), "reacao.alvo") {
-			t.Errorf("alvo %q: o erro nao nomeia reacao.alvo: %v", target, err)
+			t.Errorf("alvo %q: the error does not name reacao.alvo: %v", target, err)
 		}
 	}
 }
@@ -1578,11 +1578,11 @@ func TestValidateReactionAcceptsEmptyEmojiAsRemoval(t *testing.T) {
 		p := reactionRequest()
 		p.Reaction.Emoji = emojiPtr(emoji)
 		if err := p.Validate(); err != nil {
-			t.Errorf("emoji %q: recusado = %v, quero aceito (remocao)", emoji, err)
+			t.Errorf("emoji %q: refused = %v, want accepted (removal)", emoji, err)
 			continue
 		}
 		if p.Reaction.Emoji == nil || *p.Reaction.Emoji != "" {
-			t.Errorf("emoji %q: apos Validate = %v, quero ponteiro para \"\"", emoji, p.Reaction.Emoji)
+			t.Errorf("emoji %q: after Validate = %v, want pointer to \"\"", emoji, p.Reaction.Emoji)
 		}
 	}
 }
@@ -1597,10 +1597,10 @@ func TestValidateReactionRequiresEmoji(t *testing.T) {
 	p.Reaction.Emoji = nil
 	err := p.Validate()
 	if !errors.Is(err, ErrFieldRequired) {
-		t.Fatalf("erro = %v, quero ErrFieldRequired", err)
+		t.Fatalf("err = %v, want ErrFieldRequired", err)
 	}
 	if !strings.Contains(err.Error(), "reacao.emoji") {
-		t.Errorf("o erro nao nomeia reacao.emoji: %v", err)
+		t.Errorf("the error does not name reacao.emoji: %v", err)
 	}
 }
 
@@ -1612,7 +1612,7 @@ func TestValidateReactionNormalizesTheFields(t *testing.T) {
 		t.Fatalf("Validate: %v", err)
 	}
 	if p.Reaction.Target != "wamid.ABC" || p.Reaction.Emoji == nil || *p.Reaction.Emoji != "\U0001F44D" {
-		t.Errorf("reacao nao aparada: %+v", *p.Reaction)
+		t.Errorf("reacao not trimmed: %+v", *p.Reaction)
 	}
 }
 
@@ -1625,10 +1625,10 @@ func TestValidateRefusesReactionOutsideTheReactionType(t *testing.T) {
 	p.Reaction = &ReactionRequest{Target: "wamid.ABC", Emoji: emojiPtr("\U0001F44D")}
 	err := p.Validate()
 	if !errors.Is(err, ErrFieldForbidden) {
-		t.Fatalf("erro = %v, quero ErrFieldForbidden", err)
+		t.Fatalf("err = %v, want ErrFieldForbidden", err)
 	}
 	if !strings.Contains(err.Error(), "reacao") {
-		t.Errorf("o erro nao nomeia o campo: %v", err)
+		t.Errorf("the error does not name the field: %v", err)
 	}
 }
 
@@ -1648,7 +1648,7 @@ func locationRequest() Request {
 func TestValidateAcceptsLocation(t *testing.T) {
 	p := locationRequest()
 	if err := p.Validate(); err != nil {
-		t.Fatalf("localizacao recusada: %v", err)
+		t.Fatalf("localizacao refused: %v", err)
 	}
 }
 
@@ -1656,14 +1656,14 @@ func TestValidateLocationRequiresTheLocationField(t *testing.T) {
 	p := Request{Instance: "l", To: "5511999990000", Type: "localizacao"}
 	err := p.Validate()
 	if !errors.Is(err, ErrFieldRequired) {
-		t.Fatalf("erro = %v, quero ErrFieldRequired", err)
+		t.Fatalf("err = %v, want ErrFieldRequired", err)
 	}
 	if !strings.Contains(err.Error(), "localizacao") {
-		t.Errorf("o erro nao nomeia o campo: %v", err)
+		t.Errorf("the error does not name the field: %v", err)
 	}
 }
 
-// Central pitfall of T-024 (docs/ARMADILHAS.md, "Validação"): 0 is a valid
+// Central pitfall of T-024 (docs/ARMADILHAS.md, "Validation"): 0 is a valid
 // coordinate (the crossing of the Greenwich meridian with the equator).
 // latitude/longitude NIL (absent) is an error; latitude/longitude ZERO is not.
 func TestValidateLocationAcceptsZeroLatitudeAndLongitude(t *testing.T) {
@@ -1671,7 +1671,7 @@ func TestValidateLocationAcceptsZeroLatitudeAndLongitude(t *testing.T) {
 	p.Location.Latitude = floatPtr(0)
 	p.Location.Longitude = floatPtr(0)
 	if err := p.Validate(); err != nil {
-		t.Fatalf("latitude/longitude zero recusadas: %v", err)
+		t.Fatalf("zero latitude/longitude refused: %v", err)
 	}
 }
 
@@ -1681,12 +1681,12 @@ func TestValidateLocationRequiresLatitudeAndLongitude(t *testing.T) {
 		p     func() Request
 		field string
 	}{
-		{"sem latitude", func() Request {
+		{"missing latitude", func() Request {
 			p := locationRequest()
 			p.Location.Latitude = nil
 			return p
 		}, "localizacao.latitude"},
-		{"sem longitude", func() Request {
+		{"missing longitude", func() Request {
 			p := locationRequest()
 			p.Location.Longitude = nil
 			return p
@@ -1696,11 +1696,11 @@ func TestValidateLocationRequiresLatitudeAndLongitude(t *testing.T) {
 		p := c.p()
 		err := p.Validate()
 		if !errors.Is(err, ErrFieldRequired) {
-			t.Errorf("%s: erro = %v, quero ErrFieldRequired", c.name, err)
+			t.Errorf("%s: err = %v, want ErrFieldRequired", c.name, err)
 			continue
 		}
 		if !strings.Contains(err.Error(), c.field) {
-			t.Errorf("%s: o erro nao nomeia %q: %v", c.name, c.field, err)
+			t.Errorf("%s: the error does not name %q: %v", c.name, c.field, err)
 		}
 	}
 }
@@ -1713,7 +1713,7 @@ func TestValidateLocationNormalizesNameAndAddress(t *testing.T) {
 		t.Fatalf("Validate: %v", err)
 	}
 	if p.Location.Name != "Cafe de Teste" || p.Location.Address != "Rua de Teste, 101" {
-		t.Errorf("nome/endereco nao aparados: %+v", *p.Location)
+		t.Errorf("nome/endereco not trimmed: %+v", *p.Location)
 	}
 }
 
@@ -1724,10 +1724,10 @@ func TestValidateRefusesLocationOutsideTheLocationType(t *testing.T) {
 	p.Location = &LocationRequest{Latitude: floatPtr(1), Longitude: floatPtr(1)}
 	err := p.Validate()
 	if !errors.Is(err, ErrFieldForbidden) {
-		t.Fatalf("erro = %v, quero ErrFieldForbidden", err)
+		t.Fatalf("err = %v, want ErrFieldForbidden", err)
 	}
 	if !strings.Contains(err.Error(), "localizacao") {
-		t.Errorf("o erro nao nomeia o campo: %v", err)
+		t.Errorf("the error does not name the field: %v", err)
 	}
 }
 
@@ -1748,7 +1748,7 @@ func TestTextHashDidNotChangeWithTheNewReactionAndLocationFields(t *testing.T) {
 	}
 	const ofToday = "0a8d0873ee9078a51ac5d9f6391eede10b734515ee2ad02accb0c41ae641d281"
 	if got := RequestHash(p); got != ofToday {
-		t.Errorf("hash mudou: %q, quero %q (todo retry dentro do TTL de 72h viraria 422 falso)", got, ofToday)
+		t.Errorf("hash changed: %q, want %q (every retry within the 72h TTL would turn into a false 422)", got, ofToday)
 	}
 }
 
@@ -1768,7 +1768,7 @@ func TestButtonsAndCtaURLHashDidNotChangeWithTheNewHeaderAndFooterFields(t *test
 	}
 	const todaysButtonsHash = "61504f54daef797e4125eeaec2d048e9c513a86ee996656844d7ef4def616d21"
 	if got := RequestHash(pButtons); got != todaysButtonsHash {
-		t.Errorf("hash de botoes mudou: %q, quero %q", got, todaysButtonsHash)
+		t.Errorf("botoes hash changed: %q, want %q", got, todaysButtonsHash)
 	}
 
 	pCta := Request{
@@ -1780,7 +1780,7 @@ func TestButtonsAndCtaURLHashDidNotChangeWithTheNewHeaderAndFooterFields(t *test
 	}
 	const todaysCtaHash = "580017af6ba3d197fea903274e5d8e051b63ba054cfc53a99548e1c8e5aa22cf"
 	if got := RequestHash(pCta); got != todaysCtaHash {
-		t.Errorf("hash de cta_url mudou: %q, quero %q", got, todaysCtaHash)
+		t.Errorf("cta_url hash changed: %q, want %q", got, todaysCtaHash)
 	}
 }
 
@@ -1826,7 +1826,7 @@ func sectionsWithNItems(n int) []ListSection {
 func TestValidateAcceptsList(t *testing.T) {
 	p := baseListRequest()
 	if err := p.Validate(); err != nil {
-		t.Fatalf("Validate = %v, quero nil", err)
+		t.Fatalf("Validate = %v, want nil", err)
 	}
 }
 
@@ -1835,7 +1835,7 @@ func TestValidateListRequiresText(t *testing.T) {
 	p.Text = ""
 	err := p.Validate()
 	if !errors.Is(err, ErrFieldRequired) || !strings.Contains(err.Error(), "texto") {
-		t.Fatalf("erro = %v, quero ErrFieldRequired nomeando texto", err)
+		t.Fatalf("err = %v, want ErrFieldRequired naming texto", err)
 	}
 }
 
@@ -1844,7 +1844,7 @@ func TestValidateListRequiresSections(t *testing.T) {
 	p.Sections = nil
 	err := p.Validate()
 	if !errors.Is(err, ErrFieldRequired) || !strings.Contains(err.Error(), "secoes") {
-		t.Fatalf("erro = %v, quero ErrFieldRequired nomeando secoes", err)
+		t.Fatalf("err = %v, want ErrFieldRequired naming secoes", err)
 	}
 }
 
@@ -1853,10 +1853,10 @@ func TestValidateListRequiresAnItemInEachSection(t *testing.T) {
 	p.Sections[0].Items = nil
 	err := p.Validate()
 	if !errors.Is(err, ErrFieldRequired) {
-		t.Fatalf("erro = %v, quero ErrFieldRequired", err)
+		t.Fatalf("err = %v, want ErrFieldRequired", err)
 	}
 	if !strings.Contains(err.Error(), "secoes[0].itens") {
-		t.Errorf("o erro nao nomeia secoes[0].itens: %v", err)
+		t.Errorf("the error does not name secoes[0].itens: %v", err)
 	}
 }
 
@@ -1868,8 +1868,8 @@ func TestValidateListRefusesLongButtonTitle(t *testing.T) {
 		value string
 		want  error
 	}{
-		{"20 runas passa", strings.Repeat("a", 20), nil},
-		{"21 runas recusa", strings.Repeat("a", 21), ErrFieldTooLong},
+		{"20 runes passes", strings.Repeat("a", 20), nil},
+		{"21 runes refuses", strings.Repeat("a", 21), ErrFieldTooLong},
 	}
 	for _, c := range cases {
 		p := baseListRequest()
@@ -1877,12 +1877,12 @@ func TestValidateListRefusesLongButtonTitle(t *testing.T) {
 		err := p.Validate()
 		if c.want == nil {
 			if err != nil {
-				t.Errorf("%s: Validate = %v, quero nil", c.name, err)
+				t.Errorf("%s: Validate = %v, want nil", c.name, err)
 			}
 			continue
 		}
 		if !errors.Is(err, c.want) || !strings.Contains(err.Error(), "botao_titulo") {
-			t.Errorf("%s: erro = %v, quero %v nomeando botao_titulo", c.name, err, c.want)
+			t.Errorf("%s: err = %v, want %v naming botao_titulo", c.name, err, c.want)
 		}
 	}
 }
@@ -1892,7 +1892,7 @@ func TestValidateListRequiresButtonTitle(t *testing.T) {
 	p.ButtonTitle = ""
 	err := p.Validate()
 	if !errors.Is(err, ErrFieldRequired) || !strings.Contains(err.Error(), "botao_titulo") {
-		t.Fatalf("erro = %v, quero ErrFieldRequired nomeando botao_titulo", err)
+		t.Fatalf("err = %v, want ErrFieldRequired naming botao_titulo", err)
 	}
 }
 
@@ -1903,8 +1903,8 @@ func TestValidateListRefusesMoreThanTenSections(t *testing.T) {
 		n    int
 		want error
 	}{
-		{"10 secoes passa (teto exato)", 10, nil},
-		{"11 secoes recusa", 11, ErrFieldTooLong},
+		{"10 secoes passes (exact cap)", 10, nil},
+		{"11 secoes refuses", 11, ErrFieldTooLong},
 	}
 	for _, c := range cases {
 		p := baseListRequest()
@@ -1912,12 +1912,12 @@ func TestValidateListRefusesMoreThanTenSections(t *testing.T) {
 		err := p.Validate()
 		if c.want == nil {
 			if err != nil {
-				t.Errorf("%s: Validate = %v, quero nil", c.name, err)
+				t.Errorf("%s: Validate = %v, want nil", c.name, err)
 			}
 			continue
 		}
 		if !errors.Is(err, c.want) || !strings.Contains(err.Error(), "secoes") {
-			t.Errorf("%s: erro = %v, quero %v nomeando secoes", c.name, err, c.want)
+			t.Errorf("%s: err = %v, want %v naming secoes", c.name, err, c.want)
 		}
 	}
 }
@@ -1929,8 +1929,8 @@ func TestValidateListRefusesLongSectionTitle(t *testing.T) {
 		value string
 		want  error
 	}{
-		{"24 runas passa", strings.Repeat("a", 24), nil},
-		{"25 runas recusa", strings.Repeat("a", 25), ErrFieldTooLong},
+		{"24 runes passes", strings.Repeat("a", 24), nil},
+		{"25 runes refuses", strings.Repeat("a", 25), ErrFieldTooLong},
 	}
 	for _, c := range cases {
 		p := baseListRequest()
@@ -1938,12 +1938,12 @@ func TestValidateListRefusesLongSectionTitle(t *testing.T) {
 		err := p.Validate()
 		if c.want == nil {
 			if err != nil {
-				t.Errorf("%s: Validate = %v, quero nil", c.name, err)
+				t.Errorf("%s: Validate = %v, want nil", c.name, err)
 			}
 			continue
 		}
 		if !errors.Is(err, c.want) || !strings.Contains(err.Error(), "secoes[0].titulo") {
-			t.Errorf("%s: erro = %v, quero %v nomeando secoes[0].titulo", c.name, err, c.want)
+			t.Errorf("%s: err = %v, want %v naming secoes[0].titulo", c.name, err, c.want)
 		}
 	}
 }
@@ -1955,8 +1955,8 @@ func TestValidateListRefusesLongItemID(t *testing.T) {
 		value string
 		want  error
 	}{
-		{"200 runas passa", strings.Repeat("a", 200), nil},
-		{"201 runas recusa", strings.Repeat("a", 201), ErrFieldTooLong},
+		{"200 runes passes", strings.Repeat("a", 200), nil},
+		{"201 runes refuses", strings.Repeat("a", 201), ErrFieldTooLong},
 	}
 	for _, c := range cases {
 		p := baseListRequest()
@@ -1964,12 +1964,12 @@ func TestValidateListRefusesLongItemID(t *testing.T) {
 		err := p.Validate()
 		if c.want == nil {
 			if err != nil {
-				t.Errorf("%s: Validate = %v, quero nil", c.name, err)
+				t.Errorf("%s: Validate = %v, want nil", c.name, err)
 			}
 			continue
 		}
 		if !errors.Is(err, c.want) || !strings.Contains(err.Error(), "secoes[0].itens[0].id") {
-			t.Errorf("%s: erro = %v, quero %v nomeando secoes[0].itens[0].id", c.name, err, c.want)
+			t.Errorf("%s: err = %v, want %v naming secoes[0].itens[0].id", c.name, err, c.want)
 		}
 	}
 }
@@ -1982,8 +1982,8 @@ func TestValidateListRefusesLongItemTitle(t *testing.T) {
 		value string
 		want  error
 	}{
-		{"24 runas passa", strings.Repeat("a", 24), nil},
-		{"25 runas recusa", strings.Repeat("a", 25), ErrFieldTooLong},
+		{"24 runes passes", strings.Repeat("a", 24), nil},
+		{"25 runes refuses", strings.Repeat("a", 25), ErrFieldTooLong},
 	}
 	for _, c := range cases {
 		p := baseListRequest()
@@ -1991,12 +1991,12 @@ func TestValidateListRefusesLongItemTitle(t *testing.T) {
 		err := p.Validate()
 		if c.want == nil {
 			if err != nil {
-				t.Errorf("%s: Validate = %v, quero nil", c.name, err)
+				t.Errorf("%s: Validate = %v, want nil", c.name, err)
 			}
 			continue
 		}
 		if !errors.Is(err, c.want) || !strings.Contains(err.Error(), "secoes[0].itens[1].titulo") {
-			t.Errorf("%s: erro = %v, quero %v nomeando secoes[0].itens[1].titulo", c.name, err, c.want)
+			t.Errorf("%s: err = %v, want %v naming secoes[0].itens[1].titulo", c.name, err, c.want)
 		}
 	}
 }
@@ -2009,8 +2009,8 @@ func TestValidateListRefusesLongItemDescription(t *testing.T) {
 		value string
 		want  error
 	}{
-		{"72 runas passa", strings.Repeat("a", 72), nil},
-		{"73 runas recusa", strings.Repeat("a", 73), ErrFieldTooLong},
+		{"72 runes passes", strings.Repeat("a", 72), nil},
+		{"73 runes refuses", strings.Repeat("a", 73), ErrFieldTooLong},
 	}
 	for _, c := range cases {
 		p := baseListRequest()
@@ -2018,12 +2018,12 @@ func TestValidateListRefusesLongItemDescription(t *testing.T) {
 		err := p.Validate()
 		if c.want == nil {
 			if err != nil {
-				t.Errorf("%s: Validate = %v, quero nil", c.name, err)
+				t.Errorf("%s: Validate = %v, want nil", c.name, err)
 			}
 			continue
 		}
 		if !errors.Is(err, c.want) || !strings.Contains(err.Error(), "secoes[0].itens[0].descricao") {
-			t.Errorf("%s: erro = %v, quero %v nomeando secoes[0].itens[0].descricao", c.name, err, c.want)
+			t.Errorf("%s: err = %v, want %v naming secoes[0].itens[0].descricao", c.name, err, c.want)
 		}
 	}
 }
@@ -2047,10 +2047,10 @@ func TestValidateRefusesListWithSummedItemsAboveTheCap(t *testing.T) {
 	p.Sections = threeSectionsOfFour
 	err := p.Validate()
 	if !errors.Is(err, ErrFieldTooLong) {
-		t.Fatalf("3 secoes de 4 itens (12 no total): erro = %v, quero ErrFieldTooLong", err)
+		t.Fatalf("3 secoes of 4 itens (12 total): err = %v, want ErrFieldTooLong", err)
 	}
 	if !strings.Contains(err.Error(), "12") || !strings.Contains(err.Error(), "10") {
-		t.Errorf("o erro nao cita quantos vieram (12) e o maximo (10): %v", err)
+		t.Errorf("the error does not cite how many came (12) and the maximum (10): %v", err)
 	}
 
 	// Non-regression: 10 summed items (the exact cap, split across two
@@ -2067,7 +2067,7 @@ func TestValidateRefusesListWithSummedItemsAboveTheCap(t *testing.T) {
 	p2 := baseListRequest()
 	p2.Sections = tenSummed
 	if err := p2.Validate(); err != nil {
-		t.Errorf("10 itens somados (teto exato): Validate = %v, quero nil", err)
+		t.Errorf("10 items summed (exact cap): Validate = %v, want nil", err)
 	}
 }
 
@@ -2078,7 +2078,7 @@ func TestValidateRefusesSectionsOutsideList(t *testing.T) {
 		Sections: []ListSection{{Title: "S", Items: []ListItem{{ID: "1", Title: "I"}}}}}
 	err := p.Validate()
 	if !errors.Is(err, ErrFieldForbidden) || !strings.Contains(err.Error(), "secoes") {
-		t.Fatalf("erro = %v, quero ErrFieldForbidden nomeando secoes", err)
+		t.Fatalf("err = %v, want ErrFieldForbidden naming secoes", err)
 	}
 }
 
@@ -2089,7 +2089,7 @@ func TestValidateRefusesButtonTitleOutsideCtaURLAndList(t *testing.T) {
 		ButtonTitle: "Abrir"}
 	err := p.Validate()
 	if !errors.Is(err, ErrFieldForbidden) || !strings.Contains(err.Error(), "botao_titulo") {
-		t.Fatalf("erro = %v, quero ErrFieldForbidden nomeando botao_titulo", err)
+		t.Fatalf("err = %v, want ErrFieldForbidden naming botao_titulo", err)
 	}
 }
 
@@ -2100,7 +2100,7 @@ func TestValidateListAcceptsHeaderTextAndFooter(t *testing.T) {
 	p.HeaderText = "Novidades"
 	p.Footer = "Oferta valida hoje"
 	if err := p.Validate(); err != nil {
-		t.Fatalf("Validate = %v, quero nil", err)
+		t.Fatalf("Validate = %v, want nil", err)
 	}
 }
 
@@ -2114,11 +2114,11 @@ func TestValidateListNormalizesTheFields(t *testing.T) {
 	p.Sections[0].Items[0].Title = "  Item 1  "
 	p.Sections[0].Items[0].Description = "  descricao  "
 	if err := p.Validate(); err != nil {
-		t.Fatalf("Validate = %v, quero nil", err)
+		t.Fatalf("Validate = %v, want nil", err)
 	}
 	if p.Sections[0].Title != "Categoria 1" || p.Sections[0].Items[0].ID != "item-1" ||
 		p.Sections[0].Items[0].Title != "Item 1" || p.Sections[0].Items[0].Description != "descricao" {
-		t.Errorf("secoes nao normalizadas: %+v", p.Sections[0])
+		t.Errorf("secoes not normalized: %+v", p.Sections[0])
 	}
 }
 
@@ -2138,7 +2138,7 @@ func contactsRequest() Request {
 func TestValidateAcceptsContacts(t *testing.T) {
 	p := contactsRequest()
 	if err := p.Validate(); err != nil {
-		t.Fatalf("Validate = %v, quero nil", err)
+		t.Fatalf("Validate = %v, want nil", err)
 	}
 }
 
@@ -2167,7 +2167,7 @@ func TestValidateAcceptsAFullContact(t *testing.T) {
 		}},
 	}
 	if err := p.Validate(); err != nil {
-		t.Fatalf("Validate = %v, quero nil", err)
+		t.Fatalf("Validate = %v, want nil", err)
 	}
 }
 
@@ -2176,7 +2176,7 @@ func TestValidateContactsRequiresAtLeastOneCard(t *testing.T) {
 	p.Contacts = nil
 	err := p.Validate()
 	if !errors.Is(err, ErrFieldRequired) || !strings.Contains(err.Error(), "contatos") {
-		t.Fatalf("erro = %v, quero ErrFieldRequired nomeando contatos", err)
+		t.Fatalf("err = %v, want ErrFieldRequired naming contatos", err)
 	}
 }
 
@@ -2195,10 +2195,10 @@ func TestValidateContactsRequiresFormattedName(t *testing.T) {
 	}
 	err := p.Validate()
 	if !errors.Is(err, ErrFieldRequired) {
-		t.Fatalf("erro = %v, quero ErrFieldRequired", err)
+		t.Fatalf("err = %v, want ErrFieldRequired", err)
 	}
 	if !strings.Contains(err.Error(), "contatos[1].name.formatted_name") {
-		t.Errorf("o erro nao nomeia contatos[1].name.formatted_name: %v", err)
+		t.Errorf("the error does not name contatos[1].name.formatted_name: %v", err)
 	}
 }
 
@@ -2210,11 +2210,11 @@ func TestValidateContactsRefusesBirthdayWithInvalidFormat(t *testing.T) {
 		p.Contacts[0].Birthday = cases
 		err := p.Validate()
 		if !errors.Is(err, ErrInvalidContactDate) {
-			t.Errorf("birthday %q: erro = %v, quero ErrInvalidContactDate", cases, err)
+			t.Errorf("birthday %q: err = %v, want ErrInvalidContactDate", cases, err)
 			continue
 		}
 		if !strings.Contains(err.Error(), "contatos[0].birthday") {
-			t.Errorf("birthday %q: o erro nao nomeia contatos[0].birthday: %v", cases, err)
+			t.Errorf("birthday %q: the error does not name contatos[0].birthday: %v", cases, err)
 		}
 	}
 }
@@ -2223,14 +2223,14 @@ func TestValidateContactsAcceptsValidBirthday(t *testing.T) {
 	p := contactsRequest()
 	p.Contacts[0].Birthday = "1990-05-20"
 	if err := p.Validate(); err != nil {
-		t.Fatalf("birthday valido recusado: %v", err)
+		t.Fatalf("valid birthday refused: %v", err)
 	}
 }
 
 func TestValidateContactsAcceptsAbsentBirthday(t *testing.T) {
 	p := contactsRequest()
 	if err := p.Validate(); err != nil {
-		t.Fatalf("Validate = %v, quero nil", err)
+		t.Fatalf("Validate = %v, want nil", err)
 	}
 }
 
@@ -2243,7 +2243,7 @@ func TestValidateContactsImposesNoCountCap(t *testing.T) {
 		p.Contacts[0].Phones = append(p.Contacts[0].Phones, ContactPhone{Phone: fmt.Sprintf("+55119999%04d", i)})
 	}
 	if err := p.Validate(); err != nil {
-		t.Fatalf("Validate = %v, quero nil (nenhum teto de phones e documentado)", err)
+		t.Fatalf("Validate = %v, want nil (no cap on phones is documented)", err)
 	}
 }
 
@@ -2255,7 +2255,7 @@ func TestValidateContactsNormalizesFormattedNameAndBirthday(t *testing.T) {
 		t.Fatalf("Validate: %v", err)
 	}
 	if p.Contacts[0].Name.FormattedName != "Joao Vendedor" || p.Contacts[0].Birthday != "1990-05-20" {
-		t.Errorf("contato nao aparado: %+v", p.Contacts[0])
+		t.Errorf("contact not trimmed: %+v", p.Contacts[0])
 	}
 }
 
@@ -2267,7 +2267,7 @@ func TestValidateRefusesContactsOutsideTheContactsType(t *testing.T) {
 	p.Contacts = []Contact{{Name: ContactName{FormattedName: "Joao"}}}
 	err := p.Validate()
 	if !errors.Is(err, ErrFieldForbidden) || !strings.Contains(err.Error(), "contatos") {
-		t.Fatalf("erro = %v, quero ErrFieldForbidden nomeando contatos", err)
+		t.Fatalf("err = %v, want ErrFieldForbidden naming contatos", err)
 	}
 }
 
@@ -2282,7 +2282,7 @@ func TestTextHashDidNotChangeWithTheNewContactsField(t *testing.T) {
 	}
 	const ofToday = "0a8d0873ee9078a51ac5d9f6391eede10b734515ee2ad02accb0c41ae641d281"
 	if got := RequestHash(p); got != ofToday {
-		t.Errorf("hash mudou: %q, quero %q (o campo Contacts novo tem de ser omitempty)", got, ofToday)
+		t.Errorf("hash changed: %q, want %q (the new Contacts field has to be omitempty)", got, ofToday)
 	}
 }
 
@@ -2300,7 +2300,7 @@ func baseLocationAskRequest() Request {
 func TestValidateAcceptsLocationRequest(t *testing.T) {
 	p := baseLocationAskRequest()
 	if err := p.Validate(); err != nil {
-		t.Fatalf("Validate = %v, quero nil", err)
+		t.Fatalf("Validate = %v, want nil", err)
 	}
 }
 
@@ -2309,7 +2309,7 @@ func TestValidateLocationRequestRequiresText(t *testing.T) {
 	p.Text = ""
 	err := p.Validate()
 	if !errors.Is(err, ErrFieldRequired) || !strings.Contains(err.Error(), "texto") {
-		t.Fatalf("erro = %v, quero ErrFieldRequired nomeando texto", err)
+		t.Fatalf("err = %v, want ErrFieldRequired naming texto", err)
 	}
 }
 
@@ -2323,7 +2323,7 @@ func TestValidateLocationRequestRefusesHeaderText(t *testing.T) {
 	p.HeaderText = "Ola"
 	err := p.Validate()
 	if !errors.Is(err, ErrFieldForbidden) || !strings.Contains(err.Error(), "cabecalho_texto") {
-		t.Fatalf("erro = %v, quero ErrFieldForbidden nomeando cabecalho_texto", err)
+		t.Fatalf("err = %v, want ErrFieldForbidden naming cabecalho_texto", err)
 	}
 }
 
@@ -2332,7 +2332,7 @@ func TestValidateLocationRequestRefusesFooter(t *testing.T) {
 	p.Footer = "Ate mais"
 	err := p.Validate()
 	if !errors.Is(err, ErrFieldForbidden) || !strings.Contains(err.Error(), "rodape") {
-		t.Fatalf("erro = %v, quero ErrFieldForbidden nomeando rodape", err)
+		t.Fatalf("err = %v, want ErrFieldForbidden naming rodape", err)
 	}
 }
 
@@ -2345,7 +2345,7 @@ func TestValidateAcceptsLocationRequestWithLongText(t *testing.T) {
 	p := baseLocationAskRequest()
 	p.Text = strings.Repeat("a", 2000)
 	if err := p.Validate(); err != nil {
-		t.Fatalf("Validate = %v, quero nil (T-143: sem teto de texto)", err)
+		t.Fatalf("Validate = %v, want nil (T-143: no cap on texto)", err)
 	}
 }
 
@@ -2368,7 +2368,7 @@ func baseFlowRequest() Request {
 func TestValidateAcceptsFlow(t *testing.T) {
 	p := baseFlowRequest()
 	if err := p.Validate(); err != nil {
-		t.Fatalf("Validate = %v, quero nil", err)
+		t.Fatalf("Validate = %v, want nil", err)
 	}
 }
 
@@ -2379,10 +2379,10 @@ func TestValidateFlowAbsentActionNormalizesToNavigate(t *testing.T) {
 	p := baseFlowRequest()
 	p.Flow.Action = ""
 	if err := p.Validate(); err != nil {
-		t.Fatalf("Validate = %v, quero nil", err)
+		t.Fatalf("Validate = %v, want nil", err)
 	}
 	if p.Flow.Action != "navigate" {
-		t.Errorf("fluxo.acao = %q depois de Validate, quero \"navigate\" (o default)", p.Flow.Action)
+		t.Errorf("fluxo.acao = %q after Validate, want \"navigate\" (the default)", p.Flow.Action)
 	}
 }
 
@@ -2394,7 +2394,7 @@ func TestValidateFlowDataExchangeWithoutScreenPasses(t *testing.T) {
 	p.Flow.Action = "data_exchange"
 	p.Flow.Screen = ""
 	if err := p.Validate(); err != nil {
-		t.Fatalf("Validate = %v, quero nil (data_exchange nao exige tela)", err)
+		t.Fatalf("Validate = %v, want nil (data_exchange does not require tela)", err)
 	}
 }
 
@@ -2405,7 +2405,7 @@ func TestValidateFlowNavigateWithoutScreenRefuses(t *testing.T) {
 	p.Flow.Screen = ""
 	err := p.Validate()
 	if !errors.Is(err, ErrFieldRequired) || !strings.Contains(err.Error(), "fluxo.tela") {
-		t.Fatalf("erro = %v, quero ErrFieldRequired nomeando fluxo.tela", err)
+		t.Fatalf("err = %v, want ErrFieldRequired naming fluxo.tela", err)
 	}
 }
 
@@ -2415,7 +2415,7 @@ func TestValidateFlowRefusesIDAndNameTogether(t *testing.T) {
 	p.Flow.Name = "meu-fluxo"
 	err := p.Validate()
 	if !errors.Is(err, ErrInvalidFlowIDName) {
-		t.Fatalf("erro = %v, quero ErrInvalidFlowIDName", err)
+		t.Fatalf("err = %v, want ErrInvalidFlowIDName", err)
 	}
 }
 
@@ -2426,7 +2426,7 @@ func TestValidateFlowRefusesIDAndNameBothAbsent(t *testing.T) {
 	p.Flow.ID = ""
 	err := p.Validate()
 	if !errors.Is(err, ErrInvalidFlowIDName) {
-		t.Fatalf("erro = %v, quero ErrInvalidFlowIDName", err)
+		t.Fatalf("err = %v, want ErrInvalidFlowIDName", err)
 	}
 }
 
@@ -2437,7 +2437,7 @@ func TestValidateFlowAcceptsNameOnly(t *testing.T) {
 	p.Flow.ID = ""
 	p.Flow.Name = "meu-fluxo"
 	if err := p.Validate(); err != nil {
-		t.Fatalf("Validate = %v, quero nil", err)
+		t.Fatalf("Validate = %v, want nil", err)
 	}
 }
 
@@ -2446,7 +2446,7 @@ func TestValidateFlowRequiresToken(t *testing.T) {
 	p.Flow.Token = ""
 	err := p.Validate()
 	if !errors.Is(err, ErrFieldRequired) || !strings.Contains(err.Error(), "fluxo.token") {
-		t.Fatalf("erro = %v, quero ErrFieldRequired nomeando fluxo.token", err)
+		t.Fatalf("err = %v, want ErrFieldRequired naming fluxo.token", err)
 	}
 }
 
@@ -2455,7 +2455,7 @@ func TestValidateFlowRequires(t *testing.T) {
 	p.Flow = nil
 	err := p.Validate()
 	if !errors.Is(err, ErrFieldRequired) || !strings.Contains(err.Error(), "fluxo") {
-		t.Fatalf("erro = %v, quero ErrFieldRequired nomeando fluxo", err)
+		t.Fatalf("err = %v, want ErrFieldRequired naming fluxo", err)
 	}
 }
 
@@ -2464,7 +2464,7 @@ func TestValidateFlowRefusesUnknownAction(t *testing.T) {
 	p.Flow.Action = "voar"
 	err := p.Validate()
 	if !errors.Is(err, ErrUnknownFlowAction) || !strings.Contains(err.Error(), "voar") {
-		t.Fatalf("erro = %v, quero ErrUnknownFlowAction citando %q", err, "voar")
+		t.Fatalf("err = %v, want ErrUnknownFlowAction citing %q", err, "voar")
 	}
 }
 
@@ -2477,8 +2477,8 @@ func TestValidateFlowRefusesLongButtonTitle(t *testing.T) {
 		value string
 		want  error
 	}{
-		{"20 runas passa", strings.Repeat("a", 20), nil},
-		{"21 runas recusa", strings.Repeat("a", 21), ErrFieldTooLong},
+		{"20 runes passes", strings.Repeat("a", 20), nil},
+		{"21 runes refuses", strings.Repeat("a", 21), ErrFieldTooLong},
 	}
 	for _, c := range cases {
 		p := baseFlowRequest()
@@ -2486,12 +2486,12 @@ func TestValidateFlowRefusesLongButtonTitle(t *testing.T) {
 		err := p.Validate()
 		if c.want == nil {
 			if err != nil {
-				t.Errorf("%s: Validate = %v, quero nil", c.name, err)
+				t.Errorf("%s: Validate = %v, want nil", c.name, err)
 			}
 			continue
 		}
 		if !errors.Is(err, c.want) || !strings.Contains(err.Error(), "botao_titulo") {
-			t.Errorf("%s: erro = %v, quero %v nomeando botao_titulo", c.name, err, c.want)
+			t.Errorf("%s: err = %v, want %v naming botao_titulo", c.name, err, c.want)
 		}
 	}
 }
@@ -2501,7 +2501,7 @@ func TestValidateFlowRequiresButtonTitle(t *testing.T) {
 	p.ButtonTitle = ""
 	err := p.Validate()
 	if !errors.Is(err, ErrFieldRequired) || !strings.Contains(err.Error(), "botao_titulo") {
-		t.Fatalf("erro = %v, quero ErrFieldRequired nomeando botao_titulo", err)
+		t.Fatalf("err = %v, want ErrFieldRequired naming botao_titulo", err)
 	}
 }
 
@@ -2515,7 +2515,7 @@ func TestValidateFlowRefusesHeaderText(t *testing.T) {
 	p.HeaderText = "Ola"
 	err := p.Validate()
 	if !errors.Is(err, ErrFieldForbidden) || !strings.Contains(err.Error(), "cabecalho_texto") {
-		t.Fatalf("erro = %v, quero ErrFieldForbidden nomeando cabecalho_texto", err)
+		t.Fatalf("err = %v, want ErrFieldForbidden naming cabecalho_texto", err)
 	}
 }
 
@@ -2524,7 +2524,7 @@ func TestValidateFlowRefusesFooter(t *testing.T) {
 	p.Footer = "Ate mais"
 	err := p.Validate()
 	if !errors.Is(err, ErrFieldForbidden) || !strings.Contains(err.Error(), "rodape") {
-		t.Fatalf("erro = %v, quero ErrFieldForbidden nomeando rodape", err)
+		t.Fatalf("err = %v, want ErrFieldForbidden naming rodape", err)
 	}
 }
 
@@ -2536,7 +2536,7 @@ func TestValidateRefusesFlowOutsideTheFlowType(t *testing.T) {
 		Flow: &FlowRequest{ID: "1", Token: "t", Action: "data_exchange"}}
 	err := p.Validate()
 	if !errors.Is(err, ErrFieldForbidden) || !strings.Contains(err.Error(), "fluxo") {
-		t.Fatalf("erro = %v, quero ErrFieldForbidden nomeando fluxo", err)
+		t.Fatalf("err = %v, want ErrFieldForbidden naming fluxo", err)
 	}
 }
 
@@ -2548,15 +2548,15 @@ func TestValidateFlowNormalizesTheFields(t *testing.T) {
 	p.Flow.Token = "  agendamento-4471  "
 	p.Flow.Screen = "  TELA_INICIAL  "
 	if err := p.Validate(); err != nil {
-		t.Fatalf("Validate = %v, quero nil", err)
+		t.Fatalf("Validate = %v, want nil", err)
 	}
 	if p.Flow.ID != "123456789" {
-		t.Errorf("fluxo.id = %q, quero aparado", p.Flow.ID)
+		t.Errorf("fluxo.id = %q, want trimmed", p.Flow.ID)
 	}
 	if p.Flow.Token != "agendamento-4471" {
-		t.Errorf("fluxo.token = %q, quero aparado", p.Flow.Token)
+		t.Errorf("fluxo.token = %q, want trimmed", p.Flow.Token)
 	}
 	if p.Flow.Screen != "TELA_INICIAL" {
-		t.Errorf("fluxo.tela = %q, quero aparado", p.Flow.Screen)
+		t.Errorf("fluxo.tela = %q, want trimmed", p.Flow.Screen)
 	}
 }

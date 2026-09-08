@@ -185,10 +185,10 @@ func TestEventTypeKeyIsKindNotTipoAtTheTopLevel(t *testing.T) {
 		t.Fatalf("Unmarshal: %v", err)
 	}
 	if _, has := top["tipo"]; has {
-		t.Errorf("o evento ainda tem uma chave de topo `tipo`: %s", b)
+		t.Errorf("the event still has a top-level `tipo` key: %s", b)
 	}
 	if _, has := top["kind"]; !has {
-		t.Errorf("o evento nao tem a chave de topo `kind`: %s", b)
+		t.Errorf("the event does not have the top-level `kind` key: %s", b)
 	}
 }
 
@@ -310,7 +310,8 @@ func walkForbiddenKeys(t *testing.T, label string, v any, path []string) {
 					}
 				}
 				if !exempt {
-					t.Errorf("%s: a chave \"tipo\" aparece em %s — regressao do Event.Type (deveria ser \"kind\") ou de outro campo que a T-209 deveria ter renomeado",
+					t.Errorf("%s: the \"tipo\" key appears at %s — a regression of Event.Type (should be \"kind\") "+
+						"or of another field T-209 should have renamed",
 						label, strings.Join(append(append([]string{}, path...), k), "."))
 				}
 			}
@@ -406,7 +407,7 @@ func TestOutputContractHasNoPortugueseKeyOrValue(t *testing.T) {
 	output := out.String()
 	for _, token := range forbiddenOutputTokens {
 		if strings.Contains(output, `"`+token+`"`) {
-			t.Errorf("a saida ainda contem %q — chave ou valor em portugues que a T-209 tinha de ter renomeado", token)
+			t.Errorf("the output still contains %q — a Portuguese key or value that T-209 had to have renamed", token)
 		}
 	}
 }
@@ -426,7 +427,7 @@ func TestOutputContractHasNoPortugueseKeyOrValue(t *testing.T) {
 func TestFrozenKeysStayIdenticalInSource(t *testing.T) {
 	raw, err := os.ReadFile(filepath.Join("..", "..", "docs", "contrato-chaves-que-nao-mudam.txt"))
 	if err != nil {
-		t.Fatalf("ler docs/contrato-chaves-que-nao-mudam.txt: %v", err)
+		t.Fatalf("read docs/contrato-chaves-que-nao-mudam.txt: %v", err)
 	}
 	var frozen []string
 	for _, line := range strings.Split(string(raw), "\n") {
@@ -437,7 +438,7 @@ func TestFrozenKeysStayIdenticalInSource(t *testing.T) {
 		frozen = append(frozen, line)
 	}
 	if len(frozen) == 0 {
-		t.Fatal("docs/contrato-chaves-que-nao-mudam.txt nao tem nenhuma chave — o teste nao provaria nada")
+		t.Fatal("docs/contrato-chaves-que-nao-mudam.txt has no key at all — the test would prove nothing")
 	}
 
 	var sourceText strings.Builder
@@ -447,7 +448,7 @@ func TestFrozenKeysStayIdenticalInSource(t *testing.T) {
 	} {
 		entries, err := os.ReadDir(dir)
 		if err != nil {
-			t.Fatalf("ler %s: %v", dir, err)
+			t.Fatalf("read %s: %v", dir, err)
 		}
 		for _, entry := range entries {
 			name := entry.Name()
@@ -456,7 +457,7 @@ func TestFrozenKeysStayIdenticalInSource(t *testing.T) {
 			}
 			b, err := os.ReadFile(filepath.Join(dir, name))
 			if err != nil {
-				t.Fatalf("ler %s: %v", filepath.Join(dir, name), err)
+				t.Fatalf("read %s: %v", filepath.Join(dir, name), err)
 			}
 			sourceText.Write(b)
 			sourceText.WriteByte('\n')
@@ -468,8 +469,8 @@ func TestFrozenKeysStayIdenticalInSource(t *testing.T) {
 		structTag := regexp.MustCompile(`json:"` + regexp.QuoteMeta(key) + `[",]`)
 		mapLiteral := regexp.MustCompile(`"` + regexp.QuoteMeta(key) + `":`)
 		if !structTag.MatchString(source) && !mapLiteral.MatchString(source) {
-			t.Errorf("a chave congelada %q (docs/contrato-chaves-que-nao-mudam.txt) NAO aparece mais em "+
-				"internal/meta nem internal/outbound — sumiu ou foi renomeada, e as duas sao proibidas para ela", key)
+			t.Errorf("the frozen key %q (docs/contrato-chaves-que-nao-mudam.txt) NO LONGER appears in "+
+				"internal/meta nor internal/outbound — it vanished or was renamed, and both are forbidden for it", key)
 		}
 	}
 }

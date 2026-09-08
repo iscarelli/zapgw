@@ -4,8 +4,8 @@
 // WHY THIS FILE EXISTS, and the cost it closes: until T-064 the state was
 // built inside the `GET /v1/estado` handler, and `zapgw estado`
 // (cmd/zapgw/state.go) showed only the counter table. Four blocks the
-// CONSUMER saw and the OPERATOR didn't: `estado`/`pausada`, `versao`,
-// `token_meta` and `certificado_do_callback`. It wasn't DATA divergence (the
+// CONSUMER saw and the OPERATOR didn't: `state`/`pausada`, `version`,
+// `meta_token` and `callback_certificate`. It wasn't DATA divergence (the
 // counters always came from config.SummarizeCounters, single source since
 // T-039) — it was SURFACE asymmetry, which is this project's mother-pitfall in
 // its most expensive form: the information exists and just doesn't appear
@@ -46,7 +46,7 @@ type State struct {
 	// present (T-107). Until now this route had the SAME blindness that T-103
 	// fixed in `zapgw instancia mostrar`/`listar`: without this field the
 	// consumer would have to DEDUCE the type from the absence of other blocks
-	// (token_instagram nao_se_aplica, numero_na_meta nao_se_aplica...), which is
+	// (instagram_token not_applicable, number_at_meta not_applicable...), which is
 	// guessing, never reading.
 	Type string `json:"kind"`
 	// IgID is the Instagram-scoped Business Account ID (T-102) — it ONLY has a
@@ -160,7 +160,7 @@ type State struct {
 	// below, the watchdog would call the Graph with an EMPTY phone_number_id,
 	// meta.PhoneNumberIDValid would return ErrInvalidPhoneNumberID, and
 	// definitiveOutcome (watchdog.go) treats that error as CREDENTIAL REFUSED — a
-	// PERMANENT and FALSE `veredito: "recusado"` on every Instagram instance,
+	// PERMANENT and FALSE `verdict: "refused"` on every Instagram instance,
 	// never a real measurement. That is what reading watchdog.go for this task
 	// found: the timer RUNS for Instagram instances (Check's loop doesn't
 	// filter by type), but what it measures MAKES NO SENSE there. That's why
@@ -168,7 +168,7 @@ type State struct {
 	// read, for the SAME reason as NumberAtMeta.
 	MetaToken MetaToken `json:"meta_token"`
 	// CallbackCertificate is the validity of the CONSUMER's certificate,
-	// alongside token_meta and for the same reason: both answer "will this
+	// alongside meta_token and for the same reason: both answer "will this
 	// credential still work tomorrow?", one for Meta's side and the other for
 	// theirs.
 	CallbackCertificate CertificateInState `json:"callback_certificate"`
@@ -182,7 +182,7 @@ type State struct {
 	// it's not "haven't measured yet". On a tipo=instagram instance both values
 	// come out as NotApplicable, never CertNeverObserved: they are DIFFERENT
 	// answers (measured in production, tenant-two-ig, v0.36.0, 2026-07-30 — the
-	// block came out `nunca_observado`, which says "wait", when the correct
+	// block came out `never_observed`, which says "wait", when the correct
 	// answer is "will never exist here, don't look").
 	NumberAtMeta NumberAtMeta `json:"number_at_meta"`
 	// InstagramToken is the validity of Instagram's long-lived token (T-098),
@@ -301,13 +301,13 @@ const (
 // measurement, there one may still happen).
 //
 // WHY A SINGLE CONSTANT, SHARED BY THE THREE BLOCKS THAT NEED IT
-// (token_instagram on a WhatsApp instance — T-098 — and numero_na_meta and
-// token_meta on an Instagram instance — T-099): it's this project's
+// (instagram_token on a WhatsApp instance — T-098 — and number_at_meta and
+// meta_token on an Instagram instance — T-099): it's this project's
 // mother-pitfall in its narrowest form — "the rule holds in one place and
 // doesn't hold in the next" — applied to a SINGLE word instead of a whole
 // mechanism. T-098 wrote VerdictIGTokenNotApplicable with the literal loose;
 // T-099 measured in production (`tenant-two-ig`, v0.36.0, 2026-07-30 21:11)
-// that the inverse side said `nunca_observado` — the WRONG answer, because
+// that the inverse side said `never_observed` — the WRONG answer, because
 // quality and tier ARE WhatsApp concepts and will NEVER exist on an
 // Instagram instance, which is exactly what NotApplicable states and
 // CertNeverObserved does not. Two constants with the SAME text would
@@ -315,13 +315,13 @@ const (
 // one, and the blocks that need it read this one.
 const NotApplicable = "not_applicable"
 
-// CertificateInState is the `certificado_do_callback` block (T-064).
+// CertificateInState is the `callback_certificate` block (T-064).
 //
-// TWO TIMESTAMPS, THE SAME DISCIPLINE AS token_meta: `expira_em` alone
+// TWO TIMESTAMPS, THE SAME DISCIPLINE AS meta_token: `expires_at` alone
 // doesn't say whether it's information from now or from three weeks ago, and
 // the gateway only updates it on DELIVERY (there's no probe). A certificate
 // observed three weeks ago may already have been renewed — or may already
-// have expired. With `observado_em` alongside it, the reader decides;
+// have expired. With `observed_at` alongside it, the reader decides;
 // without it, the gateway would be asserting as current something it never
 // measured.
 //
@@ -337,12 +337,12 @@ const NotApplicable = "not_applicable"
 //     "null" to answer the SAME question, and this file has already refused
 //     that once (see LastAt, above). Worse: it disappears in exactly the
 //     case it needs to handle;
-//   - JUST `expira_em: null`, with no word at all, is ambiguous with
+//   - JUST `expires_at: null`, with no word at all, is ambiguous with
 //     "couldn't read it" and invites the wrong reading "no date = expired";
-//   - A NAMED STATE has no plausible wrong reading: `nunca_observado`
+//   - A NAMED STATE has no plausible wrong reading: `never_observed`
 //     doesn't look like any date and doesn't compare against any date. It's
-//     the same device `token_meta.veredito` already uses for the same
-//     problem ("desconhecido"), so there's no new vocabulary to learn.
+//     the same device `meta_token.verdict` already uses for the same
+//     problem ("unknown"), so there's no new vocabulary to learn.
 //
 // WHAT THE GATEWAY DOES NOT SAY, AND IT'S NOT AN OVERSIGHT: there is no
 // "expired" state nor "expires in N days". That is a JUDGMENT over an
@@ -355,7 +355,7 @@ const NotApplicable = "not_applicable"
 type CertificateInState struct {
 	State string `json:"state"`
 	// ExpiresAt is the NotAfter of the callback's LEAF certificate, in
-	// UTC/RFC3339. `null` ONLY in the nunca_observado state, never a made-up
+	// UTC/RFC3339. `null` ONLY in the never_observed state, never a made-up
 	// date.
 	ExpiresAt *string `json:"expires_at"`
 	// ObservedAt is when the gateway saw that certificate — the instant of
@@ -363,10 +363,10 @@ type CertificateInState struct {
 	ObservedAt *string `json:"observed_at"`
 }
 
-// NumberAtMeta is the `numero_na_meta` block (T-080): what Meta says about
+// NumberAtMeta is the `number_at_meta` block (T-080): what Meta says about
 // this instance's NUMBER.
 //
-// THE `estado` WORDS ARE THE SAME AS THE CERTIFICATE'S (CertNeverObserved
+// THE `state` WORDS ARE THE SAME AS THE CERTIFICATE'S (CertNeverObserved
 // and CertObserved, not new constants with the same values): the problem is
 // the same — "is there an observation or not?" — and a second vocabulary for
 // it would force the consumer to learn two tables for the same question. Two
@@ -384,7 +384,7 @@ type CertificateInState struct {
 //
 // ONE TIMESTAMP PER VALUE, NOT ONE FOR THE BLOCK, and that is NOT ceremony:
 // the two values arrive through different paths, at different instants (see
-// config/number.go). A single `medido_em` for both would be true about one
+// config/number.go). A single `measured_at` for both would be true about one
 // and false about the other every time a webhook updated just the limit.
 type NumberAtMeta struct {
 	// Quality is Meta's `quality_rating`, LITERAL ("GREEN", "YELLOW"...).
@@ -402,7 +402,7 @@ type NumberAtMeta struct {
 	MessageLimit ObservedValue `json:"message_limit"`
 	// CheckedAt is the last time the gateway TRIED to measure — not the
 	// last time it learned something. The divergence between it and the
-	// `observado_em` above is the signal, exactly as with token_meta: it
+	// `observed_at` above is the signal, exactly as with meta_token: it
 	// moving while the others stay still means the measurement is going back
 	// and forth without bringing the fields back.
 	//
@@ -419,7 +419,7 @@ type NumberAtMeta struct {
 // T-064 paid for and this task had to repeat: a consumer that treats `null`
 // as "very old" starts with a false positive on EVERY new instance. `null`
 // alone is also ambiguous with "couldn't read it" and invites the wrong
-// reading "no value = bad". `nunca_observado` doesn't look like any value
+// reading "no value = bad". `never_observed` doesn't look like any value
 // and doesn't compare against any value.
 //
 // AND WHY THE STATE IS PER VALUE, NOT PER BLOCK: the mixed state genuinely
@@ -428,7 +428,7 @@ type NumberAtMeta struct {
 // to lie about one of the two.
 type ObservedValue struct {
 	State string `json:"state"`
-	// Value is Meta's literal, untranslated. `null` ONLY in nunca_observado.
+	// Value is Meta's literal, untranslated. `null` ONLY in never_observed.
 	Value *string `json:"value"`
 	// ObservedAt is when the GATEWAY learned this value — not Meta's
 	// timestamp. The why (two clocks nobody synchronized) is in
@@ -469,7 +469,7 @@ const (
 	// side (a System User token doesn't expire in 60 days).
 	//
 	// = NotApplicable, and not its own literal (T-099): it's the SAME answer
-	// numero_na_meta and token_meta give on the Instagram side, and both
+	// number_at_meta and meta_token give on the Instagram side, and both
 	// directions have to use the SAME word.
 	VerdictIGTokenNotApplicable = NotApplicable
 	// VerdictIGTokenWaiting: valid token, not yet time to try renewing
@@ -495,7 +495,7 @@ const (
 	VerdictIGTokenExpired = "expired"
 )
 
-// InstagramTokenInState is the `token_instagram` block (T-098): when the
+// InstagramTokenInState is the `instagram_token` block (T-098): when the
 // current token was set, when it expires, how many days are left, and — the
 // part that makes it USEFUL for whoever doesn't have access to the token —
 // whether the automatic renewal mechanism has already proven it works, and
@@ -504,7 +504,7 @@ const (
 // 🔴 THE CONSUMER CANNOT FIX IT ON THEIR OWN — the token isn't in their
 // hands, by this gateway's design (NINGUÉM fala direto com a Meta,
 // CLAUDE.md). That's why `Instruction`, below, is not cosmetic: a
-// `veredito: "falhando"` without saying WHAT TO DO is a dead end for
+// `verdict: "failing"` without saying WHAT TO DO is a dead end for
 // whoever has no support channel of their own — and this project's doctrine
 // is explicit about it (CLAUDE.md, section "NINGUÉM fala direto com a Meta":
 // "se o consumidor não pode contornar, o gateway tem de resolver ou
@@ -569,8 +569,8 @@ const (
 // credential, and firing that as a side effect of a STATUS command would be
 // a mutating surface hidden behind a read command. BuildStateWithSeries
 // treats nil as "no known failure" — the CLI shows the token honestly
-// through the DATABASE's timestamps (definido_em/expira_em/renovado_em,
-// which are true in any process), just without a live `falhando_desde`.
+// through the DATABASE's timestamps (definido_em/expires_at/renewed_at,
+// which are true in any process), just without a live `failing_since`.
 type IGRenewalFailureReader interface {
 	FailingSince(slug string) time.Time
 }
@@ -583,7 +583,7 @@ type IGRenewalFailureReader interface {
 // prove the same read at the SAME instant.
 //
 // A READ ERROR PROPAGATES, it never becomes a zeroed state: a
-// "nunca_observado" or a zero counter returned because the database failed
+// "never_observed" or a zero counter returned because the database failed
 // would be a lie wearing a fact's face — and it would land exactly on the
 // value whoever reads it uses to NOT alarm. The caller distinguishes
 // config.ErrInstanceNotFound (404 on the route, message with
@@ -653,7 +653,7 @@ func BuildStateWithSeries(store *config.Store, watchdog VerdictReader, renewer I
 		InstagramToken:      instagramTokenInState(inst, failingSince, now),
 		Ingress:             ingress.inState(),
 		// reach.Read() is nil-safe (see the comment on ExternalProbe.Read): a
-		// caller that didn't build the probe publishes `nao_configurado`,
+		// caller that didn't build the probe publishes `not_configured`,
 		// never a made-up measurement.
 		ExternalReach: reach.Read(),
 		Leadership:    leadership.inState(),
@@ -710,7 +710,7 @@ func daysInState(series []config.CounterDay) []DayInState {
 // published block.
 //
 // THE TRANSLATION IS TOTAL, and it's what keeps an intermediate state from
-// existing: either there are BOTH timestamps, or there is `nunca_observado`
+// existing: either there are BOTH timestamps, or there is `never_observed`
 // with both `null`. There is no path that produces "observado" without a
 // date, nor a date without "observado" — the state isn't a field someone
 // fills in on the side, it's a FUNCTION of what was observed.
@@ -730,7 +730,7 @@ func certificateInState(o config.CertificateObservation) CertificateInState {
 //
 // THE TRANSLATION IS TOTAL, like the certificate's, and it's what keeps an
 // intermediate state from existing: either there is a value WITH a
-// timestamp AND WITH a source, or there is `nunca_observado` with all three
+// timestamp AND WITH a source, or there is `never_observed` with all three
 // `null`. The state isn't a field someone fills in on the side — it's a
 // FUNCTION of what was observed, and that's why there's no path that
 // produces "observado" without a value nor a value without "observado".
@@ -739,7 +739,7 @@ func certificateInState(o config.CertificateObservation) CertificateInState {
 // instance NEVER has quality nor tier — the watchdog doesn't even try to
 // measure (it would have no phone_number_id to ask about), so there is no
 // "not yet observed" that turns into "observado" one day. It's NotApplicable
-// on both values, with `conferido_em` also null: asserting an attempt that
+// on both values, with `checked_at` also null: asserting an attempt that
 // never happened would be the same lie this file already refuses in other
 // timestamps.
 func numberAtMeta(n config.NumberAtMeta, kind string) NumberAtMeta {
@@ -756,7 +756,7 @@ func numberAtMeta(n config.NumberAtMeta, kind string) NumberAtMeta {
 	}
 }
 
-// metaTokenInState decides what to publish in `token_meta` — what the
+// metaTokenInState decides what to publish in `meta_token` — what the
 // watchdog measured, OR NotApplicable when the type makes its measurement
 // meaningless (T-099, see the comment on State.MetaToken for the exact
 // why).
@@ -791,7 +791,7 @@ func observedValue(v config.NumberValue) ObservedValue {
 	}
 }
 
-// instagramTokenInState builds the `token_instagram` block (T-098) from
+// instagramTokenInState builds the `instagram_token` block (T-098) from
 // what the database stores (inst.TokenSetAt/TokenRenewedAt — see
 // config.InstanceSummary) and what the renewer knows RIGHT NOW about the
 // most recent attempt (failingSince, zero when there's no failure in
@@ -870,7 +870,7 @@ const NoValue = "—"
 // StateRow is one line of the text presentation: a label, a value and
 // the depth (0 = a field of State, 1 = a field of a nested block).
 //
-// An empty Value means "block header" — the `token_meta:` that precedes its
+// An empty Value means "block header" — the `meta_token:` that precedes its
 // fields.
 type StateRow struct {
 	Label string
@@ -890,7 +890,7 @@ type StateRow struct {
 // by field name.
 //
 // THE LABEL IS THE JSON TAG, not the Go field name: this way the operator on
-// the CT and the consumer reading the JSON say the SAME word — `token_meta`,
+// the CT and the consumer reading the JSON say the SAME word — `meta_token`,
 // not `MetaToken` — and whoever reads one's alarm doesn't need to translate
 // it.
 //
@@ -919,14 +919,14 @@ func StateRows(e State) []StateRow {
 // passed it in here — the most natural thing in the world, and wrong:
 // between one and the other the CLI MEASURES the token on the Graph API (it
 // measures before reading, because the watchdog's cache lives in the server's
-// process), so `medido_em` is legitimately LATER than `gerado_em` and the
+// process), so `measured_at` is legitimately LATER than `generated_at` and the
 // screen would print "in" about a fact from the past. Measured against
 // production on 2026-07-28 18:22, minutes after v0.25.0 went live:
 //
 //	gerado_em:      2026-07-28T18:22:31Z (ha 0s)
-//	token_meta:
-//	  medido_em:    2026-07-28T18:22:32Z (daqui a 0s)
-//	  conferido_em: 2026-07-28T18:22:33Z (daqui a 1s)
+//	meta_token:
+//	  measured_at:  2026-07-28T18:22:32Z (daqui a 0s)
+//	  checked_at:   2026-07-28T18:22:33Z (daqui a 1s)
 //
 // At 1s this is ugly; the number GROWS with how slow Meta is, which is
 // exactly when someone is looking at this screen. A screen that announces
@@ -935,7 +935,7 @@ func StateRows(e State) []StateRow {
 // moment.
 //
 // THE FIX IS NOT "if it comes out future, print 0s ago": a genuinely future
-// timestamp exists and is legitimate (the certificate's `expira_em` comes
+// timestamp exists and is legitimate (the certificate's `expires_at` comes
 // out `(daqui a 54d)` and that's correct). The rule is different: **"in" is
 // for what hasn't happened yet; an OBSERVATION timestamp is never in the
 // future, and if it is, the reference clock is the one that's wrong.**
@@ -998,7 +998,7 @@ func fieldLabel(field reflect.StructField) string {
 //   - THE DISTANCE ALONGSIDE it because the real question is never "what
 //     time was it" — it's "is this fresh?" / "how much is left?".
 //     `2026-07-28T14:03:11Z` alone doesn't answer either without a mental
-//     subtraction, and a future date (the certificate's `expira_em`) is the
+//     subtraction, and a future date (the certificate's `expires_at`) is the
 //     case where the mental subtraction is most likely to get ugly.
 //
 // Detection is by PARSE, not by field name: a new timestamp in State gets
@@ -1034,7 +1034,7 @@ func ReadableValue(v reflect.Value, now time.Time) string {
 //
 // It reads the SAME printClock as StateRows, and for the same
 // reason: the table's `ultimo_em` is also an OBSERVATION timestamp, and the
-// line above (`token_meta`) and the line below (`recebidas`) measuring
+// line above (`meta_token`) and the line below (`recebidas`) measuring
 // distance against different reference clocks would be the same screen with
 // two clocks.
 func ReadableStamp(c *string) string {

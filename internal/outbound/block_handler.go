@@ -210,7 +210,7 @@ func (h *BlockHandler) process(
 			respondError(w, http.StatusUnauthorized, "config", "token ausente ou invalido", 0)
 			return
 		}
-		log.Printf("zapgw: erro de store ao autenticar em %s: %v", route, err)
+		log.Printf("zapgw: store error while authenticating on %s: %v", route, err)
 		respondError(w, http.StatusServiceUnavailable, "retryable", "indisponivel", 0)
 		return
 	}
@@ -260,7 +260,7 @@ func (h *BlockHandler) process(
 	}
 
 	if !CanUse(consumer, p.Instance) {
-		log.Printf("zapgw: consumidor %q pediu %s na instancia %q, que nao e dele",
+		log.Printf("zapgw: consumer %q asked for %s on instance %q, which is not theirs",
 			consumer.Name, operation, p.Instance)
 		respondError(w, http.StatusForbidden, "config", "instancia nao autorizada para este consumidor", 0)
 		return
@@ -273,7 +273,7 @@ func (h *BlockHandler) process(
 			respondError(w, http.StatusNotFound, "config", "instancia desconhecida", 0)
 			return
 		}
-		log.Printf("zapgw: erro de store ao buscar instancia %q em %s: %v", p.Instance, route, err)
+		log.Printf("zapgw: store error while looking up instance %q on %s: %v", p.Instance, route, err)
 		respondError(w, http.StatusServiceUnavailable, "retryable", "indisponivel", 0)
 		return
 	}
@@ -369,7 +369,7 @@ func (h *BlockHandler) list(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusUnauthorized, "config", "token ausente ou invalido", 0)
 			return
 		}
-		log.Printf("zapgw: erro de store ao autenticar em %s: %v", listBlocksRoute, err)
+		log.Printf("zapgw: store error while authenticating on %s: %v", listBlocksRoute, err)
 		respondError(w, http.StatusServiceUnavailable, "retryable", "indisponivel", 0)
 		return
 	}
@@ -385,7 +385,7 @@ func (h *BlockHandler) list(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !CanUse(consumer, slug) {
-		log.Printf("zapgw: consumidor %q pediu lista de bloqueios da instancia %q, que nao e dele",
+		log.Printf("zapgw: consumer %q asked for the block list of instance %q, which is not theirs",
 			consumer.Name, slug)
 		respondError(w, http.StatusForbidden, "config", "instancia nao autorizada para este consumidor", 0)
 		return
@@ -398,7 +398,7 @@ func (h *BlockHandler) list(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusNotFound, "config", "instancia desconhecida", 0)
 			return
 		}
-		log.Printf("zapgw: erro de store ao buscar instancia %q em %s: %v", slug, listBlocksRoute, err)
+		log.Printf("zapgw: store error while looking up instance %q on %s: %v", slug, listBlocksRoute, err)
 		respondError(w, http.StatusServiceUnavailable, "retryable", "indisponivel", 0)
 		return
 	}

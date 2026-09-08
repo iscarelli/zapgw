@@ -150,7 +150,7 @@ func logRejection(throttle *logThrottle, route, slug, consumer, message string) 
 	if !throttle.allow(route + "|" + consumer) {
 		return
 	}
-	log.Printf("zapgw: %s recusou consumidor=%q instancia=%q: %s", route, consumer, slug, message)
+	log.Printf("zapgw: %s refused consumer=%q instance=%q: %s", route, consumer, slug, message)
 }
 
 type Handler struct {
@@ -365,7 +365,7 @@ func (h *Handler) send(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusUnauthorized, "config", "token ausente ou invalido", 0)
 			return
 		}
-		log.Printf("zapgw: erro de store ao autenticar: %v", err)
+		log.Printf("zapgw: store error while authenticating: %v", err)
 		respondError(w, http.StatusServiceUnavailable, "retryable", "indisponivel", 0)
 		return
 	}
@@ -455,7 +455,7 @@ func (h *Handler) send(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !CanUse(consumer, p.Instance) {
-		log.Printf("zapgw: consumidor %q pediu a instancia %q, que nao e dele",
+		log.Printf("zapgw: consumer %q asked for instance %q, which is not theirs",
 			consumer.Name, p.Instance)
 		respondError(w, http.StatusForbidden, "config", "instancia nao autorizada para este consumidor", 0)
 		return
@@ -471,12 +471,12 @@ func (h *Handler) send(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusNotFound, "config", "instancia desconhecida", 0)
 			return
 		}
-		log.Printf("zapgw: erro de store ao buscar instancia %q: %v", p.Instance, err)
+		log.Printf("zapgw: store error while looking up instance %q: %v", p.Instance, err)
 		respondError(w, http.StatusServiceUnavailable, "retryable", "indisponivel", 0)
 		return
 	}
 	if !inst.Active {
-		log.Printf("zapgw: instancia %q esta pausada e recebeu pedido de envio", inst.Slug)
+		log.Printf("zapgw: instance %q is paused and received a send request", inst.Slug)
 		respondError(w, http.StatusServiceUnavailable, "retryable", "instancia pausada", 0)
 		return
 	}
@@ -518,7 +518,7 @@ func (h *Handler) send(w http.ResponseWriter, r *http.Request) {
 				"esta chave de idempotencia ja foi usada para outro pedido", 0)
 			return
 		}
-		log.Printf("zapgw: erro de store na idempotencia: %v", err)
+		log.Printf("zapgw: store error on idempotency: %v", err)
 		respondError(w, http.StatusServiceUnavailable, "retryable", "indisponivel", 0)
 		return
 	}

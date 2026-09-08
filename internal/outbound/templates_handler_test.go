@@ -391,34 +391,34 @@ func TestTemplatesReturnsTheWholeCatalogWithoutTruncating(t *testing.T) {
 
 	rec := askTemplates(t, h, "token-do-a", "?instancia=lojinha")
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, quero 200; corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, want 200; body = %s", rec.Code, rec.Body.String())
 	}
 
 	var resp testTemplatesResponse
 	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
-		t.Fatalf("corpo nao desserializa: %v (corpo = %q)", err, rec.Body.String())
+		t.Fatalf("body does not deserialize: %v (body = %q)", err, rec.Body.String())
 	}
 	if len(resp.Templates) != 6 {
-		t.Fatalf("templates = %d, quero 6 — lista curta e o defeito que este endpoint existe para nao repetir", len(resp.Templates))
+		t.Fatalf("templates = %d, want 6 — a short list is the defect this endpoint exists to not repeat", len(resp.Templates))
 	}
 	if resp.Total != 6 {
-		t.Errorf("total = %d, quero 6", resp.Total)
+		t.Errorf("total = %d, want 6", resp.Total)
 	}
 	if resp.Instance != "lojinha" {
-		t.Errorf("instancia = %q, quero lojinha", resp.Instance)
+		t.Errorf("instance = %q, want lojinha", resp.Instance)
 	}
 	names := make([]string, 0, len(resp.Templates))
 	for _, tpl := range resp.Templates {
 		names = append(names, tpl.Name)
 	}
 	if want := "t1 t2 t3 t4 t5 t6"; strings.Join(names, " ") != want {
-		t.Errorf("nomes = %q, quero %q", strings.Join(names, " "), want)
+		t.Errorf("names = %q, want %q", strings.Join(names, " "), want)
 	}
 	if tpl := resp.Templates[0]; tpl.Category != "UTILITY" || tpl.Language != "pt_BR" || tpl.Status != "APPROVED" {
-		t.Errorf("campos do primeiro template = %+v", tpl)
+		t.Errorf("fields of the first template = %+v", tpl)
 	}
 	if !strings.Contains(string(resp.Templates[0].Components), "BODY") {
-		t.Errorf("componentes nao chegaram ao consumidor: %s", resp.Templates[0].Components)
+		t.Errorf("components did not reach the consumer: %s", resp.Templates[0].Components)
 	}
 }
 
@@ -436,22 +436,22 @@ func TestTemplatesListingReturnsTheIdOfEachItem(t *testing.T) {
 
 	rec := askTemplates(t, h, "token-do-a", "?instancia=lojinha")
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, quero 200; corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, want 200; body = %s", rec.Code, rec.Body.String())
 	}
 
 	var resp testTemplatesResponse
 	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
-		t.Fatalf("corpo nao desserializa: %v (corpo = %q)", err, rec.Body.String())
+		t.Fatalf("body does not deserialize: %v (body = %q)", err, rec.Body.String())
 	}
 	if len(resp.Templates) != 3 {
-		t.Fatalf("templates = %d, quero 3", len(resp.Templates))
+		t.Fatalf("templates = %d, want 3", len(resp.Templates))
 	}
 	for _, tpl := range resp.Templates {
 		// testRawTemplate (via metaWithCatalogOf) emits "id-de-<nome>" —
 		// that is the value the fake Meta returned, not an id invented here.
 		if want := "id-de-" + tpl.Name; tpl.ID != want {
-			t.Errorf("id do template %q = %q, quero %q — sem o id o consumidor nao distingue "+
-				"'esteve na Meta e sumiu' de 'rascunho local que nunca subiu'", tpl.Name, tpl.ID, want)
+			t.Errorf("template id %q = %q, want %q — without the id the consumer cannot distinguish "+
+				"'was on Meta and vanished' from 'local draft that never went up'", tpl.Name, tpl.ID, want)
 		}
 	}
 }
@@ -474,15 +474,15 @@ func TestTemplatesListingReturnsTheRejectionReason(t *testing.T) {
 
 	rec := askTemplates(t, h, "token-do-a", "?instancia=lojinha")
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, quero 200; corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, want 200; body = %s", rec.Code, rec.Body.String())
 	}
 
 	var resp testTemplatesResponse
 	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
-		t.Fatalf("corpo nao desserializa: %v (corpo = %q)", err, rec.Body.String())
+		t.Fatalf("body does not deserialize: %v (body = %q)", err, rec.Body.String())
 	}
 	if len(resp.Templates) != 1 || resp.Templates[0].Reason != "INCORRECT_CATEGORY" {
-		t.Fatalf("templates = %+v, queria motivo = INCORRECT_CATEGORY", resp.Templates)
+		t.Fatalf("templates = %+v, wanted reason = INCORRECT_CATEGORY", resp.Templates)
 	}
 }
 
@@ -501,21 +501,21 @@ func TestTemplatesCapExceededIsAnErrorAndNotAPartialList(t *testing.T) {
 
 	rec := askTemplates(t, h, "token-do-a", "?instancia=lojinha")
 	if rec.Code != http.StatusBadGateway {
-		t.Fatalf("status = %d, quero 502; corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, want 502; body = %s", rec.Code, rec.Body.String())
 	}
 	if strings.Contains(rec.Body.String(), "\"templates\"") {
-		t.Errorf("a resposta de erro carrega uma lista de templates: %s", rec.Body.String())
+		t.Errorf("the error response carries a list of templates: %s", rec.Body.String())
 	}
 
 	var errBody errorResponse
 	if err := json.Unmarshal(rec.Body.Bytes(), &errBody); err != nil {
-		t.Fatalf("corpo de erro nao desserializa: %v (%q)", err, rec.Body.String())
+		t.Fatalf("error body does not deserialize: %v (%q)", err, rec.Body.String())
 	}
 	if errBody.Error.Class != string(meta.ClassConfig) {
-		t.Errorf("classe = %q, quero %q — so gente conserta um catalogo que nao cabe no teto", errBody.Error.Class, meta.ClassConfig)
+		t.Errorf("class = %q, want %q — only a person fixes a catalog that does not fit the cap", errBody.Error.Class, meta.ClassConfig)
 	}
 	if !strings.Contains(record.String(), "ALARME") {
-		t.Errorf("o teto estourou sem ALARME; log = %q", record.String())
+		t.Errorf("the ceiling was blown without an ALARME; log = %q", record.String())
 	}
 }
 
@@ -534,25 +534,25 @@ func TestTemplatesFiltersByStatus(t *testing.T) {
 
 	rec := askTemplates(t, h, "token-do-a", "?instancia=lojinha&status=APPROVED")
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, quero 200; corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, want 200; body = %s", rec.Code, rec.Body.String())
 	}
 
 	var resp testTemplatesResponse
 	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
-		t.Fatalf("corpo nao desserializa: %v", err)
+		t.Fatalf("body does not deserialize: %v", err)
 	}
 	if len(resp.Templates) != 2 {
-		t.Fatalf("templates = %d, quero 2 (so APPROVED); veio %s", len(resp.Templates), rec.Body.String())
+		t.Fatalf("templates = %d, want 2 (only APPROVED); got %s", len(resp.Templates), rec.Body.String())
 	}
 	for _, tpl := range resp.Templates {
 		if tpl.Status != "APPROVED" {
-			t.Errorf("template %q com status %q escapou do filtro", tpl.Name, tpl.Status)
+			t.Errorf("template %q with status %q escaped the filter", tpl.Name, tpl.Status)
 		}
 	}
 
 	urls, _ := m.seen()
 	if !strings.Contains(urls[0], "status=APPROVED") {
-		t.Errorf("o filtro nao foi repassado a Meta: %q", urls[0])
+		t.Errorf("the filter was not passed through to Meta: %q", urls[0])
 	}
 }
 
@@ -565,10 +565,10 @@ func TestTemplatesWithNoTemplateAtAllReturnsAnEmptyList(t *testing.T) {
 
 	rec := askTemplates(t, h, "token-do-a", "?instancia=lojinha")
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, quero 200; corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, want 200; body = %s", rec.Code, rec.Body.String())
 	}
 	if !strings.Contains(rec.Body.String(), `"templates":[]`) {
-		t.Errorf("catalogo vazio nao veio como lista vazia: %s", rec.Body.String())
+		t.Errorf("empty catalog did not come as an empty list: %s", rec.Body.String())
 	}
 }
 
@@ -578,10 +578,10 @@ func TestTemplatesRequiresTheInstance(t *testing.T) {
 
 	rec := askTemplates(t, h, "token-do-a", "")
 	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("status = %d, quero 400; corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, want 400; body = %s", rec.Code, rec.Body.String())
 	}
 	if n := m.calls.Load(); n != 0 {
-		t.Errorf("falou %d vez(es) com a Meta sem instancia no pedido", n)
+		t.Errorf("talked to Meta %d time(s) without an instance in the request", n)
 	}
 }
 
@@ -596,10 +596,10 @@ func TestTemplatesRefusesInstanceNotOwnedByConsumer(t *testing.T) {
 
 	rec := askTemplates(t, h, "token-do-a", "?instancia=clinica")
 	if rec.Code != http.StatusForbidden {
-		t.Fatalf("status = %d, quero 403; corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, want 403; body = %s", rec.Code, rec.Body.String())
 	}
 	if n := m.calls.Load(); n != 0 {
-		t.Errorf("falou %d vez(es) com a Meta pela instancia de outro sistema", n)
+		t.Errorf("talked to Meta %d time(s) for another system's instance", n)
 	}
 }
 
@@ -609,16 +609,16 @@ func TestTemplatesWithPausedInstanceAnswers503WithoutCallingMeta(t *testing.T) {
 
 	rec := askTemplates(t, h, "token-do-a", "?instancia=lojinha")
 	if rec.Code != http.StatusServiceUnavailable {
-		t.Fatalf("status = %d, quero 503; corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, want 503; body = %s", rec.Code, rec.Body.String())
 	}
 	if n := m.calls.Load(); n != 0 {
-		t.Errorf("falou %d vez(es) com a Meta por uma instancia PAUSADA", n)
+		t.Errorf("talked to Meta %d time(s) for a PAUSED instance", n)
 	}
 }
 
 // T-115 (5): forces the meta.ErrCatalogNotUnderstood branch in
 // respondCatalogError (templates_handler.go:547-549) — the ONLY one of
-// the four catalog-error branches that decides 503/retentavel instead of
+// the four catalog-error branches that decides 503/retryable instead of
 // 502/config, and that no HANDLER test reached before this task (the
 // internal/meta suite already proved the error at the SOURCE, never the
 // translation into an HTTP response).
@@ -632,14 +632,14 @@ func TestTemplatesListReturns503RetryableWhenTheCatalogIsNotUnderstood(t *testin
 	rec := askTemplates(t, h, "token-do-a", "?instancia=lojinha")
 
 	if rec.Code != http.StatusServiceUnavailable {
-		t.Fatalf("status = %d, quero 503; corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, want 503; body = %s", rec.Code, rec.Body.String())
 	}
 	var errBody errorResponse
 	if err := json.Unmarshal(rec.Body.Bytes(), &errBody); err != nil {
-		t.Fatalf("corpo de erro nao desserializa: %v (corpo = %q)", err, rec.Body.String())
+		t.Fatalf("error body does not deserialize: %v (body = %q)", err, rec.Body.String())
 	}
 	if errBody.Error.Class != string(meta.ClassRetryable) {
-		t.Errorf("classe = %q, quero %q", errBody.Error.Class, meta.ClassRetryable)
+		t.Errorf("class = %q, want %q", errBody.Error.Class, meta.ClassRetryable)
 	}
 }
 
@@ -648,16 +648,16 @@ func TestTemplatesRefusesWithoutTokenAndWithInvalidToken(t *testing.T) {
 	h := testTemplatesHandler(t, m, "lojinha")
 
 	if rec := askTemplates(t, h, "", "?instancia=lojinha"); rec.Code != http.StatusUnauthorized {
-		t.Errorf("sem token: status = %d, quero 401", rec.Code)
+		t.Errorf("no token: status = %d, want 401", rec.Code)
 	}
 	if rec := askTemplates(t, h, "token-errado", "?instancia=lojinha"); rec.Code != http.StatusUnauthorized {
-		t.Errorf("token errado: status = %d, quero 401", rec.Code)
+		t.Errorf("wrong token: status = %d, want 401", rec.Code)
 	}
 	if rec := createTemplate(t, h, "", `{"instancia":"lojinha"}`); rec.Code != http.StatusUnauthorized {
-		t.Errorf("POST sem token: status = %d, quero 401", rec.Code)
+		t.Errorf("POST without token: status = %d, want 401", rec.Code)
 	}
 	if n := m.calls.Load(); n != 0 {
-		t.Errorf("falou %d vez(es) com a Meta sem consumidor autenticado", n)
+		t.Errorf("talked to Meta %d time(s) without an authenticated consumer", n)
 	}
 }
 
@@ -687,12 +687,12 @@ func TestTemplatesTranslatesTheMetaError(t *testing.T) {
 		srv.Close()
 
 		if rec.Code != c.want {
-			t.Errorf("Meta %d: status = %d, quero %d; corpo = %s", c.metaStatus, rec.Code, c.want, rec.Body.String())
+			t.Errorf("Meta %d: status = %d, want %d; body = %s", c.metaStatus, rec.Code, c.want, rec.Body.String())
 		}
 		var errBody errorResponse
 		_ = json.Unmarshal(rec.Body.Bytes(), &errBody)
 		if errBody.Error.Class != string(c.class) {
-			t.Errorf("Meta %d: classe = %q, quero %q", c.metaStatus, errBody.Error.Class, c.class)
+			t.Errorf("Meta %d: class = %q, want %q", c.metaStatus, errBody.Error.Class, c.class)
 		}
 	}
 }
@@ -708,7 +708,7 @@ func TestCreateTemplateSaysItWasBornPending(t *testing.T) {
 	rec := createTemplate(t, h, "token-do-a", `{"instancia":"lojinha","nome":"lembrete_consulta",`+
 		`"categoria":"UTILITY","idioma":"pt_BR","componentes":[{"type":"BODY","text":"oi"}]}`)
 	if rec.Code != http.StatusCreated {
-		t.Fatalf("status = %d, quero 201; corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, want 201; body = %s", rec.Code, rec.Body.String())
 	}
 
 	var resp struct {
@@ -717,27 +717,27 @@ func TestCreateTemplateSaysItWasBornPending(t *testing.T) {
 		Warning string `json:"aviso"`
 	}
 	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
-		t.Fatalf("corpo nao desserializa: %v (%q)", err, rec.Body.String())
+		t.Fatalf("body does not deserialize: %v (%q)", err, rec.Body.String())
 	}
 	if resp.ID != "1234" {
-		t.Errorf("id = %q, quero 1234", resp.ID)
+		t.Errorf("id = %q, want 1234", resp.ID)
 	}
 	if resp.Status != "PENDING" {
-		t.Errorf("status = %q, quero PENDING (o que a Meta respondeu)", resp.Status)
+		t.Errorf("status = %q, want PENDING (what Meta answered)", resp.Status)
 	}
 	if !strings.Contains(resp.Warning, "PENDING") || !strings.Contains(strings.ToLower(resp.Warning), "aprovad") {
-		t.Errorf("o aviso nao diz que o template nasce pendente de aprovacao: %q", resp.Warning)
+		t.Errorf("the warning does not say the template is born pending approval: %q", resp.Warning)
 	}
 
 	// The body that went to Meta uses ITS names, and the components travel
 	// with no rewriting.
 	_, bodies := m.seen()
 	if len(bodies) != 1 {
-		t.Fatalf("corpos enviados a Meta = %d, quero 1", len(bodies))
+		t.Fatalf("bodies sent to Meta = %d, want 1", len(bodies))
 	}
 	for _, chunk := range []string{`"name":"lembrete_consulta"`, `"category":"UTILITY"`, `"language":"pt_BR"`, `"type":"BODY"`} {
 		if !strings.Contains(bodies[0], chunk) {
-			t.Errorf("o corpo enviado a Meta nao contem %s: %s", chunk, bodies[0])
+			t.Errorf("the body sent to Meta does not contain %s: %s", chunk, bodies[0])
 		}
 	}
 }
@@ -763,16 +763,16 @@ func TestCreateTemplateRefusesInvalidBodyWithoutCallingMeta(t *testing.T) {
 	for _, body := range cases {
 		rec := createTemplate(t, h, "token-do-a", body)
 		if rec.Code != http.StatusBadRequest {
-			t.Errorf("corpo %s: status = %d, quero 400 (corpo da resposta = %s)", body, rec.Code, rec.Body.String())
+			t.Errorf("body %s: status = %d, want 400 (response body = %s)", body, rec.Code, rec.Body.String())
 		}
 	}
 	if n := m.calls.Load(); n != 0 {
-		t.Errorf("falou %d vez(es) com a Meta por pedido invalido", n)
+		t.Errorf("talked to Meta %d time(s) over an invalid request", n)
 	}
 }
 
 // Creation has no idempotency, so the transport outcome is truly UNKNOWN:
-// the template may have been created. Calling this `retentavel` would send
+// the template may have been created. Calling this `retryable` would send
 // the consumer to retry blindly.
 //
 // With the whole destination down, this test exercises the THIRD outcome of
@@ -790,18 +790,18 @@ func TestCreateTemplateWithTransportFailureAnswers502Unknown(t *testing.T) {
 	rec := createTemplate(t, h, "token-do-a", `{"instancia":"lojinha","nome":"n",`+
 		`"categoria":"UTILITY","idioma":"pt_BR","componentes":[]}`)
 	if rec.Code != http.StatusBadGateway {
-		t.Fatalf("status = %d, quero 502; corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, want 502; body = %s", rec.Code, rec.Body.String())
 	}
 	var errBody errorResponse
 	_ = json.Unmarshal(rec.Body.Bytes(), &errBody)
 	if errBody.Error.Class != string(meta.ClassUnknown) {
-		t.Errorf("classe = %q, quero %q", errBody.Error.Class, meta.ClassUnknown)
+		t.Errorf("class = %q, want %q", errBody.Error.Class, meta.ClassUnknown)
 	}
 	// Neither the URL nor the token can travel in the message: *url.Error
 	// carries the full URL, and this text goes to the consumer and to the
 	// log.
 	if strings.Contains(rec.Body.String(), "t-lojinha") || strings.Contains(rec.Body.String(), "127.0.0.1") {
-		t.Errorf("a resposta vazou destino ou token: %s", rec.Body.String())
+		t.Errorf("the response leaked destination or token: %s", rec.Body.String())
 	}
 }
 
@@ -854,7 +854,7 @@ func createTemplateWithAmbiguousOutcome(
 }
 
 // THE REAL OUTCOME OF 2026-07-28: `pedido_avaliacao_v2` WAS created and the
-// response did not arrive. The consumer got `502 desconhecido` and only
+// response did not arrive. The consumer got `502 unknown` and only
 // found out the truth because it still had direct access to the Graph API —
 // access the "NINGUÉM fala direto com a Meta" rule has just forbidden. Now
 // who checks is the gateway, and the consumer gets the `201` the first call
@@ -863,8 +863,8 @@ func TestCreateTemplateAmbiguousREREADSTheCatalogAndConfirmsTheCreation(t *testi
 	rec, m, record, seenSet := createTemplateWithAmbiguousOutcome(t, "pedido_avaliacao_v2", "pt_BR", true, false)
 
 	if rec.Code != http.StatusCreated {
-		t.Fatalf("status = %d, quero 201 — o template EXISTE, e responder erro sobre algo que existe "+
-			"e o defeito da T-078; corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, want 201 — the template EXISTS, and answering an error about "+
+			"something that exists is the T-078 defect; body = %s", rec.Code, rec.Body.String())
 	}
 	var resp struct {
 		ID          string `json:"id"`
@@ -875,40 +875,40 @@ func TestCreateTemplateAmbiguousREREADSTheCatalogAndConfirmsTheCreation(t *testi
 		WaitSeconds int    `json:"espera_segundos"`
 	}
 	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
-		t.Fatalf("corpo nao desserializa: %v (%q)", err, rec.Body.String())
+		t.Fatalf("body does not deserialize: %v (%q)", err, rec.Body.String())
 	}
 	if resp.ID != "id-de-pedido_avaliacao_v2" {
-		t.Errorf("id = %q — a releitura tem de devolver o id do template ACHADO", resp.ID)
+		t.Errorf("id = %q — the reread has to return the id of the FOUND template", resp.ID)
 	}
 	if resp.Status != "PENDING" || resp.Category != "UTILITY" {
-		t.Errorf("status/categoria = %q/%q, queria os do catalogo (PENDING/UTILITY)", resp.Status, resp.Category)
+		t.Errorf("status/category = %q/%q, wanted the catalog's (PENDING/UTILITY)", resp.Status, resp.Category)
 	}
 	// The consumer has to know its call failed midway: that's what explains
 	// the delay and what it will find in its own log.
 	if !strings.Contains(resp.Warning, WarningCreationConfirmedByReread) {
-		t.Errorf("o aviso nao conta que a criacao foi confirmada por releitura: %q", resp.Warning)
+		t.Errorf("the warning does not say the creation was confirmed by reread: %q", resp.Warning)
 	}
 	if !strings.Contains(resp.Warning, "PENDING") {
-		t.Errorf("o aviso perdeu a instrucao de que o template nasce pendente: %q", resp.Warning)
+		t.Errorf("the warning lost the instruction that the template is born pending: %q", resp.Warning)
 	}
-	if !strings.Contains(record, "pedido_avaliacao_v2") || !strings.Contains(record, "ACHOU") {
-		t.Errorf("o desfecho nao ficou no log; log = %q", record)
+	if !strings.Contains(record, "pedido_avaliacao_v2") || !strings.Contains(record, "FOUND") {
+		t.Errorf("the outcome did not land in the log; log = %q", record)
 	}
 	if urls, _ := m.seen(); len(urls) < 2 {
-		t.Errorf("a releitura nem aconteceu: urls = %v", urls)
+		t.Errorf("the reread did not even happen: urls = %v", urls)
 	}
 	// T-101's VERIFY (c): found on the FIRST attempt — the common path
 	// cannot get slower because of the rare case. No spaced pause can have
 	// happened, and the body has to count 1 attempt/0s of wait.
 	if resp.Rereads != 1 {
-		t.Errorf("releituras = %d, quero 1 — achou de primeira, nenhuma retentativa deveria ter acontecido", resp.Rereads)
+		t.Errorf("releituras = %d, want 1 — found it on the first try, no retry should have happened", resp.Rereads)
 	}
 	if resp.WaitSeconds != 0 {
-		t.Errorf("espera_segundos = %d, quero 0 — achar de primeira nao pode custar espera nenhuma", resp.WaitSeconds)
+		t.Errorf("espera_segundos = %d, want 0 — finding it on the first try cannot cost any wait", resp.WaitSeconds)
 	}
 	if len(*seenSet) != 0 {
-		t.Errorf("waitReread foi chamado %d vez(es) mesmo achando na 1a tentativa: %v — "+
-			"o caminho comum ficou mais lento", len(*seenSet), *seenSet)
+		t.Errorf("waitReread was called %d time(s) even though it was found on the 1st attempt: %v — "+
+			"the common path got slower", len(*seenSet), *seenSet)
 	}
 }
 
@@ -928,7 +928,7 @@ func TestCreateTemplateAmbiguousNotFoundInTheCatalogIsINCONCLUSIVE(t *testing.T)
 	rec, _, record, seenSet := createTemplateWithAmbiguousOutcome(t, "lembrete_consulta", "pt_BR", false, false)
 
 	if rec.Code != http.StatusBadGateway {
-		t.Fatalf("status = %d, quero 502; corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, want 502; body = %s", rec.Code, rec.Body.String())
 	}
 	var errBody struct {
 		Error struct {
@@ -939,10 +939,10 @@ func TestCreateTemplateAmbiguousNotFoundInTheCatalogIsINCONCLUSIVE(t *testing.T)
 		} `json:"error"`
 	}
 	if err := json.Unmarshal(rec.Body.Bytes(), &errBody); err != nil {
-		t.Fatalf("corpo de erro nao desserializa: %v (%q)", err, rec.Body.String())
+		t.Fatalf("error body does not deserialize: %v (%q)", err, rec.Body.String())
 	}
 	if errBody.Error.Class != string(meta.ClassUnknown) {
-		t.Errorf("classe = %q, quero %q", errBody.Error.Class, meta.ClassUnknown)
+		t.Errorf("class = %q, want %q", errBody.Error.Class, meta.ClassUnknown)
 	}
 
 	// T-101, VERIFY (b): with the spaced attempts exhausted, the `502` comes
@@ -950,52 +950,52 @@ func TestCreateTemplateAmbiguousNotFoundInTheCatalogIsINCONCLUSIVE(t *testing.T)
 	// `Contains`, so the text can't drift without anyone noticing (the
 	// warning does not loosen, it only gets rarer).
 	if errBody.Error.Message != MessageInconclusiveOutcome {
-		t.Errorf("mensagem = %q, quero EXATAMENTE a constante MessageInconclusiveOutcome — o texto do "+
-			"desfecho raro nao pode mudar so porque ele ficou mais raro", errBody.Error.Message)
+		t.Errorf("message = %q, want EXACTLY the constant MessageInconclusiveOutcome — the text of a "+
+			"rare outcome cannot change just because it got rarer", errBody.Error.Message)
 	}
 	lower := strings.ToLower(errBody.Error.Message)
 	if !strings.Contains(lower, "inconclusiv") {
-		t.Errorf("a mensagem nao diz ao consumidor que o desfecho e INCONCLUSIVO — sem essa palavra ele "+
-			"trata a resposta como veredito e repete a criacao; mensagem = %q", errBody.Error.Message)
+		t.Errorf("the message does not tell the consumer the outcome is INCONCLUSIVO — without that word it "+
+			"treats the response as a verdict and repeats the creation; message = %q", errBody.Error.Message)
 	}
 	// The phrase that CANNOT exist. A "was not created" here is a claim the
 	// gateway has no way of backing up, and its price is the template's
 	// name.
 	for _, banned := range []string{"nao foi criado", "não foi criado", "nao existe", "não existe"} {
 		if strings.Contains(lower, banned) {
-			t.Errorf("a mensagem afirma %q sobre um catalogo que pode nao estar atualizado: %q",
+			t.Errorf("the message claims %q about a catalog that may not be up to date: %q",
 				banned, errBody.Error.Message)
 		}
 	}
 	if !strings.Contains(lower, "nao repita") {
-		t.Errorf("a mensagem nao avisa para NAO repetir as cegas: %q", errBody.Error.Message)
+		t.Errorf("the message does not warn to NOT retry blindly: %q", errBody.Error.Message)
 	}
-	if !strings.Contains(record, "INCONCLUSIVO") || !strings.Contains(record, "lembrete_consulta") {
-		t.Errorf("o desfecho inconclusivo nao ficou no log; log = %q", record)
+	if !strings.Contains(record, "INCONCLUSIVE") || !strings.Contains(record, "lembrete_consulta") {
+		t.Errorf("the inconclusive outcome did not land in the log; log = %q", record)
 	}
 
 	// Exhausted the entire RereadWaits (1 immediate attempt + 3
 	// spaced) before declaring it inconclusive, and the sum of the waits
 	// never goes past the ceiling declared in the contract (VERIFY (d)).
 	if errBody.Error.Rereads != len(RereadWaits)+1 {
-		t.Errorf("releituras = %d, quero %d (a imediata + as %d espacadas)",
+		t.Errorf("releituras = %d, want %d (the immediate one + the %d spaced-out ones)",
 			errBody.Error.Rereads, len(RereadWaits)+1, len(RereadWaits))
 	}
 	if want := int(RereadWaitCap.Seconds()); errBody.Error.WaitSeconds != want {
-		t.Errorf("espera_segundos = %d, quero %d (o teto declarado no contrato)", errBody.Error.WaitSeconds, want)
+		t.Errorf("espera_segundos = %d, want %d (the ceiling declared in the contract)", errBody.Error.WaitSeconds, want)
 	}
 	if len(*seenSet) != len(RereadWaits) {
-		t.Errorf("waitReread foi chamado %d vez(es), quero %d — uma por pausa de RereadWaits: %v",
+		t.Errorf("waitReread was called %d time(s), want %d — one per RereadWaits pause: %v",
 			len(*seenSet), len(RereadWaits), *seenSet)
 	} else {
 		for i, expected := range RereadWaits {
 			if (*seenSet)[i] != expected {
-				t.Errorf("pausa %d = %v, quero %v", i, (*seenSet)[i], expected)
+				t.Errorf("pause %d = %v, want %v", i, (*seenSet)[i], expected)
 			}
 		}
 	}
 	if sum := sumOfDurations(*seenSet); sum > RereadWaitCap {
-		t.Errorf("soma das esperas = %v, estourou o teto declarado no contrato (%v)", sum, RereadWaitCap)
+		t.Errorf("sum of waits = %v, blew the ceiling declared in the contract (%v)", sum, RereadWaitCap)
 	}
 }
 
@@ -1017,7 +1017,7 @@ func TestCreateTemplateAmbiguousMissingOnTheFirstRereadAppearsOnTheSecond(t *tes
 		`"categoria":"UTILITY","idioma":"pt_BR","componentes":[{"type":"BODY","text":"oi"}]}`)
 
 	if rec.Code != http.StatusCreated {
-		t.Fatalf("status = %d, quero 201 — a 2a releitura achou o template; corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, want 201 — the 2nd reread found the template; body = %s", rec.Code, rec.Body.String())
 	}
 	var resp struct {
 		ID          string `json:"id"`
@@ -1026,55 +1026,55 @@ func TestCreateTemplateAmbiguousMissingOnTheFirstRereadAppearsOnTheSecond(t *tes
 		WaitSeconds int    `json:"espera_segundos"`
 	}
 	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
-		t.Fatalf("corpo nao desserializa: %v (%q)", err, rec.Body.String())
+		t.Fatalf("body does not deserialize: %v (%q)", err, rec.Body.String())
 	}
 	if resp.ID != "id-de-selecao_provas_novas" {
-		t.Errorf("id = %q — a releitura tem de devolver o id do template ACHADO", resp.ID)
+		t.Errorf("id = %q — the reread has to return the id of the FOUND template", resp.ID)
 	}
 	if !strings.Contains(resp.Warning, WarningCreationConfirmedByReread) {
-		t.Errorf("o aviso nao conta que a criacao foi confirmada por releitura: %q", resp.Warning)
+		t.Errorf("the warning does not say the creation was confirmed by reread: %q", resp.Warning)
 	}
 	// Disappeared on the 1st, found on the 2nd: exactly TWO attempts and the
 	// FIRST pause (2s) — never the 5s/10s pauses, which would only kick in
 	// if the 2nd had also failed.
 	if resp.Rereads != 2 {
-		t.Errorf("releituras = %d, quero 2 (sumiu na 1a, achou na 2a)", resp.Rereads)
+		t.Errorf("releituras = %d, want 2 (disappeared on the 1st, found on the 2nd)", resp.Rereads)
 	}
 	if resp.WaitSeconds != 2 {
-		t.Errorf("espera_segundos = %d, quero 2 (so a primeira pausa)", resp.WaitSeconds)
+		t.Errorf("espera_segundos = %d, want 2 (only the first pause)", resp.WaitSeconds)
 	}
 	if want := []time.Duration{2 * time.Second}; len(*seenSet) != len(want) || (*seenSet)[0] != want[0] {
-		t.Errorf("esperas vistas = %v, queria exatamente %v", *seenSet, want)
+		t.Errorf("waits seen = %v, wanted exactly %v", *seenSet, want)
 	}
 }
 
-// Third outcome: the re-read also failed. Here the `502 desconhecido`
+// Third outcome: the re-read also failed. Here the `502 unknown`
 // remains the right response — and BOTH failures have to be in the log,
 // which is what makes the next occurrence diagnosable.
 func TestCreateTemplateAmbiguousWithARereadThatAlsoFailsLOGSBOTH(t *testing.T) {
 	rec, _, record, seenSet := createTemplateWithAmbiguousOutcome(t, "lembrete_consulta", "pt_BR", true, true)
 
 	if rec.Code != http.StatusBadGateway {
-		t.Fatalf("status = %d, quero 502; corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, want 502; body = %s", rec.Code, rec.Body.String())
 	}
 	var errBody errorResponse
 	_ = json.Unmarshal(rec.Body.Bytes(), &errBody)
 	if errBody.Error.Class != string(meta.ClassUnknown) {
-		t.Errorf("classe = %q, quero %q", errBody.Error.Class, meta.ClassUnknown)
+		t.Errorf("class = %q, want %q", errBody.Error.Class, meta.ClassUnknown)
 	}
-	if !strings.Contains(record, "SEM VEREDITO") {
-		t.Errorf("a falha da CRIACAO nao foi logada; log = %q", record)
+	if !strings.Contains(record, "WITHOUT A VERDICT") {
+		t.Errorf("the CREATION failure was not logged; log = %q", record)
 	}
-	if !strings.Contains(record, "TAMBEM falhou") {
-		t.Errorf("a falha da RELEITURA nao foi logada — sem ela ninguem sabe se o gateway chegou a "+
-			"conferir; log = %q", record)
+	if !strings.Contains(record, "ALSO failed") {
+		t.Errorf("the REREAD failure was not logged — without it nobody knows whether the gateway got to "+
+			"check; log = %q", record)
 	}
 	// Transport failed ON THE FIRST attempt (abortRead drops EVERY
 	// GET): no point insisting against a transport that does not respond,
 	// so no spaced pause can have happened.
 	if len(*seenSet) != 0 {
-		t.Errorf("waitReread foi chamado %d vez(es) apos falha de TRANSPORTE: %v — "+
-			"insistir contra um transporte que nao responde so atrasa o desfecho desconhecido", len(*seenSet), *seenSet)
+		t.Errorf("waitReread was called %d time(s) after a TRANSPORT failure: %v — "+
+			"insisting against a transport that does not respond only delays the unknown outcome", len(*seenSet), *seenSet)
 	}
 }
 
@@ -1087,32 +1087,32 @@ func TestCreateTemplateAmbiguousWithARereadThatAlsoFailsLOGSBOTH(t *testing.T) {
 func TestCreateTemplateAmbiguousLOGSTheRealErrorWithoutLeakingTheRequestBody(t *testing.T) {
 	rec, _, record, _ := createTemplateWithAmbiguousOutcome(t, "lembrete_consulta", "pt_BR", false, false)
 	if rec.Code == 0 {
-		t.Fatal("nenhuma resposta")
+		t.Fatal("no response")
 	}
 
 	for _, chunk := range []string{"lojinha", "lembrete_consulta", "pt_BR"} {
 		if !strings.Contains(record, chunk) {
-			t.Errorf("o log nao diz %q — sem slug, nome e idioma ninguem procura o template no catalogo; "+
-				"log = %q", chunk, record)
+			t.Errorf("the log does not say %q — without slug, name and language nobody looks up the template "+
+				"in the catalog; log = %q", chunk, record)
 		}
 	}
 	// "Was it a timeout or transport?" has to be answerable from the log.
 	// Without the cause, the outcome remains structurally undiagnosable.
 	if !strings.Contains(record, "inalcancavel") && !strings.Contains(record, "prazo esgotado") {
-		t.Errorf("o log nao carrega a causa real da falha; log = %q", record)
+		t.Errorf("the log does not carry the real cause of the failure; log = %q", record)
 	}
 
 	// 🔴 THE REQUEST BODY CANNOT ENTER THE LOG: `componentes` is text that
 	// goes to the tenant's end customer.
 	for _, forbidden := range []string{"sua consulta e amanha", "BODY", "{{1}}"} {
 		if strings.Contains(record, forbidden) {
-			t.Errorf("o corpo do pedido vazou para o log (%q): %q", forbidden, record)
+			t.Errorf("the request body leaked into the log (%q): %q", forbidden, record)
 		}
 	}
 	// And neither token nor destination, by the same rule as the rest of
 	// the project.
 	if strings.Contains(record, "t-lojinha") {
-		t.Errorf("o token vazou para o log: %q", record)
+		t.Errorf("the token leaked into the log: %q", record)
 	}
 }
 
@@ -1127,17 +1127,17 @@ func TestRereadDoesNOTCreateAgain(t *testing.T) {
 		didCreate        bool
 		catalogAlsoFails bool
 	}{
-		{"achou no catalogo", true, false},
-		{"nao achou no catalogo", false, false},
-		{"releitura tambem falhou", true, true},
+		{"found in the catalog", true, false},
+		{"not found in the catalog", false, false},
+		{"reread also failed", true, true},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			_, m, _, _ := createTemplateWithAmbiguousOutcome(t, "lembrete_consulta", "pt_BR", c.didCreate, c.catalogAlsoFails)
 			_, bodies := m.seen()
 			if len(bodies) != 1 {
-				t.Fatalf("chegaram %d POSTs a Meta, quero exatamente 1 — uma segunda criacao QUEIMA o nome "+
-					"do template, e a Meta nao o reaceita", len(bodies))
+				t.Fatalf("%d POSTs reached Meta, want exactly 1 — a second creation BURNS the template's "+
+					"name, and Meta does not reaccept it", len(bodies))
 			}
 		})
 	}
@@ -1157,12 +1157,12 @@ func TestRereadDoesNotConfuseATemplateOfAnotherLANGUAGE(t *testing.T) {
 	rec := createTemplate(t, h, "token-do-a", `{"instancia":"lojinha","nome":"lembrete_consulta",`+
 		`"categoria":"UTILITY","idioma":"pt_BR","componentes":[{"type":"BODY","text":"oi"}]}`)
 	if rec.Code != http.StatusBadGateway {
-		t.Fatalf("status = %d, quero 502 — o pt_BR nao esta no catalogo; corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, want 502 — pt_BR is not in the catalog; body = %s", rec.Code, rec.Body.String())
 	}
 	var errBody errorResponse
 	_ = json.Unmarshal(rec.Body.Bytes(), &errBody)
 	if !strings.Contains(strings.ToLower(errBody.Error.Message), "inconclusiv") {
-		t.Errorf("mensagem = %q, queria o desfecho inconclusivo", errBody.Error.Message)
+		t.Errorf("message = %q, wanted the inconclusive outcome", errBody.Error.Message)
 	}
 }
 
@@ -1180,14 +1180,14 @@ func TestCreateTemplateWith2xxAndNoIdAlsoREREADSTheCatalog(t *testing.T) {
 	rec := createTemplate(t, h, "token-do-a", `{"instancia":"lojinha","nome":"lembrete_consulta",`+
 		`"categoria":"UTILITY","idioma":"pt_BR","componentes":[{"type":"BODY","text":"oi"}]}`)
 	if rec.Code != http.StatusCreated {
-		t.Fatalf("status = %d, quero 201 — a releitura achou o template; corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, want 201 — the reread found the template; body = %s", rec.Code, rec.Body.String())
 	}
 	var resp struct {
 		ID string `json:"id"`
 	}
 	_ = json.Unmarshal(rec.Body.Bytes(), &resp)
 	if resp.ID != "id-de-lembrete_consulta" {
-		t.Errorf("id = %q — a releitura tem de suprir o id que a Meta nao mandou", resp.ID)
+		t.Errorf("id = %q — the reread has to supply the id Meta did not send", resp.ID)
 	}
 }
 
@@ -1204,10 +1204,10 @@ func TestCreateTemplateRefusedByMetaDoesNotREREADTheCatalog(t *testing.T) {
 	rec := createTemplate(t, h, "token-do-a", `{"instancia":"lojinha","nome":"n",`+
 		`"categoria":"UTILITY","idioma":"pt_BR","componentes":[{"type":"BODY","text":"oi"}]}`)
 	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("status = %d, quero 400; corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, want 400; body = %s", rec.Code, rec.Body.String())
 	}
 	if n := m.calls.Load(); n != 1 {
-		t.Errorf("houve %d chamadas a Meta, quero 1 — a recusa dela nao e desfecho ambiguo", n)
+		t.Errorf("there were %d calls to Meta, want 1 — her refusal is not an ambiguous outcome", n)
 	}
 }
 
@@ -1229,25 +1229,25 @@ func TestCreateTemplateRefusedByMetaPassesThroughSubcodeExplanationAndTrace(t *t
 	rec := createTemplate(t, h, "token-do-a", `{"instancia":"lojinha","nome":"n",`+
 		`"categoria":"UTILITY","idioma":"pt_BR","componentes":[{"type":"BODY","text":"oi"}]}`)
 	if rec.Code != http.StatusServiceUnavailable {
-		t.Fatalf("status = %d, quero 503; corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, want 503; body = %s", rec.Code, rec.Body.String())
 	}
 
 	var resp errorResponse
 	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
-		t.Fatalf("corpo nao e JSON valido: %v (%s)", err, rec.Body.String())
+		t.Fatalf("body is not valid JSON: %v (%s)", err, rec.Body.String())
 	}
 	if resp.Error.MetaSubcode != 2494055 {
-		t.Errorf("subcodigo_meta = %d, quero 2494055", resp.Error.MetaSubcode)
+		t.Errorf("meta_subcode = %d, want 2494055", resp.Error.MetaSubcode)
 	}
 	want := "Erro temporario: Tente novamente em alguns instantes"
 	if resp.Error.MetaExplanation != want {
-		t.Errorf("explicacao_meta = %q, quero %q", resp.Error.MetaExplanation, want)
+		t.Errorf("meta_explanation = %q, want %q", resp.Error.MetaExplanation, want)
 	}
 	if resp.Error.MetaTrace != "AbCdEfGhIjKlMnOp" {
-		t.Errorf("rastro_meta = %q, quero %q", resp.Error.MetaTrace, "AbCdEfGhIjKlMnOp")
+		t.Errorf("meta_trace = %q, want %q", resp.Error.MetaTrace, "AbCdEfGhIjKlMnOp")
 	}
 	if n := m.calls.Load(); n != 1 {
-		t.Errorf("houve %d chamadas a Meta, quero 1 — a recusa dela nao e desfecho ambiguo", n)
+		t.Errorf("there were %d calls to Meta, want 1 — her refusal is not an ambiguous outcome", n)
 	}
 }
 
@@ -1269,22 +1269,22 @@ func TestListTemplatesWithMetaErrorPassesThroughSubcodeExplanationAndTrace(t *te
 
 	rec := askTemplates(t, h, "token-do-a", "?instancia=lojinha")
 	if rec.Code != http.StatusServiceUnavailable {
-		t.Fatalf("status = %d, quero 503; corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, want 503; body = %s", rec.Code, rec.Body.String())
 	}
 
 	var resp errorResponse
 	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
-		t.Fatalf("corpo nao e JSON valido: %v (%s)", err, rec.Body.String())
+		t.Fatalf("body is not valid JSON: %v (%s)", err, rec.Body.String())
 	}
 	if resp.Error.MetaSubcode != 2494055 {
-		t.Errorf("subcodigo_meta = %d, quero 2494055", resp.Error.MetaSubcode)
+		t.Errorf("meta_subcode = %d, want 2494055", resp.Error.MetaSubcode)
 	}
 	want := "Erro temporario: Tente novamente em alguns instantes"
 	if resp.Error.MetaExplanation != want {
-		t.Errorf("explicacao_meta = %q, quero %q", resp.Error.MetaExplanation, want)
+		t.Errorf("meta_explanation = %q, want %q", resp.Error.MetaExplanation, want)
 	}
 	if resp.Error.MetaTrace != "AbCdEfGhIjKlMnOp" {
-		t.Errorf("rastro_meta = %q, quero %q", resp.Error.MetaTrace, "AbCdEfGhIjKlMnOp")
+		t.Errorf("meta_trace = %q, want %q", resp.Error.MetaTrace, "AbCdEfGhIjKlMnOp")
 	}
 }
 
@@ -1300,9 +1300,9 @@ func TestCreateTemplateRefusedByMetaWithoutTheNewFieldsDoesNotInventThem(t *test
 	rec := createTemplate(t, h, "token-do-a", `{"instancia":"lojinha","nome":"n",`+
 		`"categoria":"UTILITY","idioma":"pt_BR","componentes":[{"type":"BODY","text":"oi"}]}`)
 	body := rec.Body.String()
-	for _, field := range []string{"subcodigo_meta", "explicacao_meta", "rastro_meta"} {
+	for _, field := range []string{"meta_subcode", "meta_explanation", "meta_trace"} {
 		if strings.Contains(body, field) {
-			t.Fatalf("corpo = %q — %s NAO pode aparecer quando a Meta nao mandou o campo de origem", body, field)
+			t.Fatalf("body = %q — %s CANNOT appear when Meta did not send the source field", body, field)
 		}
 	}
 }
@@ -1333,10 +1333,10 @@ func TestTemplatesConcurrentDoesNotShareState(t *testing.T) {
 
 	for i := range calls {
 		if codes[i] != http.StatusOK {
-			t.Fatalf("chamada %d: status = %d, quero 200", i, codes[i])
+			t.Fatalf("call %d: status = %d, want 200", i, codes[i])
 		}
 		if totals[i] != 4 {
-			t.Fatalf("chamada %d: templates = %d, quero 4", i, totals[i])
+			t.Fatalf("call %d: templates = %d, want 4", i, totals[i])
 		}
 	}
 }
@@ -1348,7 +1348,7 @@ func TestTemplatesConcurrentDoesNotShareState(t *testing.T) {
 // here without changing there, the doc lies.
 func TestRereadWaitCapIs17Seconds(t *testing.T) {
 	if RereadWaitCap != 17*time.Second {
-		t.Fatalf("RereadWaitCap = %v, quero 17s (2+5+10) — este numero e o que o contrato promete",
+		t.Fatalf("RereadWaitCap = %v, want 17s (2+5+10) — this number is what the contract promises",
 			RereadWaitCap)
 	}
 }
@@ -1397,8 +1397,8 @@ func TestWaitWithContextStopsEarlyIfTheContextIsCancelled(t *testing.T) {
 		// The ONLY way to land here is if waitWithContext ignored the
 		// already-cancelled context and is asleep on the 5-second timer
 		// instead — the wrong branch of the select.
-		t.Fatal("waitWithContext nao retornou com o contexto JA cancelado antes da chamada " +
-			"e d=5s — parece estar dormindo pelo timer em vez de reagir a ctx.Done()")
+		t.Fatal("waitWithContext did not return with the context ALREADY canceled before the call " +
+			"and d=5s — it seems to be sleeping on the timer instead of reacting to ctx.Done()")
 	}
 }
 
@@ -1415,7 +1415,7 @@ func TestWaitWithContextWaitsTheRequestedTimeWithoutCancellation(t *testing.T) {
 	elapsed := time.Since(start)
 
 	if elapsed < 20*time.Millisecond {
-		t.Fatalf("esperou so %v, quero pelo menos 20ms — sem cancelamento a pausa tem de acontecer inteira", elapsed)
+		t.Fatalf("waited only %v, want at least 20ms — without cancellation the pause has to happen in full", elapsed)
 	}
 }
 
@@ -1442,18 +1442,18 @@ func TestCreateTemplateEqualCategoryDoesNotWarnOfAChange(t *testing.T) {
 	rec := createTemplate(t, h, "token-do-a", `{"instancia":"lojinha","nome":"lembrete_consulta",`+
 		`"categoria":"UTILITY","idioma":"pt_BR","componentes":[{"type":"BODY","text":"oi"}]}`)
 	if rec.Code != http.StatusCreated {
-		t.Fatalf("status = %d, quero 201; corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, want 201; body = %s", rec.Code, rec.Body.String())
 	}
 	var resp testTemplateCreatedResponse
 	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
-		t.Fatalf("corpo nao desserializa: %v (%q)", err, rec.Body.String())
+		t.Fatalf("body does not deserialize: %v (%q)", err, rec.Body.String())
 	}
 	if resp.RequestedCategory != "UTILITY" {
-		t.Errorf("categoria_pedida = %q, quero UTILITY (o que foi pedido)", resp.RequestedCategory)
+		t.Errorf("requested_category = %q, want UTILITY (what was requested)", resp.RequestedCategory)
 	}
 	if resp.Warning != WarningTemplatePending {
-		t.Errorf("aviso = %q, quero EXATAMENTE WarningTemplatePending — categories iguais nao podem "+
-			"acrescentar nada ao aviso de hoje", resp.Warning)
+		t.Errorf("aviso = %q, want EXACTLY WarningTemplatePending — identical categories cannot "+
+			"add anything to today's warning", resp.Warning)
 	}
 }
 
@@ -1470,31 +1470,31 @@ func TestCreateTemplateChangedCategoryWarns(t *testing.T) {
 	rec := createTemplate(t, h, "token-do-a", `{"instancia":"lojinha","nome":"instagram_continuar",`+
 		`"categoria":"UTILITY","idioma":"pt_BR","componentes":[{"type":"BODY","text":"oi"}]}`)
 	if rec.Code != http.StatusCreated {
-		t.Fatalf("status = %d, quero 201; corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, want 201; body = %s", rec.Code, rec.Body.String())
 	}
 	var resp testTemplateCreatedResponse
 	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
-		t.Fatalf("corpo nao desserializa: %v (%q)", err, rec.Body.String())
+		t.Fatalf("body does not deserialize: %v (%q)", err, rec.Body.String())
 	}
 	if resp.RequestedCategory != "UTILITY" {
-		t.Errorf("categoria_pedida = %q, quero UTILITY (o que o consumidor pediu, nao o que a Meta gravou)",
+		t.Errorf("requested_category = %q, want UTILITY (what the consumer requested, not what Meta recorded)",
 			resp.RequestedCategory)
 	}
 	if resp.Category != "MARKETING" {
-		t.Errorf("categoria = %q, quero MARKETING (o que a Meta gravou)", resp.Category)
+		t.Errorf("category = %q, want MARKETING (what Meta recorded)", resp.Category)
 	}
 	if !strings.Contains(resp.Warning, "UTILITY") || !strings.Contains(resp.Warning, "MARKETING") {
-		t.Errorf("o aviso nao cita as duas categories (pedida e gravada): %q", resp.Warning)
+		t.Errorf("the warning does not cite both categories (requested and recorded): %q", resp.Warning)
 	}
 	lower := strings.ToLower(resp.Warning)
 	if !strings.Contains(lower, "nao e erro") {
-		t.Errorf("o aviso nao diz que a troca NAO e erro: %q", resp.Warning)
+		t.Errorf("the warning does not say the swap is NOT an error: %q", resp.Warning)
 	}
 	if !strings.Contains(lower, "nao desfaz") {
-		t.Errorf("o aviso nao diz que o gateway NAO desfaz a troca: %q", resp.Warning)
+		t.Errorf("the warning does not say the gateway does NOT undo the swap: %q", resp.Warning)
 	}
 	if resp.Warning == WarningTemplatePending {
-		t.Errorf("o aviso ficou EXATAMENTE igual ao de sempre — a troca de categoria tem de acrescentar texto")
+		t.Errorf("the warning stayed EXACTLY the same as usual — the category swap has to add text")
 	}
 }
 
@@ -1515,26 +1515,26 @@ func TestCreateTemplateAmbiguousRereadWithChangedCategoryWarns(t *testing.T) {
 		`"categoria":"MARKETING","idioma":"pt_BR",`+
 		`"componentes":[{"type":"BODY","text":"Ola {{1}}, sua consulta e amanha."}]}`)
 	if rec.Code != http.StatusCreated {
-		t.Fatalf("status = %d, quero 201 — a releitura achou o template; corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, want 201 — the reread found the template; body = %s", rec.Code, rec.Body.String())
 	}
 	if len(*seenSet) != 0 {
-		t.Fatalf("waitReread foi chamado mesmo achando na 1a tentativa: %v", *seenSet)
+		t.Fatalf("waitReread was called even though it was found on the 1st try: %v", *seenSet)
 	}
 	var resp testTemplateCreatedResponse
 	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
-		t.Fatalf("corpo nao desserializa: %v (%q)", err, rec.Body.String())
+		t.Fatalf("body does not deserialize: %v (%q)", err, rec.Body.String())
 	}
 	if resp.RequestedCategory != "MARKETING" {
-		t.Errorf("categoria_pedida = %q, quero MARKETING (o que foi pedido)", resp.RequestedCategory)
+		t.Errorf("requested_category = %q, want MARKETING (what was requested)", resp.RequestedCategory)
 	}
 	if resp.Category != "UTILITY" {
-		t.Errorf("categoria = %q, quero UTILITY (o que o catalogo tem)", resp.Category)
+		t.Errorf("category = %q, want UTILITY (what the catalog has)", resp.Category)
 	}
 	if !strings.Contains(resp.Warning, "MARKETING") || !strings.Contains(resp.Warning, "UTILITY") {
-		t.Errorf("o aviso da releitura nao cita as duas categories: %q", resp.Warning)
+		t.Errorf("the reread warning does not cite both categories: %q", resp.Warning)
 	}
 	if !strings.Contains(resp.Warning, WarningCreationConfirmedByReread) {
-		t.Errorf("o aviso da releitura perdeu o aviso de sempre sobre a criacao confirmada: %q", resp.Warning)
+		t.Errorf("the reread warning lost the usual notice about the confirmed creation: %q", resp.Warning)
 	}
 }
 
@@ -1549,15 +1549,15 @@ func TestCreateTemplateCategoryDifferingOnlyInCaseDoesNotWarnOfAChange(t *testin
 	rec := createTemplate(t, h, "token-do-a", `{"instancia":"lojinha","nome":"lembrete_consulta",`+
 		`"categoria":"  utility  ","idioma":"pt_BR","componentes":[{"type":"BODY","text":"oi"}]}`)
 	if rec.Code != http.StatusCreated {
-		t.Fatalf("status = %d, quero 201; corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, want 201; body = %s", rec.Code, rec.Body.String())
 	}
 	var resp testTemplateCreatedResponse
 	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
-		t.Fatalf("corpo nao desserializa: %v (%q)", err, rec.Body.String())
+		t.Fatalf("body does not deserialize: %v (%q)", err, rec.Body.String())
 	}
 	if resp.Warning != WarningTemplatePending {
-		t.Errorf("aviso = %q, quero EXATAMENTE WarningTemplatePending — diferenca de caixa/espaco nao e "+
-			"troca de categoria", resp.Warning)
+		t.Errorf("aviso = %q, want EXACTLY WarningTemplatePending — a case/space difference is not a "+
+			"category swap", resp.Warning)
 	}
 }
 
@@ -1574,14 +1574,14 @@ func TestCreateTemplateWithoutAllowCategoryChangeSendsNoSuchField(t *testing.T) 
 	rec := createTemplate(t, h, "token-do-a", `{"instancia":"lojinha","nome":"lembrete_consulta",`+
 		`"categoria":"UTILITY","idioma":"pt_BR","componentes":[{"type":"BODY","text":"oi"}]}`)
 	if rec.Code != http.StatusCreated {
-		t.Fatalf("status = %d, quero 201; corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, want 201; body = %s", rec.Code, rec.Body.String())
 	}
 	_, bodies := m.seen()
 	if len(bodies) != 1 {
-		t.Fatalf("corpos enviados a Meta = %d, quero 1", len(bodies))
+		t.Fatalf("bodies sent to Meta = %d, want 1", len(bodies))
 	}
 	if strings.Contains(bodies[0], "allow_category_change") {
-		t.Errorf("o corpo enviado a Meta contem allow_category_change sem o consumidor ter pedido nada: %s",
+		t.Errorf("the body sent to Meta contains allow_category_change without the consumer having asked for anything: %s",
 			bodies[0])
 	}
 }
@@ -1605,14 +1605,14 @@ func TestCreateTemplateWithAllowCategoryChangePassesItThroughVerbatim(t *testing
 			`"categoria":"UTILITY","idioma":"pt_BR","allow_category_change":`+c.value+`,`+
 			`"componentes":[{"type":"BODY","text":"oi"}]}`)
 		if rec.Code != http.StatusCreated {
-			t.Fatalf("valor %s: status = %d, quero 201; corpo = %s", c.value, rec.Code, rec.Body.String())
+			t.Fatalf("value %s: status = %d, want 201; body = %s", c.value, rec.Code, rec.Body.String())
 		}
 		_, bodies := m.seen()
 		if len(bodies) != 1 {
-			t.Fatalf("valor %s: corpos enviados a Meta = %d, quero 1", c.value, len(bodies))
+			t.Fatalf("value %s: bodies sent to Meta = %d, want 1", c.value, len(bodies))
 		}
 		if !strings.Contains(bodies[0], c.wait) {
-			t.Errorf("valor %s: o corpo enviado a Meta nao contem %s: %s", c.value, c.wait, bodies[0])
+			t.Errorf("value %s: the body sent to Meta does not contain %s: %s", c.value, c.wait, bodies[0])
 		}
 	}
 }
@@ -1644,7 +1644,7 @@ func readDeletion(t *testing.T, rec *httptest.ResponseRecorder) testDeletionResp
 	t.Helper()
 	var r testDeletionResponse
 	if err := json.Unmarshal(rec.Body.Bytes(), &r); err != nil {
-		t.Fatalf("corpo nao desserializa: %v (corpo = %q)", err, rec.Body.String())
+		t.Fatalf("body does not deserialize: %v (body = %q)", err, rec.Body.String())
 	}
 	return r
 }
@@ -1676,34 +1676,34 @@ func TestDeleteTemplateThatExistsAnswersDeletedWithTheLanguages(t *testing.T) {
 
 	rec := callDeleteTemplate(t, h, "token-do-a", "?instancia=lojinha&nome=promo_julho")
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, quero 200; corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, want 200; body = %s", rec.Code, rec.Body.String())
 	}
 	r := readDeletion(t, rec)
 	if r.Outcome != OutcomeDeleted {
-		t.Errorf("desfecho = %q, quero %q", r.Outcome, OutcomeDeleted)
+		t.Errorf("outcome = %q, want %q", r.Outcome, OutcomeDeleted)
 	}
 	if r.Name != "promo_julho" || r.Instance != "lojinha" {
-		t.Errorf("nome = %q e instancia = %q", r.Name, r.Instance)
+		t.Errorf("name = %q and instance = %q", r.Name, r.Instance)
 	}
 	if len(r.Entries) != 2 {
-		t.Fatalf("entradas = %d, quero 2 (pt_BR e en_US) — a Meta apaga o nome em TODOS os idiomas,"+
-			" e listar so um deixa o relatorio do consumidor curto: %s", len(r.Entries), rec.Body.String())
+		t.Fatalf("entradas = %d, want 2 (pt_BR and en_US) — Meta deletes the name in ALL languages,"+
+			" and listing only one leaves the consumer's report short: %s", len(r.Entries), rec.Body.String())
 	}
 	languages := map[string]bool{}
 	for _, e := range r.Entries {
 		languages[e.Language] = true
 		if e.ID == "" {
-			t.Errorf("entrada %+v sem id — e o que o consumidor tinha guardado", e)
+			t.Errorf("entry %+v without an id — that is what the consumer had stored", e)
 		}
 	}
 	if !languages["pt_BR"] || !languages["en_US"] {
-		t.Errorf("idiomas devolvidos = %v, quero pt_BR e en_US", languages)
+		t.Errorf("languages returned = %v, want pt_BR and en_US", languages)
 	}
 	if !strings.Contains(r.Warning, "30 dias") {
-		t.Errorf("o aviso nao fala dos 30 dias em que a Meta nao reaceita o nome: %q", r.Warning)
+		t.Errorf("the warning does not mention the 30 days during which Meta does not reaccept the name: %q", r.Warning)
 	}
 	if strings.Contains(r.Warning, StatusPendingDeletion) {
-		t.Errorf("o aviso de %s viajou numa exclusao que SUMIU do catalogo: %q", StatusPendingDeletion, r.Warning)
+		t.Errorf("the %s warning traveled on a deletion that VANISHED from the catalog: %q", StatusPendingDeletion, r.Warning)
 	}
 
 	urls, _ := m.seen()
@@ -1714,10 +1714,10 @@ func TestDeleteTemplateThatExistsAnswersDeletedWithTheLanguages(t *testing.T) {
 		}
 	}
 	if !deleted {
-		t.Errorf("o DELETE nao levou o nome na query: %v", urls)
+		t.Errorf("the DELETE did not carry the name in the query: %v", urls)
 	}
 	if n := counterOf(t, store, "lojinha", config.CounterTemplatesDeleted); n != 1 {
-		t.Errorf("%s = %d, quero 1 — sem o contador, uma limpeza em serie e invisivel no /v1/estado",
+		t.Errorf("%s = %d, want 1 — without the counter, a cleanup in series is invisible on /v1/estado",
 			config.CounterTemplatesDeleted, n)
 	}
 }
@@ -1735,41 +1735,41 @@ func TestDeleteTemplateThatDoesNotExistAnswersDidNotExistWithoutCallingDelete(t 
 
 	rec := callDeleteTemplate(t, h, "token-do-a", "?instancia=lojinha&nome=nunca_existiu")
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, quero 200; corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, want 200; body = %s", rec.Code, rec.Body.String())
 	}
 	r := readDeletion(t, rec)
 	if r.Outcome != OutcomeDidNotExist {
-		t.Errorf("desfecho = %q, quero %q", r.Outcome, OutcomeDidNotExist)
+		t.Errorf("outcome = %q, want %q", r.Outcome, OutcomeDidNotExist)
 	}
 	if !strings.Contains(rec.Body.String(), `"entradas":[]`) {
-		t.Errorf("entradas tem de sair como `[]`, nunca `null` — dois vazios diferentes quebram o parser"+
+		t.Errorf("entradas has to come out as `[]`, never `null` — two different empties break the parser"+
 			" do consumidor: %s", rec.Body.String())
 	}
 	if len(r.Entries) != 0 {
-		t.Errorf("entradas = %+v, quero vazio", r.Entries)
+		t.Errorf("entradas = %+v, want empty", r.Entries)
 	}
 	// The 30-day warning does NOT travel here: the gateway deleted nothing
 	// and does not know whether the name ever existed. Saying it is burned
 	// would be inventing a restriction.
 	if strings.Contains(r.Warning, "30 dias") {
-		t.Errorf("o aviso de nome queimado viajou num %s, onde nada foi apagado: %q", OutcomeDidNotExist, r.Warning)
+		t.Errorf("the burned-name warning traveled on a %s, where nothing was deleted: %q", OutcomeDidNotExist, r.Warning)
 	}
 
 	urls, _ := m.seen()
 	for _, u := range urls {
 		if strings.Contains(u, "name=") {
-			t.Errorf("houve DELETE para um nome que nao estava no catalogo: %v", urls)
+			t.Errorf("there was a DELETE for a name that was not in the catalog: %v", urls)
 		}
 	}
 	if n := counterOf(t, store, "lojinha", config.CounterTemplatesDeleted); n != 0 {
-		t.Errorf("%s = %d, quero 0 — nada foi apagado", config.CounterTemplatesDeleted, n)
+		t.Errorf("%s = %d, want 0 — nothing was deleted", config.CounterTemplatesDeleted, n)
 	}
 }
 
 // OUTCOME 3 of 3: the DELETE died with NO response and the catalog re-read
 // STILL shows the template, alive.
 //
-// The word is INCONCLUSIVO, with the same `502` and the same `desconhecido`
+// The word is INCONCLUSIVO, with the same `502` and the same `unknown`
 // class as the ambiguous creation (T-078/T-101). "I didn't see it happen" is
 // not "it didn't happen".
 func TestDeleteTemplateWithoutVerdictAndTemplateStillAliveAnswers502Inconclusive(t *testing.T) {
@@ -1781,27 +1781,27 @@ func TestDeleteTemplateWithoutVerdictAndTemplateStillAliveAnswers502Inconclusive
 
 	rec := callDeleteTemplate(t, h, "token-do-a", "?instancia=lojinha&nome=promo_julho")
 	if rec.Code != http.StatusBadGateway {
-		t.Fatalf("status = %d, quero 502; corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, want 502; body = %s", rec.Code, rec.Body.String())
 	}
 	var errBody errorResponseWithReread
 	if err := json.Unmarshal(rec.Body.Bytes(), &errBody); err != nil {
-		t.Fatalf("corpo nao desserializa: %v (%s)", err, rec.Body.String())
+		t.Fatalf("body does not deserialize: %v (%s)", err, rec.Body.String())
 	}
 	if errBody.Error.Class != string(meta.ClassUnknown) {
-		t.Errorf("classe = %q, quero %q", errBody.Error.Class, meta.ClassUnknown)
+		t.Errorf("class = %q, want %q", errBody.Error.Class, meta.ClassUnknown)
 	}
 	if !strings.Contains(errBody.Error.Message, "INCONCLUSIVO") {
-		t.Errorf("a mensagem nao usa a palavra INCONCLUSIVO: %q", errBody.Error.Message)
+		t.Errorf("the message does not use the word INCONCLUSIVO: %q", errBody.Error.Message)
 	}
 	if errBody.Error.Rereads != len(RereadWaits)+1 {
-		t.Errorf("releituras = %d, quero %d — uma imediata mais uma por pausa",
+		t.Errorf("releituras = %d, want %d — one immediate plus one per pause",
 			errBody.Error.Rereads, len(RereadWaits)+1)
 	}
 	if len(*seenSet) != len(RereadWaits) {
-		t.Errorf("pausas = %v, quero %v", *seenSet, RereadWaits)
+		t.Errorf("pauses = %v, want %v", *seenSet, RereadWaits)
 	}
 	if n := counterOf(t, store, "lojinha", config.CounterTemplatesDeleted); n != 0 {
-		t.Errorf("%s = %d, quero 0 — desfecho inconclusivo nao conta como apagado",
+		t.Errorf("%s = %d, want 0 — an inconclusive outcome does not count as deleted",
 			config.CounterTemplatesDeleted, n)
 	}
 }
@@ -1827,24 +1827,24 @@ func TestDeleteTemplateWithoutVerdictButPendingDeletionAnswersDeleted(t *testing
 
 	rec := callDeleteTemplate(t, h, "token-do-a", "?instancia=lojinha&nome=promo_julho")
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, quero 200; corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, want 200; body = %s", rec.Code, rec.Body.String())
 	}
 	r := readDeletion(t, rec)
 	if r.Outcome != OutcomeDeleted {
-		t.Fatalf("desfecho = %q, quero %q — %s e exclusao ACEITA pela Meta, nao duvida; corpo = %s",
+		t.Fatalf("outcome = %q, want %q — %s is a deletion ACCEPTED by Meta, not doubt; body = %s",
 			r.Outcome, OutcomeDeleted, StatusPendingDeletion, rec.Body.String())
 	}
 	// The consumer is going to SEE the template in its own catalog. If the
 	// response does not say why, the only reading left to it is "it did not
 	// work".
 	if !strings.Contains(r.Warning, StatusPendingDeletion) {
-		t.Errorf("o aviso nao explica por que o template continua no catalogo: %q", r.Warning)
+		t.Errorf("the warning does not explain why the template stays in the catalog: %q", r.Warning)
 	}
 	if r.Rereads < 1 {
-		t.Errorf("releituras = %d, quero >= 1 — o desfecho foi reconstruido pela releitura", r.Rereads)
+		t.Errorf("releituras = %d, want >= 1 — the outcome was reconstructed by the reread", r.Rereads)
 	}
 	if n := counterOf(t, store, "lojinha", config.CounterTemplatesDeleted); n != 1 {
-		t.Errorf("%s = %d, quero 1", config.CounterTemplatesDeleted, n)
+		t.Errorf("%s = %d, want 1", config.CounterTemplatesDeleted, n)
 	}
 }
 
@@ -1863,10 +1863,10 @@ func TestDeleteTemplateRefusesNameWithWildcardBEFORECallingMeta(t *testing.T) {
 
 		rec := callDeleteTemplate(t, h, "token-do-a", "?instancia=lojinha&nome="+url.QueryEscape(name))
 		if rec.Code != http.StatusBadRequest {
-			t.Errorf("nome %q: status = %d, quero 400; corpo = %s", name, rec.Code, rec.Body.String())
+			t.Errorf("name %q: status = %d, want 400; body = %s", name, rec.Code, rec.Body.String())
 		}
 		if n := m.calls.Load(); n != 0 {
-			t.Errorf("nome %q: a Meta foi chamada %d vez(es) numa recusa que tem de acontecer ANTES do fio",
+			t.Errorf("name %q: Meta was called %d time(s) on a refusal that has to happen BEFORE the wire",
 				name, n)
 		}
 	}
@@ -1874,10 +1874,10 @@ func TestDeleteTemplateRefusesNameWithWildcardBEFORECallingMeta(t *testing.T) {
 
 func TestDeleteTemplateRequiresInstanceAndName(t *testing.T) {
 	cases := []struct{ name, query string }{
-		{"sem instancia", "?nome=promo_julho"},
-		{"sem nome", "?instancia=lojinha"},
-		{"nome vazio", "?instancia=lojinha&nome="},
-		{"nome so com espaco", "?instancia=lojinha&nome=%20%20"},
+		{"missing instancia", "?nome=promo_julho"},
+		{"missing nome", "?instancia=lojinha"},
+		{"empty nome", "?instancia=lojinha&nome="},
+		{"nome with only whitespace", "?instancia=lojinha&nome=%20%20"},
 	}
 	for _, c := range cases {
 		m := metaWithCatalogOf([]string{"promo_julho"})
@@ -1885,10 +1885,10 @@ func TestDeleteTemplateRequiresInstanceAndName(t *testing.T) {
 
 		rec := callDeleteTemplate(t, h, "token-do-a", c.query)
 		if rec.Code != http.StatusBadRequest {
-			t.Errorf("%s: status = %d, quero 400; corpo = %s", c.name, rec.Code, rec.Body.String())
+			t.Errorf("%s: status = %d, want 400; body = %s", c.name, rec.Code, rec.Body.String())
 		}
 		if n := m.calls.Load(); n != 0 {
-			t.Errorf("%s: a Meta foi chamada %d vez(es) num pedido malformado", c.name, n)
+			t.Errorf("%s: Meta was called %d time(s) on a malformed request", c.name, n)
 		}
 	}
 }
@@ -1909,15 +1909,15 @@ func TestDeleteTemplateWithSuccessFalseDoesNotAnswerDeleted(t *testing.T) {
 
 		rec := callDeleteTemplate(t, h, "token-do-a", "?instancia=lojinha&nome=promo_julho")
 		if rec.Code == http.StatusOK {
-			t.Errorf("corpo %q: status 200 — `success` que nao e `true` virou sucesso silencioso: %s",
+			t.Errorf("body %q: status 200 — a `success` that is not `true` turned into a silent success: %s",
 				body, rec.Body.String())
 			continue
 		}
 		if rec.Code != http.StatusBadGateway {
-			t.Errorf("corpo %q: status = %d, quero 502; corpo = %s", body, rec.Code, rec.Body.String())
+			t.Errorf("body %q: status = %d, want 502; body = %s", body, rec.Code, rec.Body.String())
 		}
 		if n := counterOf(t, store, "lojinha", config.CounterTemplatesDeleted); n != 0 {
-			t.Errorf("corpo %q: %s = %d, quero 0", body, config.CounterTemplatesDeleted, n)
+			t.Errorf("body %q: %s = %d, want 0", body, config.CounterTemplatesDeleted, n)
 		}
 	}
 }
@@ -1935,12 +1935,12 @@ func TestDeleteTemplateWithMetaErrorPassesThroughTheClass(t *testing.T) {
 
 	rec := callDeleteTemplate(t, h, "token-do-a", "?instancia=lojinha&nome=promo_julho")
 	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("status = %d, quero 400; corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, want 400; body = %s", rec.Code, rec.Body.String())
 	}
 	var errBody errorResponse
 	_ = json.Unmarshal(rec.Body.Bytes(), &errBody)
 	if errBody.Error.Class != string(meta.ClassPermanent) {
-		t.Errorf("classe = %q, quero %q", errBody.Error.Class, meta.ClassPermanent)
+		t.Errorf("class = %q, want %q", errBody.Error.Class, meta.ClassPermanent)
 	}
 }
 
@@ -1956,9 +1956,9 @@ func TestDeleteTemplateRefusesInstagramInstanceWith400WithoutCallingMeta(t *test
 
 	rec := callDeleteTemplate(t, h, "token-do-a", "?instancia=insta-loja&nome=promo_julho")
 	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("status = %d, quero 400; corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, want 400; body = %s", rec.Code, rec.Body.String())
 	}
 	if n := m.calls.Load(); n != 0 {
-		t.Errorf("a Meta foi chamada %d vez(es) numa recusa que tinha de acontecer ANTES do fio", n)
+		t.Errorf("Meta was called %d time(s) on a refusal that had to happen BEFORE the wire", n)
 	}
 }

@@ -25,8 +25,8 @@ import (
 // that the verb the consumer requested (`PUT`) is not the one in Meta's doc
 // (`POST`), and a double that accepted any verb would leave that correction
 // with no guard at all — it would only reappear against the real Meta, which
-// this project's suite does not reach (see CLAUDE.md, "O que o verify NÃO
-// alcança").
+// this project's suite does not reach (see CLAUDE.md, "What the verify does NOT
+// reach").
 
 type readGraph struct {
 	srv   *httptest.Server
@@ -121,25 +121,25 @@ func TestReadsSendsPOSTOnTheSendPathWithTheMetaBody(t *testing.T) {
 
 	rec := markRead(t, h, "token-do-a", readBody("lojinha", testWamid))
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
 	}
 	if g.method != http.MethodPost {
-		t.Errorf("verbo = %q, quero POST — a doc da Meta diz POST; o PUT do pedido do consumidor esta errado", g.method)
+		t.Errorf("verb = %q, want POST — Meta's doc says POST; the consumer's request PUT is wrong", g.method)
 	}
 	if g.path != "/P-lojinha/messages" {
-		t.Errorf("caminho = %q, quero /P-lojinha/messages (o MESMO do envio)", g.path)
+		t.Errorf("path = %q, want /P-lojinha/messages (the SAME as sending)", g.path)
 	}
 	if g.authorizes != "Bearer t-lojinha" {
-		t.Errorf("Authorization = %q, quero o token da instancia no HEADER", g.authorizes)
+		t.Errorf("Authorization = %q, want the instance token in the HEADER", g.authorizes)
 	}
 	want := map[string]any{"messaging_product": "whatsapp", "status": "read", "message_id": testWamid}
 	for key, value := range want {
 		if g.body[key] != value {
-			t.Errorf("corpo[%q] = %#v, quero %#v", key, g.body[key], value)
+			t.Errorf("body[%q] = %#v, want %#v", key, g.body[key], value)
 		}
 	}
 	if len(g.body) != len(want) {
-		t.Errorf("o corpo tem %d campos (%v), quero exatamente %d", len(g.body), g.body, len(want))
+		t.Errorf("the body has %d fields (%v), want exactly %d", len(g.body), g.body, len(want))
 	}
 }
 
@@ -152,17 +152,17 @@ func TestReadsAnswersOKWithoutInventingAMessageID(t *testing.T) {
 
 	rec := markRead(t, h, "token-do-a", readBody("lojinha", testWamid))
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
 	}
 	var body map[string]any
 	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
-		t.Fatalf("corpo nao desserializa: %v (corpo = %q)", err, rec.Body.String())
+		t.Fatalf("body does not deserialize: %v (body = %q)", err, rec.Body.String())
 	}
 	if ok, _ := body["ok"].(bool); !ok {
 		t.Errorf(`corpo["ok"] = %#v, quero true`, body["ok"])
 	}
 	if _, has := body["wa_message_id"]; has {
-		t.Errorf("a resposta trouxe wa_message_id = %#v — marcar como lida NAO cria mensagem", body["wa_message_id"])
+		t.Errorf("the response brought wa_message_id = %#v — marking as read does NOT create a message", body["wa_message_id"])
 	}
 }
 
@@ -179,11 +179,11 @@ func TestReadsWithTypingCarriesTheTypingIndicator(t *testing.T) {
 
 	rec := markRead(t, h, "token-do-a", readBodyWithTyping("lojinha", testWamid))
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
 	}
 	ti, ok := g.body["typing_indicator"].(map[string]any)
 	if !ok {
-		t.Fatalf("corpo[%q] = %#v, quero um objeto typing_indicator", "typing_indicator", g.body["typing_indicator"])
+		t.Fatalf("body[%q] = %#v, want a typing_indicator object", "typing_indicator", g.body["typing_indicator"])
 	}
 	if ti["type"] != "text" {
 		t.Errorf(`typing_indicator.type = %#v, quero "text"`, ti["type"])
@@ -205,10 +205,10 @@ func TestReadsWithoutTypingDoesNotCarryTheTypingIndicator(t *testing.T) {
 
 		rec := markRead(t, h, "token-do-a", body)
 		if rec.Code != http.StatusOK {
-			t.Fatalf("corpo %q: status = %d, quero 200", body, rec.Code)
+			t.Fatalf("body %q: status = %d, want 200", body, rec.Code)
 		}
 		if _, has := g.body["typing_indicator"]; has {
-			t.Errorf("corpo %q: a Meta recebeu typing_indicator = %#v, quero ausente", body, g.body["typing_indicator"])
+			t.Errorf("body %q: Meta received typing_indicator = %#v, want absent", body, g.body["typing_indicator"])
 		}
 	}
 }
@@ -222,10 +222,10 @@ func TestReadsRefusesTypingWithoutWamid(t *testing.T) {
 
 	rec := markRead(t, h, "token-do-a", `{"instancia":"lojinha","digitando":true}`)
 	if rec.Code != http.StatusBadRequest {
-		t.Errorf("status = %d, quero 400 (corpo = %s)", rec.Code, rec.Body.String())
+		t.Errorf("status = %d, want 400 (body = %s)", rec.Code, rec.Body.String())
 	}
 	if n := g.calls.Load(); n != 0 {
-		t.Fatalf("o gateway chamou a Meta %d vez(es) sem wamid", n)
+		t.Fatalf("the gateway called Meta %d time(s) without a wamid", n)
 	}
 }
 
@@ -244,24 +244,24 @@ func TestReadsCountsItsOwnKeyAndNeverSent(t *testing.T) {
 	h, store := testReads(t, g)
 
 	if rec := markRead(t, h, "token-do-a", readBody("lojinha", testWamid)); rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
 	}
 
 	m := todaysCounters(t, store, "lojinha")
 	if m[config.CounterReadsMarked] != 1 {
-		t.Errorf("leituras_marcadas = %d, quero 1", m[config.CounterReadsMarked])
+		t.Errorf("reads_marked = %d, want 1", m[config.CounterReadsMarked])
 	}
 	if m[config.CounterSent] != 0 {
-		t.Errorf("enviadas = %d, quero 0 — marcar como lida NAO e envio, e somar aqui infla "+
-			"a projecao de custo dos consumidores", m[config.CounterSent])
+		t.Errorf("sent = %d, want 0 — marking as read is NOT sending, and counting it here inflates "+
+			"the consumers' cost projection", m[config.CounterSent])
 	}
 	if m[config.CounterSendFailures] != 0 {
-		t.Errorf("falhas_de_envio = %d, quero 0 — esta rota nunca toca nas chaves do envio",
+		t.Errorf("send_failures = %d, want 0 — this route never touches the send keys",
 			m[config.CounterSendFailures])
 	}
 	if m[config.CounterReceived] != 0 || m[config.CounterDelivered] != 0 {
-		t.Errorf("recebidas = %d, entregues = %d, quero 0 e 0 — nada nesta rota pode ser lido "+
-			"como 'houve inbound'", m[config.CounterReceived], m[config.CounterDelivered])
+		t.Errorf("received = %d, delivered = %d, want 0 and 0 — nothing on this route can be read "+
+			"as 'there was inbound'", m[config.CounterReceived], m[config.CounterDelivered])
 	}
 }
 
@@ -273,18 +273,18 @@ func TestReadsCountsFailureWithItsOwnKeyWhenMetaRefuses(t *testing.T) {
 	h, store := testReads(t, g)
 
 	if rec := markRead(t, h, "token-do-a", readBody("lojinha", testWamid)); rec.Code == http.StatusOK {
-		t.Fatalf("status = 200, quero erro (a Meta recusou)")
+		t.Fatalf("status = 200, want an error (Meta refused)")
 	}
 
 	m := todaysCounters(t, store, "lojinha")
 	if m[config.CounterReadFailures] != 1 {
-		t.Errorf("falhas_de_leitura = %d, quero 1", m[config.CounterReadFailures])
+		t.Errorf("read_failures = %d, want 1", m[config.CounterReadFailures])
 	}
 	if m[config.CounterReadsMarked] != 0 {
-		t.Errorf("leituras_marcadas = %d, quero 0 (a Meta recusou)", m[config.CounterReadsMarked])
+		t.Errorf("reads_marked = %d, want 0 (Meta refused)", m[config.CounterReadsMarked])
 	}
 	if m[config.CounterSendFailures] != 0 {
-		t.Errorf("falhas_de_envio = %d, quero 0", m[config.CounterSendFailures])
+		t.Errorf("send_failures = %d, want 0", m[config.CounterSendFailures])
 	}
 }
 
@@ -300,20 +300,20 @@ func TestReadsDoesNotRequireIdempotencyKeyAndMarkingTwiceWorksBothTimes(t *testi
 	g := readAcceptingGraph(t)
 	h, store := testReads(t, g)
 
-	for i, turn := range []string{"primeira", "segunda"} {
+	for i, turn := range []string{"first", "second"} {
 		rec := markRead(t, h, "token-do-a", readBody("lojinha", testWamid))
 		if rec.Code != http.StatusOK {
-			t.Fatalf("%s marcacao: status = %d, corpo = %s — repetir a MESMA marcacao tem de dar certo, "+
-				"sem chave de idempotencia", turn, rec.Code, rec.Body.String())
+			t.Fatalf("%s mark: status = %d, body = %s — repeating the SAME mark has to succeed, "+
+				"with no idempotency key", turn, rec.Code, rec.Body.String())
 		}
 		if n := g.calls.Load(); n != int64(i+1) {
-			t.Fatalf("%s marcacao: a Meta recebeu %d chamada(s), quero %d — o gateway nao guarda "+
-				"estado de 'ja marquei'", turn, n, i+1)
+			t.Fatalf("%s mark: Meta received %d call(s), want %d — the gateway does not keep "+
+				"'already marked' state", turn, n, i+1)
 		}
 	}
 
 	if m := todaysCounters(t, store, "lojinha"); m[config.CounterReadsMarked] != 2 {
-		t.Errorf("leituras_marcadas = %d, quero 2 (duas marcacoes, dois fatos)", m[config.CounterReadsMarked])
+		t.Errorf("reads_marked = %d, want 2 (two marks, two facts)", m[config.CounterReadsMarked])
 	}
 }
 
@@ -327,10 +327,10 @@ func TestReadsRefusesInstanceNotOwnedByConsumer(t *testing.T) {
 
 	rec := markRead(t, h, "token-do-a", readBody("clinica", testWamid))
 	if rec.Code != http.StatusForbidden {
-		t.Errorf("status = %d, quero 403", rec.Code)
+		t.Errorf("status = %d, want 403", rec.Code)
 	}
 	if n := g.calls.Load(); n != 0 {
-		t.Fatalf("o gateway CHAMOU A META (%d vez(es)) pela instancia de outro sistema", n)
+		t.Fatalf("the gateway CALLED META (%d time(s)) for another system's instance", n)
 	}
 }
 
@@ -339,13 +339,13 @@ func TestReadsRefusesWithoutTokenAndWithInvalidToken(t *testing.T) {
 	h, _ := testReads(t, g)
 
 	if rec := markRead(t, h, "", readBody("lojinha", testWamid)); rec.Code != http.StatusUnauthorized {
-		t.Errorf("sem token: status = %d, quero 401", rec.Code)
+		t.Errorf("no token: status = %d, want 401", rec.Code)
 	}
 	if rec := markRead(t, h, "token-errado", readBody("lojinha", testWamid)); rec.Code != http.StatusUnauthorized {
-		t.Errorf("token errado: status = %d, quero 401", rec.Code)
+		t.Errorf("wrong token: status = %d, want 401", rec.Code)
 	}
 	if n := g.calls.Load(); n != 0 {
-		t.Fatalf("o gateway chamou a Meta %d vez(es) sem autenticar ninguem", n)
+		t.Fatalf("the gateway called Meta %d time(s) without authenticating anyone", n)
 	}
 }
 
@@ -363,11 +363,11 @@ func TestReadsRefusesIncompleteBody(t *testing.T) {
 	for _, c := range cases {
 		rec := markRead(t, h, "token-do-a", c.body)
 		if rec.Code != http.StatusBadRequest {
-			t.Errorf("%s: status = %d, quero 400 (corpo = %s)", c.name, rec.Code, rec.Body.String())
+			t.Errorf("%s: status = %d, want 400 (body = %s)", c.name, rec.Code, rec.Body.String())
 		}
 	}
 	if n := g.calls.Load(); n != 0 {
-		t.Fatalf("o gateway chamou a Meta %d vez(es) com pedido invalido", n)
+		t.Fatalf("the gateway called Meta %d time(s) with an invalid request", n)
 	}
 }
 
@@ -387,11 +387,11 @@ func TestReadsUnknownInstanceGives404(t *testing.T) {
 	}
 	db, err := sql.Open("sqlite", path)
 	if err != nil {
-		t.Fatalf("abrir banco para apagar a instancia: %v", err)
+		t.Fatalf("open database to delete the instance: %v", err)
 	}
 	defer db.Close()
 	if _, err := db.Exec(`DELETE FROM instancia WHERE slug = 'clinica'`); err != nil {
-		t.Fatalf("apagar instancia clinica: %v", err)
+		t.Fatalf("delete instance clinica: %v", err)
 	}
 
 	h := NewReadsHandler(store, NewAuthenticator(store),
@@ -399,10 +399,10 @@ func TestReadsUnknownInstanceGives404(t *testing.T) {
 
 	rec := markRead(t, h, "token-do-c", readBody("clinica", testWamid))
 	if rec.Code != http.StatusNotFound {
-		t.Errorf("status = %d, quero 404 (corpo = %s)", rec.Code, rec.Body.String())
+		t.Errorf("status = %d, want 404 (body = %s)", rec.Code, rec.Body.String())
 	}
 	if n := g.calls.Load(); n != 0 {
-		t.Fatalf("instancia inexistente e o gateway chamou a Meta %d vez(es)", n)
+		t.Fatalf("nonexistent instance and the gateway called Meta %d time(s)", n)
 	}
 }
 
@@ -416,10 +416,10 @@ func TestReadsPausedInstanceGives503(t *testing.T) {
 
 	rec := markRead(t, h, "token-do-a", readBody("lojinha", testWamid))
 	if rec.Code != http.StatusServiceUnavailable {
-		t.Errorf("status = %d, quero 503", rec.Code)
+		t.Errorf("status = %d, want 503", rec.Code)
 	}
 	if n := g.calls.Load(); n != 0 {
-		t.Fatalf("instancia pausada e o gateway chamou a Meta %d vez(es)", n)
+		t.Fatalf("paused instance and the gateway called Meta %d time(s)", n)
 	}
 }
 
@@ -443,14 +443,14 @@ func TestReadsTranslatesTheMetaErrorIntoTheContractStatus(t *testing.T) {
 		},
 		{
 			// RETRYABLE error: Meta went down. Re-queue.
-			name: "retentavel (5xx da Meta)", metaStatus: http.StatusBadGateway,
+			name: "retryable (5xx from Meta)", metaStatus: http.StatusBadGateway,
 			metaBody:   `{"error":{"message":"Service temporarily unavailable","code":2}}`,
 			wantStatus: http.StatusServiceUnavailable, wantClass: "retryable", wantCode: 2,
 		},
 		{
 			// Rate limit is also retryable — and it's the case T-075 asked to
 			// measure whether thirteen markings in a row would hit it.
-			name: "retentavel (limite de taxa)", metaStatus: http.StatusTooManyRequests,
+			name: "retryable (rate limit)", metaStatus: http.StatusTooManyRequests,
 			metaBody:   `{"error":{"message":"Too many requests","code":130429}}`,
 			wantStatus: http.StatusServiceUnavailable, wantClass: "retryable", wantCode: 130429,
 		},
@@ -474,26 +474,26 @@ func TestReadsTranslatesTheMetaErrorIntoTheContractStatus(t *testing.T) {
 		log.SetOutput(logStdout)
 
 		if rec.Code != c.wantStatus {
-			t.Errorf("%s: status = %d, quero %d (corpo = %s)", c.name, rec.Code, c.wantStatus, rec.Body.String())
+			t.Errorf("%s: status = %d, want %d (body = %s)", c.name, rec.Code, c.wantStatus, rec.Body.String())
 		}
 		var resp errorResponse
 		if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
-			t.Fatalf("%s: corpo nao desserializa: %v (corpo = %q)", c.name, err, rec.Body.String())
+			t.Fatalf("%s: body does not deserialize: %v (body = %q)", c.name, err, rec.Body.String())
 		}
 		if resp.Error.Class != c.wantClass {
-			t.Errorf("%s: classe = %q, quero %q", c.name, resp.Error.Class, c.wantClass)
+			t.Errorf("%s: class = %q, want %q", c.name, resp.Error.Class, c.wantClass)
 		}
 		if resp.Error.MetaCode != c.wantCode {
-			t.Errorf("%s: codigo_meta = %d, quero %d (ele viaja para quem tem regra propria)",
+			t.Errorf("%s: meta_code = %d, want %d (it travels to whoever has their own rule)",
 				c.name, resp.Error.MetaCode, c.wantCode)
 		}
 		if c.wantClass == "config" && !strings.Contains(logBuf.String(), "ALARME") {
-			t.Errorf("%s: credencial recusada e nada alarmou no log — so gente conserta isso", c.name)
+			t.Errorf("%s: credential refused and nothing alarmed in the log — only a person fixes this", c.name)
 		}
 	}
 }
 
-// A TRANSPORT failure (Meta didn't respond at all) becomes 502 `desconhecido`,
+// A TRANSPORT failure (Meta didn't respond at all) becomes 502 `unknown`,
 // like on send — but with the OPPOSITE instruction in the text: here retrying
 // is safe, because marking twice has no side effect. A consumer who reads the
 // send message ("don't resend") and applies it here would leave the
@@ -506,29 +506,29 @@ func TestReadsTransportFailureGives502TellingToRetry(t *testing.T) {
 
 	rec := markRead(t, h, "token-do-a", readBody("lojinha", testWamid))
 	if rec.Code != http.StatusBadGateway {
-		t.Fatalf("status = %d, quero 502 (corpo = %s)", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, want 502 (body = %s)", rec.Code, rec.Body.String())
 	}
 	var resp errorResponse
 	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
-		t.Fatalf("corpo nao desserializa: %v", err)
+		t.Fatalf("body does not deserialize: %v", err)
 	}
 	if resp.Error.Class != "unknown" {
-		t.Errorf("classe = %q, quero desconhecido", resp.Error.Class)
+		t.Errorf("class = %q, want unknown", resp.Error.Class)
 	}
 	if !strings.Contains(resp.Error.Message, "repetir e seguro") {
 		t.Errorf("mensagem = %q — ela precisa dizer que repetir e seguro, senao o consumidor "+
 			"aplica aqui a regra do ENVIO ('nao reenvie') e a conversa nunca e marcada", resp.Error.Message)
 	}
 	if m := todaysCounters(t, store, "lojinha"); m[config.CounterReadFailures] != 1 {
-		t.Errorf("falhas_de_leitura = %d, quero 1", m[config.CounterReadFailures])
+		t.Errorf("read_failures = %d, want 1", m[config.CounterReadFailures])
 	}
 }
 
 // --- Secrets and personal data in the log ---------------------------------------------
 
 // The `wamid` CARRIES THE OTHER SIDE'S PHONE NUMBER encoded inside it
-// (docs/ARMADILHAS.md, "o wamid carrega o telefone do destinatário dentro
-// dele"). No log line on this route can contain it — not even on the rejection
+// (docs/ARMADILHAS.md, "the wamid carries the recipient's phone number
+// inside it"). No log line on this route can contain it — not even on the rejection
 // path, which is where the temptation to "log the whole request to debug" lives.
 func TestReadsNeverLogsTheWamidNorTheToken(t *testing.T) {
 	g := respondingGraph(t, http.StatusBadRequest, `{"error":{"message":"Parameter value is not valid","code":131009}}`)
@@ -567,7 +567,7 @@ func TestReadsCounterFailureDoesNotChangeTheStatus(t *testing.T) {
 	log.SetOutput(logStdout)
 
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, corpo = %s — falha do CONTADOR nao pode mudar a resposta da marcacao",
+		t.Fatalf("status = %d, body = %s — a COUNTER failure cannot change the mark response",
 			rec.Code, rec.Body.String())
 	}
 }

@@ -99,7 +99,7 @@ func testCA(t *testing.T, name string) string {
 	t.Helper()
 	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
-		t.Fatalf("gerar chave: %v", err)
+		t.Fatalf("generate key: %v", err)
 	}
 	mold := x509.Certificate{
 		SerialNumber:          big.NewInt(7),
@@ -112,7 +112,7 @@ func testCA(t *testing.T, name string) string {
 	}
 	derBytes, err := x509.CreateCertificate(rand.Reader, &mold, &mold, &key.PublicKey, key)
 	if err != nil {
-		t.Fatalf("criar certificado: %v", err)
+		t.Fatalf("create certificate: %v", err)
 	}
 	return string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: derBytes}))
 }
@@ -154,11 +154,11 @@ func TestRegistrationWritesTheConsumerMetaAndSaysWhichFieldsWereRegistered(t *te
 	rec := register(t, h, "token-do-a", registrationBody("terceiro", nil))
 
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, quero 200. corpo: %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, want 200. body: %s", rec.Code, rec.Body.String())
 	}
 	var resp RegistrationResponse
 	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
-		t.Fatalf("resposta nao e JSON: %v (%s)", err, rec.Body.String())
+		t.Fatalf("response is not JSON: %v (%s)", err, rec.Body.String())
 	}
 
 	// What was STORED, read from the database in the clear: it is the only
@@ -168,10 +168,10 @@ func TestRegistrationWritesTheConsumerMetaAndSaysWhichFieldsWereRegistered(t *te
 		t.Fatalf("FindInstance: %v", err)
 	}
 	if i.WabaID != "WABA-DO-CONSUMIDOR" || i.PhoneNumberID != "PNID-DO-CONSUMIDOR" {
-		t.Errorf("identificacao nao chegou: waba=%q pnid=%q", i.WabaID, i.PhoneNumberID)
+		t.Errorf("identification did not arrive: waba=%q pnid=%q", i.WabaID, i.PhoneNumberID)
 	}
 	if i.AppSecret != testEncryptedValue["app_secret"] || i.SendToken != testEncryptedValue["token_envio"] {
-		t.Errorf("credenciais nao chegaram: app_secret=%q token_envio=%q", i.AppSecret, i.SendToken)
+		t.Errorf("credentials did not arrive: app_secret=%q token_envio=%q", i.AppSecret, i.SendToken)
 	}
 
 	// The response says WHETHER each field is registered, and the list comes
@@ -182,14 +182,14 @@ func TestRegistrationWritesTheConsumerMetaAndSaysWhichFieldsWereRegistered(t *te
 	}
 	for _, field := range []string{"app_secret", "token_envio", "callback_url"} {
 		if !registered[field] {
-			t.Errorf("a resposta diz que %s NAO esta cadastrado, e ele acabou de ser gravado", field)
+			t.Errorf("the response says %s is NOT registered, and it was just written", field)
 		}
 	}
 	if registered["bundle_ca"] {
-		t.Error("bundle_ca aparece como cadastrado, e nenhum foi mandado")
+		t.Error("bundle_ca appears as registered, and none was sent")
 	}
 	if !resp.RegistrationWindow.Open {
-		t.Error("a janela saiu FECHADA no primeiro cadastro")
+		t.Error("the window came out CLOSED on the first registration")
 	}
 }
 
@@ -215,7 +215,7 @@ func TestRegistrationReturnsNoENCRYPTEDField(t *testing.T) {
 		"bundle_ca": testEncryptedValue["bundle_ca"],
 	}))
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, quero 200. corpo: %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, want 200. body: %s", rec.Code, rec.Body.String())
 	}
 
 	// ASKS THE STORE which columns are encrypted.
@@ -224,22 +224,22 @@ func TestRegistrationReturnsNoENCRYPTEDField(t *testing.T) {
 		t.Fatalf("SummarizeInstance: %v", err)
 	}
 	if len(r.Encrypted) == 0 {
-		t.Fatal("o store nao declarou coluna cifrada nenhuma — este teste nao verificaria nada")
+		t.Fatal("the store did not declare any encrypted column at all — this test would verify nothing")
 	}
 
 	texts := jsonStrings(t, rec.Body.Bytes())
 	for _, c := range r.Encrypted {
 		value, has := testEncryptedValue[c.Name]
 		if !has || value == "" {
-			t.Fatalf("a coluna cifrada %q e NOVA e este teste nao sabe que valor procurar por ela —"+
-				" ponha um em testEncryptedValue, senao a assercao 'nada cifrado sai daqui' passa verde sem olhar para ela", c.Name)
+			t.Fatalf("encrypted column %q is NEW and this test does not know what value to look for in it —"+
+				" put one in testEncryptedValue, otherwise the 'nothing encrypted comes out here' assertion passes green without looking at it", c.Name)
 		}
 		sum := sha256.Sum256([]byte(value))
 		hash := hex.EncodeToString(sum[:])
 		for path, text := range texts {
 			switch {
 			case strings.Contains(text, value):
-				t.Errorf("o campo cifrado %q saiu INTEIRO na resposta, em %s", c.Name, path)
+				t.Errorf("encrypted field %q came out WHOLE in the response, at %s", c.Name, path)
 			// TRUNCATED is a PREFIX or SUFFIX of the value, and not "any
 			// chunk": a loose `Contains(valor, texto)` would match a field's
 			// NAME against its own test value and flag a leak where there is
@@ -247,11 +247,11 @@ func TestRegistrationReturnsNoENCRYPTEDField(t *testing.T) {
 			// response ("ativa", "sim") without letting a `valor[:8]`
 			// through, which is the form a "preview for review" would take.
 			case len(text) >= 6 && (strings.HasPrefix(value, text) || strings.HasSuffix(value, text)):
-				t.Errorf("o campo cifrado %q saiu TRUNCADO na resposta, em %s: %q", c.Name, path, text)
+				t.Errorf("encrypted field %q came out TRUNCATED in the response, at %s: %q", c.Name, path, text)
 			case len(text) >= 16 && strings.Contains(value, text):
-				t.Errorf("o campo cifrado %q saiu em PEDACO na resposta, em %s: %q", c.Name, path, text)
+				t.Errorf("encrypted field %q came out as a CHUNK in the response, at %s: %q", c.Name, path, text)
 			case strings.Contains(text, hash) || strings.Contains(text, hash[:16]):
-				t.Errorf("o campo cifrado %q saiu em HASH na resposta, em %s", c.Name, path)
+				t.Errorf("encrypted field %q came out as a HASH in the response, at %s", c.Name, path)
 			}
 		}
 	}
@@ -264,7 +264,7 @@ func jsonStrings(t *testing.T, raw []byte) map[string]string {
 	t.Helper()
 	var doc any
 	if err := json.Unmarshal(raw, &doc); err != nil {
-		t.Fatalf("resposta nao e JSON: %v", err)
+		t.Fatalf("response is not JSON: %v", err)
 	}
 	found := map[string]string{}
 	var advance func(prefix string, v any)
@@ -284,7 +284,7 @@ func jsonStrings(t *testing.T, raw []byte) map[string]string {
 	}
 	advance("$", doc)
 	if len(found) == 0 {
-		t.Fatal("a resposta nao tem string nenhuma — este teste nao verificaria nada")
+		t.Fatal("the response has no string at all — this test would verify nothing")
 	}
 	return found
 }
@@ -296,7 +296,7 @@ func TestRegistrationDoesNOTActivateTheInstance(t *testing.T) {
 
 	rec := register(t, h, "token-do-a", registrationBody("terceiro", nil))
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, quero 200. corpo: %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, want 200. body: %s", rec.Code, rec.Body.String())
 	}
 
 	i, err := store.FindInstance("terceiro")
@@ -304,20 +304,20 @@ func TestRegistrationDoesNOTActivateTheInstance(t *testing.T) {
 		t.Fatalf("FindInstance: %v", err)
 	}
 	if i.Active {
-		t.Fatal("a instancia ficou ATIVA depois do cadastro — so o `zapgw fumaca` ativa")
+		t.Fatal("the instance became ACTIVE after registration — only `zapgw fumaca` activates")
 	}
 
 	// And the RESPONSE has to say so, otherwise the consumer walks away
 	// thinking the channel is live and finds out from the 503 of the first send.
 	var resp RegistrationResponse
 	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
-		t.Fatalf("resposta nao e JSON: %v", err)
+		t.Fatalf("response is not JSON: %v", err)
 	}
 	if !resp.Paused || resp.State != "pausada" {
-		t.Errorf("a resposta diz estado=%q pausada=%v numa instancia que continua parada", resp.State, resp.Paused)
+		t.Errorf("the response says state=%q paused=%v for an instance that is still stopped", resp.State, resp.Paused)
 	}
 	if !strings.Contains(strings.ToLower(resp.NextStep), "pausada") {
-		t.Errorf("o proximo_passo nao avisa que a instancia continua pausada: %q", resp.NextStep)
+		t.Errorf("proximo_passo does not warn that the instance is still paused: %q", resp.NextStep)
 	}
 }
 
@@ -329,14 +329,14 @@ func TestRegistrationWithoutTokenIs401AndNeverWritesAnything(t *testing.T) {
 	rec := register(t, h, "", registrationBody("terceiro", nil))
 
 	if rec.Code != http.StatusUnauthorized {
-		t.Fatalf("status = %d, quero 401", rec.Code)
+		t.Fatalf("status = %d, want 401", rec.Code)
 	}
 	r, err := store.SummarizeInstance("terceiro")
 	if err != nil {
 		t.Fatalf("SummarizeInstance: %v", err)
 	}
 	if r.PhoneNumberID != "" {
-		t.Errorf("gravou sem credencial nenhuma: pnid=%q", r.PhoneNumberID)
+		t.Errorf("wrote with no credential at all: pnid=%q", r.PhoneNumberID)
 	}
 }
 
@@ -347,7 +347,7 @@ func TestRegistrationWithoutTokenDoesNotAnswer404(t *testing.T) {
 	h, _, _, _ := testRegistration(t)
 	rec := register(t, h, "", registrationBody("terceiro", nil))
 	if rec.Code == http.StatusNotFound {
-		t.Fatal("a rota respondeu 404 sem credencial — ela existe, e o que falta e o token")
+		t.Fatal("the route answered 404 without a credential — it exists, what is missing is the token")
 	}
 }
 
@@ -357,14 +357,14 @@ func TestRegistrationOfFOREIGNInstanceIs403AndDoesNotTouchIt(t *testing.T) {
 	rec := register(t, h, "token-do-a", registrationBody("de-outro", nil))
 
 	if rec.Code != http.StatusForbidden {
-		t.Fatalf("status = %d, quero 403. corpo: %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, want 403. body: %s", rec.Code, rec.Body.String())
 	}
 	r, err := store.SummarizeInstance("de-outro")
 	if err != nil {
 		t.Fatalf("SummarizeInstance: %v", err)
 	}
 	if r.PhoneNumberID != "" || r.RegisteredAt != "" {
-		t.Errorf("a instancia alheia foi tocada: pnid=%q cadastro_em=%q", r.PhoneNumberID, r.RegisteredAt)
+		t.Errorf("the other instance was touched: pnid=%q registered_at=%q", r.PhoneNumberID, r.RegisteredAt)
 	}
 }
 
@@ -376,7 +376,7 @@ func TestRegistrationAfterTheWindowIs409AndSaysWhatToDo(t *testing.T) {
 	h, store, _, clock := testRegistration(t)
 
 	if rec := register(t, h, "token-do-a", registrationBody("terceiro", nil)); rec.Code != http.StatusOK {
-		t.Fatalf("primeiro cadastro: status %d (%s)", rec.Code, rec.Body.String())
+		t.Fatalf("first registration: status %d (%s)", rec.Code, rec.Body.String())
 	}
 	*clock = clock.Add(config.RegistrationWindow + time.Minute)
 
@@ -385,14 +385,14 @@ func TestRegistrationAfterTheWindowIs409AndSaysWhatToDo(t *testing.T) {
 	}))
 
 	if rec.Code != http.StatusConflict {
-		t.Fatalf("status = %d, quero 409. corpo: %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, want 409. body: %s", rec.Code, rec.Body.String())
 	}
 	body := strings.ToLower(rec.Body.String())
 	// WHY it closed, WHAT TO DO, and the NAME of the command that unlocks it.
 	// Without all three, the consumer is stuck in a dead end.
 	for _, required := range []string{"fechada", "primeira", "reabrir-cadastro"} {
 		if !strings.Contains(body, required) {
-			t.Errorf("a mensagem de erro nao diz %q — ela e o unico suporte que este consumidor tem:\n%s", required, rec.Body.String())
+			t.Errorf("the error message does not say %q — it is the only support this consumer has:\n%s", required, rec.Body.String())
 		}
 	}
 	// And NOTHING was stored: the previous configuration still stands.
@@ -401,7 +401,7 @@ func TestRegistrationAfterTheWindowIs409AndSaysWhatToDo(t *testing.T) {
 		t.Fatalf("SummarizeInstance: %v", err)
 	}
 	if r.PhoneNumberID != "PNID-DO-CONSUMIDOR" {
-		t.Errorf("phone_number_id = %q — o cadastro recusado gravou mesmo assim", r.PhoneNumberID)
+		t.Errorf("phone_number_id = %q — the refused registration wrote anyway", r.PhoneNumberID)
 	}
 }
 
@@ -415,14 +415,14 @@ func TestRegistrationOpensTheWindowOnFirstInsertNotOnCreation(t *testing.T) {
 	rec := register(t, h, "token-do-a", registrationBody("terceiro", nil))
 
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, quero 200 — a janela esta contando da CRIACAO. corpo: %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, want 200 — the window counts from CREATION. body: %s", rec.Code, rec.Body.String())
 	}
 	var resp RegistrationResponse
 	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
-		t.Fatalf("resposta nao e JSON: %v", err)
+		t.Fatalf("response is not JSON: %v", err)
 	}
 	if want := clock.Format(time.RFC3339); resp.RegistrationWindow.FirstInsertAt != want {
-		t.Errorf("primeira_insercao_em = %q, quero %q", resp.RegistrationWindow.FirstInsertAt, want)
+		t.Errorf("primeira_insercao_em = %q, want %q", resp.RegistrationWindow.FirstInsertAt, want)
 	}
 }
 
@@ -450,14 +450,14 @@ func TestRegistrationRefusesMissingFieldWithoutEchoingValue(t *testing.T) {
 			rec := register(t, h, "token-do-a", registrationBody("terceiro", c.changes))
 
 			if rec.Code != http.StatusBadRequest {
-				t.Fatalf("status = %d, quero 400. corpo: %s", rec.Code, rec.Body.String())
+				t.Fatalf("status = %d, want 400. body: %s", rec.Code, rec.Body.String())
 			}
 			if !strings.Contains(rec.Body.String(), c.field) {
-				t.Errorf("o erro nao nomeia %q: %s", c.field, rec.Body.String())
+				t.Errorf("the error does not name %q: %s", c.field, rec.Body.String())
 			}
 			for _, value := range []string{testEncryptedValue["app_secret"], testEncryptedValue["token_envio"]} {
 				if strings.Contains(rec.Body.String(), value) {
-					t.Errorf("o erro ecoa um segredo do corpo: %s", rec.Body.String())
+					t.Errorf("the error echoes a secret from the body: %s", rec.Body.String())
 				}
 			}
 			// An invalid request does NOT spend the window: whoever gets the
@@ -467,7 +467,7 @@ func TestRegistrationRefusesMissingFieldWithoutEchoingValue(t *testing.T) {
 				t.Fatalf("SummarizeInstance: %v", err)
 			}
 			if r.RegisteredAt != "" {
-				t.Errorf("a janela abriu num cadastro recusado: cadastro_em = %q", r.RegisteredAt)
+				t.Errorf("the window opened on a refused registration: registered_at = %q", r.RegisteredAt)
 			}
 		})
 	}
@@ -477,10 +477,10 @@ func TestRegistrationWithoutInstanceInTheBodyIs400(t *testing.T) {
 	h, _, _, _ := testRegistration(t)
 	rec := register(t, h, "token-do-a", `{"waba_id":"W"}`)
 	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("status = %d, quero 400", rec.Code)
+		t.Fatalf("status = %d, want 400", rec.Code)
 	}
 	if !strings.Contains(rec.Body.String(), "instancia") {
-		t.Errorf("o erro nao nomeia o campo que falta: %s", rec.Body.String())
+		t.Errorf("the error does not name the missing field: %s", rec.Body.String())
 	}
 }
 
@@ -490,10 +490,10 @@ func TestRegistrationWithNonJSONBodyDoesNotEchoTheBody(t *testing.T) {
 	// chunk that did not match, and that is why it cannot go into the response.
 	rec := register(t, h, "token-do-a", `{"instancia":"terceiro","app_secret":"`+testEncryptedValue["app_secret"])
 	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("status = %d, quero 400", rec.Code)
+		t.Fatalf("status = %d, want 400", rec.Code)
 	}
 	if strings.Contains(rec.Body.String(), testEncryptedValue["app_secret"]) {
-		t.Fatalf("a resposta ecoou o corpo, com o segredo dentro: %s", rec.Body.String())
+		t.Fatalf("the response echoed the body, with the secret inside: %s", rec.Body.String())
 	}
 }
 
@@ -502,14 +502,14 @@ func TestRegistrationAcceptsREREGISTRATIONOverwriting(t *testing.T) {
 	h, store, _, clock := testRegistration(t)
 
 	if rec := register(t, h, "token-do-a", registrationBody("terceiro", nil)); rec.Code != http.StatusOK {
-		t.Fatalf("primeiro cadastro: status %d (%s)", rec.Code, rec.Body.String())
+		t.Fatalf("first registration: status %d (%s)", rec.Code, rec.Body.String())
 	}
 	*clock = clock.Add(time.Hour)
 	rec := register(t, h, "token-do-a", registrationBody("terceiro", map[string]string{
 		"token_envio": "token-envio-ROTACIONADO",
 	}))
 	if rec.Code != http.StatusOK {
-		t.Fatalf("recadastro: status %d (%s)", rec.Code, rec.Body.String())
+		t.Fatalf("re-registration: status %d (%s)", rec.Code, rec.Body.String())
 	}
 
 	i, err := store.FindInstance("terceiro")
@@ -517,6 +517,6 @@ func TestRegistrationAcceptsREREGISTRATIONOverwriting(t *testing.T) {
 		t.Fatalf("FindInstance: %v", err)
 	}
 	if i.SendToken != "token-envio-ROTACIONADO" {
-		t.Errorf("token_envio = %q — o recadastro nao sobrescreveu", i.SendToken)
+		t.Errorf("token_envio = %q — the re-registration did not overwrite", i.SendToken)
 	}
 }

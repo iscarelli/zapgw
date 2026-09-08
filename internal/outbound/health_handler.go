@@ -103,7 +103,7 @@ func (h *HealthHandler) health(w http.ResponseWriter, r *http.Request) {
 		}
 		// The only log in this file: database down isn't probe noise, and
 		// without this line the gateway would go silent about its own failure.
-		log.Printf("zapgw: erro de store ao autenticar no probe de saude: %v", err)
+		log.Printf("zapgw: store error while authenticating on the health probe: %v", err)
 		respondError(w, http.StatusServiceUnavailable, "retryable", "indisponivel", 0)
 		return
 	}
@@ -124,7 +124,7 @@ func (h *HealthHandler) health(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusNotFound, "config", "instancia desconhecida", 0)
 			return
 		}
-		log.Printf("zapgw: erro de store ao buscar instancia %q no probe de saude: %v", slug, err)
+		log.Printf("zapgw: store error while looking up instance %q on the health probe: %v", slug, err)
 		respondError(w, http.StatusServiceUnavailable, "retryable", "indisponivel", 0)
 		return
 	}
@@ -191,7 +191,7 @@ func (h *HealthHandler) health(w http.ResponseWriter, r *http.Request) {
 // channel fit to send right now? —, and a `502` here versus a `503` there
 // forces the monitor to learn the entire taxonomy to decide "red or green".
 // The class travels in the body, like the rest of the gateway, and it's the
-// class that says whether the fix is waiting (`retentavel`) or calling a
+// class that says whether the fix is waiting (`retryable`) or calling a
 // human (`config`).
 //
 // The message NEVER carries the token nor Meta's raw body: `em.Message`

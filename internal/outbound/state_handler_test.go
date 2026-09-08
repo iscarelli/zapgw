@@ -142,11 +142,11 @@ type testStateResponse struct {
 func readState(t *testing.T, rec *httptest.ResponseRecorder) testStateResponse {
 	t.Helper()
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, quero 200; corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, want 200; body = %s", rec.Code, rec.Body.String())
 	}
 	var r testStateResponse
 	if err := json.Unmarshal(rec.Body.Bytes(), &r); err != nil {
-		t.Fatalf("corpo nao desserializa: %v (corpo = %q)", err, rec.Body.String())
+		t.Fatalf("body does not deserialize: %v (body = %q)", err, rec.Body.String())
 	}
 	return r
 }
@@ -176,17 +176,17 @@ func TestStateShowsEveryKeyOfTheVocabulary(t *testing.T) {
 
 	r := readState(t, askState(t, h, "token-do-a", "lojinha"))
 	if len(r.Counters) != len(config.KeysInDisplayOrder) {
-		t.Errorf("a resposta tem %d chaves, o vocabulario tem %d",
+		t.Errorf("the response has %d keys, the vocabulary has %d",
 			len(r.Counters), len(config.KeysInDisplayOrder))
 	}
 	for i, key := range config.KeysInDisplayOrder {
 		c, has := r.Counters[key]
 		if !has {
-			t.Errorf("chave %q do vocabulario NAO apareceu na resposta", key)
+			t.Errorf("key %q of the vocabulary did NOT appear in the response", key)
 			continue
 		}
 		if c.Today != i+1 || c.Last7Days != i+1 {
-			t.Errorf("chave %q = (hoje=%d, 7dias=%d), quero (%d, %d)", key, c.Today, c.Last7Days, i+1, i+1)
+			t.Errorf("key %q = (hoje=%d, 7dias=%d), want (%d, %d)", key, c.Today, c.Last7Days, i+1, i+1)
 		}
 	}
 }
@@ -203,10 +203,10 @@ func TestStateWithoutTrafficAnswersZerosNotError(t *testing.T) {
 	for _, key := range config.KeysInDisplayOrder {
 		c := r.Counters[key]
 		if c.Today != 0 || c.Last7Days != 0 {
-			t.Errorf("chave %q = (hoje=%d, 7dias=%d), quero (0,0)", key, c.Today, c.Last7Days)
+			t.Errorf("key %q = (hoje=%d, 7dias=%d), want (0,0)", key, c.Today, c.Last7Days)
 		}
 		if c.LastAt != nil {
-			t.Errorf("chave %q tem carimbo %q sem nunca ter acontecido — `null` e a resposta certa",
+			t.Errorf("key %q has timestamp %q without it ever having happened — `null` is the right answer",
 				key, *c.LastAt)
 		}
 	}
@@ -227,15 +227,15 @@ func TestStateStampsTheLastEventPerKey(t *testing.T) {
 	r := readState(t, askState(t, h, "token-do-a", "lojinha"))
 	c := r.Counters[config.CounterReceived]
 	if c.LastAt == nil {
-		t.Fatalf("recebidas sem carimbo depois de um evento gravado")
+		t.Fatalf("received with no timestamp after a recorded event")
 	}
 	if want := when.Format(time.RFC3339); *c.LastAt != want {
-		t.Errorf("ultimo_em = %q, quero %q", *c.LastAt, want)
+		t.Errorf("last_at = %q, want %q", *c.LastAt, want)
 	}
 	// And the NEIGHBORING key remains null: a timestamp that leaked into every
 	// key would answer "yes" to any question and would be useless for alarming.
 	if v := r.Counters[config.CounterSent].LastAt; v != nil {
-		t.Errorf("enviadas ganhou carimbo %q sem nunca ter acontecido", *v)
+		t.Errorf("sent gained timestamp %q without it ever having happened", *v)
 	}
 }
 
@@ -254,18 +254,18 @@ func TestStateHasSevenDaySeriesWithEmptyDaysZeroed(t *testing.T) {
 
 	r := readState(t, askState(t, h, "token-do-a", "lojinha"))
 	if len(r.Series7Days) != 7 {
-		t.Fatalf("serie_7_dias tem %d entradas, quero 7", len(r.Series7Days))
+		t.Fatalf("last_7_days_series has %d entries, want 7", len(r.Series7Days))
 	}
 	// From OLDEST to newest, no gap: consecutive days.
 	for i, d := range r.Series7Days {
 		want := now.AddDate(0, 0, i-6).Format("2006-01-02")
 		if d.Day != want {
-			t.Errorf("serie_7_dias[%d].dia = %q, quero %q (do mais velho para o mais novo)", i, d.Day, want)
+			t.Errorf("last_7_days_series[%d].day = %q, want %q (oldest to newest)", i, d.Day, want)
 		}
 		// EVERY key of the vocabulary on EVERY day — the same single source.
 		for _, key := range config.KeysInDisplayOrder {
 			if _, has := d.Counters[key]; !has {
-				t.Errorf("serie_7_dias[%d] (%s) nao tem a chave %q do vocabulario", i, d.Day, key)
+				t.Errorf("last_7_days_series[%d] (%s) does not have the vocabulary key %q", i, d.Day, key)
 			}
 		}
 	}
@@ -276,16 +276,16 @@ func TestStateHasSevenDaySeriesWithEmptyDaysZeroed(t *testing.T) {
 		n := d.Counters[config.CounterReceived]
 		sum += n
 		if d.Day == eventDay && n != 1 {
-			t.Errorf("dia %s: recebidas = %d, quero 1", d.Day, n)
+			t.Errorf("day %s: received = %d, want 1", d.Day, n)
 		}
 		if d.Day != eventDay && n != 0 {
-			t.Errorf("dia %s: recebidas = %d, quero 0", d.Day, n)
+			t.Errorf("day %s: received = %d, want 0", d.Day, n)
 		}
 	}
 	// The series SUMS to the total: if the two counts diverge, one of the two
 	// is lying and the consumer has no way to know which.
 	if want := r.Counters[config.CounterReceived].Last7Days; sum != want {
-		t.Errorf("soma da serie = %d, ultimos_7_dias = %d — as duas contas tem de bater", sum, want)
+		t.Errorf("sum of the series = %d, last_7_days = %d — both counts have to match", sum, want)
 	}
 }
 
@@ -299,18 +299,18 @@ func TestStateSaysWhetherTheInstanceIsPaused(t *testing.T) {
 
 	r := readState(t, askState(t, h, "token-do-a", "lojinha"))
 	if !r.Paused {
-		t.Errorf("pausada = false numa instancia que nunca foi ativada")
+		t.Errorf("paused = false on an instance that was never activated")
 	}
 	// The word is the SAME as `zapgw estado` and `zapgw instancia listar`
 	// (config.StateOf): two spellings would make a `grep pausada` lie.
 	if r.State != "pausada" {
-		t.Errorf("estado = %q, quero %q", r.State, "pausada")
+		t.Errorf("state = %q, want %q", r.State, "pausada")
 	}
 
 	hActive, _, _ := testState(t, m, "lojinha")
 	rActive := readState(t, askState(t, hActive, "token-do-a", "lojinha"))
 	if rActive.Paused || rActive.State != "ativa" {
-		t.Errorf("instancia ATIVA respondeu (pausada=%v, estado=%q)", rActive.Paused, rActive.State)
+		t.Errorf("ACTIVE instance answered (paused=%v, state=%q)", rActive.Paused, rActive.State)
 	}
 }
 
@@ -319,7 +319,7 @@ func TestStateBringsTheBinaryVersion(t *testing.T) {
 	h, _, _ := testState(t, m, "lojinha")
 
 	if r := readState(t, askState(t, h, "token-do-a", "lojinha")); r.Version != testVersion {
-		t.Errorf("versao = %q, quero %q", r.Version, testVersion)
+		t.Errorf("version = %q, want %q", r.Version, testVersion)
 	}
 }
 
@@ -331,24 +331,24 @@ func TestStateAnswersFromCacheWithoutCallingMeta(t *testing.T) {
 	m := tokenAcceptingMeta()
 	h, _, watchdog := testState(t, m, "lojinha")
 
-	// Before any tick: `desconhecido`, and ZERO calls.
+	// Before any tick: `unknown`, and ZERO calls.
 	r := readState(t, askState(t, h, "token-do-a", "lojinha"))
 	if r.MetaToken.Verdict != VerdictUnknown {
-		t.Errorf("veredito sem medicao = %q, quero %q", r.MetaToken.Verdict, VerdictUnknown)
+		t.Errorf("verdict without measurement = %q, want %q", r.MetaToken.Verdict, VerdictUnknown)
 	}
 	if n := m.gets.Load(); n != 0 {
-		t.Fatalf("a leitura falou %d vez(es) com a Meta — ela tem de responder SO do cache", n)
+		t.Fatalf("the read talked to Meta %d time(s) — it has to answer ONLY from cache", n)
 	}
 
 	// The timer measures once; ten reads afterward still call no one.
 	watchdog.Check(context.Background())
 	for range 10 {
 		if r := readState(t, askState(t, h, "token-do-a", "lojinha")); r.MetaToken.Verdict != VerdictOK {
-			t.Fatalf("veredito = %q, quero %q depois de um tique da vigia", r.MetaToken.Verdict, VerdictOK)
+			t.Fatalf("verdict = %q, want %q after a watchdog tick", r.MetaToken.Verdict, VerdictOK)
 		}
 	}
 	if n := m.gets.Load(); n != 1 {
-		t.Errorf("chamadas a Graph API = %d, quero 1 (SO o tique da vigia; a leitura nunca chama)", n)
+		t.Errorf("Graph API calls = %d, want 1 (ONLY the watchdog's tick; the read never calls)", n)
 	}
 }
 
@@ -368,16 +368,16 @@ func TestStateRefusesInstanceNotOwnedByConsumer(t *testing.T) {
 
 	rec := askState(t, h, "token-do-a", "clinica")
 	if rec.Code != http.StatusForbidden {
-		t.Fatalf("status = %d, quero 403; corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, want 403; body = %s", rec.Code, rec.Body.String())
 	}
 	// And the rejection cannot leak ANYTHING about someone else's instance.
 	if body := rec.Body.String(); len(body) > 0 {
 		var e errorResponse
 		if err := json.Unmarshal(rec.Body.Bytes(), &e); err != nil {
-			t.Fatalf("corpo de erro nao desserializa: %v (corpo = %q)", err, body)
+			t.Fatalf("error body does not deserialize: %v (body = %q)", err, body)
 		}
 		if e.Error.Class != "config" {
-			t.Errorf("classe = %q, quero \"config\" (a mesma do envio)", e.Error.Class)
+			t.Errorf("class = %q, want \"config\" (the same as sending)", e.Error.Class)
 		}
 	}
 }
@@ -387,10 +387,10 @@ func TestStateRefusesWithoutTokenAndWithInvalidToken(t *testing.T) {
 	h, _, _ := testState(t, m, "lojinha")
 
 	if rec := askState(t, h, "", "lojinha"); rec.Code != http.StatusUnauthorized {
-		t.Errorf("sem token: status = %d, quero 401", rec.Code)
+		t.Errorf("no token: status = %d, want 401", rec.Code)
 	}
 	if rec := askState(t, h, "token-errado", "lojinha"); rec.Code != http.StatusUnauthorized {
-		t.Errorf("token errado: status = %d, quero 401", rec.Code)
+		t.Errorf("wrong token: status = %d, want 401", rec.Code)
 	}
 }
 
@@ -404,7 +404,7 @@ func TestStateWithoutInstanceParameterAnswers400(t *testing.T) {
 
 	rec := askState(t, h, "token-do-a", "")
 	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("status = %d, quero 400; corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, want 400; body = %s", rec.Code, rec.Body.String())
 	}
 }
 
@@ -428,20 +428,20 @@ func TestStateDeliversTheRequestedThirtyDayWindow(t *testing.T) {
 
 	r := readState(t, askStateWithWindow(t, h, "token-do-a", "lojinha", "30"))
 	if len(r.DailySeries) != 30 {
-		t.Fatalf("serie_diaria tem %d entradas, quero 30", len(r.DailySeries))
+		t.Fatalf("daily_series has %d entries, want 30", len(r.DailySeries))
 	}
 	// From OLDEST to newest, no gap — the same shape as the short series.
 	for i, d := range r.DailySeries {
 		want := now.AddDate(0, 0, i-29).Format("2006-01-02")
 		if d.DayUTC != want {
-			t.Fatalf("serie_diaria[%d].dia_utc = %q, quero %q", i, d.DayUTC, want)
+			t.Fatalf("daily_series[%d].day_utc = %q, want %q", i, d.DayUTC, want)
 		}
 		if d.Day != d.DayUTC {
-			t.Errorf("serie_diaria[%d]: dia = %q e dia_utc = %q — os dois sao o MESMO dado", i, d.Day, d.DayUTC)
+			t.Errorf("daily_series[%d]: day = %q and day_utc = %q — both are the SAME data", i, d.Day, d.DayUTC)
 		}
 		for _, key := range config.KeysInDisplayOrder {
 			if _, has := d.Counters[key]; !has {
-				t.Errorf("serie_diaria[%d] (%s) nao tem a chave %q do vocabulario", i, d.DayUTC, key)
+				t.Errorf("daily_series[%d] (%s) does not have the vocabulary key %q", i, d.DayUTC, key)
 			}
 		}
 	}
@@ -454,15 +454,15 @@ func TestStateDeliversTheRequestedThirtyDayWindow(t *testing.T) {
 		n := d.Counters[config.CounterSent]
 		sum += n
 		if d.DayUTC == eventDay && n != 1 {
-			t.Errorf("dia %s: enviadas = %d, quero 1", d.DayUTC, n)
+			t.Errorf("day %s: sent = %d, want 1", d.DayUTC, n)
 		}
 	}
 	if sum != 1 {
-		t.Errorf("enviadas na serie de 30 dias = %d, quero 1", sum)
+		t.Errorf("sent in the 30-day series = %d, want 1", sum)
 	}
 	// And it remains OUTSIDE the 7-day window, which did not change meaning.
 	if v := r.Counters[config.CounterSent].Last7Days; v != 0 {
-		t.Errorf("ultimos_7_dias = %d para um evento de 25 dias atras — a janela curta nao pode ter crescido junto", v)
+		t.Errorf("last_7_days = %d for an event from 25 days ago — the short window cannot have grown along with it", v)
 	}
 }
 
@@ -487,18 +487,18 @@ func TestSeries7DaysStillHas7EntriesAndIsTheSuffixOfTheDailySeries(t *testing.T)
 
 	r := readState(t, askStateWithWindow(t, h, "token-do-a", "lojinha", "30"))
 	if len(r.Series7Days) != config.ShortSeriesDays {
-		t.Fatalf("serie_7_dias tem %d entradas com serie_dias=30, quero %d — ela e contrato vivo de dois consumidores",
+		t.Fatalf("last_7_days_series has %d entries with serie_dias=30, want %d — it is live contract for two consumers",
 			len(r.Series7Days), config.ShortSeriesDays)
 	}
 	suffix := r.DailySeries[len(r.DailySeries)-config.ShortSeriesDays:]
 	for i, d := range r.Series7Days {
 		if d.DayUTC != suffix[i].DayUTC {
-			t.Fatalf("serie_7_dias[%d] e o dia %q, mas o sufixo da serie_diaria e %q — as duas saem da MESMA leitura",
+			t.Fatalf("last_7_days_series[%d] is day %q, but the daily_series suffix is %q — both come from the SAME read",
 				i, d.DayUTC, suffix[i].DayUTC)
 		}
 		for _, key := range config.KeysInDisplayOrder {
 			if d.Counters[key] != suffix[i].Counters[key] {
-				t.Errorf("dia %s, chave %q: serie_7_dias diz %d e serie_diaria diz %d — duas contas do mesmo dia",
+				t.Errorf("day %s, key %q: last_7_days_series says %d and daily_series says %d — two counts of the same day",
 					d.DayUTC, key, d.Counters[key], suffix[i].Counters[key])
 			}
 		}
@@ -511,7 +511,7 @@ func TestSeries7DaysStillHas7EntriesAndIsTheSuffixOfTheDailySeries(t *testing.T)
 		sum += d.Counters[config.CounterReceived]
 	}
 	if want := r.Counters[config.CounterReceived].Last7Days; sum != want {
-		t.Errorf("soma da serie_7_dias = %d, ultimos_7_dias = %d — as duas contas tem de bater", sum, want)
+		t.Errorf("sum of last_7_days_series = %d, last_7_days = %d — both counts have to match", sum, want)
 	}
 }
 
@@ -524,7 +524,7 @@ func TestStateWithoutRequestedWindowDeliversSevenDaysInBothSeries(t *testing.T) 
 
 	r := readState(t, askState(t, h, "token-do-a", "lojinha"))
 	if len(r.Series7Days) != config.ShortSeriesDays || len(r.DailySeries) != config.ShortSeriesDays {
-		t.Fatalf("sem serie_dias: serie_7_dias tem %d e serie_diaria tem %d entradas, quero %d nas duas",
+		t.Fatalf("missing serie_dias: last_7_days_series has %d and daily_series has %d entries, want %d in both",
 			len(r.Series7Days), len(r.DailySeries), config.ShortSeriesDays)
 	}
 }
@@ -554,18 +554,18 @@ func TestStateRefusesWindowLargerThanRetentionSayingTheTermInForce(t *testing.T)
 		h, _, _ := testStateWithRetention(t, m, c.retention, "lojinha")
 		rec := askStateWithWindow(t, h, "token-do-a", "lojinha", strconv.Itoa(c.request))
 		if rec.Code != http.StatusBadRequest {
-			t.Fatalf("retencao=%d, serie_dias=%d: status = %d, quero 400 — serie curta em silencio e pior que erro; corpo = %s",
+			t.Fatalf("retention=%d, serie_dias=%d: status = %d, want 400 — a silently short series is worse than an error; body = %s",
 				c.retention, c.request, rec.Code, rec.Body.String())
 		}
 		var e errorResponse
 		if err := json.Unmarshal(rec.Body.Bytes(), &e); err != nil {
-			t.Fatalf("corpo de erro nao desserializa: %v (corpo = %q)", err, rec.Body.String())
+			t.Fatalf("error body does not deserialize: %v (body = %q)", err, rec.Body.String())
 		}
 		if e.Error.Class != "permanent" {
-			t.Errorf("classe = %q, quero \"permanent\" — repetir o mesmo pedido nao vai funcionar", e.Error.Class)
+			t.Errorf("class = %q, want \"permanent\" — retrying the same request will not work", e.Error.Class)
 		}
 		if !strings.Contains(e.Error.Message, strconv.Itoa(c.retention)) {
-			t.Errorf("a mensagem nao diz o prazo em vigor (%d dias): %q — sem o numero, quem le nao sabe o que pedir",
+			t.Errorf("the message does not say the deadline in effect (%d days): %q — without the number, whoever reads it does not know what to ask for",
 				c.retention, e.Error.Message)
 		}
 	}
@@ -582,7 +582,7 @@ func TestStateRefusesWindowThatIsNotANumberOfDays(t *testing.T) {
 	for _, raw := range []string{"abc", "0", "-3", "7,5", "30d"} {
 		rec := askStateWithWindow(t, h, "token-do-a", "lojinha", raw)
 		if rec.Code != http.StatusBadRequest {
-			t.Errorf("serie_dias=%q: status = %d, quero 400; corpo = %s", raw, rec.Code, rec.Body.String())
+			t.Errorf("serie_dias=%q: status = %d, want 400; body = %s", raw, rec.Code, rec.Body.String())
 		}
 	}
 }
@@ -596,7 +596,7 @@ func TestStateChecksTheBindingBeforeTheWindow(t *testing.T) {
 
 	rec := askStateWithWindow(t, h, "token-do-a", "clinica", "9999")
 	if rec.Code != http.StatusForbidden {
-		t.Fatalf("status = %d, quero 403 (o vinculo decide antes do parametro); corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, want 403 (the link decides before the parameter); body = %s", rec.Code, rec.Body.String())
 	}
 }
 
@@ -614,13 +614,13 @@ func TestStateWithoutDeliverySaysNeverObservedAndInventsNoDate(t *testing.T) {
 
 	r := readState(t, askState(t, h, "token-do-a", "lojinha"))
 	if r.CallbackCertificate.State != CertNeverObserved {
-		t.Errorf("estado = %q, quero %q", r.CallbackCertificate.State, CertNeverObserved)
+		t.Errorf("state = %q, want %q", r.CallbackCertificate.State, CertNeverObserved)
 	}
 	if v := r.CallbackCertificate.ExpiresAt; v != nil {
-		t.Errorf("expira_em = %q numa instancia que nunca entregou — data inventada e pior que campo vazio", *v)
+		t.Errorf("expires_at = %q on an instance that never delivered — a made-up date is worse than an empty field", *v)
 	}
 	if v := r.CallbackCertificate.ObservedAt; v != nil {
-		t.Errorf("observado_em = %q sem nenhuma observacao ter acontecido", *v)
+		t.Errorf("observed_at = %q without any observation having happened", *v)
 	}
 }
 
@@ -639,24 +639,24 @@ func TestStatePublishesBothCertificateStamps(t *testing.T) {
 
 	r := readState(t, askState(t, h, "token-do-a", "lojinha"))
 	if r.CallbackCertificate.State != CertObserved {
-		t.Fatalf("estado = %q, quero %q", r.CallbackCertificate.State, CertObserved)
+		t.Fatalf("state = %q, want %q", r.CallbackCertificate.State, CertObserved)
 	}
 	if r.CallbackCertificate.ExpiresAt == nil || r.CallbackCertificate.ObservedAt == nil {
-		t.Fatalf("estado %q com carimbo nulo: %+v — os dois andam juntos ou nao valem nada",
+		t.Fatalf("state %q with a null timestamp: %+v — the two travel together or are worthless",
 			CertObserved, r.CallbackCertificate)
 	}
 	if want := expires.Format(time.RFC3339); *r.CallbackCertificate.ExpiresAt != want {
-		t.Errorf("expira_em = %q, quero %q", *r.CallbackCertificate.ExpiresAt, want)
+		t.Errorf("expires_at = %q, want %q", *r.CallbackCertificate.ExpiresAt, want)
 	}
 	if want := observed.Format(time.RFC3339); *r.CallbackCertificate.ObservedAt != want {
-		t.Errorf("observado_em = %q, quero %q — o instante da ENTREGA, nao o de agora",
+		t.Errorf("observed_at = %q, want %q — the instant of DELIVERY, not the current one",
 			*r.CallbackCertificate.ObservedAt, want)
 	}
 	// And `gerado_em` must NOT have turned into the observation timestamp: a
 	// certificate seen two hours ago would stay eternally "just observed" and
 	// the field would stop aging, which is the one useful thing it does.
 	if *r.CallbackCertificate.ObservedAt == r.GeneratedAt {
-		t.Errorf("observado_em = gerado_em (%q) — o carimbo esta sendo lido do relogio da resposta", r.GeneratedAt)
+		t.Errorf("observed_at = generated_at (%q) — the timestamp is being read off the response's clock", r.GeneratedAt)
 	}
 }
 
@@ -672,14 +672,14 @@ func TestStateDoesNotMixTheCertificateOfAnotherInstance(t *testing.T) {
 
 	r := readState(t, askState(t, h, "token-do-a", "lojinha"))
 	if r.CallbackCertificate.State != CertNeverObserved {
-		t.Errorf("lojinha respondeu %q; a observacao gravada era da clinica (%+v)",
+		t.Errorf("lojinha answered %q; the recorded observation was clinica's (%+v)",
 			r.CallbackCertificate.State, r.CallbackCertificate)
 	}
 }
 
 // Every handler in this project serves each request in a goroutine over the
 // SAME handler; without a concurrent test, -race is theater
-// (docs/ARMADILHAS.md, "Go / concorrência"). Here the watchdog WRITES at the same
+// (docs/ARMADILHAS.md, "Go / concurrency"). Here the watchdog WRITES at the same
 // time, which is exactly what happens in production when the timer ticks with
 // a panel open.
 func TestStateConcurrentWithTheWatchdogMeasuring(t *testing.T) {
@@ -704,7 +704,7 @@ func TestStateConcurrentWithTheWatchdogMeasuring(t *testing.T) {
 
 	for i, c := range codes {
 		if c != http.StatusOK {
-			t.Fatalf("leitura %d: status = %d, quero 200", i, c)
+			t.Fatalf("read %d: status = %d, want 200", i, c)
 		}
 	}
 }

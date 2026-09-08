@@ -22,7 +22,7 @@ type alwaysFailingOutboundTransitStore struct{ calls int }
 
 func (f *alwaysFailingOutboundTransitStore) WriteTransit(config.TransitRecord, time.Time) error {
 	f.calls++
-	return errors.New("alwaysFailingOutboundTransitStore: falha proposital de teste")
+	return errors.New("alwaysFailingOutboundTransitStore: deliberate test failure")
 }
 
 // TestOutboundTransitDoesNotStoreTheIdempotencyKeyInTheClear is the FIX after review
@@ -41,7 +41,7 @@ func (f *alwaysFailingOutboundTransitStore) WriteTransit(config.TransitRecord, t
 // inside it (the "phone number" in the middle of the string, deliberately
 // resembling real data) must still NEVER appear in plaintext in any column.
 func TestOutboundTransitDoesNotStoreTheIdempotencyKeyInTheClear(t *testing.T) {
-	const sentinelKey = "SENTINELA-NAO-PODE-APARECER-5532999990000"
+	const sentinelKey = "SENTINEL-MUST-NOT-APPEAR-5532999990000"
 
 	srv := acceptingMeta("wamid.SENTINELA")
 	defer srv.Close()
@@ -53,18 +53,18 @@ func TestOutboundTransitDoesNotStoreTheIdempotencyKeyInTheClear(t *testing.T) {
 
 	rec := ask(t, h, "token-do-a", sentinelKey, textBody)
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, corpo = %s — quero 200", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, body = %s — want 200", rec.Code, rec.Body.String())
 	}
 
 	rows, err := store.DB().Query(`SELECT * FROM transito WHERE slug = 'lojinha'`)
 	if err != nil {
-		t.Fatalf("consultar transito: %v", err)
+		t.Fatalf("query transit: %v", err)
 	}
 	defer rows.Close()
 
 	columns, err := rows.Columns()
 	if err != nil {
-		t.Fatalf("listar colunas: %v", err)
+		t.Fatalf("list columns: %v", err)
 	}
 
 	nRows := 0
@@ -79,25 +79,25 @@ func TestOutboundTransitDoesNotStoreTheIdempotencyKeyInTheClear(t *testing.T) {
 			pointers[i] = &values[i]
 		}
 		if err := rows.Scan(pointers...); err != nil {
-			t.Fatalf("ler linha de transito: %v", err)
+			t.Fatalf("read transit row: %v", err)
 		}
 		for i, v := range values {
 			text := fmt.Sprintf("%v", v)
 			if strings.Contains(text, sentinelKey) {
-				t.Fatalf("coluna %q da linha de transito contem a Idempotency-Key em claro — vazou para o log de transito",
+				t.Fatalf("column %q of the transit row contains the Idempotency-Key in the clear — it leaked into the transit log",
 					columns[i])
 			}
 		}
 	}
 	if err := rows.Err(); err != nil {
-		t.Fatalf("iterar transito: %v", err)
+		t.Fatalf("iterate transit: %v", err)
 	}
 	if nRows == 0 {
-		t.Fatal("nenhuma linha de transito foi gravada — o teste nao exercitou o caminho que ele prova")
+		t.Fatal("no transit row was written — the test did not exercise the path it proves")
 	}
 }
 
-// TestHandlerFalhaDeTransitoNaoMudaOStatusDoEnvio is T-091's Verify (c) on
+// TestHandlerTransitFailureDoesNotChangeTheStatusOfASuccessfulSend is T-091's Verify (c) on
 // the OUTBOUND side: on the SUCCESS path (Meta accepted the send), a
 // failure writing the transit log cannot prevent the 200 nor the
 // wa_message_id from reaching the consumer.
@@ -113,11 +113,11 @@ func TestHandlerTransitFailureDoesNotChangeTheStatusOfASuccessfulSend(t *testing
 
 	rec := ask(t, h, "token-do-a", "k-transito-falha-sucesso", textBody)
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, corpo = %s — falha do TRANSITO nao pode mudar a resposta do ENVIO",
+		t.Fatalf("status = %d, body = %s — a TRANSIT failure cannot change the SEND response",
 			rec.Code, rec.Body.String())
 	}
 	if fake.calls == 0 {
-		t.Fatal("o transito que sempre erra nunca foi chamado — o teste nao exercitou o caminho que ele prova")
+		t.Fatal("the always-failing transit was never called — the test did not exercise the path it proves")
 	}
 }
 
@@ -141,10 +141,10 @@ func TestHandlerTransitFailureDoesNotChangeTheStatusOfAFailedSend(t *testing.T) 
 
 	rec := ask(t, h, "token-do-a", "k-transito-falha-erro", textBody)
 	if rec.Code != http.StatusBadGateway {
-		t.Fatalf("status = %d, corpo = %s — quero 502 (credencial recusada), inalterado pela falha do TRANSITO",
+		t.Fatalf("status = %d, body = %s — want 502 (credential refused), unchanged by the TRANSIT failure",
 			rec.Code, rec.Body.String())
 	}
 	if fake.calls == 0 {
-		t.Fatal("o transito que sempre erra nunca foi chamado — o teste nao exercitou o caminho que ele prova")
+		t.Fatal("the always-failing transit was never called — the test did not exercise the path it proves")
 	}
 }

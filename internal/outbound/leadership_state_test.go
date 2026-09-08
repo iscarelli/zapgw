@@ -17,24 +17,24 @@ import (
 
 func TestLeadershipInStateDisarmedInventsNoHolder(t *testing.T) {
 	var l *Leadership // nil: the caller that didn't build anything
-	for name, guard := range map[string]*Leadership{"nil": l, "vazia": {}} {
+	for name, guard := range map[string]*Leadership{"nil": l, "empty": {}} {
 		t.Run(name, func(t *testing.T) {
 			b := guard.inState()
 			if b.Armed {
-				t.Error("armada = true sem arquivo configurado")
+				t.Error("armada = true without a configured file")
 			}
 			if b.State != NotApplicable {
-				t.Errorf("estado = %q, queria %q", b.State, NotApplicable)
+				t.Errorf("state = %q, wanted %q", b.State, NotApplicable)
 			}
 			// 🔴 The point: `titular` has to be NULL, never true. A `true`
 			// would make a single node look like it won an election that
 			// never happened — and a dashboard summing up "holders" would
 			// count an installation with no peer.
 			if b.Holder != nil {
-				t.Errorf("titular = %v, queria null: guarda desarmada nao venceu eleicao nenhuma", *b.Holder)
+				t.Errorf("titular = %v, wanted null: a disarmed guard did not win any election", *b.Holder)
 			}
 			if b.Reason != nil {
-				t.Errorf("motivo = %q, queria null quando nao ha recusa", *b.Reason)
+				t.Errorf("reason = %q, wanted null when there is no refusal", *b.Reason)
 			}
 		})
 	}
@@ -45,16 +45,16 @@ func TestLeadershipInStateArmedWithFreshLeaseSaysHolder(t *testing.T) {
 	b := l.inState()
 
 	if !b.Armed {
-		t.Error("armada = false com arquivo configurado")
+		t.Error("armada = false with a configured file")
 	}
 	if b.State != CertObserved {
-		t.Errorf("estado = %q, queria %q — houve medicao de verdade", b.State, CertObserved)
+		t.Errorf("state = %q, wanted %q — there was a real measurement", b.State, CertObserved)
 	}
 	if b.Holder == nil || !*b.Holder {
-		t.Fatalf("titular = %v, queria true", b.Holder)
+		t.Fatalf("titular = %v, wanted true", b.Holder)
 	}
 	if b.Reason != nil {
-		t.Errorf("motivo = %q, mas nao houve recusa para explicar", *b.Reason)
+		t.Errorf("reason = %q, but there was no refusal to explain", *b.Reason)
 	}
 }
 
@@ -63,13 +63,13 @@ func TestLeadershipInStateArmedWithStaleLeaseSaysWhyNot(t *testing.T) {
 	b := l.inState()
 
 	if !b.Armed {
-		t.Error("armada = false com arquivo configurado")
+		t.Error("armada = false with a configured file")
 	}
 	if b.Holder == nil || *b.Holder {
-		t.Fatalf("titular = %v, queria false: a concessao esta velha", b.Holder)
+		t.Fatalf("titular = %v, wanted false: the lease is stale", b.Holder)
 	}
 	if b.Reason == nil || *b.Reason == "" {
-		t.Fatal("motivo vazio — quem opera precisa saber POR QUE este no nao esta enviando, senao reinicia o servico procurando defeito que nao existe")
+		t.Fatal("empty reason — whoever operates it needs to know WHY this node is not sending, otherwise they restart the service looking for a defect that does not exist")
 	}
 }
 
@@ -78,13 +78,13 @@ func TestLeadershipInStateArmedWithStaleLeaseSaysWhyNot(t *testing.T) {
 // false in both), but only the first means the machine is BLIND.
 func TestLeadershipInStateDistinguishesBlindFromNotHolder(t *testing.T) {
 	old := (&Leadership{file: leaseFile(t, 90*time.Second), validity: 15 * time.Second}).inState()
-	blind := (&Leadership{file: filepath.Join(t.TempDir(), "nao-existe"), validity: 15 * time.Second}).inState()
+	blind := (&Leadership{file: filepath.Join(t.TempDir(), "does-not-exist"), validity: 15 * time.Second}).inState()
 
 	if old.Reason == nil || blind.Reason == nil {
-		t.Fatal("as duas recusas tem de trazer motivo")
+		t.Fatal("both refusals have to carry a reason")
 	}
 	if *old.Reason == *blind.Reason {
-		t.Errorf("os dois motivos sao identicos (%q) — 'nao consegui verificar' e 'nao sou o titular' viram a mesma coisa, e a primeira e a que diz que a maquina esta cega", *old.Reason)
+		t.Errorf("the two reasons are identical (%q) — 'nao consegui verificar' and 'nao sou o titular' become the same thing, and the first one is the one that says the machine is blind", *old.Reason)
 	}
 }
 
@@ -101,14 +101,14 @@ func TestLeadershipInStateSerializesWithTheContractNames(t *testing.T) {
 	}
 	for _, field := range []string{"armada", "state", "titular", "reason"} {
 		if _, has := m[field]; !has {
-			t.Errorf("o campo %q sumiu do JSON — campo AUSENTE obriga o consumidor a adivinhar; nulo ele consegue ler", field)
+			t.Errorf("field %q vanished from the JSON — an ABSENT field forces the consumer to guess; a null one it can read", field)
 		}
 	}
 	if m["titular"] != nil {
-		t.Errorf("titular = %v no JSON, queria null com a guarda desarmada", m["titular"])
+		t.Errorf("titular = %v in the JSON, wanted null with a disarmed guard", m["titular"])
 	}
 	if m["armada"] != false {
-		t.Errorf("armada = %v, queria false", m["armada"])
+		t.Errorf("armada = %v, wanted false", m["armada"])
 	}
 }
 
@@ -120,19 +120,19 @@ func TestLeadershipInStateDoesNotInterfereWithTheGuard(t *testing.T) {
 
 	before, err := os.Stat(path)
 	if err != nil {
-		t.Fatalf("stat antes: %v", err)
+		t.Fatalf("stat before: %v", err)
 	}
 	for i := 0; i < 50; i++ {
 		_ = l.inState()
 	}
 	after, err := os.Stat(path)
 	if err != nil {
-		t.Fatalf("stat depois: %v", err)
+		t.Fatalf("stat after: %v", err)
 	}
 	if !before.ModTime().Equal(after.ModTime()) {
-		t.Error("consultar o estado MEXEU no arquivo de concessao — o painel estaria renovando a lideranca, que e' exatamente o titular falso que a guarda existe para barrar")
+		t.Error("querying the state TOUCHED the lease file — the dashboard would be renewing leadership, which is exactly the false holder the guard exists to block")
 	}
 	if ok, reason := l.Holder(); !ok {
-		t.Errorf("depois de 50 consultas ao estado a guarda passou a recusar: %s", reason)
+		t.Errorf("after 50 state queries the guard started refusing: %s", reason)
 	}
 }

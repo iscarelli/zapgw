@@ -51,28 +51,28 @@ func TestProfileReadBuildsTheRightPathAndPassesThroughWhatMetaReturned(t *testin
 	rec := readProfile(t, h, "token-do-a", "lojinha")
 
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, quero 200; corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, want 200; body = %s", rec.Code, rec.Body.String())
 	}
 	if seenPath != "/P-lojinha/whatsapp_business_profile" {
-		t.Fatalf("caminho = %q, quero /P-lojinha/whatsapp_business_profile (profileNode usa PhoneNumberID hoje)",
+		t.Fatalf("path = %q, want /P-lojinha/whatsapp_business_profile (profileNode uses PhoneNumberID today)",
 			seenPath)
 	}
 
 	var resp profileResponse
 	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
-		t.Fatalf("corpo nao desserializa: %v (corpo = %q)", err, rec.Body.String())
+		t.Fatalf("body does not deserialize: %v (body = %q)", err, rec.Body.String())
 	}
 	if resp.Instance != "lojinha" {
-		t.Errorf("instancia = %q, quero \"lojinha\"", resp.Instance)
+		t.Errorf("instance = %q, want \"lojinha\"", resp.Instance)
 	}
 	if resp.About != "Sobre a lojinha" || resp.Vertical != "RETAIL" {
-		t.Errorf("perfil = %+v", resp.Profile)
+		t.Errorf("profile = %+v", resp.Profile)
 	}
 	// NOTHING INVENTED: description/address/email/websites didn't come from
 	// Meta and must come out OMITTED from the body (omitempty), not
 	// asserted as an empty string/list.
 	if strings.Contains(rec.Body.String(), `"description"`) {
-		t.Errorf("corpo inventou o campo description, ausente na resposta da Meta: %s", rec.Body.String())
+		t.Errorf("body invented the description field, absent from Meta's response: %s", rec.Body.String())
 	}
 }
 
@@ -94,28 +94,28 @@ func TestProfileWriteSendsOnlyThePresentFieldsAndDoesNotZeroTheOthers(t *testing
 	rec := writeProfile(t, h, "token-do-a", `{"instancia":"lojinha","about":"Nova sobre"}`)
 
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, quero 200; corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, want 200; body = %s", rec.Code, rec.Body.String())
 	}
 	if strings.Contains(receivedBody, "description") || strings.Contains(receivedBody, "address") ||
 		strings.Contains(receivedBody, "email") || strings.Contains(receivedBody, "websites") ||
 		strings.Contains(receivedBody, "vertical") || strings.Contains(receivedBody, "profile_picture_handle") {
-		t.Fatalf("o gateway mandou a Meta um campo que o consumidor NAO pediu: %s — isso apagaria o "+
-			"valor gravado na Meta para esse campo", receivedBody)
+		t.Fatalf("the gateway sent Meta a field the consumer did NOT ask for: %s — this would erase the "+
+			"value stored at Meta for that field", receivedBody)
 	}
 	const want = `{"messaging_product":"whatsapp","about":"Nova sobre"}`
 	if receivedBody != want {
-		t.Fatalf("corpo mandado a Meta = %s\nquero                 = %s", receivedBody, want)
+		t.Fatalf("body sent to Meta = %s\nwant                 = %s", receivedBody, want)
 	}
 
 	var resp profileWriteResponse
 	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
-		t.Fatalf("corpo de resposta nao desserializa: %v", err)
+		t.Fatalf("response body does not deserialize: %v", err)
 	}
 	if resp.Saved.About == nil || *resp.Saved.About != "Nova sobre" {
-		t.Errorf("resposta nao ecoa o about gravado: %+v", resp.Saved)
+		t.Errorf("response does not echo the saved about: %+v", resp.Saved)
 	}
 	if resp.Saved.Description != nil {
-		t.Errorf("resposta ecoa description que nunca foi mandado: %+v", resp.Saved)
+		t.Errorf("response echoes description that was never sent: %+v", resp.Saved)
 	}
 }
 
@@ -131,14 +131,14 @@ func TestProfileGetInstagramRefuses400WithoutCallingMeta(t *testing.T) {
 	rec := readProfile(t, h, "token-do-a", "insta-loja")
 
 	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("status = %d, quero 400; corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, want 400; body = %s", rec.Code, rec.Body.String())
 	}
 	errBody := decodeErrorOrFail(t, rec)
 	if errBody.Error.Class != "config" {
-		t.Errorf("classe = %q, quero \"config\"", errBody.Error.Class)
+		t.Errorf("class = %q, want \"config\"", errBody.Error.Class)
 	}
 	if !strings.Contains(errBody.Error.Message, `"instagram"`) {
-		t.Errorf("a mensagem nao diz o tipo recusado: %q", errBody.Error.Message)
+		t.Errorf("the message does not name the refused type: %q", errBody.Error.Message)
 	}
 }
 
@@ -151,11 +151,11 @@ func TestProfilePostInstagramRefuses400WithoutCallingMeta(t *testing.T) {
 	rec := writeProfile(t, h, "token-do-a", `{"instancia":"insta-loja","about":"x"}`)
 
 	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("status = %d, quero 400; corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, want 400; body = %s", rec.Code, rec.Body.String())
 	}
 	errBody := decodeErrorOrFail(t, rec)
 	if errBody.Error.Class != "config" {
-		t.Errorf("classe = %q, quero \"config\"", errBody.Error.Class)
+		t.Errorf("class = %q, want \"config\"", errBody.Error.Class)
 	}
 }
 
@@ -175,13 +175,13 @@ func TestProfilePassesThroughMetaExplanationAndTrace(t *testing.T) {
 
 	errBody := decodeErrorOrFail(t, rec)
 	if errBody.Error.MetaSubcode != 2494055 {
-		t.Errorf("subcodigo_meta = %d, quero 2494055", errBody.Error.MetaSubcode)
+		t.Errorf("meta_subcode = %d, want 2494055", errBody.Error.MetaSubcode)
 	}
 	if errBody.Error.MetaExplanation != "Erro temporario: Tente novamente em alguns instantes" {
-		t.Errorf("explicacao_meta = %q", errBody.Error.MetaExplanation)
+		t.Errorf("meta_explanation = %q", errBody.Error.MetaExplanation)
 	}
 	if errBody.Error.MetaTrace != "AbCdEfGhIjKlMnOp" {
-		t.Errorf("rastro_meta = %q", errBody.Error.MetaTrace)
+		t.Errorf("meta_trace = %q", errBody.Error.MetaTrace)
 	}
 }
 
@@ -195,7 +195,7 @@ func TestProfileWithoutInstanceRefuses400(t *testing.T) {
 	rec := askWithToken(t, h, req, "token-do-a")
 
 	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("status = %d, quero 400; corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, want 400; body = %s", rec.Code, rec.Body.String())
 	}
 }
 
@@ -211,10 +211,10 @@ func TestProfileForeignInstanceRefuses403OnBothRoutes(t *testing.T) {
 	h := NewProfileHandler(store, NewAuthenticator(store), meta.NewClient(srv.Client(), srv.URL), 1<<20, config.NewCounter(store), WhatsAppOnly)
 
 	if rec := readProfile(t, h, "token-do-b", "lojinha"); rec.Code != http.StatusForbidden {
-		t.Errorf("GET: status = %d, quero 403; corpo = %s", rec.Code, rec.Body.String())
+		t.Errorf("GET: status = %d, want 403; body = %s", rec.Code, rec.Body.String())
 	}
 	if rec := writeProfile(t, h, "token-do-b", `{"instancia":"lojinha","about":"x"}`); rec.Code != http.StatusForbidden {
-		t.Errorf("POST: status = %d, quero 403; corpo = %s", rec.Code, rec.Body.String())
+		t.Errorf("POST: status = %d, want 403; body = %s", rec.Code, rec.Body.String())
 	}
 }
 
@@ -225,6 +225,6 @@ func TestProfileWithoutTokenRefuses401(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/v1/perfil?instancia=lojinha", nil)
 	rec := run(h, req)
 	if rec.Code != http.StatusUnauthorized {
-		t.Fatalf("status = %d, quero 401; corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, want 401; body = %s", rec.Code, rec.Body.String())
 	}
 }

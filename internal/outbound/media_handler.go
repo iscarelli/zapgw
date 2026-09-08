@@ -144,7 +144,7 @@ func (h *MediaHandler) instanceAuthorized(w http.ResponseWriter, r *http.Request
 			respondError(w, http.StatusUnauthorized, "config", "token ausente ou invalido", 0)
 			return config.Consumer{}, config.Instance{}, false, false
 		}
-		log.Printf("zapgw: erro de store ao autenticar em midia: %v", err)
+		log.Printf("zapgw: store error while authenticating on media: %v", err)
 		respondError(w, http.StatusServiceUnavailable, "retryable", "indisponivel", 0)
 		return config.Consumer{}, config.Instance{}, false, false
 	}
@@ -169,7 +169,7 @@ func (h *MediaHandler) instanceAuthorized(w http.ResponseWriter, r *http.Request
 			respondError(w, http.StatusNotFound, "config", "instancia desconhecida", 0)
 			return config.Consumer{}, config.Instance{}, false, false
 		}
-		log.Printf("zapgw: erro de store ao buscar instancia %q em midia: %v", slug, err)
+		log.Printf("zapgw: store error while looking up instance %q on media: %v", slug, err)
 		respondError(w, http.StatusServiceUnavailable, "retryable", "indisponivel", 0)
 		return config.Consumer{}, config.Instance{}, false, false
 	}
@@ -397,14 +397,14 @@ func (h *MediaHandler) download(w http.ResponseWriter, r *http.Request) {
 		// Header and status were already written; there's no error
 		// response left to give. The line carries neither the bytes nor
 		// the token — just the fact.
-		log.Printf("zapgw: download de midia interrompido no meio (instancia=%q)", inst.Slug)
+		log.Printf("zapgw: media download interrupted midway (instance=%q)", inst.Slug)
 	}
 }
 
 // respondMediaError uses the SAME taxonomy as sending (handler.go):
-// whoever consumes this gateway shouldn't have to learn two. `permanente`
-// becomes 400, `retentavel` 503, and whatever didn't come from Meta becomes
-// 502 `desconhecido`.
+// whoever consumes this gateway shouldn't have to learn two. `permanent`
+// becomes 400, `retryable` 503, and whatever didn't come from Meta becomes
+// 502 `unknown`.
 func respondMediaError(w http.ResponseWriter, err error) {
 	if errors.Is(err, meta.ErrInvalidPhoneNumberID) || errors.Is(err, meta.ErrInvalidMediaID) {
 		respondError(w, http.StatusBadRequest, string(meta.ClassPermanent),
@@ -446,7 +446,7 @@ func respondMediaError(w http.ResponseWriter, err error) {
 // multipart (inside meta.UploadMedia) and the one that CHECKS it is the
 // handler's goroutine, after the call returns. A raw counter shared between
 // two goroutines already cost this project a Critical (docs/ARMADILHAS.md,
-// "Go / concorrência").
+// "Go / concurrency").
 type cappedReader struct {
 	r          io.Reader
 	remaining  int64

@@ -158,8 +158,8 @@ func SmokeWithInstagramBase(ctx context.Context, store *config.Store, client *me
 	// token on both hosts). Forcing a `GET /{ig_id}` "by analogy" with
 	// WhatsApp would be a question that CAN LIE — accepting or refusing for
 	// a reason that isn't the token —, and this project would rather skip a
-	// check than run one without a source (CLAUDE.md, "Doc errado é pior
-	// que doc nenhum" — the same holds for a check). Meta STILL confirms the
+	// check than run one without a source (CLAUDE.md, "A wrong doc is worse
+	// than no doc" — the same holds for a check). Meta STILL confirms the
 	// token: only in step 3, when the test send actually goes out — if the
 	// token is revoked, Meta refuses there, with the SAME error class
 	// (`config`), just without the extra guarantee of aborting BEFORE

@@ -99,27 +99,27 @@ func TestBlockPostBuildsTheBodyAndCanonicalizesThePhone(t *testing.T) {
 	body := `{"instancia":"lojinha","telefones":["551199990000"]}`
 	rec := askBlock(t, h, http.MethodPost, "token-do-a", body)
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
 	}
 	if g.method != http.MethodPost {
-		t.Errorf("metodo = %q, quero POST", g.method)
+		t.Errorf("method = %q, want POST", g.method)
 	}
 	if g.path != "/P-lojinha/block_users" {
-		t.Errorf("caminho = %q, quero /P-lojinha/block_users", g.path)
+		t.Errorf("path = %q, want /P-lojinha/block_users", g.path)
 	}
 	if g.authorizes != "Bearer t-lojinha" {
-		t.Errorf("Authorization = %q, quero o token da instancia no HEADER", g.authorizes)
+		t.Errorf("Authorization = %q, want the instance token in the HEADER", g.authorizes)
 	}
 	if g.body["messaging_product"] != "whatsapp" {
-		t.Errorf(`corpo["messaging_product"] = %#v, quero "whatsapp"`, g.body["messaging_product"])
+		t.Errorf(`body["messaging_product"] = %#v, want "whatsapp"`, g.body["messaging_product"])
 	}
 	catalog, ok := g.body["block_users"].([]any)
 	if !ok || len(catalog) != 1 {
-		t.Fatalf("corpo[block_users] = %#v, quero uma lista com 1 item", g.body["block_users"])
+		t.Fatalf("body[block_users] = %#v, want a list with 1 item", g.body["block_users"])
 	}
 	item, ok := catalog[0].(map[string]any)
 	if !ok || item["user"] != "5511999990000" {
-		t.Fatalf("item = %#v, quero user=5511999990000 (CANONIZADO, com o nono digito)", catalog[0])
+		t.Fatalf("item = %#v, want user=5511999990000 (CANONICALIZED, with the ninth digit)", catalog[0])
 	}
 }
 
@@ -133,28 +133,28 @@ func TestBlockDeleteUsesTheDeleteMethodWithTheSameBody(t *testing.T) {
 	body := `{"instancia":"lojinha","telefones":["5511999990000"]}`
 	rec := askBlock(t, h, http.MethodDelete, "token-do-a", body)
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
 	}
 	if g.method != http.MethodDelete {
-		t.Errorf("metodo = %q, quero DELETE", g.method)
+		t.Errorf("method = %q, want DELETE", g.method)
 	}
 	if g.path != "/P-lojinha/block_users" {
-		t.Errorf("caminho = %q, quero /P-lojinha/block_users (o MESMO do POST)", g.path)
+		t.Errorf("path = %q, want /P-lojinha/block_users (the SAME as POST)", g.path)
 	}
 	catalog, ok := g.body["block_users"].([]any)
 	if !ok || len(catalog) != 1 {
-		t.Fatalf("corpo[block_users] = %#v", g.body["block_users"])
+		t.Fatalf("body[block_users] = %#v", g.body["block_users"])
 	}
 
 	var resp blockOperationResponse
 	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
-		t.Fatalf("corpo nao desserializa: %v (corpo = %q)", err, rec.Body.String())
+		t.Fatalf("body does not deserialize: %v (body = %q)", err, rec.Body.String())
 	}
 	if resp.Operation != "desbloquear" {
-		t.Errorf("operacao = %q, quero desbloquear", resp.Operation)
+		t.Errorf("operation = %q, want desbloquear", resp.Operation)
 	}
 	if len(resp.Processed) != 1 || resp.Processed[0].Phone != "5511999990000" {
-		t.Errorf("processados = %+v", resp.Processed)
+		t.Errorf("processed = %+v", resp.Processed)
 	}
 }
 
@@ -180,34 +180,34 @@ func TestBlockPartialSuccessBecomesPerNumberResponse(t *testing.T) {
 	// The WHOLE CALL has to answer 200: Meta's envelope was 200, and a
 	// number refused INSIDE it is not a failure of the CALL.
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, quero 200 (a Meta respondeu 200 no envelope); corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, want 200 (Meta answered 200 in the envelope); body = %s", rec.Code, rec.Body.String())
 	}
 
 	var resp blockOperationResponse
 	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
-		t.Fatalf("corpo nao desserializa: %v (corpo = %q)", err, rec.Body.String())
+		t.Fatalf("body does not deserialize: %v (body = %q)", err, rec.Body.String())
 	}
 	if resp.Operation != "bloquear" {
-		t.Errorf("operacao = %q, quero bloquear", resp.Operation)
+		t.Errorf("operation = %q, want bloquear", resp.Operation)
 	}
 	if len(resp.Processed) != 1 || resp.Processed[0].Phone != "5511999990000" {
-		t.Fatalf("processados = %+v, quero exatamente 5511999990000", resp.Processed)
+		t.Fatalf("processed = %+v, want exactly 5511999990000", resp.Processed)
 	}
 	if len(resp.Failures) != 1 {
-		t.Fatalf("falhas = %+v, quero exatamente uma", resp.Failures)
+		t.Fatalf("failures = %+v, want exactly one", resp.Failures)
 	}
 	f := resp.Failures[0]
 	if f.Phone != "5511999990001" {
-		t.Errorf("falhas[0].telefone = %q, quero 5511999990001", f.Phone)
+		t.Errorf("failures[0].phone = %q, want 5511999990001", f.Phone)
 	}
 	if f.MetaCode != 139001 {
-		t.Errorf("falhas[0].codigo_meta = %d, quero 139001", f.MetaCode)
+		t.Errorf("failures[0].meta_code = %d, want 139001", f.MetaCode)
 	}
 	if f.Message != "nao mandou mensagem nas ultimas 24h" {
-		t.Errorf("falhas[0].mensagem = %q", f.Message)
+		t.Errorf("failures[0].message = %q", f.Message)
 	}
 	if f.MetaDetail != "janela de 24h fechada" {
-		t.Errorf("falhas[0].detalhe_meta = %q", f.MetaDetail)
+		t.Errorf("failures[0].meta_detail = %q", f.MetaDetail)
 	}
 }
 
@@ -223,19 +223,19 @@ func TestBlockAboveTheCapIsRefusedAtTheDoor(t *testing.T) {
 	}
 	raw, err := json.Marshal(map[string]any{"instancia": "lojinha", "telefones": phones})
 	if err != nil {
-		t.Fatalf("montar corpo: %v", err)
+		t.Fatalf("build body: %v", err)
 	}
 
 	rec := askBlock(t, h, http.MethodPost, "token-do-a", string(raw))
 	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("status = %d, quero 400; corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, want 400; body = %s", rec.Code, rec.Body.String())
 	}
 	if n := g.calls.Load(); n != 0 {
-		t.Fatalf("a Meta foi chamada %d vez(es) com um pedido que ja devia ter sido recusado na entrada", n)
+		t.Fatalf("Meta was called %d time(s) with a request that should already have been refused at the door", n)
 	}
 	errBody := decodeErrorOrFail(t, rec)
 	if !strings.Contains(errBody.Error.Message, "1001") || !strings.Contains(errBody.Error.Message, "1000") {
-		t.Errorf("mensagem = %q, quero que diga quantos vieram (1001) e o maximo (1000)", errBody.Error.Message)
+		t.Errorf("message = %q, want it to say how many came (1001) and the maximum (1000)", errBody.Error.Message)
 	}
 }
 
@@ -259,14 +259,14 @@ func TestBlockRefusesInstagramInstanceWith400WithoutCallingMeta(t *testing.T) {
 	rec := askBlock(t, h, http.MethodPost, "token-do-a", body)
 
 	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("status = %d, quero 400; corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, want 400; body = %s", rec.Code, rec.Body.String())
 	}
 	errBody := decodeErrorOrFail(t, rec)
 	if errBody.Error.Class != "config" {
-		t.Errorf("classe = %q, quero config", errBody.Error.Class)
+		t.Errorf("class = %q, want config", errBody.Error.Class)
 	}
 	if !strings.Contains(errBody.Error.Message, `"instagram"`) {
-		t.Errorf("a mensagem nao nomeia o tipo recusado: %q", errBody.Error.Message)
+		t.Errorf("the message does not name the refused type: %q", errBody.Error.Message)
 	}
 }
 
@@ -280,11 +280,11 @@ func TestBlockListRefusesInstagramInstanceWith400WithoutCallingMeta(t *testing.T
 
 	rec := listBlocks(t, h, "token-do-a", url.Values{"instancia": {"insta-loja"}})
 	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("status = %d, quero 400; corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, want 400; body = %s", rec.Code, rec.Body.String())
 	}
 	errBody := decodeErrorOrFail(t, rec)
 	if errBody.Error.Class != "config" {
-		t.Errorf("classe = %q, quero config", errBody.Error.Class)
+		t.Errorf("class = %q, want config", errBody.Error.Class)
 	}
 }
 
@@ -301,31 +301,31 @@ func TestBlockListPassesThroughTheCursors(t *testing.T) {
 		"instancia": {"lojinha"}, "limit": {"50"}, "after": {"APOS"}, "before": {"ANTES"},
 	})
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
 	}
 	if g.method != http.MethodGet {
-		t.Errorf("metodo = %q, quero GET", g.method)
+		t.Errorf("method = %q, want GET", g.method)
 	}
 	if g.path != "/P-lojinha/block_users" {
-		t.Errorf("caminho = %q, quero /P-lojinha/block_users", g.path)
+		t.Errorf("path = %q, want /P-lojinha/block_users", g.path)
 	}
 	q, err := url.ParseQuery(g.query)
 	if err != nil {
 		t.Fatalf("ParseQuery(%q): %v", g.query, err)
 	}
 	if q.Get("limit") != "50" || q.Get("after") != "APOS" || q.Get("before") != "ANTES" {
-		t.Fatalf("query recebida pela Meta = %s, quero limit/after/before repassados", g.query)
+		t.Fatalf("query received by Meta = %s, want limit/after/before passed through", g.query)
 	}
 
 	var resp blockListResponse
 	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
-		t.Fatalf("corpo nao desserializa: %v (corpo = %q)", err, rec.Body.String())
+		t.Fatalf("body does not deserialize: %v (body = %q)", err, rec.Body.String())
 	}
 	if resp.Total != 1 || len(resp.Blocked) != 1 || resp.Blocked[0].WaID != "5511999990000" {
-		t.Errorf("bloqueados = %+v", resp.Blocked)
+		t.Errorf("blocked = %+v", resp.Blocked)
 	}
 	if resp.CursorAfter != "CURSOR_DEPOIS" || resp.CursorBefore != "CURSOR_ANTES" {
-		t.Errorf("cursores = depois=%q antes=%q, quero os da resposta da Meta", resp.CursorAfter, resp.CursorBefore)
+		t.Errorf("cursors = after=%q before=%q, want the cursors returned by Meta", resp.CursorAfter, resp.CursorBefore)
 	}
 }
 
@@ -338,10 +338,10 @@ func TestBlockRefusesInstanceNotOwnedByConsumer(t *testing.T) {
 	body := `{"instancia":"clinica","telefones":["5511999990000"]}`
 	rec := askBlock(t, h, http.MethodPost, "token-do-a", body)
 	if rec.Code != http.StatusForbidden {
-		t.Errorf("status = %d, quero 403", rec.Code)
+		t.Errorf("status = %d, want 403", rec.Code)
 	}
 	if n := g.calls.Load(); n != 0 {
-		t.Fatalf("o gateway chamou a Meta %d vez(es) pela instancia de outro sistema", n)
+		t.Fatalf("the gateway called Meta %d time(s) for an instance of another system", n)
 	}
 }
 
@@ -351,13 +351,13 @@ func TestBlockRefusesWithoutTokenAndWithInvalidToken(t *testing.T) {
 
 	body := `{"instancia":"lojinha","telefones":["5511999990000"]}`
 	if rec := askBlock(t, h, http.MethodPost, "", body); rec.Code != http.StatusUnauthorized {
-		t.Errorf("sem token: status = %d, quero 401", rec.Code)
+		t.Errorf("no token: status = %d, want 401", rec.Code)
 	}
 	if rec := askBlock(t, h, http.MethodPost, "token-errado", body); rec.Code != http.StatusUnauthorized {
-		t.Errorf("token errado: status = %d, quero 401", rec.Code)
+		t.Errorf("wrong token: status = %d, want 401", rec.Code)
 	}
 	if n := g.calls.Load(); n != 0 {
-		t.Fatalf("o gateway chamou a Meta %d vez(es) sem autenticar ninguem", n)
+		t.Fatalf("the gateway called Meta %d time(s) without authenticating anyone", n)
 	}
 }
 
@@ -366,21 +366,21 @@ func TestBlockRefusesInvalidBody(t *testing.T) {
 	h, _ := testBlock(t, g)
 
 	cases := []struct{ name, body string }{
-		{"sem instancia", `{"telefones":["5511999990000"]}`},
-		{"sem telefones", `{"instancia":"lojinha"}`},
-		{"telefones vazio", `{"instancia":"lojinha","telefones":[]}`},
-		{"telefone sem digito", `{"instancia":"lojinha","telefones":["abc"]}`},
-		{"nao e JSON", `nao sou json`},
-		{"corpo vazio", ``},
+		{"missing instancia", `{"telefones":["5511999990000"]}`},
+		{"missing telefones", `{"instancia":"lojinha"}`},
+		{"empty telefones", `{"instancia":"lojinha","telefones":[]}`},
+		{"phone without a digit", `{"instancia":"lojinha","telefones":["abc"]}`},
+		{"not JSON", `not json`},
+		{"empty body", ``},
 	}
 	for _, c := range cases {
 		rec := askBlock(t, h, http.MethodPost, "token-do-a", c.body)
 		if rec.Code != http.StatusBadRequest {
-			t.Errorf("%s: status = %d, quero 400 (corpo = %s)", c.name, rec.Code, rec.Body.String())
+			t.Errorf("%s: status = %d, want 400 (body = %s)", c.name, rec.Code, rec.Body.String())
 		}
 	}
 	if n := g.calls.Load(); n != 0 {
-		t.Fatalf("o gateway chamou a Meta %d vez(es) com pedido invalido", n)
+		t.Fatalf("the gateway called Meta %d time(s) with an invalid request", n)
 	}
 }
 
@@ -392,10 +392,10 @@ func TestBlockPausedInstanceGives503(t *testing.T) {
 	body := `{"instancia":"lojinha","telefones":["5511999990000"]}`
 	rec := askBlock(t, h, http.MethodPost, "token-do-a", body)
 	if rec.Code != http.StatusServiceUnavailable {
-		t.Errorf("status = %d, quero 503", rec.Code)
+		t.Errorf("status = %d, want 503", rec.Code)
 	}
 	if n := g.calls.Load(); n != 0 {
-		t.Fatalf("instancia pausada e o gateway chamou a Meta %d vez(es)", n)
+		t.Fatalf("instance paused and the gateway called Meta %d time(s)", n)
 	}
 }
 
@@ -409,13 +409,13 @@ func TestBlockTransportFailureGives502TellingToRetry(t *testing.T) {
 	body := `{"instancia":"lojinha","telefones":["5511999990000"]}`
 	rec := askBlock(t, h, http.MethodPost, "token-do-a", body)
 	if rec.Code != http.StatusBadGateway {
-		t.Fatalf("status = %d, quero 502; corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, want 502; body = %s", rec.Code, rec.Body.String())
 	}
 	errBody := decodeErrorOrFail(t, rec)
 	if errBody.Error.Class != "unknown" {
-		t.Errorf("classe = %q, quero desconhecido", errBody.Error.Class)
+		t.Errorf("class = %q, want unknown", errBody.Error.Class)
 	}
 	if !strings.Contains(errBody.Error.Message, "repetir e seguro") {
-		t.Errorf("mensagem = %q, quero que diga que repetir e seguro", errBody.Error.Message)
+		t.Errorf("message = %q, want it to say that retrying is safe", errBody.Error.Message)
 	}
 }

@@ -293,7 +293,7 @@ type ListSection struct {
 // disappeared in the second one, the response would have been exactly the
 // same — Meta proves it ACCEPTED the request, never that the EFFECT
 // happened. The only possible witness was the customer's device (see
-// docs/ARMADILHAS.md, "Sucesso da API não é sucesso do efeito").
+// docs/ARMADILHAS.md, "API success is not effect success").
 //
 // ABSENT `emoji` (key not sent in the JSON) STAYS a required-field ERROR —
 // it does NOT become removal. This is the OPPOSITE of RECEIVING (where Meta
@@ -1736,7 +1736,7 @@ func (p *Request) refuseBase64() error {
 		return fmt.Errorf("%w: use POST /v1/media para obter um media_id, ou uma URL publica", ErrBase64)
 	}
 	// The media fields use the SAME detector, not a copy of it: the guard
-	// has already been fixed three times (docs/ARMADILHAS.md, "Validação"),
+	// has already been fixed three times (docs/ARMADILHAS.md, "Validation"),
 	// and a second detection would inherit the wrong version from one of
 	// those rounds. media_id is included here because it's exactly where
 	// someone pastes the bytes thinking the gateway will resolve it — and

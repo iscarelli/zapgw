@@ -31,7 +31,7 @@ func rowValue(t *testing.T, rows []StateRow, label string) string {
 			return l.Value
 		}
 	}
-	t.Fatalf("a linha %q nao saiu na apresentacao: %+v", label, rows)
+	t.Fatalf("row %q did not come out in the presentation: %+v", label, rows)
 	return ""
 }
 
@@ -87,11 +87,11 @@ func TestStateRowsMeasureTheDistanceAgainstThePrintNowNotAgainstGeneratedAt(t *t
 	} {
 		v := rowValue(t, rows, c.label)
 		if strings.Contains(v, "daqui a") {
-			t.Errorf("%s = %q — carimbo de OBSERVACAO anunciado como futuro; o referencial e que esta errado",
+			t.Errorf("%s = %q — an OBSERVATION timestamp announced as future; the reference is what is wrong",
 				c.label, v)
 		}
 		if !strings.HasSuffix(v, c.want) {
-			t.Errorf("%s = %q, quero terminando em %q", c.label, v, c.want)
+			t.Errorf("%s = %q, want ending in %q", c.label, v, c.want)
 		}
 	}
 
@@ -99,7 +99,7 @@ func TestStateRowsMeasureTheDistanceAgainstThePrintNowNotAgainstGeneratedAt(t *t
 	// comes out future, print 0s ago"): a genuinely future timestamp KEEPS
 	// coming out as future.
 	if v := rowValue(t, rows, "expires_at"); !strings.HasSuffix(v, "(daqui a 54d)") {
-		t.Errorf("expira_em = %q, quero terminando em \"(daqui a 54d)\" — o certificado vence mesmo no futuro", v)
+		t.Errorf("expires_at = %q, want ending in \"(daqui a 54d)\" — the certificate does expire in the future", v)
 	}
 }
 
@@ -117,14 +117,14 @@ func TestSeries7DaysBringsDayAndDayUTCWithTheSameValue(t *testing.T) {
 
 	rec := askState(t, h, "token-do-a", "lojinha")
 	if rec.Code != 200 {
-		t.Fatalf("status = %d, quero 200; corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, want 200; body = %s", rec.Code, rec.Body.String())
 	}
 	body := rec.Body.String()
 
 	today := time.Now().UTC().Format("2006-01-02")
 	for _, key := range []string{`"day":"` + today + `"`, `"day_utc":"` + today + `"`} {
 		if !strings.Contains(body, key) {
-			t.Errorf("a resposta nao traz %s. corpo:\n%s", key, body)
+			t.Errorf("the response does not carry %s. body:\n%s", key, body)
 		}
 	}
 
@@ -138,17 +138,17 @@ func TestSeries7DaysBringsDayAndDayUTCWithTheSameValue(t *testing.T) {
 		} `json:"last_7_days_series"`
 	}
 	if err := json.Unmarshal(rec.Body.Bytes(), &r); err != nil {
-		t.Fatalf("corpo nao desserializa: %v", err)
+		t.Fatalf("body does not deserialize: %v", err)
 	}
 	if len(r.Series) != 7 {
-		t.Fatalf("serie_7_dias tem %d entradas, quero 7", len(r.Series))
+		t.Fatalf("last_7_days_series has %d entries, want 7", len(r.Series))
 	}
 	for i, d := range r.Series {
 		if d.DayUTC == "" {
-			t.Errorf("serie_7_dias[%d] veio sem `dia_utc` — o nome novo tem de valer para a serie inteira", i)
+			t.Errorf("last_7_days_series[%d] came without `day_utc` — the new name has to hold for the entire series", i)
 		}
 		if d.Day != d.DayUTC {
-			t.Errorf("serie_7_dias[%d]: dia = %q e dia_utc = %q — os dois sao o MESMO dado", i, d.Day, d.DayUTC)
+			t.Errorf("last_7_days_series[%d]: day = %q and day_utc = %q — both are the SAME data", i, d.Day, d.DayUTC)
 		}
 	}
 }
@@ -168,14 +168,14 @@ func TestStatePublishesStampsSinceAsARealDate(t *testing.T) {
 	r := readState(t, rec)
 
 	if r.StampsSince == "" {
-		t.Fatalf("carimbos_desde veio vazio — o campo existe para nao deixar o consumidor adivinhar. corpo:\n%s",
+		t.Fatalf("stamps_since came out empty — the field exists so the consumer does not have to guess. body:\n%s",
 			rec.Body.String())
 	}
 	if _, err := time.Parse(time.RFC3339, r.StampsSince); err != nil {
-		t.Errorf("carimbos_desde = %q, que nao e RFC3339: %v", r.StampsSince, err)
+		t.Errorf("stamps_since = %q, which is not RFC3339: %v", r.StampsSince, err)
 	}
 	if !strings.Contains(rec.Body.String(), `"stamps_since":"`+r.StampsSince+`"`) {
-		t.Errorf("o campo nao saiu com o nome `carimbos_desde` nos BYTES. corpo:\n%s", rec.Body.String())
+		t.Errorf("the field did not come out under the name `stamps_since` in the BYTES. body:\n%s", rec.Body.String())
 	}
 }
 
@@ -189,9 +189,9 @@ func TestReadableStampMeasuresAgainstThePrintNow(t *testing.T) {
 
 	c := stamp(printed.Add(-90 * time.Second))
 	if want, has := "(ha 1min)", ReadableStamp(c); !strings.HasSuffix(has, want) {
-		t.Errorf("ReadableStamp = %q, quero terminando em %q", has, want)
+		t.Errorf("ReadableStamp = %q, want ending in %q", has, want)
 	}
 	if v := ReadableStamp(nil); v != NoValue {
-		t.Errorf("ReadableStamp(nil) = %q, quero %q", v, NoValue)
+		t.Errorf("ReadableStamp(nil) = %q, want %q", v, NoValue)
 	}
 }
