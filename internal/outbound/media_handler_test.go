@@ -118,7 +118,7 @@ func (m *fakeFileMeta) server(t *testing.T) *httptest.Server {
 func uncallableMeta(t *testing.T) *httptest.Server {
 	t.Helper()
 	s := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		t.Errorf("a Meta foi chamada (%s %s) numa recusa que tinha de acontecer ANTES do fio",
+		t.Errorf("Meta was called (%s %s) on a refusal that had to happen BEFORE the wire",
 			r.Method, r.URL.Path)
 	}))
 	t.Cleanup(s.Close)
@@ -156,10 +156,10 @@ func multipartBody(t *testing.T, field, filename, mimeType string, content []byt
 		t.Fatalf("CreatePart: %v", err)
 	}
 	if _, err := part.Write(content); err != nil {
-		t.Fatalf("escrever a parte: %v", err)
+		t.Fatalf("write the part: %v", err)
 	}
 	if err := writer.Close(); err != nil {
-		t.Fatalf("fechar multipart: %v", err)
+		t.Fatalf("close multipart: %v", err)
 	}
 	return body.Bytes(), writer.FormDataContentType()
 }
@@ -253,16 +253,16 @@ func TestUploadPassesThroughStreamingWithoutBufferingInTheHandler(t *testing.T) 
 
 	rec := run(h, req)
 	if buffered.Load() {
-		t.Fatal("o gateway segurou os bytes: a Meta nao viu nada enquanto o consumidor ainda enviava — " +
-			"a midia foi bufferizada em vez de atravessar em streaming")
+		t.Fatal("the gateway held the bytes: Meta saw nothing while the consumer was still sending — " +
+			"the media was buffered instead of streaming through")
 	}
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, quero 200; corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, want 200; body = %s", rec.Code, rec.Body.String())
 	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if !bytes.Equal(m.receivedBytes, content) {
-		t.Errorf("a Meta recebeu %d bytes, quero %d", len(m.receivedBytes), len(content))
+		t.Errorf("Meta received %d bytes, want %d", len(m.receivedBytes), len(content))
 	}
 }
 
@@ -287,20 +287,20 @@ func TestUploadReturnsMediaIDAndPreservesTheMime(t *testing.T) {
 	rec := run(h, newUploadRequest(t, "lojinha", "arquivo", "nota.ogg",
 		"audio/ogg; codecs=opus", []byte("OggS-bytes-de-audio"), true))
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, quero 200; corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, want 200; body = %s", rec.Code, rec.Body.String())
 	}
 	if !strings.Contains(rec.Body.String(), "MEDIA-777") {
-		t.Errorf("a resposta nao traz o media_id: %s", rec.Body.String())
+		t.Errorf("the response does not carry the media_id: %s", rec.Body.String())
 	}
 
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.receivedType != "audio/ogg; codecs=opus" {
-		t.Errorf("campo `type` no fio = %q, quero %q — o parametro foi cortado no caminho",
+		t.Errorf("field `type` on the wire = %q, want %q — the parameter was cut along the way",
 			m.receivedType, "audio/ogg; codecs=opus")
 	}
 	if string(m.receivedBytes) != "OggS-bytes-de-audio" {
-		t.Errorf("bytes no fio = %q", m.receivedBytes)
+		t.Errorf("bytes on the wire = %q", m.receivedBytes)
 	}
 }
 
@@ -314,7 +314,7 @@ func TestUploadRefusesMimeOutsideTheCategoryWithoutCallingMeta(t *testing.T) {
 		rec := run(h, newUploadRequest(t, "lojinha", "arquivo", "x.bin", bad,
 			[]byte("qualquer coisa"), true))
 		if rec.Code != http.StatusUnsupportedMediaType {
-			t.Errorf("mime %q: status = %d, quero 415; corpo = %s", bad, rec.Code, rec.Body.String())
+			t.Errorf("mime %q: status = %d, want 415; body = %s", bad, rec.Code, rec.Body.String())
 		}
 	}
 }
@@ -329,7 +329,7 @@ func TestUploadRefusesAboveTheCategoryCapWithoutCallingMeta(t *testing.T) {
 	rec := run(h, newUploadRequest(t, "lojinha", "arquivo", "fig.webp", "image/webp",
 		big, true))
 	if rec.Code != http.StatusRequestEntityTooLarge {
-		t.Fatalf("status = %d, quero 413; corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, want 413; body = %s", rec.Code, rec.Body.String())
 	}
 
 	// The SAME size, as audio, passes: proof that the rejection came from
@@ -339,7 +339,7 @@ func TestUploadRefusesAboveTheCategoryCapWithoutCallingMeta(t *testing.T) {
 	rec = run(h2, newUploadRequest(t, "lojinha", "arquivo", "nota.ogg", "audio/ogg",
 		big, true))
 	if rec.Code != http.StatusOK {
-		t.Fatalf("o mesmo tamanho como audio deu %d, quero 200 — o teto nao e por categoria; corpo = %s",
+		t.Fatalf("the same size as audio gave %d, want 200 — the ceiling is not per category; body = %s",
 			rec.Code, rec.Body.String())
 	}
 }
@@ -356,7 +356,7 @@ func TestUploadRefusesAboveTheCapAlsoWithoutADeclaredSize(t *testing.T) {
 	rec := run(h, newUploadRequest(t, "lojinha", "arquivo", "fig.webp", "image/webp",
 		big, false))
 	if rec.Code != http.StatusRequestEntityTooLarge {
-		t.Fatalf("status = %d, quero 413; corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, want 413; body = %s", rec.Code, rec.Body.String())
 	}
 }
 
@@ -366,10 +366,10 @@ func TestUploadRequiresThePartNamedArquivo(t *testing.T) {
 	rec := run(h, newUploadRequest(t, "lojinha", "outra-coisa", "x.png", "image/png",
 		[]byte("x"), true))
 	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("status = %d, quero 400; corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, want 400; body = %s", rec.Code, rec.Body.String())
 	}
 	if !strings.Contains(rec.Body.String(), "arquivo") {
-		t.Errorf("o erro nao diz qual e o nome esperado da parte: %s", rec.Body.String())
+		t.Errorf("the error does not say what the part's expected name is: %s", rec.Body.String())
 	}
 }
 
@@ -383,7 +383,7 @@ func TestUploadRefusesInstanceNotOwnedByConsumer(t *testing.T) {
 	rec := run(h, newUploadRequest(t, "clinica", "arquivo", "x.png", "image/png",
 		[]byte("x"), true))
 	if rec.Code != http.StatusForbidden {
-		t.Fatalf("status = %d, quero 403; corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, want 403; body = %s", rec.Code, rec.Body.String())
 	}
 }
 
@@ -393,13 +393,13 @@ func TestUploadRefusesPausedInstanceAndWithoutToken(t *testing.T) {
 	rec := run(h, newUploadRequest(t, "lojinha", "arquivo", "x.png", "image/png",
 		[]byte("x"), true))
 	if rec.Code != http.StatusServiceUnavailable {
-		t.Errorf("pausada: status = %d, quero 503; corpo = %s", rec.Code, rec.Body.String())
+		t.Errorf("paused: status = %d, want 503; body = %s", rec.Code, rec.Body.String())
 	}
 
 	req := newUploadRequest(t, "lojinha", "arquivo", "x.png", "image/png", []byte("x"), true)
 	req.Header.Del("Authorization")
 	if rec := run(h, req); rec.Code != http.StatusUnauthorized {
-		t.Errorf("sem token: status = %d, quero 401", rec.Code)
+		t.Errorf("no token: status = %d, want 401", rec.Code)
 	}
 }
 
@@ -408,7 +408,7 @@ func TestUploadRequiresTheInstanceInTheQuery(t *testing.T) {
 
 	req := newUploadRequest(t, "", "arquivo", "x.png", "image/png", []byte("x"), true)
 	if rec := run(h, req); rec.Code != http.StatusBadRequest && rec.Code != http.StatusForbidden {
-		t.Fatalf("sem instancia: status = %d, quero 400 ou 403; corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("missing instancia: status = %d, want 400 or 403; body = %s", rec.Code, rec.Body.String())
 	}
 }
 
@@ -450,28 +450,28 @@ func TestDownloadReturnsBothDistinctMimesWithoutNormalizingEither(t *testing.T) 
 
 	rec := askMedia(t, h, "lojinha", "MEDIA-777", fromPayload, "token-do-a")
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, quero 200; corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, want 200; body = %s", rec.Code, rec.Body.String())
 	}
 
 	gotPayload := rec.Header().Get("X-Zapgw-Mime-Do-Payload")
 	gotGet := rec.Header().Get("X-Zapgw-Mime-Do-Get")
 	if gotPayload != fromPayload {
-		t.Errorf("mime_do_payload = %q, quero %q — normalizar destroi o que precisa ser preservado",
+		t.Errorf("mime_do_payload = %q, want %q — normalizing destroys what needs to be preserved",
 			gotPayload, fromPayload)
 	}
 	if gotGet != fromGet {
-		t.Errorf("mime_do_get = %q, quero %q", gotGet, fromGet)
+		t.Errorf("mime_do_get = %q, want %q", gotGet, fromGet)
 	}
 	if gotPayload == gotGet {
-		t.Errorf("os dois mimes vieram IGUAIS (%q): o gateway normalizou ou escolheu um — "+
-			"e quem reenviar audio com o mime errado entrega anexo em vez de nota de voz", gotPayload)
+		t.Errorf("the two mimes came out EQUAL (%q): the gateway normalized or chose one — "+
+			"and whoever resends audio with the wrong mime delivers an attachment instead of a voice note", gotPayload)
 	}
 	// The Content-Type is deliberately NEITHER of the two: choosing one
 	// there would be the gateway deciding, and a consumer who read only
 	// Content-Type would end up with the wrong choice without ever seeing
 	// the difference.
 	if ct := rec.Header().Get("Content-Type"); ct == fromPayload || ct == fromGet {
-		t.Errorf("Content-Type = %q — o gateway escolheu um dos dois mimes", ct)
+		t.Errorf("Content-Type = %q — the gateway chose one of the two mimes", ct)
 	}
 	if rec.Body.String() != "OggS-bytes-de-audio" {
 		t.Errorf("bytes = %q", rec.Body.String())
@@ -488,13 +488,13 @@ func TestDownloadWithoutPayloadMimeInventsNone(t *testing.T) {
 
 	rec := askMedia(t, h, "lojinha", "MEDIA-777", "", "token-do-a")
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, quero 200; corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, want 200; body = %s", rec.Code, rec.Body.String())
 	}
 	if got := rec.Header().Get("X-Zapgw-Mime-Do-Payload"); got != "" {
-		t.Errorf("mime_do_payload = %q sem o consumidor ter mandado — o gateway inventou", got)
+		t.Errorf("mime_do_payload = %q without the consumer having sent it — the gateway made it up", got)
 	}
 	if got := rec.Header().Get("X-Zapgw-Mime-Do-Get"); got != "audio/ogg" {
-		t.Errorf("mime_do_get = %q, quero \"audio/ogg\"", got)
+		t.Errorf("mime_do_get = %q, want \"audio/ogg\"", got)
 	}
 }
 
@@ -509,10 +509,10 @@ func TestDownloadRefusesBrokenPayloadMime(t *testing.T) {
 	for _, bad := range []string{"nao-e-mime", "audio/ogg\r\nX-Injetado: 1", "   "} {
 		rec := askMedia(t, h, "lojinha", "MEDIA-777", bad, "token-do-a")
 		if rec.Code != http.StatusBadRequest {
-			t.Errorf("mime_do_payload %q: status = %d, quero 400", bad, rec.Code)
+			t.Errorf("mime_do_payload %q: status = %d, want 400", bad, rec.Code)
 		}
 		if got := rec.Header().Get("X-Injetado"); got != "" {
-			t.Errorf("header injetado pelo valor do mime: %q", got)
+			t.Errorf("header injected by the mime value: %q", got)
 		}
 	}
 }
@@ -526,10 +526,10 @@ func TestDownloadDoesNotRewriteThePayloadMimeItReceives(t *testing.T) {
 
 	rec := askMedia(t, h, "lojinha", "MEDIA-777", original, "token-do-a")
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, quero 200; corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, want 200; body = %s", rec.Code, rec.Body.String())
 	}
 	if got := rec.Header().Get("X-Zapgw-Mime-Do-Payload"); got != original {
-		t.Errorf("mime_do_payload = %q, quero %q (como veio)", got, original)
+		t.Errorf("mime_do_payload = %q, want %q (as it came)", got, original)
 	}
 }
 
@@ -537,10 +537,10 @@ func TestDownloadRefusesInstanceNotOwnedByConsumerAndWithoutToken(t *testing.T) 
 	h := testMediaHandler(t, uncallableMeta(t), "lojinha", "clinica")
 
 	if rec := askMedia(t, h, "clinica", "MEDIA-777", "", "token-do-a"); rec.Code != http.StatusForbidden {
-		t.Errorf("instancia de outro: status = %d, quero 403", rec.Code)
+		t.Errorf("another's instance: status = %d, want 403", rec.Code)
 	}
 	if rec := askMedia(t, h, "lojinha", "MEDIA-777", "", ""); rec.Code != http.StatusUnauthorized {
-		t.Errorf("sem token: status = %d, quero 401", rec.Code)
+		t.Errorf("no token: status = %d, want 401", rec.Code)
 	}
 }
 
@@ -554,10 +554,10 @@ func TestDownloadWithMetaErrorReturnsTheRightClass(t *testing.T) {
 
 	rec := askMedia(t, h, "lojinha", "MEDIA-777", "", "token-do-a")
 	if rec.Code != http.StatusBadGateway {
-		t.Fatalf("status = %d, quero 502; corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, want 502; body = %s", rec.Code, rec.Body.String())
 	}
 	if !strings.Contains(rec.Body.String(), string(meta.ClassConfig)) {
-		t.Errorf("a resposta nao traz a classe %q: %s", meta.ClassConfig, rec.Body.String())
+		t.Errorf("the response does not carry the class %q: %s", meta.ClassConfig, rec.Body.String())
 	}
 }
 
@@ -577,16 +577,16 @@ func TestMediaDoesNotLogTheBytesNorTheSecrets(t *testing.T) {
 
 	if rec := run(h, newUploadRequest(t, "lojinha", "arquivo", "nota.ogg", "audio/ogg",
 		[]byte(marker), true)); rec.Code != http.StatusOK {
-		t.Fatalf("upload: status = %d; corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("upload: status = %d; body = %s", rec.Code, rec.Body.String())
 	}
 	if rec := askMedia(t, h, "lojinha", "MEDIA-777", "audio/ogg; codecs=opus",
 		"token-do-a"); rec.Code != http.StatusOK {
-		t.Fatalf("download: status = %d; corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("download: status = %d; body = %s", rec.Code, rec.Body.String())
 	}
 
 	for _, mustNotLeak := range []string{marker, "t-lojinha", "token-do-a"} {
 		if strings.Contains(output.String(), mustNotLeak) {
-			t.Errorf("o log vazou %q:\n%s", mustNotLeak, output.String())
+			t.Errorf("the log leaked %q:\n%s", mustNotLeak, output.String())
 		}
 	}
 }
@@ -619,7 +619,7 @@ func TestMediaConcurrentDoesNotShareState(t *testing.T) {
 
 	for i, c := range codes {
 		if c != http.StatusOK {
-			t.Fatalf("chamada %d: status = %d, quero 200", i, c)
+			t.Fatalf("call %d: status = %d, want 200", i, c)
 		}
 	}
 }
