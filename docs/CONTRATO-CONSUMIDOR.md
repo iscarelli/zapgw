@@ -383,7 +383,7 @@ X-Hub-Signature-256:    sha256=<hex>    Meta's ORIGINAL signature, passed throug
   "recebido_em": "2026-07-23T14:05:00Z",
   "cru": "<the EXACT bytes Meta sent, in base64>",
   "eventos": [
-    { "tipo": "mensagem",
+    { "kind": "message",
       "id": "msg:wamid.ABC",
       "phone_number_id": "…", "waba_id": "…",
       "wa_message_id": "wamid.ABC",
@@ -424,17 +424,17 @@ be trading one inaccuracy for another:
 | Level | **ALWAYS** present, even when empty | Everything else |
 |---|---|---|
 | envelope | `instancia`, `recebido_em`, `cru`, `eventos`, `parse_error` | — |
-| an item of `eventos` | `tipo` and `id` | omitted when there is no value |
-| inside the nested blocks | `reacao.alvo`; `localizacao.latitude` and `.longitude`; `erro.codigo` and `.mensagem`; `cobranca.categoria`; `template.estado`; `template_categoria.categoria_nova` | omitted when there is no value |
+| an item of `eventos` | `kind` and `id` | omitted when there is no value |
+| inside the nested blocks | `reacao.alvo`; `localizacao.latitude` and `.longitude`; `error.code` and `.message`; `cobranca.categoria`; `template.estado`; `template_categoria.categoria_nova` | omitted when there is no value |
 
 Outside those rows, **every field is omitted when empty**: a plain text message does not get
 `reacao`, `voz`, `legenda`, `nome_arquivo`, `localizacao`, `responder_a`,
-`encaminhada`/`encaminhada_muitas_vezes` (since 2026-07-28), nor `erro` (since 2026-07-26). That is
+`encaminhada`/`encaminhada_muitas_vezes` (since 2026-07-28), nor `error` (since 2026-07-26). That is
 what the "the envelope only grows" guarantee (below) demands, and there is a regression test pinned
 to the current fields.
 
 > ⚠️ **The fields in the first column always come because their absence would be ambiguous or
-> fatal** — `id` is your dedup key, `latitude: 0` is a valid coordinate, `erro.codigo: 0` would have
+> fatal** — `id` is your dedup key, `latitude: 0` is a valid coordinate, `error.code: 0` would have
 > to be distinguishable from "no code". **This is not a licence for you to require presence**: a
 > block that Meta sends in an unreadable format is discarded whole, and then the event arrives
 > without it (see the 2026-07-28 entries in *Breaking changes*). The table says what the gateway
@@ -487,7 +487,7 @@ other in the real payload, confirming that it is the `id` that becomes `responde
 
 ```json
 {
-  "tipo": "mensagem",
+  "kind": "message",
   "id": "msg:wamid.TESTE015",
   "phone_number_id": "PNID_TESTE",
   "waba_id": "WABA_TESTE",
@@ -548,7 +548,7 @@ independent and can appear together.
 
 ```json
 {
-  "tipo": "mensagem",
+  "kind": "message",
   "id": "msg:wamid.TESTE018",
   "phone_number_id": "PNID_TESTE",
   "waba_id": "WABA_TESTE",
@@ -566,7 +566,7 @@ independent and can appear together.
 Note that `encaminhada_muitas_vezes` **does not appear**: in this payload it is `false`, and `false`
 disappears from the envelope.
 
-### `reacao`, `voz`, `legenda`/`nome_arquivo`, `localizacao`, `erro` — what each one means
+### `reacao`, `voz`, `legenda`/`nome_arquivo`, `localizacao`, `error` — what each one means
 
 These fields exist so that you **do not have to re-parse the `cru`** for reaction, location, caption,
 file name, voice note and — since 2026-07-26 — the reason Meta could not represent a message. Before
@@ -590,15 +590,15 @@ event's CONTENT, and the only way to recover the data was to reimplement Meta's 
 - **`localizacao` (`sub_tipo: "location"`)** — `latitude`, `longitude` (always present, even when
   `0` — the crossing of the Greenwich meridian with the equator is a valid coordinate) and, when the
   sender sent them, `nome` and `endereco`.
-- **`erro` (`sub_tipo: "unsupported"`, 2026-07-26)** — the **SAME field and SAME shape** as the `erro`
-  of the `status` event (described just below: `codigo`, `mensagem`, `detalhes`), but with a
-  **different MEANING**, and the difference matters: in the status event, `erro` means "the delivery
+- **`error` (`sub_tipo: "unsupported"`, 2026-07-26)** — the **SAME field and SAME shape** as the `error`
+  of the `status` event (described just below: `code`, `message`, `details`), but with a
+  **different MEANING**, and the difference matters: in the status event, `error` means "the delivery
   failed"; here it means **"Meta received something the Cloud API cannot represent"** — Meta did not
   fail to deliver anything, it delivered and could not decode the content (the observed case is code
   `131051`, `"Message type unknown"`). Without this field, an `unsupported` message arrived with a
   `sub_tipo` and an `id`, and **nothing else** — indistinguishable from "empty message" for anyone
   who only looks at the envelope. Absent when Meta did not send `errors[]` in the message — omitted,
-  never `{"codigo": 0, "mensagem": ""}` (same rule as on the status side, see below).
+  never `{"code": 0, "message": ""}` (same rule as on the status side, see below).
 
 **Executed examples** (deserialized and revalidated against the parser before going in here — the
 gateway's parser over the corpus payloads):
@@ -609,7 +609,7 @@ preserves the pair):
 
 ```json
 {
-  "tipo": "mensagem",
+  "kind": "message",
   "id": "msg:wamid.TESTE006",
   "phone_number_id": "PNID_TESTE",
   "waba_id": "WABA_TESTE",
@@ -628,7 +628,7 @@ string:
 
 ```json
 {
-  "tipo": "mensagem",
+  "kind": "message",
   "id": "msg:wamid.TESTE007",
   "phone_number_id": "PNID_TESTE",
   "waba_id": "WABA_TESTE",
@@ -648,7 +648,7 @@ about `nome`/`endereco` being optional), but that is not what most users send:
 
 ```json
 {
-  "tipo": "mensagem",
+  "kind": "message",
   "id": "msg:wamid.TESTE008",
   "phone_number_id": "PNID_TESTE",
   "waba_id": "WABA_TESTE",
@@ -668,7 +668,7 @@ Document with caption and file name:
 
 ```json
 {
-  "tipo": "mensagem",
+  "kind": "message",
   "id": "msg:wamid.TESTE009",
   "phone_number_id": "PNID_TESTE",
   "waba_id": "WABA_TESTE",
@@ -688,7 +688,7 @@ Voice note — `voz: true` (the same payload as the two-mimes trap cited in obli
 
 ```json
 {
-  "tipo": "mensagem",
+  "kind": "message",
   "id": "msg:wamid.TESTE004",
   "phone_number_id": "PNID_TESTE",
   "waba_id": "WABA_TESTE",
@@ -710,7 +710,7 @@ read on 2026-07-26; there is no real-capture corpus for this case yet):
 
 ```json
 {
-  "tipo": "mensagem",
+  "kind": "message",
   "id": "msg:wamid.TESTE016",
   "phone_number_id": "PNID_TESTE",
   "waba_id": "WABA_TESTE",
@@ -719,10 +719,10 @@ read on 2026-07-26; there is no real-capture corpus for this case yet):
   "sub_tipo": "unsupported",
   "de_cru": "5511999990000",
   "de_canonico": "5511999990000",
-  "erro": {
-    "codigo": 131051,
-    "mensagem": "Message type unknown",
-    "detalhes": "Message type is currently not supported."
+  "error": {
+    "code": 131051,
+    "message": "Message type unknown",
+    "details": "Message type is currently not supported."
   }
 }
 ```
@@ -731,7 +731,7 @@ Plain text message, for comparison — **none of the five new fields appears** (
 
 ```json
 {
-  "tipo": "mensagem",
+  "kind": "message",
   "id": "msg:wamid.TESTE001",
   "phone_number_id": "PNID_TESTE",
   "waba_id": "WABA_TESTE",
@@ -745,7 +745,7 @@ Plain text message, for comparison — **none of the five new fields appears** (
 }
 ```
 
-### `status` (`tipo: "status"`) — what each field means
+### `status` (`kind: "status"`) — what each field means
 
 The status event confirms the fate of a message **you** sent: `sent` → `delivered` → `read`, or
 `failed`. It has no `sub_tipo`; the fields that matter are these:
@@ -755,7 +755,7 @@ The status event confirms the fate of a message **you** sent: `sent` → `delive
 | `status` | `sent`, `delivered`, `read` or `failed` — the vocabulary is Meta's, passed through untranslated |
 | `wa_message_id` | the id of the message you sent (the same one that came back in the `POST /v1/messages` response) |
 | `para_cru` / `para_canonico` | the recipient, in both forms — same reason as the message's `de_cru`/`de_canonico`: Meta does not guarantee the same spelling you registered |
-| `erro` | **only on `failed`, and only when Meta sent the reason** — see below |
+| `error` | **only on `failed`, and only when Meta sent the reason** — see below |
 | `cobranca` | **when Meta sent `pricing`** — under which category it charged for this delivery, see below |
 
 > 🔴 **DO NOT ORDER A MESSAGE'S HISTORY BY `timestamp` — the `sent` and the `delivered` of the SAME
@@ -777,26 +777,26 @@ The status event confirms the fate of a message **you** sent: `sent` → `delive
 > and `delivered` of the same send have **different** ids. Your dedup does not merge the two — what
 > the identical timestamp breaks is ORDER, not uniqueness.
 
-**`erro` (2026-07-26; `detalhes` added days later, in the same month)** — `codigo` (integer),
-`mensagem` (text) and `detalhes` (text, **optional**). It exists because `failed` on its own does not
+**`error` (2026-07-26; `details` added days later, in the same month)** — `code` (integer),
+`message` (text) and `details` (text, **optional**). It exists because `failed` on its own does not
 say **why**: without the reason, the human operator that a system like yours notifies when a delivery
 fails (the original trigger for this task was a real failure, code `131026`, which ended up only
 recorded in the database because nobody saw it) has nothing to show.
 
-> ⚠️ **`erro` is the SAME field, with the SAME shape, in TWO different events — and the meaning is
-> NOT the same.** Since 2026-07-26, `erro` also appears on the **message** event
+> ⚠️ **`error` is the SAME field, with the SAME shape, in TWO different events — and the meaning is
+> NOT the same.** Since 2026-07-26, `error` also appears on the **message** event
 > (`sub_tipo: "unsupported"` — see the section above). Here (status) it means "the delivery failed";
 > there (message) it means "Meta received something and could not represent it" — the message was
-> delivered, it did not fail. Everything this block describes about `codigo`/`mensagem`/`detalhes`,
+> delivered, it did not fail. Everything this block describes about `code`/`message`/`details`,
 > about the `errors[]` list and about "absence is absence, never zero" applies identically to both;
-> **only what `erro` is SAYING about the event changes**, and it is the event's `tipo`/`sub_tipo`
+> **only what `error` is SAYING about the event changes**, and it is the event's `kind`/`sub_tipo`
 > that says which of the two it is.
 
 Format confirmed at
 developers.facebook.com/documentation/business-messaging/whatsapp/webhooks/reference/messages/status/
 (read on 2026-07-26): Meta sends `errors[]` — a list — with `code`, `title`, `message`,
-`error_data.details` and `href` per item. **The gateway passes through `codigo` (from `code`),
-`mensagem` (from `title`) and `detalhes` (from `error_data.details`)** — not `message` (identical to
+`error_data.details` and `href` per item. **The gateway passes through `code` (Meta's own `code`),
+`message` (from `title`) and `details` (from `error_data.details`)** — not Meta's own `message` (identical to
 `title` in the doc's example), not `href`. There is no translation into Portuguese: translating a
 third party's code is your decision, and a table of ours would rot the day Meta added a new code.
 
@@ -808,10 +808,10 @@ the **only** part of the message that **adds** information instead of repeating 
 it, the operator's alert is poor precisely in the cases where the generic code explains nothing —
 which are the cases where the message is missed.
 
-**`detalhes` is optional and can be missing even inside an `erro` that is present.** Meta only sends
-`error_data` for some codes; when it is missing, `codigo` and `mensagem` still come out normally —
+**`details` is optional and can be missing even inside an `error` that is present.** Meta only sends
+`error_data` for some codes; when it is missing, `code` and `message` still come out normally —
 the absence of the nested object does not bring down the rest of the reason. When it is missing, the
-`detalhes` key disappears from the JSON (never `"detalhes": ""`) — same reason the whole `erro` is
+`details` key disappears from the JSON (never `"details": ""`) — same reason the whole `error` is
 omitted instead of zeroed, see below.
 
 **`errors[]` can carry more than one item; the gateway keeps only the FIRST.** This is not a silent
@@ -820,8 +820,8 @@ and to date there is no observed case of conflicting items that would justify ex
 list. If that changes, it is a contract change, not a detail adjustment.
 
 **Absence is absence, never zero.** A `failed` without `errors[]` in Meta's payload — or with an item
-the gateway could not interpret — does not get an `erro`: the field is **omitted**, never
-`{"codigo": 0, "mensagem": ""}`. Code `0` is not a real Meta code; if the gateway invented it, you
+the gateway could not interpret — does not get an `error`: the field is **omitted**, never
+`{"code": 0, "message": ""}`. Code `0` is not a real Meta code; if the gateway invented it, you
 would have no way to distinguish "no reason reported" from "a genuine error with code zero".
 
 ### `cobranca` — under which category Meta charged (2026-07-26)
@@ -870,7 +870,7 @@ a fixture):
 
 ```json
 {
-  "tipo": "status",
+  "kind": "status",
   "id": "status:wamid.TESTE017:read",
   "phone_number_id": "PNID_TESTE",
   "waba_id": "WABA_TESTE",
@@ -893,7 +893,7 @@ of 53 that came without `pricing`):
 
 ```json
 {
-  "tipo": "status",
+  "kind": "status",
   "id": "status:wamid.TESTE041:sent",
   "phone_number_id": "PNID_TESTE",
   "waba_id": "WABA_TESTE",
@@ -909,7 +909,7 @@ Send accepted **with** `cobranca` (**real capture**, 2026-07-28):
 
 ```json
 {
-  "tipo": "status",
+  "kind": "status",
   "id": "status:wamid.TESTE042:sent",
   "phone_number_id": "PNID_TESTE",
   "waba_id": "WABA_TESTE",
@@ -925,13 +925,13 @@ Send accepted **with** `cobranca` (**real capture**, 2026-07-28):
 }
 ```
 
-Delivery confirmed (**real capture**, 2026-07-28) — no `erro`. **It is the SAME send as the example
+Delivery confirmed (**real capture**, 2026-07-28) — no `error`. **It is the SAME send as the example
 above**: note the identical `wa_message_id`, the **identical** `timestamp`, and the **different**
 event `id` — this is exactly the case of the 🔴 warning at the start of this section:
 
 ```json
 {
-  "tipo": "status",
+  "kind": "status",
   "id": "status:wamid.TESTE042:delivered",
   "phone_number_id": "PNID_TESTE",
   "waba_id": "WABA_TESTE",
@@ -952,7 +952,7 @@ motivated this whole section of the contract; before, it was derived from the do
 
 ```json
 {
-  "tipo": "status",
+  "kind": "status",
   "id": "status:wamid.TESTE010:failed",
   "phone_number_id": "PNID_TESTE",
   "waba_id": "WABA_TESTE",
@@ -961,15 +961,15 @@ motivated this whole section of the contract; before, it was derived from the do
   "status": "failed",
   "para_cru": "551199990000",
   "para_canonico": "5511999990000",
-  "erro": {
-    "codigo": 131026,
-    "mensagem": "Message undeliverable",
-    "detalhes": "Message Undeliverable."
+  "error": {
+    "code": 131026,
+    "message": "Message undeliverable",
+    "details": "Message Undeliverable."
   }
 }
 ```
 
-### `template_status` (`tipo: "template_status"`) — Meta approved, rejected or paused a template (2026-07-26)
+### `template_status` (`kind: "template_status"`) — Meta approved, rejected or paused a template (2026-07-26)
 
 This event **is not about a message** and has no recipient: it is Meta warning that the state of a
 **template** in your account has changed. It arrives in the same `POST` as always, inside `eventos`.
@@ -1022,7 +1022,7 @@ level is the corpus's standard envelope):
 
 ```json
 {
-  "tipo": "template_status",
+  "kind": "template_status",
   "id": "template_status:1384121316897444:APPROVED:1769000020",
   "waba_id": "WABA_TESTE",
   "timestamp": 1769000020,
@@ -1047,7 +1047,7 @@ level is the corpus's standard envelope):
 **The other account webhooks:** see the section *ACCOUNT webhook*, further below, for the complete
 list of what is modelled and what arrives with `eventos: []` on purpose.
 
-### `template_categoria` (`tipo: "template_categoria"`) — Meta RECLASSIFIED a template's category (2026-07-28)
+### `template_categoria` (`kind: "template_category"`) — Meta RECLASSIFIED a template's category (2026-07-28)
 
 **This is the event that warns that the category changed.** It comes from Meta's
 `template_category_update` webhook, and it exists alongside the `template_status` above — the two
@@ -1110,7 +1110,7 @@ below the table. What it gives that `template_status` does not:
 
 ```json
 {
-  "tipo": "template_categoria",
+  "kind": "template_category",
   "id": "template_categoria:12345678:MARKETING:UTILITY:1769000070",
   "waba_id": "WABA_TESTE",
   "timestamp": 1769000070,
@@ -1196,7 +1196,7 @@ below the table. What it gives that `template_status` does not:
 > appeal, a window of another order of magnitude — say so: this block changes, and whoever measured
 > first explicitly asked to know.
 
-### `qualidade_do_numero` (`tipo: "qualidade_do_numero"`) — the number's daily QUOTA and quality (2026-07-28)
+### `qualidade_do_numero` (`kind: "number_quality"`) — the number's daily QUOTA and quality (2026-07-28)
 
 Comes from the `phone_number_quality_update` webhook. **This is the only channel through which a
 quota downgrade arrives before it hurts.** Without it, the first news that the ceiling dropped is
@@ -1231,7 +1231,7 @@ refused.
 > **not** stored there: the state answers *"which tier is the number in NOW"*, and the direction of
 > the change already travels whole here.
 
-### `alerta_de_conta` (`tipo: "alerta_de_conta"`) — Meta warning about a problem, with SEVERITY (2026-07-28)
+### `alerta_de_conta` (`kind: "account_alert"`) — Meta warning about a problem, with SEVERITY (2026-07-28)
 
 Comes from the `account_alerts` webhook. **The field that justifies the type existing is
 `severidade`:** Meta's example carries `INFORMATIONAL`, and the existence of a level called
@@ -1282,10 +1282,10 @@ failure:
 
 | Meta `field` | Becomes an event? | What you receive |
 |---|---|---|
-| `message_template_status_update` | ✅ `tipo: "template_status"` | see the event's section |
-| `template_category_update` | ✅ `tipo: "template_categoria"` | see the event's section |
-| `phone_number_quality_update` | ✅ `tipo: "qualidade_do_numero"` | see the event's section |
-| `account_alerts` | ✅ `tipo: "alerta_de_conta"` | see the event's section |
+| `message_template_status_update` | ✅ `kind: "template_status"` | see the event's section |
+| `template_category_update` | ✅ `kind: "template_category"` | see the event's section |
+| `phone_number_quality_update` | ✅ `kind: "number_quality"` | see the event's section |
+| `account_alerts` | ✅ `kind: "account_alert"` | see the event's section |
 | `message_template_quality_update` | ❌ **on purpose** | `cru` + `"eventos": []` |
 | `message_template_components_update` | ❌ **on purpose** | `cru` + `"eventos": []` |
 | `account_update` | ❌ **on purpose** | `cru` + `"eventos": []` |
@@ -1296,15 +1296,15 @@ failure:
 | any `field` Meta invents tomorrow | ❌ | `cru` + `"eventos": []` |
 
 **"On purpose" means exactly this: nobody asked.** The envelope only **grows** — adding a field later
-is free, removing later is a contract break — so a new `tipo` with no interested consumer would be
+is free, removing later is a contract break — so a new `kind` with no interested consumer would be
 dead vocabulary the gateway owes forever.
 
 🔴 **If any of these is useful to you, you do NOT go without it: the `cru` arrives whole.** The
 webhook is delivered normally, with Meta's exact bytes in base64 — just without enrichment. Parse the
-`cru` on your side and you have the same data; the modelled `tipo` is convenience, not access.
+`cru` on your side and you have the same data; the modelled `kind` is convenience, not access.
 **Deduplicate that batch by the rule in the section *And when the batch has no event at all*** (hash
 of the `cru`), which is the right key precisely for this case. If one of these is ever modelled, it
-is born with its own `tipo`, and that is **additive**: your parsing of the `cru` keeps working.
+is born with its own `kind`, and that is **additive**: your parsing of the `cru` keeps working.
 
 And it is not a gap out of forgetfulness or laziness about parsing: each one's `value` has different
 keys, and interpreting them with another's parser would produce an **invented** event, which is worse
@@ -2717,10 +2717,10 @@ instances linked to you answer (`403` for the others). WhatsApp-only — see *Ro
   "telefones": ["5511999990000", "5511999990001"] }   // up to 1,000 per call
 
 // response 200
-{ "instancia": "lojinha",
+{ "instance": "lojinha",
   "operacao": "bloquear",
-  "processados": [ {"telefone": "5511999990000", "wa_id": "5511999990000"} ],
-  "falhas": [
+  "processed": [ {"telefone": "5511999990000", "wa_id": "5511999990000"} ],
+  "failures": [
     { "telefone": "5511999990001", "wa_id": "5511999990001",
       "meta_code": 139001, "message": "…", "meta_detail": "…" }
   ] }
@@ -2730,14 +2730,14 @@ instances linked to you answer (`403` for the others). WhatsApp-only — see *Ro
 message in the **LAST 24 HOURS**. Blocking is **REACTIVE**, never preventive — there is no
 pre-blocking a number before it writes. It is also not possible to block another business account.
 **Both restrictions are META'S, not the gateway's**: it does not check the window on its own — the one
-who decides, PER NUMBER, is Meta, and the result arrives in `falhas[]`, in the format of the next
+who decides, PER NUMBER, is Meta, and the result arrives in `failures[]`, in the format of the next
 paragraph.
 
 🔴 **PARTIAL success is not a rare case on this route, and the body is designed for it:** Meta answers
 `200` on the ENVELOPE and reports errors PER NUMBER inside it — 1,000 numbers can become 998 blocked
 and 2 refused, all under the same `200`. That is why this route **never** returns a plain success:
-every call comes back with `processados` **and** `falhas` together, even when one of the two is empty.
-**Check `falhas` on every call** — the `200` status alone does not prove all the numbers were
+every call comes back with `processed` **and** `failures` together, even when one of the two is empty.
+**Check `failures` on every call** — the `200` status alone does not prove all the numbers were
 processed.
 
 ### Unblock — `DELETE /v1/bloqueios`
@@ -2782,7 +2782,7 @@ the same symptom: silence. Nobody investigates someone who stopped writing.
 - **1,000 phone numbers per `POST`/`DELETE` call** — above that the gateway refuses at the INPUT
   (`400 permanent`), saying how many came and the maximum accepted. Meta is not even called.
 - **64,000 blocked users in total, per account** — a META limit, not mirrored here: the one who knows
-  the total is Meta, and the error arrives alongside the number that exceeded it (`falhas[]`) or, if
+  the total is Meta, and the error arrives alongside the number that exceeded it (`failures[]`) or, if
   the whole call is refused for that, in `error.meta_detail`.
   ⚠️ **We have never seen this error happen** (checked on 2026-08-20: no occurrence in our code, tests
   or records). So **we do not know its `meta_code`** — and we are not going to invent one. Whoever
@@ -2804,7 +2804,7 @@ the same symptom: silence. Nobody investigates someone who stopped writing.
 | `502` | `config` | the credential the **gateway** keeps for that instance was refused by Meta, or the registered `phone_number_id` is invalid |
 | `502` | `unknown` | the gateway got no usable answer from Meta for the **WHOLE CALL** — no number was processed; repeating is safe (blocking/unblocking has no side effect by itself) |
 
-⚠️ **A `200` is never an "error" on this route — even if ALL the numbers ended up in `falhas[]`.** The
+⚠️ **A `200` is never an "error" on this route — even if ALL the numbers ended up in `failures[]`.** The
 envelope answered; the per-number verdict is in the body. The table above describes only the failure
 of the WHOLE CALL (no number processed) — do not confuse it with the partial success of the previous
 paragraph.
@@ -3053,7 +3053,7 @@ original scenario predates both. The values (`"whatsapp"` and `"nao_se_aplica"`)
     { "dia": "2026-07-29", "dia_utc": "2026-07-29", "contadores": { "alarme_perda_definitiva": 0, /* the 7 cobranca_* keys come here, all 0 in this capture — omitted only in this paste */ "conta_descartada": 0, "entregues": 4, "enviadas": 2, "falhas_de_envio": 1, "falhas_de_leitura": 0, "leituras_marcadas": 3, "numero_descartado": 0, "recebidas": 4, "recusadas_pelo_consumidor": 0 } }
   ],
   "token_meta": {
-    "veredito": "ok",
+    "verdict": "ok",
     "medido_em": "2026-07-29T00:00:02Z",
     "conferido_em": "2026-07-29T00:00:02Z",
     "checagem_falhando_desde": null
@@ -3089,8 +3089,8 @@ original scenario predates both. The values (`"whatsapp"` and `"nao_se_aplica"`)
   },
   "entrada": {
     "via": "tunel",
-    "conector": {
-      "estado": "observado",
+    "connector": {
+      "state": "observed",
       "conexoes_prontas": 4,
       "medido_em": "2026-07-29T00:00:02Z",
       "falhando_desde": null
@@ -3433,40 +3433,40 @@ already measured.
 
 | field | what it is |
 |---|---|
-| `veredito` | `"ok"` · `"recusado"` · `"desconhecido"` |
+| `verdict` | `"ok"` · `"refused"` · `"unknown"` |
 | `medido_em` | when Meta last **answered** (`null` = never) |
 | `conferido_em` | the last **attempt**, successful or not (`null` = never) |
 | `checagem_falhando_desde` | the start of the current run of check failures (`null` = not failing) |
 
-**Why two timestamps, and not one.** `{"veredito":"ok","medido_em":"15:20"}` on its own is **ambiguous
+**Why two timestamps, and not one.** `{"verdict":"ok","medido_em":"15:20"}` on its own is **ambiguous
 between two opposite states**: *"I checked at 15:20 and did not need to check again"* and *"I checked
 at 15:20, and every attempt since then has failed"*. In the second case your dashboard would paint
 green with Meta down. **`medido_em` and `conferido_em` diverging is the signal that the check is
 failing** — visible without you knowing anything about our implementation.
 
 **An old `ok` EXPIRES.** After 15 minutes without Meta answering, the verdict degrades to
-`desconhecido` instead of staying `ok`: a cache that never expires is a lie with a timestamp.
+`unknown` instead of staying `ok`: a cache that never expires is a lie with a timestamp.
 `medido_em` still points at the last real answer — it is what says how long the gateway has gone
 without hearing from Meta.
 
-**`desconhecido` is not new vocabulary:** it is the same word as the send's error `class`, with the
+**`unknown` is not new vocabulary:** it is the same word as the send's error `class`, with the
 same meaning — *we do not know*. Disguising "we do not know" as either of the other two is what causes
 damage.
 
-- `recusado` = Meta refused the credential, **or** the registered `phone_number_id` is invalid and the
+- `refused` = Meta refused the credential, **or** the registered `phone_number_id` is invalid and the
   call never even left the gateway. In both, **only a human fixes it** — the action is the same, hence
   the same word;
-- `desconhecido` = nobody has measured yet (a freshly started gateway, a paused instance) or the
+- `unknown` = nobody has measured yet (a freshly started gateway, a paused instance) or the
   measurement aged out.
 
 **The one who measures is a timer of ours, running per ACTIVE instance every 5 minutes**, regardless
 of whether there is traffic and whether anyone is looking. That is deliberate: if the verdict depended
 on traffic, *absence of traffic* would be indistinguishable from *broken system* — a token revoked at
 2 a.m. would only show up at 8 a.m., in front of the first customer. **A paused instance is not
-measured** (it does not send), and that is why its verdict ages into `desconhecido`; use `pausada` so
+measured** (it does not send), and that is why its verdict ages into `unknown`; use `pausada` so
 you do not confuse the two.
 
-**The two alarm rules this gives you, and neither requires knowing our innards:** `veredito != "ok"`,
+**The two alarm rules this gives you, and neither requires knowing our innards:** `verdict != "ok"`,
 or an aged `conferido_em`.
 
 ### `certificado_do_callback` — the validity of **your** certificate, as the gateway saw it
@@ -3679,13 +3679,13 @@ the **same word**.
 }
 ```
 
-**And the same applies to `token_meta.veredito`, which also comes out as `"nao_se_aplica"` on an
+**And the same applies to `token_meta.verdict`, which also comes out as `"nao_se_aplica"` on an
 Instagram instance.** The reason is subtler than "the field does not apply by definition": the live
 check (`watchdog.go`) measures by calling `GET /{phone_number_id}` on the Graph API, and an Instagram
 instance **never has** a `phone_number_id` (registration refuses it if it comes filled in). Without
 this handling, the watcher would measure with the field empty, the Graph would refuse the call locally
 (there would not even be a network request), and the gateway would classify that as a **refused
-credential** — a **permanent and false** `veredito: "recusado"` on every healthy Instagram instance,
+credential** — a **permanent and false** `verdict: "refused"` on every healthy Instagram instance,
 because the check was never designed to measure anything over there. That is why the gateway does not
 let that result leak: `token_meta` also becomes `nao_se_aplica`.
 
@@ -3789,7 +3789,7 @@ Example of an Instagram instance failing (pasted from a run of the real handler)
 ### `entrada` — WHERE the inbound path is published, and whether the connector is up (2026-08-06)
 
 🔴 **READ THIS SENTENCE BEFORE USING THE BLOCK, because it is what prevents the expensive
-misunderstanding:** `via` and `conector` describe **where the inbound path is published** and
+misunderstanding:** `via` and `connector` describe **where the inbound path is published** and
 **whether the connector is up** — they do **NOT** promise that Meta is managing to deliver. **What
 answers that question is a probe, measuring from OUTSIDE.**
 
@@ -3804,36 +3804,36 @@ is why it does not exist here, and will not come to exist.
 
 | field | is | what it is for |
 |---|---|---|
-| `via` | **configuration**, not measurement — `tunel`, `encaminhamento_de_porta` or `desconhecido` | knowing where the inbound path should be arriving through when you report an outage |
-| `conector` | a **measurement** of the `/ready` of the connector that publishes the route | telling "the tunnel went down" apart from "the gateway is quiet" |
+| `via` | **configuration**, not measurement — `tunel`, `encaminhamento_de_porta` or `unknown` | knowing where the inbound path should be arriving through when you report an outage |
+| `connector` | a **measurement** of the `/ready` of the connector that publishes the route | telling "the tunnel went down" apart from "the gateway is quiet" |
 | `ultimo_webhook_em` | the **same** value as `contadores.recebidas.ultimo_em` | concluding **silence** on your own, without reading the counters table |
 
-**`conector.estado` has THREE values, and the difference between two of them is the point of the
+**`connector.state` has THREE values, and the difference between two of them is the point of the
 block:**
 
-- **`observado`** — the gateway asked and the connector answered. `conexoes_prontas` carries the
+- **`observed`** — the gateway asked and the connector answered. `conexoes_prontas` carries the
   number, and it **can be `0`**: zero is a legitimate measurement ("the connector is up and there is
   no tunnel established"), the strongest signal this block can give. `falhando_desde` comes `null`;
-- **`desconhecido`** — **I could not measure**. `conexoes_prontas` comes **always `null`**, never a
+- **`unknown`** — **I could not measure**. `conexoes_prontas` comes **always `null`**, never a
   zero that looks like a verdict; `falhando_desde` says since when the question has not been coming
   back (`null` if there was never an attempt), and `medido_em` still points at the **last real
   answer**, which is what says how long the gateway has gone without hearing from the connector;
-- **`nao_configurado`** — nobody told the gateway whom to ask (an installation without a tunnel). All
+- **`not_configured`** — nobody told the gateway whom to ask (an installation without a tunnel). All
   three fields come `null`.
 
-⚠️ **`observado` is NOT a health verdict.** The gateway publishes what it measured and when it
+⚠️ **`observed` is NOT a health verdict.** The gateway publishes what it measured and when it
 measured it; the one who judges is you. It is the same rule as `certificado_do_callback`, which also
 has no "expired" state.
 
-⚠️ **The block comes ALWAYS, with all its keys, on every instance** — including `nao_configurado` and
+⚠️ **The block comes ALWAYS, with all its keys, on every instance** — including `not_configured` and
 including on an Instagram instance. A field that disappears breaks a strict parser, and this contract
 already paid for that with `token_instagram`.
 
-ℹ️ **`via` and `conector` are the GATEWAY's, not the instance's:** two instances of the same gateway
+ℹ️ **`via` and `connector` are the GATEWAY's, not the instance's:** two instances of the same gateway
 read exactly the same values. Only `ultimo_webhook_em` is per instance.
 
-**The alarm rule this gives you:** `conector.estado == "observado" && conexoes_prontas == 0` is *"the
-tunnel went down"* — act. `conector.estado == "desconhecido"` is *"the gateway is not managing to
+**The alarm rule this gives you:** `connector.state == "observed" && conexoes_prontas == 0` is *"the
+tunnel went down"* — act. `connector.state == "unknown"` is *"the gateway is not managing to
 measure"* — a different urgency, a different place to look, and **never** the same alarm.
 
 ### `alcance_externo` — the public probe's verdict, mirrored here (2026-08-07)
@@ -3862,7 +3862,7 @@ probe's public URL (the section above) that survives our outage, never this fiel
 - 🔴 **`nao_consegui_verificar`** — the gateway's LAST attempt to ask the external probe did not come
   back (no answer, no readable JSON, or no expected field), OR the last good answer is past its
   validity. **This is NEVER `down`, and never the field being absent.** It is a word of its own,
-  different from the `desconhecido` used in `token_meta`/`conector` — because the decision you are
+  different from the `unknown` used in `token_meta`/`connector` — because the decision you are
   going to automate on top of it is different: "I could not ask" is not "you are down";
 - **`nao_configurado`** — this gateway does not have `ZAPGW_SONDA_EXTERNA_URL` configured yet.
   `veredito`, `medido_em` and `fonte` come `null`.
@@ -4518,12 +4518,12 @@ because it is not a phone number) and it is the same value you send back in `par
 
 ### Receiving a message
 
-The event arrives in the **same format** as a WhatsApp message (`"tipo":"mensagem"`) — you do not have
+The event arrives in the **same format** as a WhatsApp message (`"kind":"message"`) — you do not have
 to learn a new vocabulary. The difference is what comes filled in:
 
 ```json
 {
-  "tipo": "mensagem",
+  "kind": "message",
   "id": "msg:IGMID...",
   "wa_message_id": "IGMID...",
   "sub_tipo": "text",
@@ -4547,7 +4547,7 @@ event in `eventos` (T-105).** Meta resends, in the same `messaging[]`, a notific
 your own business sends (`message.is_echo: true`,
 [developers.facebook.com/docs/messenger-platform/instagram/features/webhook/](https://developers.facebook.com/docs/messenger-platform/instagram/features/webhook/)),
 with the sender being **your own `ig_id`**, not a customer's IGSID. The gateway filters that item: it
-**does not become a `tipo:"mensagem"`**, but it stays present in the `cru` (base64), whole, like all
+**does not become a `kind:"message"`**, but it stays present in the `cru` (base64), whole, like all
 the rest of the batch. This exists because, without the filter, an automated system that answers every
 received message ends up answering **its own reply** — Meta refuses that send (it does not deliver a
 business's message to itself), and each of your replies becomes a send attempt doomed to fail. You **do
@@ -4638,7 +4638,7 @@ deceives.
 | `token_meta` | yes, measured every 5 min | **always `nao_se_aplica`** (T-099) — the check measures by `phone_number_id`, which Instagram never has |
 | `numero_na_meta` (`qualidade`, `limite_de_mensagens`) | yes, measured/pushed | **always `nao_se_aplica`** (T-099) — quality and tier are WhatsApp Business Number concepts |
 | `token_instagram` | **always `nao_se_aplica`** (T-098) | yes — 60-day expiry, see its own section |
-| `entrada` (`via`, `conector`, `ultimo_webhook_em`) | yes | yes — it belongs to the **gateway**, not the Meta product: the first two fields are identical on every instance of this gateway (T-120) |
+| `entrada` (`via`, `connector`, `ultimo_webhook_em`) | yes | yes — it belongs to the **gateway**, not the Meta product: the first two fields are identical on every instance of this gateway (T-120) |
 
 🔴 **`tipo` and `ig_id` came in with T-107 (2026-07-30) and appear ALWAYS, in both products** — the
 same blindness T-103 had already fixed in `zapgw instancia mostrar`/`listar` persisted here: without
