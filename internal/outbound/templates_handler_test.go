@@ -1300,7 +1300,7 @@ func TestCreateTemplateRefusedByMetaWithoutTheNewFieldsDoesNotInventThem(t *test
 	rec := createTemplate(t, h, "token-do-a", `{"instancia":"lojinha","nome":"n",`+
 		`"categoria":"UTILITY","idioma":"pt_BR","componentes":[{"type":"BODY","text":"oi"}]}`)
 	body := rec.Body.String()
-	for _, field := range []string{"subcodigo_meta", "explicacao_meta", "rastro_meta"} {
+	for _, field := range []string{"meta_subcode", "meta_explanation", "meta_trace"} {
 		if strings.Contains(body, field) {
 			t.Fatalf("body = %q — %s CANNOT appear when Meta did not send the source field", body, field)
 		}

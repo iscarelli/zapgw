@@ -69,7 +69,7 @@ func TestHandlerSendsAndReturnsTheID(t *testing.T) {
 	rec := ask(t, h, "token-do-a", "k1", textBody)
 
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
 	}
 	var resp struct {
 		WaMessageID string `json:"wa_message_id"`
@@ -86,10 +86,10 @@ func TestHandlerRefusesWithoutTokenAndWithInvalidToken(t *testing.T) {
 	h, _ := testHandler(t, srv)
 
 	if rec := ask(t, h, "", "k1", textBody); rec.Code != http.StatusUnauthorized {
-		t.Errorf("sem token: status = %d, quero 401", rec.Code)
+		t.Errorf("no token: status = %d, want 401", rec.Code)
 	}
 	if rec := ask(t, h, "token-errado", "k1", textBody); rec.Code != http.StatusUnauthorized {
-		t.Errorf("token errado: status = %d, quero 401", rec.Code)
+		t.Errorf("wrong token: status = %d, want 401", rec.Code)
 	}
 }
 
@@ -107,10 +107,10 @@ func TestHandlerRefusesInstanceNotOwnedByConsumer(t *testing.T) {
 	rec := ask(t, h, "token-do-a", "k1", body)
 
 	if rec.Code != http.StatusForbidden {
-		t.Errorf("status = %d, quero 403", rec.Code)
+		t.Errorf("status = %d, want 403", rec.Code)
 	}
 	if calledMeta {
-		t.Fatal("o gateway CHAMOU A META pela instancia de outro sistema")
+		t.Fatal("the gateway CALLED META for another system's instance")
 	}
 }
 
@@ -121,7 +121,7 @@ func TestHandlerRequiresIdempotencyKey(t *testing.T) {
 
 	rec := ask(t, h, "token-do-a", "", textBody)
 	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("status = %d, quero 400 — sem a chave nao ha como impedir duplicata", rec.Code)
+		t.Fatalf("status = %d, want 400 — without the key there is no way to prevent a duplicate", rec.Code)
 	}
 }
 
@@ -143,13 +143,13 @@ func TestHandlerDoesNotSendTwiceWithTheSameKey(t *testing.T) {
 	second := ask(t, h, "token-do-a", "mesma-chave", textBody)
 
 	if sends != 1 {
-		t.Fatalf("a Meta recebeu %d envios, quero 1", sends)
+		t.Fatalf("Meta received %d sends, want 1", sends)
 	}
 	if first.Code != http.StatusOK || second.Code != http.StatusOK {
-		t.Fatalf("status = %d e %d, quero 200 nos dois", first.Code, second.Code)
+		t.Fatalf("status = %d and %d, want 200 on both", first.Code, second.Code)
 	}
 	if first.Body.String() != second.Body.String() {
-		t.Errorf("respostas diferentes:\n1: %s\n2: %s", first.Body, second.Body)
+		t.Errorf("different responses:\n1: %s\n2: %s", first.Body, second.Body)
 	}
 }
 
@@ -171,12 +171,12 @@ func TestHandlerReleasesTheKeyWhenMetaRefuses(t *testing.T) {
 
 	first := ask(t, h, "token-do-a", "k1", textBody)
 	if first.Code != http.StatusServiceUnavailable {
-		t.Fatalf("1a: status = %d, quero 503 (retentavel)", first.Code)
+		t.Fatalf("1st: status = %d, want 503 (retryable)", first.Code)
 	}
 
 	second := ask(t, h, "token-do-a", "k1", textBody)
 	if second.Code != http.StatusOK {
-		t.Fatalf("2a: status = %d — a chave nao voltou a valer", second.Code)
+		t.Fatalf("2nd: status = %d — the key did not become valid again", second.Code)
 	}
 }
 
@@ -202,7 +202,7 @@ func TestHandlerTranslatesTheErrorClassIntoAStatus(t *testing.T) {
 		srv.Close()
 
 		if rec.Code != c.wantStatus {
-			t.Errorf("Meta %d -> %d, quero %d", c.statusFromMeta, rec.Code, c.wantStatus)
+			t.Errorf("Meta %d -> %d, want %d", c.statusFromMeta, rec.Code, c.wantStatus)
 		}
 		var resp struct {
 			Error struct {
@@ -211,7 +211,7 @@ func TestHandlerTranslatesTheErrorClassIntoAStatus(t *testing.T) {
 		}
 		_ = json.Unmarshal(rec.Body.Bytes(), &resp)
 		if resp.Error.Class != c.wantClass {
-			t.Errorf("Meta %d -> classe %q, quero %q", c.statusFromMeta, resp.Error.Class, c.wantClass)
+			t.Errorf("Meta %d -> class %q, want %q", c.statusFromMeta, resp.Error.Class, c.wantClass)
 		}
 	}
 }
@@ -231,7 +231,7 @@ func TestHandlerRefusesInvalidBodyWithASchemaError(t *testing.T) {
 	for _, body := range cases {
 		rec := ask(t, h, "token-do-a", "k-esquema", body)
 		if rec.Code != http.StatusBadRequest {
-			t.Errorf("corpo %.40s… -> status %d, quero 400", body, rec.Code)
+			t.Errorf("body %.40s… -> status %d, want 400", body, rec.Code)
 		}
 	}
 }
@@ -260,16 +260,16 @@ func TestHandlerRefusesURLButtonsWithoutCallingMeta(t *testing.T) {
 	rec := ask(t, h, "token-do-a", "k-botoes-url", body)
 
 	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("status = %d, quero 400", rec.Code)
+		t.Fatalf("status = %d, want 400", rec.Code)
 	}
 	if calls != 0 {
-		t.Errorf("a Meta foi chamada %d vez(es) — o pedido com botoes_url tem de morrer "+
-			"na validacao, nunca sair sem o botao", calls)
+		t.Errorf("Meta was called %d time(s) — a request with botoes_url has to die "+
+			"in validation, never go out without the button", calls)
 	}
 	// The consumer reads the instruction in the response BODY; a mute 400 would send them
 	// to open the contract to find the new field's name.
 	if !strings.Contains(rec.Body.String(), "botoes_template") {
-		t.Errorf("a resposta nao aponta o sucessor: %s", rec.Body.String())
+		t.Errorf("the response does not point to the successor: %s", rec.Body.String())
 	}
 }
 
@@ -286,7 +286,7 @@ func TestHandlerNeverLeaksACredentialInTheResponse(t *testing.T) {
 
 	for _, forbidden := range []string{"t-lojinha", "token-do-a", srv.URL} {
 		if strings.Contains(body, forbidden) {
-			t.Errorf("a resposta vazou %q: %s", forbidden, body)
+			t.Errorf("the response leaked %q: %s", forbidden, body)
 		}
 	}
 }
@@ -306,12 +306,12 @@ func TestHandlerDoesNotReleaseTheKeyWhenTransportFails(t *testing.T) {
 
 	rec := ask(t, h, "token-do-a", "k-transporte", textBody)
 	if rec.Code != http.StatusBadGateway {
-		t.Fatalf("status = %d, quero 502 (desconhecido)", rec.Code)
+		t.Fatalf("status = %d, want 502 (unknown)", rec.Code)
 	}
 	var resp errorResponse
 	_ = json.Unmarshal(rec.Body.Bytes(), &resp)
 	if resp.Error.Class != "unknown" {
-		t.Fatalf("classe = %q, quero unknown", resp.Error.Class)
+		t.Fatalf("class = %q, want unknown", resp.Error.Class)
 	}
 
 	_, reserved, err := store.ReserveIdempotency("sistema-a", "k-transporte", textBodyHash)
@@ -319,7 +319,7 @@ func TestHandlerDoesNotReleaseTheKeyWhenTransportFails(t *testing.T) {
 		t.Fatalf("ReserveIdempotency: %v", err)
 	}
 	if reserved {
-		t.Fatal("a chave foi liberada apos falha de TRANSPORTE — desfecho desconhecido")
+		t.Fatal("the key was released after a TRANSPORT failure — unknown outcome")
 	}
 }
 
@@ -334,12 +334,12 @@ func TestHandlerDoesNotReleaseTheKeyWhenTheAnswerHasNoID(t *testing.T) {
 
 	rec := ask(t, h, "token-do-a", "k-sem-id", textBody)
 	if rec.Code != http.StatusBadGateway {
-		t.Fatalf("status = %d, quero 502 (desconhecido)", rec.Code)
+		t.Fatalf("status = %d, want 502 (unknown)", rec.Code)
 	}
 	var resp errorResponse
 	_ = json.Unmarshal(rec.Body.Bytes(), &resp)
 	if resp.Error.Class != "unknown" {
-		t.Fatalf("classe = %q, quero unknown", resp.Error.Class)
+		t.Fatalf("class = %q, want unknown", resp.Error.Class)
 	}
 
 	_, reserved, err := store.ReserveIdempotency("sistema-a", "k-sem-id", textBodyHash)
@@ -347,7 +347,7 @@ func TestHandlerDoesNotReleaseTheKeyWhenTheAnswerHasNoID(t *testing.T) {
 		t.Fatalf("ReserveIdempotency: %v", err)
 	}
 	if reserved {
-		t.Fatal("a chave foi liberada apos ErrResponseWithoutID — desfecho desconhecido")
+		t.Fatal("the key was released after ErrResponseWithoutID — unknown outcome")
 	}
 }
 
@@ -363,7 +363,7 @@ func TestHandlerReleasesTheKeyOnAPermanentMetaRefusal(t *testing.T) {
 
 	rec := ask(t, h, "token-do-a", "k-400", textBody)
 	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("status = %d, quero 400", rec.Code)
+		t.Fatalf("status = %d, want 400", rec.Code)
 	}
 
 	_, reserved, err := store.ReserveIdempotency("sistema-a", "k-400", "")
@@ -371,7 +371,7 @@ func TestHandlerReleasesTheKeyOnAPermanentMetaRefusal(t *testing.T) {
 		t.Fatalf("ReserveIdempotency: %v", err)
 	}
 	if !reserved {
-		t.Fatal("a chave NAO foi liberada apos desfecho conhecido-negativo (400 permanente)")
+		t.Fatal("the key was NOT released after a known-negative outcome (400 permanent)")
 	}
 }
 
@@ -391,23 +391,23 @@ func TestHandlerPassesThroughMetaDetailWhenMetaSendsErrorDataDetails(t *testing.
 
 	rec := ask(t, h, "token-do-a", "k-detalhe-meta", textBody)
 	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("status = %d, corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
 	}
 	var resp errorResponse
 	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
-		t.Fatalf("corpo nao e JSON valido: %v", err)
+		t.Fatalf("body is not valid JSON: %v", err)
 	}
 	want := "Button title length invalid. Min length: 1, Max length: 20"
 	if resp.Error.MetaDetail != want {
-		t.Errorf("detalhe_meta = %q, quero %q", resp.Error.MetaDetail, want)
+		t.Errorf("meta_detail = %q, want %q", resp.Error.MetaDetail, want)
 	}
 	if resp.Error.Message != "Parameter value is not valid" {
-		t.Errorf("mensagem = %q — nao pode mudar so' porque detalhe_meta apareceu", resp.Error.Message)
+		t.Errorf("message = %q — cannot change just because meta_detail appeared", resp.Error.Message)
 	}
 	// The message NEVER carries the detail concatenated: whoever matches on
 	// `mensagem` today must not break because of this new field.
 	if strings.Contains(resp.Error.Message, "Button title") {
-		t.Errorf("mensagem = %q — detalhe_meta vazou para dentro de mensagem", resp.Error.Message)
+		t.Errorf("message = %q — meta_detail leaked into the message", resp.Error.Message)
 	}
 }
 
@@ -424,18 +424,18 @@ func TestHandlerWithoutErrorDataKeepsTodaysErrorBody(t *testing.T) {
 
 	rec := ask(t, h, "token-do-a", "k-sem-detalhe", textBody)
 	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("status = %d, corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
 	}
-	if strings.Contains(rec.Body.String(), "detalhe_meta") {
-		t.Fatalf("corpo = %q — detalhe_meta NAO pode aparecer quando a Meta nao mandou error_data.details",
+	if strings.Contains(rec.Body.String(), "meta_detail") {
+		t.Fatalf("body = %q — meta_detail CANNOT appear when Meta did not send error_data.details",
 			rec.Body.String())
 	}
 	var resp errorResponse
 	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
-		t.Fatalf("corpo nao e JSON valido: %v", err)
+		t.Fatalf("body is not valid JSON: %v", err)
 	}
 	if resp.Error.Class != "permanent" || resp.Error.MetaCode != 100 || resp.Error.Message != "parametro invalido" {
-		t.Fatalf("corpo mudou sem error_data: %+v", resp.Error)
+		t.Fatalf("body changed without error_data: %+v", resp.Error)
 	}
 }
 
@@ -455,20 +455,20 @@ func TestHandlerMetaDetailDoesNotLeakIntoTheTransitLog(t *testing.T) {
 
 	rec := ask(t, h, "token-do-a", "k-detalhe-sem-log", textBody)
 	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("status = %d, corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
 	}
 
 	var outcome string
 	if err := store.DB().QueryRow(
 		`SELECT desfecho FROM transito WHERE slug = 'lojinha'`,
 	).Scan(&outcome); err != nil {
-		t.Fatalf("ler o log de transito: %v", err)
+		t.Fatalf("read the transit log: %v", err)
 	}
 	if strings.Contains(outcome, "segredo do payload") {
-		t.Fatalf("desfecho do log de transito = %q — detalhe_meta vazou para o log persistente", outcome)
+		t.Fatalf("transit log outcome = %q — meta_detail leaked into the persistent log", outcome)
 	}
 	if outcome != "permanent" {
-		t.Errorf("desfecho = %q, quero a CLASSE do erro (permanent), nao o detalhe", outcome)
+		t.Errorf("outcome = %q, want the error's CLASS (permanent), not the detail", outcome)
 	}
 }
 
@@ -488,23 +488,23 @@ func TestHandlerPassesThroughSubcodeExplanationAndTrace(t *testing.T) {
 	rec := ask(t, h, "token-do-a", "k-subcodigo", textBody)
 	var resp errorResponse
 	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
-		t.Fatalf("corpo nao e JSON valido: %v (%s)", err, rec.Body.String())
+		t.Fatalf("body is not valid JSON: %v (%s)", err, rec.Body.String())
 	}
 	if resp.Error.MetaSubcode != 2494055 {
-		t.Errorf("subcodigo_meta = %d, quero 2494055", resp.Error.MetaSubcode)
+		t.Errorf("meta_subcode = %d, want 2494055", resp.Error.MetaSubcode)
 	}
 	want := "Erro temporario: Tente novamente em alguns instantes"
 	if resp.Error.MetaExplanation != want {
-		t.Errorf("explicacao_meta = %q, quero %q", resp.Error.MetaExplanation, want)
+		t.Errorf("meta_explanation = %q, want %q", resp.Error.MetaExplanation, want)
 	}
 	if resp.Error.MetaTrace != "AbCdEfGhIjKlMnOp" {
-		t.Errorf("rastro_meta = %q, quero %q", resp.Error.MetaTrace, "AbCdEfGhIjKlMnOp")
+		t.Errorf("meta_trace = %q, want %q", resp.Error.MetaTrace, "AbCdEfGhIjKlMnOp")
 	}
 	if resp.Error.Message != "An unknown error has occurred" {
-		t.Errorf("mensagem = %q — nao pode mudar so' porque os campos novos apareceram", resp.Error.Message)
+		t.Errorf("message = %q — cannot change just because the new fields appeared", resp.Error.Message)
 	}
 	if strings.Contains(resp.Error.Message, "Erro temporario") || strings.Contains(resp.Error.Message, "AbCdEfGhIjKlMnOp") {
-		t.Errorf("mensagem = %q — um dos campos novos vazou para dentro de mensagem", resp.Error.Message)
+		t.Errorf("message = %q — one of the new fields leaked into the message", resp.Error.Message)
 	}
 }
 
@@ -521,9 +521,9 @@ func TestHandlerWithoutTheNewFieldsKeepsTodaysErrorBody(t *testing.T) {
 
 	rec := ask(t, h, "token-do-a", "k-sem-campos-novos", textBody)
 	body := rec.Body.String()
-	for _, field := range []string{"subcodigo_meta", "explicacao_meta", "rastro_meta"} {
+	for _, field := range []string{"meta_subcode", "meta_explanation", "meta_trace"} {
 		if strings.Contains(body, field) {
-			t.Fatalf("corpo = %q — %s NAO pode aparecer quando a Meta nao mandou o campo de origem", body, field)
+			t.Fatalf("body = %q — %s CANNOT appear when Meta did not send the source field", body, field)
 		}
 	}
 }
@@ -544,17 +544,17 @@ func TestHandlerMetaTraceDoesNotLeakIntoTheTransitLog(t *testing.T) {
 
 	rec := ask(t, h, "token-do-a", "k-rastro-sem-log", textBody)
 	if rec.Code != http.StatusServiceUnavailable {
-		t.Fatalf("status = %d, corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
 	}
 
 	var outcome string
 	if err := store.DB().QueryRow(
 		`SELECT desfecho FROM transito WHERE slug = 'lojinha'`,
 	).Scan(&outcome); err != nil {
-		t.Fatalf("ler o log de transito: %v", err)
+		t.Fatalf("read the transit log: %v", err)
 	}
 	if strings.Contains(outcome, "AbCdEfGhIjKlMnOp") || strings.Contains(outcome, "2494055") {
-		t.Fatalf("desfecho do log de transito = %q — um campo novo vazou para o log persistente", outcome)
+		t.Fatalf("transit log outcome = %q — a new field leaked into the persistent log", outcome)
 	}
 }
 
@@ -572,22 +572,22 @@ func TestHandlerAnswersConfigWhenPhoneNumberIDIsInvalid(t *testing.T) {
 
 	if _, err := store.DB().Exec(
 		`UPDATE instancia SET phone_number_id = ? WHERE slug = ?`, "id/invalido", "lojinha"); err != nil {
-		t.Fatalf("corromper phone_number_id de teste: %v", err)
+		t.Fatalf("corrupt test phone_number_id: %v", err)
 	}
 
 	rec := ask(t, h, "token-do-a", "k-phone-invalido", textBody)
 	if rec.Code != http.StatusBadGateway {
-		t.Fatalf("status = %d, corpo = %s — quero 502", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, body = %s — want 502", rec.Code, rec.Body.String())
 	}
 	var resp errorResponse
 	_ = json.Unmarshal(rec.Body.Bytes(), &resp)
 	if resp.Error.Class != "config" {
-		t.Fatalf("classe = %q, quero config — a instancia esta mal configurada, nao e desfecho desconhecido",
+		t.Fatalf("class = %q, want config — the instance is misconfigured, not an unknown outcome",
 			resp.Error.Class)
 	}
 	for _, forbidden := range []string{"confira se a mensagem chegou", "gerenciador", "nao reenvie"} {
 		if strings.Contains(resp.Error.Message, forbidden) {
-			t.Errorf("mensagem %q contem %q — manda conferir/nao reenviar, mas o pedido nunca saiu e a chave foi liberada",
+			t.Errorf("message %q contains %q — tells to check/not resend, but the request never went out and the key was released",
 				resp.Error.Message, forbidden)
 		}
 	}
@@ -599,7 +599,7 @@ func TestHandlerAnswersConfigWhenPhoneNumberIDIsInvalid(t *testing.T) {
 		t.Fatalf("ReserveIdempotency: %v", err)
 	}
 	if !reserved {
-		t.Fatal("a chave NAO foi liberada apos phone_number_id invalido — desfecho e CONHECIDO-NEGATIVO")
+		t.Fatal("the key was NOT released after an invalid phone_number_id — the outcome is KNOWN-NEGATIVE")
 	}
 }
 
@@ -638,7 +638,7 @@ func TestHandlerRespectsTheInstanceTimeoutMs(t *testing.T) {
 	activateInstance(t, path, "lojinha")
 	if _, err := store.DB().Exec(
 		`UPDATE instancia SET timeout_ms = ? WHERE slug = ?`, timeoutMs, "lojinha"); err != nil {
-		t.Fatalf("ajustar timeout_ms de teste: %v", err)
+		t.Fatalf("adjust test timeout_ms: %v", err)
 	}
 
 	h := NewHandler(store, NewAuthenticator(store), meta.NewClient(client, "http://meta.invalid"), 1<<20, config.NewCounter(store), config.NewTransit(store), AllTypes)
@@ -648,7 +648,7 @@ func TestHandlerRespectsTheInstanceTimeoutMs(t *testing.T) {
 	after := time.Now()
 
 	if !rt.hasDeadline {
-		t.Fatal("a chamada ao cliente HTTP saiu SEM deadline no contexto — TimeoutMs nao chegou ate o cliente")
+		t.Fatal("the call to the HTTP client went out WITHOUT a deadline in the context — TimeoutMs did not reach the client")
 	}
 	// The deadline the TRANSPORT SAW has to land inside [before+timeoutMs,
 	// after+timeoutMs] — the proof it came FROM TimeoutMs=50ms and not from
@@ -656,7 +656,7 @@ func TestHandlerRespectsTheInstanceTimeoutMs(t *testing.T) {
 	wantMin := before.Add(timeoutMs * time.Millisecond)
 	wantMax := after.Add(timeoutMs * time.Millisecond)
 	if rt.deadline.Before(wantMin) || rt.deadline.After(wantMax) {
-		t.Fatalf("deadline do contexto = %v, esperava entre %v e %v (TimeoutMs=%dms nao foi respeitado)",
+		t.Fatalf("context deadline = %v, expected between %v and %v (TimeoutMs=%dms was not respected)",
 			rt.deadline, wantMin, wantMax, timeoutMs)
 	}
 
@@ -664,7 +664,7 @@ func TestHandlerRespectsTheInstanceTimeoutMs(t *testing.T) {
 	// response from Meta, so the message's outcome is UNKNOWN — the same
 	// treatment as a real timeout blowing up mid-call.
 	if rec.Code != http.StatusBadGateway {
-		t.Fatalf("status = %d, corpo = %s — quero 502: falha de transporte (simulada) sem resposta da Meta",
+		t.Fatalf("status = %d, body = %s — want 502: transport failure (simulated) with no response from Meta",
 			rec.Code, rec.Body.String())
 	}
 }
@@ -734,7 +734,7 @@ func TestHandlerIgnoresConsumerCancellationAndFinishesTheSend(t *testing.T) {
 	<-made
 
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, corpo = %s — o cancelamento do CONSUMIDOR abortou o envio",
+		t.Fatalf("status = %d, body = %s — the CONSUMER's cancellation aborted the send",
 			rec.Code, rec.Body.String())
 	}
 	var resp struct {
@@ -742,7 +742,7 @@ func TestHandlerIgnoresConsumerCancellationAndFinishesTheSend(t *testing.T) {
 	}
 	_ = json.Unmarshal(rec.Body.Bytes(), &resp)
 	if resp.WaMessageID != "wamid.SOBREVIVEU-AO-CANCELAMENTO" {
-		t.Fatalf("wa_message_id = %q — a chamada a Meta nao chegou ao fim", resp.WaMessageID)
+		t.Fatalf("wa_message_id = %q — the call to Meta did not reach completion", resp.WaMessageID)
 	}
 
 	// The key has to be CONFIRMED with the sent id — not held as an
@@ -753,7 +753,7 @@ func TestHandlerIgnoresConsumerCancellationAndFinishesTheSend(t *testing.T) {
 		t.Fatalf("ReserveIdempotency: %v", err)
 	}
 	if alreadySent != "wamid.SOBREVIVEU-AO-CANCELAMENTO" {
-		t.Fatalf("alreadySent = %q — a chave nao foi confirmada; o envio nao completou de verdade", alreadySent)
+		t.Fatalf("alreadySent = %q — the key was not confirmed; the send did not really complete", alreadySent)
 	}
 }
 
@@ -788,13 +788,13 @@ func TestHandlerRefusesAReadErrorAsRetryableAndNot413(t *testing.T) {
 	h.ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("status = %d, corpo = %s — quero 400 (o gateway esta de pe; quem caiu foi a conexao do consumidor)",
+		t.Fatalf("status = %d, body = %s — want 400 (the gateway is standing; what fell was the consumer's connection)",
 			rec.Code, rec.Body.String())
 	}
 	var resp errorResponse
 	_ = json.Unmarshal(rec.Body.Bytes(), &resp)
 	if resp.Error.Class != "retryable" {
-		t.Fatalf("classe = %q, quero retryable — repetir resolve, o corpo nao estourou teto nenhum", resp.Error.Class)
+		t.Fatalf("class = %q, want retryable — retrying solves it, the body did not blow any ceiling", resp.Error.Class)
 	}
 }
 
@@ -809,12 +809,12 @@ func TestHandlerRefusesLargeBodyWith413Permanent(t *testing.T) {
 
 	rec := ask(t, h, "token-do-a", "k-grande", textBody)
 	if rec.Code != http.StatusRequestEntityTooLarge {
-		t.Fatalf("status = %d, corpo = %s — quero 413", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, body = %s — want 413", rec.Code, rec.Body.String())
 	}
 	var resp errorResponse
 	_ = json.Unmarshal(rec.Body.Bytes(), &resp)
 	if resp.Error.Class != "permanent" {
-		t.Fatalf("classe = %q, quero permanent", resp.Error.Class)
+		t.Fatalf("class = %q, want permanent", resp.Error.Class)
 	}
 }
 
@@ -839,25 +839,25 @@ func TestHandlerRefusesASecondRequestWithTheSameKey(t *testing.T) {
 
 	first := ask(t, h, "token-do-a", "mesma-chave", bodyA)
 	if first.Code != http.StatusOK {
-		t.Fatalf("1a chamada: status = %d, corpo = %s", first.Code, first.Body.String())
+		t.Fatalf("1st call: status = %d, body = %s", first.Code, first.Body.String())
 	}
 
 	second := ask(t, h, "token-do-a", "mesma-chave", bodyB)
 	if second.Code != http.StatusUnprocessableEntity {
-		t.Fatalf("2a chamada: status = %d, corpo = %s — quero 422 (chave usada com OUTRO pedido)",
+		t.Fatalf("2nd call: status = %d, body = %s — want 422 (key used with ANOTHER request)",
 			second.Code, second.Body.String())
 	}
 	var resp errorResponse
 	_ = json.Unmarshal(second.Body.Bytes(), &resp)
 	if resp.Error.Class != "permanent" {
-		t.Fatalf("classe = %q, quero permanent — repetir com esta chave NUNCA vai funcionar", resp.Error.Class)
+		t.Fatalf("class = %q, want permanent — retrying with this key will NEVER work", resp.Error.Class)
 	}
 
 	mu.Lock()
 	n := sends
 	mu.Unlock()
 	if n != 1 {
-		t.Fatalf("a Meta recebeu %d chamadas, quero 1 — a segunda mensagem NAO podia sair", n)
+		t.Fatalf("Meta received %d calls, want 1 — the second message could NOT go out", n)
 	}
 }
 
@@ -882,12 +882,12 @@ func TestHandlerAcceptsTwoSpellingsOfTheSamePhoneWithTheSameKey(t *testing.T) {
 
 	first := ask(t, h, "token-do-a", "mesma-chave-telefone", textBody)
 	if first.Code != http.StatusOK {
-		t.Fatalf("1a chamada (canonico): status = %d, corpo = %s", first.Code, first.Body.String())
+		t.Fatalf("1st call (canonical): status = %d, body = %s", first.Code, first.Body.String())
 	}
 
 	second := ask(t, h, "token-do-a", "mesma-chave-telefone", formattedBody)
 	if second.Code != http.StatusOK {
-		t.Fatalf("2a chamada (formatado): status = %d, corpo = %s — quero 200 com o MESMO id, nao 422", second.Code, second.Body.String())
+		t.Fatalf("2nd call (formatted): status = %d, body = %s — want 200 with the SAME id, not 422", second.Code, second.Body.String())
 	}
 
 	var resp1, resp2 struct {
@@ -896,14 +896,14 @@ func TestHandlerAcceptsTwoSpellingsOfTheSamePhoneWithTheSameKey(t *testing.T) {
 	_ = json.Unmarshal(first.Body.Bytes(), &resp1)
 	_ = json.Unmarshal(second.Body.Bytes(), &resp2)
 	if resp1.WaMessageID != resp2.WaMessageID || resp2.WaMessageID == "" {
-		t.Fatalf("wa_message_id divergiu entre as grafias: %q e %q", resp1.WaMessageID, resp2.WaMessageID)
+		t.Fatalf("wa_message_id diverged between spellings: %q and %q", resp1.WaMessageID, resp2.WaMessageID)
 	}
 
 	mu.Lock()
 	n := sends
 	mu.Unlock()
 	if n != 1 {
-		t.Fatalf("a Meta recebeu %d chamadas, quero 1 — a segunda grafia nao podia reenviar", n)
+		t.Fatalf("Meta received %d calls, want 1 — the second spelling could not resend", n)
 	}
 }
 
@@ -916,7 +916,7 @@ func TestHandlerRefusesPausedInstance(t *testing.T) {
 
 	rec := ask(t, h, "token-do-a", "k1", textBody)
 	if rec.Code != http.StatusServiceUnavailable {
-		t.Fatalf("status = %d, quero 503 — instancia pausada nao envia", rec.Code)
+		t.Fatalf("status = %d, want 503 — a paused instance does not send", rec.Code)
 	}
 }
 
@@ -938,11 +938,11 @@ func TestHandlerMessageStatusAcceptedKeepsTodaysBody(t *testing.T) {
 
 	rec := ask(t, h, "token-do-a", "k-status-accepted", textBody)
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
 	}
 	want := "{\"wa_message_id\":\"wamid.OK\"}\n"
 	if rec.Body.String() != want {
-		t.Fatalf("corpo = %q, quero %q — message_status accepted NAO pode aparecer no corpo", rec.Body.String(), want)
+		t.Fatalf("body = %q, want %q — message_status accepted CANNOT appear in the body", rec.Body.String(), want)
 	}
 }
 
@@ -956,11 +956,11 @@ func TestHandlerMessageStatusAbsentKeepsTodaysBody(t *testing.T) {
 
 	rec := ask(t, h, "token-do-a", "k-status-ausente", textBody)
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
 	}
 	want := "{\"wa_message_id\":\"wamid.OK\"}\n"
 	if rec.Body.String() != want {
-		t.Fatalf("corpo = %q, quero %q — ausencia de message_status NAO pode virar campo nenhum", rec.Body.String(), want)
+		t.Fatalf("body = %q, want %q — absence of message_status CANNOT turn into any field", rec.Body.String(), want)
 	}
 }
 
@@ -981,7 +981,7 @@ func TestHandlerMessageStatusOtherThanAcceptedShowsInTheBodyAndAlarms(t *testing
 		srv.Close()
 
 		if rec.Code != http.StatusOK {
-			t.Fatalf("status %q: HTTP = %d, corpo = %s — a Meta aceitou o pedido, o gateway nao pode recusar",
+			t.Fatalf("status %q: HTTP = %d, body = %s — Meta accepted the request, the gateway cannot refuse",
 				status, rec.Code, rec.Body.String())
 		}
 		var resp struct {
@@ -989,16 +989,16 @@ func TestHandlerMessageStatusOtherThanAcceptedShowsInTheBodyAndAlarms(t *testing
 			MessageStatus string `json:"message_status"`
 		}
 		if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
-			t.Fatalf("status %q: corpo nao e JSON: %s", status, rec.Body.String())
+			t.Fatalf("status %q: body is not JSON: %s", status, rec.Body.String())
 		}
 		if resp.WaMessageID != "wamid.RETIDO" {
 			t.Errorf("status %q: wa_message_id = %q", status, resp.WaMessageID)
 		}
 		if resp.MessageStatus != status {
-			t.Errorf("status %q: message_status no corpo = %q, quero o valor cru", status, resp.MessageStatus)
+			t.Errorf("status %q: message_status in the body = %q, want the raw value", status, resp.MessageStatus)
 		}
 		if !strings.Contains(logBuf.String(), "ALARME") {
-			t.Errorf("status %q: nada no log avisou — o 200 nao garante entrega e ninguem saberia", status)
+			t.Errorf("status %q: nothing in the log warned — the 200 does not guarantee delivery and nobody would know", status)
 		}
 	}
 }
@@ -1017,7 +1017,7 @@ func TestHandlerCountsSentOnSuccess(t *testing.T) {
 
 	rec := ask(t, h, "token-do-a", "k-enviadas", textBody)
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
 	}
 
 	m, err := store.CountersBetween("lojinha", time.Now(), time.Now())
@@ -1025,10 +1025,10 @@ func TestHandlerCountsSentOnSuccess(t *testing.T) {
 		t.Fatalf("CountersBetween: %v", err)
 	}
 	if m[config.CounterSent] != 1 {
-		t.Errorf("enviadas = %d, quero 1", m[config.CounterSent])
+		t.Errorf("sent = %d, want 1", m[config.CounterSent])
 	}
 	if m[config.CounterSendFailures] != 0 {
-		t.Errorf("falhas_de_envio = %d, quero 0", m[config.CounterSendFailures])
+		t.Errorf("send_failures = %d, want 0", m[config.CounterSendFailures])
 	}
 }
 
@@ -1042,7 +1042,7 @@ func TestHandlerCountsSendFailuresWhenMetaRefuses(t *testing.T) {
 
 	rec := ask(t, h, "token-do-a", "k-falha", textBody)
 	if rec.Code == http.StatusOK {
-		t.Fatalf("status = %d, quero um erro (a Meta recusou)", rec.Code)
+		t.Fatalf("status = %d, want an error (Meta refused)", rec.Code)
 	}
 
 	m, err := store.CountersBetween("lojinha", time.Now(), time.Now())
@@ -1050,10 +1050,10 @@ func TestHandlerCountsSendFailuresWhenMetaRefuses(t *testing.T) {
 		t.Fatalf("CountersBetween: %v", err)
 	}
 	if m[config.CounterSendFailures] != 1 {
-		t.Errorf("falhas_de_envio = %d, quero 1", m[config.CounterSendFailures])
+		t.Errorf("send_failures = %d, want 1", m[config.CounterSendFailures])
 	}
 	if m[config.CounterSent] != 0 {
-		t.Errorf("enviadas = %d, quero 0 (a Meta recusou)", m[config.CounterSent])
+		t.Errorf("sent = %d, want 0 (Meta refused)", m[config.CounterSent])
 	}
 }
 
@@ -1080,7 +1080,7 @@ func TestHandlerCounterFailureDoesNotChangeTheStatus(t *testing.T) {
 
 	rec := ask(t, h, "token-do-a", "k-conta-falha", textBody)
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, corpo = %s — falha do CONTADOR nao pode mudar a resposta do ENVIO",
+		t.Fatalf("status = %d, body = %s — a COUNTER failure cannot change the SEND response",
 			rec.Code, rec.Body.String())
 	}
 }
@@ -1118,7 +1118,7 @@ func TestHandlerCounterWithstandsConcurrentRequests(t *testing.T) {
 		t.Fatalf("CountersBetween: %v", err)
 	}
 	if m[config.CounterSent] != goroutines {
-		t.Fatalf("enviadas = %d, quero %d — contagem perdida sob concorrencia", m[config.CounterSent], goroutines)
+		t.Fatalf("sent = %d, want %d — count lost under concurrency", m[config.CounterSent], goroutines)
 	}
 }
 
@@ -1155,24 +1155,24 @@ func TestHandlerLogsValidationRejectionWithoutLeakingValueNorIdempotencyKey(t *t
 	log.SetOutput(logStdout)
 
 	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("status = %d, corpo = %s — quero 400 (para ausente)", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, body = %s — want 400 (para missing)", rec.Code, rec.Body.String())
 	}
 
 	output := logBuf.String()
 	if n := strings.Count(strings.TrimRight(output, "\n"), "\n") + 1; strings.TrimSpace(output) == "" || n != 1 {
-		t.Fatalf("log tem %d linha(s), quero exatamente 1: %q", n, output)
+		t.Fatalf("log has %d line(s), want exactly 1: %q", n, output)
 	}
 	if !strings.Contains(output, "lojinha") {
-		t.Errorf("log nao cita o slug da instancia: %q", output)
+		t.Errorf("log does not cite the instance slug: %q", output)
 	}
 	if !strings.Contains(output, "para") {
-		t.Errorf("log nao nomeia o campo recusado (para): %q", output)
+		t.Errorf("log does not name the refused field (para): %q", output)
 	}
 	if strings.Contains(output, textSentinel) {
-		t.Errorf("o log VAZOU o valor de um campo do pedido: %q", output)
+		t.Errorf("the log LEAKED the value of a request field: %q", output)
 	}
 	if strings.Contains(output, keySentinel) {
-		t.Errorf("o log VAZOU a Idempotency-Key: %q", output)
+		t.Errorf("the log LEAKED the Idempotency-Key: %q", output)
 	}
 }
 
@@ -1195,17 +1195,17 @@ func TestHandlerLogsUnknownTypeWithoutLeakingTheRefusedValue(t *testing.T) {
 	log.SetOutput(logStdout)
 
 	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("status = %d, corpo = %s — quero 400 (tipo desconhecido)", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, body = %s — want 400 (unknown tipo)", rec.Code, rec.Body.String())
 	}
 	if !strings.Contains(rec.Body.String(), sentinelType) {
-		t.Fatalf("a RESPOSTA ao consumidor nao citou o tipo que ele mesmo mandou — teste mal montado")
+		t.Fatalf("the RESPONSE to the consumer did not cite the type it sent itself — badly built test")
 	}
 	if strings.Contains(logBuf.String(), sentinelType) {
-		t.Errorf("o log VAZOU o valor de `tipo` que so deveria voltar na resposta ao proprio consumidor: %q",
+		t.Errorf("the log LEAKED the value of `tipo`, which should only come back in the response to the consumer itself: %q",
 			logBuf.String())
 	}
 	if !strings.Contains(logBuf.String(), "lojinha") {
-		t.Errorf("log nao cita o slug da instancia: %q", logBuf.String())
+		t.Errorf("log does not cite the instance slug: %q", logBuf.String())
 	}
 }
 
@@ -1221,10 +1221,10 @@ func TestHandler401NeverGeneratesARejectionLog(t *testing.T) {
 	log.SetOutput(logStdout)
 
 	if rec.Code != http.StatusUnauthorized {
-		t.Fatalf("status = %d, quero 401", rec.Code)
+		t.Fatalf("status = %d, want 401", rec.Code)
 	}
 	if logBuf.Len() != 0 {
-		t.Errorf("401 gerou log — token invalido e ruido de varredura, nunca deve logar: %q", logBuf.String())
+		t.Errorf("401 generated a log — an invalid token is scan noise, it must never log: %q", logBuf.String())
 	}
 }
 
@@ -1246,11 +1246,11 @@ func TestHandlerLogsUnknownInstanceAs404(t *testing.T) {
 
 	db, err := sql.Open("sqlite", path)
 	if err != nil {
-		t.Fatalf("abrir banco para apagar a instancia: %v", err)
+		t.Fatalf("open database to delete the instance: %v", err)
 	}
 	defer db.Close()
 	if _, err := db.Exec(`DELETE FROM instancia WHERE slug = 'clinica'`); err != nil {
-		t.Fatalf("apagar instancia clinica: %v", err)
+		t.Fatalf("delete instance clinica: %v", err)
 	}
 
 	h := NewHandler(store, NewAuthenticator(store), meta.NewClient(http.DefaultClient, "http://127.0.0.1:1"),
@@ -1264,10 +1264,10 @@ func TestHandlerLogsUnknownInstanceAs404(t *testing.T) {
 	log.SetOutput(logStdout)
 
 	if rec.Code != http.StatusNotFound {
-		t.Fatalf("status = %d, corpo = %s — quero 404 (instancia desconhecida)", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, body = %s — want 404 (unknown instance)", rec.Code, rec.Body.String())
 	}
 	if !strings.Contains(logBuf.String(), "clinica") {
-		t.Errorf("404 de instancia desconhecida nao logou — deveria (T-037): %q", logBuf.String())
+		t.Errorf("404 for an unknown instance did not log — it should (T-037): %q", logBuf.String())
 	}
 }
 
@@ -1291,7 +1291,7 @@ func TestHandlerLogThrottleWithstandsConcurrentRequests(t *testing.T) {
 			// key (route+consumer) for the 100 calls.
 			rec := ask(t, h, "token-do-a", "", textBody)
 			if rec.Code != http.StatusBadRequest {
-				t.Errorf("status = %d, quero 400", rec.Code)
+				t.Errorf("status = %d, want 400", rec.Code)
 			}
 		}()
 	}
