@@ -1,7 +1,5 @@
 # Meta webhook fields — what exists, what we subscribe to, what we model
 
-*[Leia em português](META-CAMPOS-DE-WEBHOOK.pt-BR.md)*
-
 **Code:** `internal/meta/parse.go` (where Meta's format becomes the gateway's vocabulary),
 `internal/meta/types.go` (the vocabulary), `internal/inbound/handler.go` (guards 5a/5b, which decide
 whether the event reaches the consumer), `testdata/corpus/` (the frozen payloads).

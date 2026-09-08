@@ -1,7 +1,5 @@
 # The zapgw usage model — who does what
 
-*[Leia em português](MODELO-DE-USO.pt-BR.md)*
-
 **Code:** `internal/outbound/registration_handler.go` (step 3, `POST /v1/cadastro`),
 `internal/outbound/smoke.go` (the single path through the four smoke-test steps, called by BOTH
 facades), `internal/outbound/smoke_handler.go` (`POST /v1/fumaca`, step 4 over the API),

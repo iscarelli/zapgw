@@ -68,7 +68,7 @@ tocar, porque o risco de cada uma é completamente diferente.
 - 🔴 **O repositório é PÚBLICO e o histórico dele não se reescreve.** Nome de cliente, telefone, id
   de terceiro e endereço interno **não entram**. O `pre-push` bloqueia antes de sair da máquina — ele
   já pegou o planner **duas vezes**, nas duas escrevendo justamente sobre essa regra.
-- 🔴 **A tabela é a fonte.** `docs/MIGRACAO-CONTRATO-EN.md` (+ par pt-BR). *O que não está nela não
+- 🔴 **A tabela é a fonte.** `docs/MIGRACAO-CONTRATO-EN.md`. *O que não está nela não
   muda* — foi concluindo o contrário que o consumidor quebrou o upload de mídia.
 - 🔴 **Campo da Meta continua com o nome da Meta, e isso vale para SUBESTRUTURA** (seção 10). Um
   componente de template é um objeto inteiro dela aninhado num nosso. Ignorar isso custou, do lado do

@@ -1,7 +1,5 @@
 # CLAUDE.md — zapgw
 
-*[Leia em português](CLAUDE.pt-BR.md)*
-
 A gateway for Meta's messaging APIs (WhatsApp Cloud API and Instagram DM) — multi-tenant, static
 binary.
 
@@ -32,7 +30,8 @@ None of them is mine to reopen. The full reasoning and the measured cost of each
 | | decision | practical consequence |
 |---|---|---|
 | **License** | **AGPL-3.0-or-later** (`LICENSE`) | the product is a server: the network clause is the point. The owner is the sole holder, so relicensing later remains possible — the AGPL -> permissive path exists, the reverse does not. MIT was refused for being irreversible. |
-| **Language** | the code goes to **English**; documentation in **PT-BR and EN** | this repository's documents got their `NAME.md` (EN) + `NAME.pt-BR.md` (PT) pair on 2026-08-30. ✅ **The code arrived on 2026-08-30, already in English** — 3818 declarations renamed in a single mechanical pass in the private repository, BEFORE migrating, so no Portuguese identifier was ever committed here. |
+| **Language** | the code goes to **English**; documentation is **English by default, with a PT-BR mirror only where a Brazilian reader has to ACT on it** | ✅ **The code arrived on 2026-08-30, already in English** — 3818 declarations renamed in a single mechanical pass in the private repository, BEFORE migrating, so no Portuguese identifier was ever committed here. The docs got a full `NAME.md` (EN) + `NAME.pt-BR.md` (PT) pair on 2026-08-30, and **the full mirror was cut back on 2026-09-07** — see the row below. |
+| **Which docs keep a PT-BR mirror** | exactly four: `README`, `docs/CONTRATO-CONSUMIDOR`, `docs/MANUAL-DO-INTEGRADOR`, `docs/MIGRACAO-PARA-O-ZAPGW` | 🔴 **The criterion is the audience, not the size: a mirror exists when a Brazilian who does NOT read this code needs the doc to ACT, and getting it wrong costs OUTSIDE this repository.** That is the integrating consumer, and nobody else. Everything else is read by the owner and by agents, who read English — and an agent only ever loads the English `CLAUDE.md`, never the mirror. Seven mirrors were deleted on 2026-09-07 (6.113 lines): `CLAUDE`, `docs/README`, `docs/ARMADILHAS`, `docs/META-CAMPOS-DE-WEBHOOK`, `docs/MIGRACAO-CONTRATO-EN`, `docs/MODELO-DE-USO`, `docs/ONBOARDING-META`. **A new doc gets no mirror unless it passes the criterion above** — adding one is adding a second copy that ages. |
 | **Third parties** | **nothing from a consumer** goes public | it is the reason this repo exists instead of the old one being made public. |
 | **Name** | **stays `zapgw`** | that is what the old repo became `zapgw-dev` for: to free up the name. |
 

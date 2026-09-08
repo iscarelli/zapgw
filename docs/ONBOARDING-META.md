@@ -1,7 +1,5 @@
 # Onboarding a number at Meta (WhatsApp Cloud API)
 
-*[Leia em português](ONBOARDING-META.pt-BR.md)*
-
 **Code:** the values collected here become a row in the `instancia` table — the fields are in
 `internal/config/store.go` (`type Instancia`). This doc describes **how to obtain them**, not the
 schema.

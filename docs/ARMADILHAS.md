@@ -1,7 +1,5 @@
 # Pitfalls
 
-*[Leia em português](ARMADILHAS.pt-BR.md)*
-
 One line per pitfall, **with the real cost it charged**. Without the cost it becomes a generic
 warning and nobody reads it.
 

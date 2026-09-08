@@ -213,7 +213,7 @@ Why:     `docs/CONTRATO-CONSUMIDOR.md` documenta o erro como `classe` com
          documento que os consumidores leem para integrar: quem escrever um `switch` a partir dele
          nunca casa. Medido em 2026-09-06.
 Files:   docs/CONTRATO-CONSUMIDOR.md, docs/CONTRATO-CONSUMIDOR.pt-BR.md, docs/INVENTARIO-VALORES.md,
-         docs/ARMADILHAS.md, docs/ARMADILHAS.pt-BR.md, docs/MIGRACAO-CONTRATO-EN.md
+         docs/ARMADILHAS.md, docs/MIGRACAO-CONTRATO-EN.md
 Do:      🔴 NAO E' SED GLOBAL, e a armadilha ja esta escrita no proprio `ARMADILHAS.md`: um
          `.replace()` que troca toda ocorrencia. Parte das ocorrencias e' LEGITIMA.
          1. Va arquivo por arquivo. Em cada ocorrencia decida entre tres casos:
@@ -356,8 +356,12 @@ Verify:  CGO_ENABLED=0 go build ./... && go test ./... && gofmt -l cmd internal
 
 ## [ ] T-231  Translate the English side of the docs that is still Portuguese
 After:   T-230
-Why:     a decisao de 2026-08-20 e' documentacao em PT-BR **e** EN, com o par `NOME.md` (EN) +
-         `NOME.pt-BR.md` (PT). Medido em 2026-09-07, o lado EN de varios ainda carrega prosa
+Why:     desde 2026-09-07 a politica e' documentacao em INGLES por padrao, com espelho pt-BR so' nos
+         QUATRO docs que um brasileiro precisa para AGIR (`README`, `CONTRATO-CONSUMIDOR`,
+         `MANUAL-DO-INTEGRADOR`, `MIGRACAO-PARA-O-ZAPGW`) — os outros sete espelhos foram apagados.
+         Isso torna o lado ingles a UNICA versao da maioria dos docs, e prosa portuguesa nele deixou
+         de ser desleixo para virar o texto que o leitor recebe. Medido em 2026-09-07, o lado EN
+         de varios ainda carrega prosa
          portuguesa: `CONTRATO-CONSUMIDOR.md` (330), `ARMADILHAS.md` (160), `MIGRACAO-CONTRATO-EN.md`
          (119), `INVENTARIO-STRINGS.md` (353), `INVENTARIO-CHAVES.md` (152), `INVENTARIO-VALORES.md`
          (62), `HANDOFF.md` (72). Doc bilingue com metade da metade em portugues nao e' bilingue.
@@ -373,7 +377,7 @@ Do:      🔴 Boa parte das ocorrencias e' LEGITIMA e tem de ficar: e' o NOME PO
          (a) PROSA portuguesa no arquivo EN -> traduza;
          (b) LITERAL citado (chave, valor, comando, nome de arquivo) -> NAO toque;
          (c) citacao textual do dono ou do consumidor -> NAO toque, e' fala de outra pessoa.
-         NAO mexa em nenhum `.pt-BR.md`: eles sao portugueses de proposito.
+         NAO mexa em nenhum `.pt-BR.md`: os quatro que sobraram sao portugueses de proposito.
          Confira que o cabecalho `Código:` de cada doc ainda aponta para arquivo que existe.
 Verify:  liste no relatorio, por arquivo, quantas ocorrencias voce traduziu e quantas deixou em (b)
          ou (c). `go test ./internal/config/ -run TestDoc` verde (os ponteiros dos docs).

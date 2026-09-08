@@ -10,7 +10,6 @@ internal/outbound/leadership.go, internal/config/counter.go,
 internal/inbound/deliver.go, internal/inbound/deliver_test.go, cmd/zapgw/provision.go,
 docs/INVENTARIO-CHAVES.md
 
-*[Leia em português](MIGRACAO-CONTRATO-EN.pt-BR.md)*
 
 # The contract's English migration table
 
