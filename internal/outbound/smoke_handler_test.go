@@ -49,7 +49,7 @@ func (g *smokeGraph) start(t *testing.T) {
 	t.Helper()
 	g.srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Authorization") == "" {
-			t.Errorf("chamada sem Authorization em %s %s", r.Method, r.URL.Path)
+			t.Errorf("call without Authorization on %s %s", r.Method, r.URL.Path)
 		}
 		w.Header().Set("Content-Type", "application/json")
 		if r.Method == http.MethodPost {
@@ -100,27 +100,27 @@ func TestSmokeRouteActivatesTheInstanceOnlyAfterSendingAMessage(t *testing.T) {
 
 	rec := askSmoke(t, h, "token-do-a", smokeBody("lojinha", testSmokeDestination))
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
 	}
 	if g.gets.Load() == 0 {
-		t.Error("o passo 2 nao bateu na Graph API — token revogado pelo cliente passaria despercebido")
+		t.Error("step 2 did not hit the Graph API — a token revoked by the client would go unnoticed")
 	}
 	if g.posts.Load() != 1 {
-		t.Errorf("mensagens enviadas = %d, quero 1", g.posts.Load())
+		t.Errorf("messages sent = %d, want 1", g.posts.Load())
 	}
 
 	var resp SmokeResponse
 	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
-		t.Fatalf("corpo nao desserializa: %v (corpo = %q)", err, rec.Body.String())
+		t.Fatalf("body does not deserialize: %v (body = %q)", err, rec.Body.String())
 	}
 	if resp.State != "ativa" || resp.Paused {
-		t.Errorf("estado = %q pausada = %t, quero ativa/false", resp.State, resp.Paused)
+		t.Errorf("state = %q paused = %t, want ativa/false", resp.State, resp.Paused)
 	}
 	if resp.AlreadyActive {
-		t.Error("ja_estava_ativa = true numa instancia que NASCEU pausada")
+		t.Error("ja_estava_ativa = true on an instance that was BORN paused")
 	}
 	if resp.WaMessageID != "wamid.FUMACA-ROTA-TESTE" {
-		t.Errorf("wa_message_id = %q, quero o id devolvido pela Meta", resp.WaMessageID)
+		t.Errorf("wa_message_id = %q, want the id Meta returned", resp.WaMessageID)
 	}
 
 	i, err := store.FindInstance("lojinha")
@@ -128,7 +128,7 @@ func TestSmokeRouteActivatesTheInstanceOnlyAfterSendingAMessage(t *testing.T) {
 		t.Fatalf("FindInstance: %v", err)
 	}
 	if !i.Active {
-		t.Fatal("a instancia continua pausada depois de um fumaca que passou")
+		t.Fatal("the instance is still paused after a smoke test that passed")
 	}
 }
 
@@ -145,7 +145,7 @@ func TestSmokeRouteWithSendFailureLeavesTheInstancePausedAndRefusesWithError(t *
 
 	rec := askSmoke(t, h, "token-do-a", smokeBody("lojinha", testSmokeDestination))
 	if rec.Code == http.StatusOK {
-		t.Fatalf("status = 200, quero erro (a Meta recusou o envio)")
+		t.Fatalf("status = 200, want an error (Meta refused the send)")
 	}
 
 	i, err := store.FindInstance("lojinha")
@@ -153,7 +153,7 @@ func TestSmokeRouteWithSendFailureLeavesTheInstancePausedAndRefusesWithError(t *
 		t.Fatalf("FindInstance: %v", err)
 	}
 	if i.Active {
-		t.Fatal("a instancia foi ATIVADA mesmo com a Meta recusando o envio")
+		t.Fatal("the instance was ACTIVATED even with Meta refusing the send")
 	}
 }
 
@@ -165,10 +165,10 @@ func TestSmokeRouteWithRefusedTokenSendsNoMessageAndDoesNotActivate(t *testing.T
 
 	rec := askSmoke(t, h, "token-do-a", smokeBody("lojinha", testSmokeDestination))
 	if rec.Code == http.StatusOK {
-		t.Fatalf("status = 200, quero erro (a Graph API recusou o token)")
+		t.Fatalf("status = 200, want an error (the Graph API refused the token)")
 	}
 	if g.posts.Load() != 0 {
-		t.Errorf("mandou %d mensagem(ns) depois de o token ser recusado — o passo 2 nao abortou", g.posts.Load())
+		t.Errorf("sent %d message(s) after the token was refused — step 2 did not abort", g.posts.Load())
 	}
 
 	i, err := store.FindInstance("lojinha")
@@ -176,7 +176,7 @@ func TestSmokeRouteWithRefusedTokenSendsNoMessageAndDoesNotActivate(t *testing.T
 		t.Fatalf("FindInstance: %v", err)
 	}
 	if i.Active {
-		t.Fatal("a instancia foi ATIVADA com o token recusado")
+		t.Fatal("the instance was ACTIVATED with the token refused")
 	}
 }
 
@@ -190,33 +190,33 @@ func TestSmokeRouteAlreadyActiveInstanceSendsNoMessageAtAll(t *testing.T) {
 	g := workingSmokeGraph(t)
 	h, store := testSmoke(t, g)
 	if err := store.ActivateInstance("lojinha"); err != nil {
-		t.Fatalf("ActivateInstance (preparo do teste): %v", err)
+		t.Fatalf("ActivateInstance (test setup): %v", err)
 	}
 
 	rec := askSmoke(t, h, "token-do-a", smokeBody("lojinha", testSmokeDestination))
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
 	}
 
 	// THE REAL PROOF: count the calls to the fake client.
 	if g.gets.Load() != 0 {
-		t.Errorf("a Graph API foi consultada (GET) %d vez(es) numa instancia JA ATIVA — "+
-			"nao deveria nem checar o token de novo", g.gets.Load())
+		t.Errorf("the Graph API was queried (GET) %d time(s) for an ALREADY ACTIVE instance — "+
+			"it should not even recheck the token", g.gets.Load())
 	}
 	if g.posts.Load() != 0 {
-		t.Errorf("a Graph API recebeu %d mensagem(ns) numa instancia JA ATIVA — "+
-			"esta rota gastaria mensagem paga em loop", g.posts.Load())
+		t.Errorf("the Graph API received %d message(s) for an ALREADY ACTIVE instance — "+
+			"this route would spend a paid message in a loop", g.posts.Load())
 	}
 
 	var resp SmokeResponse
 	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
-		t.Fatalf("corpo nao desserializa: %v (corpo = %q)", err, rec.Body.String())
+		t.Fatalf("body does not deserialize: %v (body = %q)", err, rec.Body.String())
 	}
 	if !resp.AlreadyActive {
-		t.Error("ja_estava_ativa = false numa instancia que ja estava ativa")
+		t.Error("ja_estava_ativa = false on an instance that was already active")
 	}
 	if resp.WaMessageID != "" {
-		t.Errorf("wa_message_id = %q, quero vazio — nenhuma mensagem foi enviada nesta chamada", resp.WaMessageID)
+		t.Errorf("wa_message_id = %q, want empty — no message was sent in this call", resp.WaMessageID)
 	}
 }
 
@@ -231,10 +231,10 @@ func TestSmokeRouteRefusesInstanceNotOwnedByConsumerBefore404(t *testing.T) {
 	// route turns into an oracle for "does this slug exist?".
 	rec := askSmoke(t, h, "token-do-a", smokeBody("clinica", testSmokeDestination))
 	if rec.Code != http.StatusForbidden {
-		t.Errorf("status = %d, quero 403", rec.Code)
+		t.Errorf("status = %d, want 403", rec.Code)
 	}
 	if g.gets.Load() != 0 || g.posts.Load() != 0 {
-		t.Fatalf("o gateway falou com a Meta (gets=%d posts=%d) pela instancia de outro sistema",
+		t.Fatalf("the gateway talked to Meta (gets=%d posts=%d) for another system's instance",
 			g.gets.Load(), g.posts.Load())
 	}
 }
@@ -244,13 +244,13 @@ func TestSmokeRouteRefusesWithoutTokenAndWithInvalidToken(t *testing.T) {
 	h, _ := testSmoke(t, g)
 
 	if rec := askSmoke(t, h, "", smokeBody("lojinha", testSmokeDestination)); rec.Code != http.StatusUnauthorized {
-		t.Errorf("sem token: status = %d, quero 401", rec.Code)
+		t.Errorf("no token: status = %d, want 401", rec.Code)
 	}
 	if rec := askSmoke(t, h, "token-errado", smokeBody("lojinha", testSmokeDestination)); rec.Code != http.StatusUnauthorized {
-		t.Errorf("token errado: status = %d, quero 401", rec.Code)
+		t.Errorf("wrong token: status = %d, want 401", rec.Code)
 	}
 	if g.gets.Load() != 0 || g.posts.Load() != 0 {
-		t.Fatalf("o gateway falou com a Meta sem autenticar ninguem")
+		t.Fatalf("the gateway talked to Meta without authenticating anyone")
 	}
 }
 
@@ -259,20 +259,20 @@ func TestSmokeRouteRefusesIncompleteBody(t *testing.T) {
 	h, _ := testSmoke(t, g)
 
 	cases := []struct{ name, body string }{
-		{"sem instancia", `{"destino":"` + testSmokeDestination + `"}`},
-		{"sem destino", `{"instancia":"lojinha"}`},
-		{"destino so com espaco", `{"instancia":"lojinha","destino":"   "}`},
-		{"nao e JSON", `nao sou json`},
-		{"corpo vazio", ``},
+		{"missing instancia", `{"destino":"` + testSmokeDestination + `"}`},
+		{"missing destino", `{"instancia":"lojinha"}`},
+		{"destino with only whitespace", `{"instancia":"lojinha","destino":"   "}`},
+		{"not JSON", `not json`},
+		{"empty body", ``},
 	}
 	for _, c := range cases {
 		rec := askSmoke(t, h, "token-do-a", c.body)
 		if rec.Code != http.StatusBadRequest {
-			t.Errorf("%s: status = %d, quero 400 (corpo = %s)", c.name, rec.Code, rec.Body.String())
+			t.Errorf("%s: status = %d, want 400 (body = %s)", c.name, rec.Code, rec.Body.String())
 		}
 	}
 	if g.gets.Load() != 0 || g.posts.Load() != 0 {
-		t.Fatalf("o gateway falou com a Meta com pedido invalido")
+		t.Fatalf("the gateway talked to Meta with an invalid request")
 	}
 }
 
@@ -287,11 +287,11 @@ func TestSmokeRouteUnknownInstanceGives404(t *testing.T) {
 	// delete the row via direct SQL after the consumer's link already exists.
 	db, err := sql.Open("sqlite", path)
 	if err != nil {
-		t.Fatalf("abrir banco para apagar a instancia: %v", err)
+		t.Fatalf("open database to delete the instance: %v", err)
 	}
 	defer db.Close()
 	if _, err := db.Exec(`DELETE FROM instancia WHERE slug = 'clinica'`); err != nil {
-		t.Fatalf("apagar instancia clinica: %v", err)
+		t.Fatalf("delete instance clinica: %v", err)
 	}
 
 	h := NewSmokeHandler(store, NewAuthenticator(store),
@@ -299,7 +299,7 @@ func TestSmokeRouteUnknownInstanceGives404(t *testing.T) {
 
 	rec := askSmoke(t, h, "token-do-c", smokeBody("clinica", testSmokeDestination))
 	if rec.Code != http.StatusNotFound {
-		t.Errorf("status = %d, quero 404 (corpo = %s)", rec.Code, rec.Body.String())
+		t.Errorf("status = %d, want 404 (body = %s)", rec.Code, rec.Body.String())
 	}
 }
 
@@ -311,6 +311,6 @@ func TestSmokeRouteDoesNotReturnTheSendTokenNorAnySecret(t *testing.T) {
 
 	rec := askSmoke(t, h, "token-do-a", smokeBody("lojinha", testSmokeDestination))
 	if strings.Contains(rec.Body.String(), "t-lojinha") {
-		t.Errorf("o token de envio apareceu na resposta:\n%s", rec.Body.String())
+		t.Errorf("the send token appeared in the response:\n%s", rec.Body.String())
 	}
 }
