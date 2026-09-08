@@ -94,11 +94,11 @@ func TestExternalProbeURLTrimsSurroundingSpace(t *testing.T) {
 	}
 	for ingress, want := range cases {
 		if got := ExternalProbeURL(func(string) string { return ingress }); got != want {
-			t.Errorf("ExternalProbeURL(%q) = %q, quero %q", ingress, got, want)
+			t.Errorf("ExternalProbeURL(%q) = %q, want %q", ingress, got, want)
 		}
 	}
 	if got := ExternalProbeURL(nil); got != "" {
-		t.Errorf("ExternalProbeURL(nil) = %q, quero vazio", got)
+		t.Errorf("ExternalProbeURL(nil) = %q, want empty", got)
 	}
 }
 
@@ -110,16 +110,16 @@ func TestExternalProbeURLAcceptsTheNewNameAndItWins(t *testing.T) {
 		vars map[string]string
 		want string
 	}{
-		{"so a nova", map[string]string{VarExternalProbeURLNew: "https://novo/status"}, "https://novo/status"},
-		{"so a velha", map[string]string{VarExternalProbeURL: "https://velho/status"}, "https://velho/status"},
-		{"as duas: a NOVA vence", map[string]string{
+		{"only the new one", map[string]string{VarExternalProbeURLNew: "https://novo/status"}, "https://novo/status"},
+		{"only the old one", map[string]string{VarExternalProbeURL: "https://velho/status"}, "https://velho/status"},
+		{"both: the NEW one wins", map[string]string{
 			VarExternalProbeURLNew: "https://novo/status", VarExternalProbeURL: "https://velho/status",
 		}, "https://novo/status"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			if got := ExternalProbeURL(func(k string) string { return c.vars[k] }); got != c.want {
-				t.Errorf("ExternalProbeURL = %q, quero %q", got, c.want)
+				t.Errorf("ExternalProbeURL = %q, want %q", got, c.want)
 			}
 		})
 	}
@@ -132,9 +132,9 @@ func TestExternalProbeURLWarnsOnlyWhenOldNameWins(t *testing.T) {
 		vars     map[string]string
 		wantWarn bool
 	}{
-		{"so a velha: avisa", map[string]string{VarExternalProbeURL: "https://velho/status"}, true},
-		{"so a nova: fica calado", map[string]string{VarExternalProbeURLNew: "https://novo/status"}, false},
-		{"nenhuma: fica calado", map[string]string{}, false},
+		{"only the old one: warns", map[string]string{VarExternalProbeURL: "https://velho/status"}, true},
+		{"only the new one: stays silent", map[string]string{VarExternalProbeURLNew: "https://novo/status"}, false},
+		{"neither: stays silent", map[string]string{}, false},
 	}
 	original := log.Writer()
 	for _, c := range cases {
@@ -145,7 +145,7 @@ func TestExternalProbeURLWarnsOnlyWhenOldNameWins(t *testing.T) {
 			log.SetOutput(original)
 			warned := strings.Contains(buf.String(), VarExternalProbeURL) && strings.Contains(buf.String(), "obsoleta")
 			if warned != c.wantWarn {
-				t.Errorf("aviso = %v (log: %q), quero %v", warned, buf.String(), c.wantWarn)
+				t.Errorf("warning = %v (log: %q), want %v", warned, buf.String(), c.wantWarn)
 			}
 		})
 	}
@@ -161,19 +161,19 @@ func TestExternalProbePublishesTheVerdictTheURLAnswered(t *testing.T) {
 
 			r := s.Read()
 			if r.State != ReachStateObserved {
-				t.Fatalf("estado = %q, quero %q", r.State, ReachStateObserved)
+				t.Fatalf("state = %q, want %q", r.State, ReachStateObserved)
 			}
 			// 🔴 THE CENTRAL POINT: a genuinely measured `down` is
 			// `observado` with `veredito: "down"` — NEVER its own state,
 			// and never confused with "couldn't ask".
 			if r.Verdict == nil || *r.Verdict != verdict {
-				t.Errorf("veredito = %v, quero %q", r.Verdict, verdict)
+				t.Errorf("verdict = %v, want %q", r.Verdict, verdict)
 			}
 			if r.MeasuredAt == nil {
-				t.Error("medido_em nulo depois de a sonda externa responder")
+				t.Error("measured_at null after the external probe answered")
 			}
 			if r.Source == nil || *r.Source != SourceExternalProbe {
-				t.Errorf("fonte = %v, quero %q", r.Source, SourceExternalProbe)
+				t.Errorf("source = %v, want %q", r.Source, SourceExternalProbe)
 			}
 		})
 	}
@@ -192,16 +192,16 @@ func TestExternalProbeDownComesOutCouldNotVerifyAndNeverDown(t *testing.T) {
 
 	r := s.Read()
 	if r.State != ReachStateCouldNotVerify {
-		t.Fatalf("estado = %q, quero %q", r.State, ReachStateCouldNotVerify)
+		t.Fatalf("state = %q, want %q", r.State, ReachStateCouldNotVerify)
 	}
 	if r.Verdict != nil {
-		t.Errorf("veredito = %q numa medicao que NAO ACONTECEU — isso e' um veredito inventado", *r.Verdict)
+		t.Errorf("verdict = %q on a measurement that did NOT HAPPEN — this is a made-up verdict", *r.Verdict)
 	}
 	if r.MeasuredAt != nil {
-		t.Errorf("medido_em = %v sem a sonda externa nunca ter respondido", *r.MeasuredAt)
+		t.Errorf("measured_at = %v without the external probe ever having answered", *r.MeasuredAt)
 	}
 	if r.Source != nil {
-		t.Errorf("fonte = %q sem medicao nenhuma", *r.Source)
+		t.Errorf("source = %q with no measurement at all", *r.Source)
 	}
 }
 
@@ -220,7 +220,7 @@ func TestExternalProbeRefusesAnswerWithoutTheStatusField(t *testing.T) {
 
 	r := s.Read()
 	if r.State != ReachStateCouldNotVerify || r.Verdict != nil {
-		t.Fatalf("estado = %q, veredito = %v; quero %q com null",
+		t.Fatalf("state = %q, verdict = %v; want %q with null",
 			r.State, r.Verdict, ReachStateCouldNotVerify)
 	}
 }
@@ -238,7 +238,7 @@ func TestExternalProbeRefusesUnreadableJSON(t *testing.T) {
 	s.Measure(context.Background())
 
 	if r := s.Read(); r.State != ReachStateCouldNotVerify {
-		t.Fatalf("estado = %q, quero %q", r.State, ReachStateCouldNotVerify)
+		t.Fatalf("state = %q, want %q", r.State, ReachStateCouldNotVerify)
 	}
 }
 
@@ -254,7 +254,7 @@ func TestExternalProbeKeepsTheStampOfTheLastGoodAnswerWhenItFails(t *testing.T) 
 
 	good := s.Read()
 	if good.MeasuredAt == nil {
-		t.Fatal("medido_em nulo depois da medicao boa")
+		t.Fatal("measured_at null after the good measurement")
 	}
 
 	s.url = deadExternalAddress(t)
@@ -266,13 +266,13 @@ func TestExternalProbeKeepsTheStampOfTheLastGoodAnswerWhenItFails(t *testing.T) 
 
 	r := s.Read()
 	if r.State != ReachStateCouldNotVerify {
-		t.Fatalf("estado = %q, quero %q depois de duas falhas seguidas", r.State, ReachStateCouldNotVerify)
+		t.Fatalf("state = %q, want %q after two failures in a row", r.State, ReachStateCouldNotVerify)
 	}
 	if r.Verdict != nil {
-		t.Errorf("veredito = %q depois de a medicao parar de voltar", *r.Verdict)
+		t.Errorf("verdict = %q after the measurement stopped coming back", *r.Verdict)
 	}
 	if r.MeasuredAt == nil || *r.MeasuredAt != *good.MeasuredAt {
-		t.Errorf("medido_em = %v, quero o carimbo da ultima RESPOSTA (%v)", r.MeasuredAt, *good.MeasuredAt)
+		t.Errorf("measured_at = %v, want the timestamp of the last RESPONSE (%v)", r.MeasuredAt, *good.MeasuredAt)
 	}
 	_ = firstFailure // T-121 does not publish falhando_desde (only 4 fields in the contract)
 }
@@ -286,17 +286,17 @@ func TestExternalProbeDegradesStaleMeasurementToCouldNotVerify(t *testing.T) {
 	s.Measure(context.Background())
 
 	if r := s.Read(); r.State != ReachStateObserved {
-		t.Fatalf("estado logo depois de medir = %q, quero %q", r.State, ReachStateObserved)
+		t.Fatalf("state right after measuring = %q, want %q", r.State, ReachStateObserved)
 	}
 
 	clock = clock.Add(externalMeasurementValidity + time.Second)
 	r := s.Read()
 	if r.State != ReachStateCouldNotVerify || r.Verdict != nil {
-		t.Errorf("estado = %q, veredito = %v depois de a medicao vencer; quero %q com null",
+		t.Errorf("state = %q, verdict = %v after the measurement expired; want %q with null",
 			r.State, r.Verdict, ReachStateCouldNotVerify)
 	}
 	if r.MeasuredAt == nil {
-		t.Error("medido_em some ao vencer — e' ele que diz ha quanto tempo o gateway nao ouve a sonda externa")
+		t.Error("measured_at disappears on expiry — it is what says how long the gateway has not heard from the external probe")
 	}
 }
 
@@ -304,8 +304,8 @@ func TestExternalProbeDegradesStaleMeasurementToCouldNotVerify(t *testing.T) {
 
 func TestExternalProbeWithoutURLComesOutNotConfiguredAndTheProcessStartsNormally(t *testing.T) {
 	for name, s := range map[string]*ExternalProbe{
-		"url vazia":     NewExternalProbe(""),
-		"sonda ausente": nil,
+		"empty url":     NewExternalProbe(""),
+		"missing probe": nil,
 	} {
 		// Measure and Start on a probe with no URL cannot panic — it's the
 		// normal configuration of an installation that doesn't yet have
@@ -314,10 +314,10 @@ func TestExternalProbeWithoutURLComesOutNotConfiguredAndTheProcessStartsNormally
 		s.Start()
 		r := s.Read()
 		if r.State != ReachStateNotConfigured {
-			t.Errorf("%s: estado = %q, quero %q", name, r.State, ReachStateNotConfigured)
+			t.Errorf("%s: state = %q, want %q", name, r.State, ReachStateNotConfigured)
 		}
 		if r.Verdict != nil || r.MeasuredAt != nil || r.Source != nil {
-			t.Errorf("%s: bloco nao configurado veio com valor: %+v", name, r)
+			t.Errorf("%s: unconfigured block came with a value: %+v", name, r)
 		}
 	}
 }
@@ -351,13 +351,13 @@ type testExternalReach struct {
 func readExternalReach(t *testing.T, rec *httptest.ResponseRecorder) testExternalReach {
 	t.Helper()
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, quero 200; corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, want 200; body = %s", rec.Code, rec.Body.String())
 	}
 	var r struct {
 		ExternalReach testExternalReach `json:"external_reach"`
 	}
 	if err := json.Unmarshal(rec.Body.Bytes(), &r); err != nil {
-		t.Fatalf("corpo nao desserializa: %v (corpo = %q)", err, rec.Body.String())
+		t.Fatalf("body does not deserialize: %v (body = %q)", err, rec.Body.String())
 	}
 	return r.ExternalReach
 }
@@ -383,25 +383,25 @@ func TestStateRouteNeverOmitsTheExternalReachBlockWithoutAConfiguredURL(t *testi
 	rec := askState(t, h, "token-do-a", "lojinha")
 	var raw map[string]json.RawMessage
 	if err := json.Unmarshal(rec.Body.Bytes(), &raw); err != nil {
-		t.Fatalf("corpo nao desserializa: %v", err)
+		t.Fatalf("body does not deserialize: %v", err)
 	}
 	rawReach, has := raw["external_reach"]
 	if !has {
-		t.Fatalf("a chave `alcance_externo` NAO esta no JSON: %s", rec.Body.String())
+		t.Fatalf("the `external_reach` key is NOT in the JSON: %s", rec.Body.String())
 	}
 	var blocks map[string]json.RawMessage
 	if err := json.Unmarshal(rawReach, &blocks); err != nil {
-		t.Fatalf("`alcance_externo` nao desserializa: %v", err)
+		t.Fatalf("`external_reach` does not deserialize: %v", err)
 	}
 	for _, key := range []string{"state", "verdict", "measured_at", "source"} {
 		if _, has := blocks[key]; !has {
-			t.Errorf("a chave `alcance_externo.%s` NAO esta no JSON: %s", key, rawReach)
+			t.Errorf("the `external_reach.%s` key is NOT in the JSON: %s", key, rawReach)
 		}
 	}
 
 	e := readExternalReach(t, rec)
 	if e.State != ReachStateNotConfigured {
-		t.Errorf("estado = %q, quero %q", e.State, ReachStateNotConfigured)
+		t.Errorf("state = %q, want %q", e.State, ReachStateNotConfigured)
 	}
 }
 
@@ -414,10 +414,10 @@ func TestStateRoutePublishesTheObservedExternalReach(t *testing.T) {
 
 	e := readExternalReach(t, askState(t, h, "token-do-a", "lojinha"))
 	if e.State != ReachStateObserved {
-		t.Errorf("estado = %q, quero %q", e.State, ReachStateObserved)
+		t.Errorf("state = %q, want %q", e.State, ReachStateObserved)
 	}
 	if e.Verdict == nil || *e.Verdict != "up" {
-		t.Errorf("veredito = %v, quero \"up\"", e.Verdict)
+		t.Errorf("verdict = %v, want \"up\"", e.Verdict)
 	}
 }
 
@@ -450,14 +450,14 @@ func TestStateRouteDoesNotHangWithTheExternalProbeStuck(t *testing.T) {
 	rec := askState(t, h, "token-do-a", "lojinha")
 
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, quero 200; corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, want 200; body = %s", rec.Code, rec.Body.String())
 	}
 	if got := atomic.LoadInt64(accepted); got != 0 {
-		t.Fatalf("a sonda externa travada recebeu %d conexao(oes) — o handler fez I/O de rede na "+
-			"hora do request (proibido pela T-121)", got)
+		t.Fatalf("the stuck external probe received %d connection(s) — the handler did network I/O "+
+			"at request time (forbidden by T-121)", got)
 	}
 	e := readExternalReach(t, rec)
 	if e.State != ReachStateCouldNotVerify {
-		t.Errorf("estado = %q, quero %q (nunca houve tique)", e.State, ReachStateCouldNotVerify)
+		t.Errorf("state = %q, want %q (there was never a tick)", e.State, ReachStateCouldNotVerify)
 	}
 }
