@@ -29,11 +29,11 @@ func leaseFile(t *testing.T, age time.Duration) string {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), "lider")
 	if err := os.WriteFile(path, []byte("ok\n"), 0o600); err != nil {
-		t.Fatalf("criar arquivo de concessao: %v", err)
+		t.Fatalf("create lease file: %v", err)
 	}
 	when := time.Now().Add(-age)
 	if err := os.Chtimes(path, when, when); err != nil {
-		t.Fatalf("envelhecer arquivo de concessao: %v", err)
+		t.Fatalf("age lease file: %v", err)
 	}
 	return path
 }
@@ -52,10 +52,10 @@ func TestLeadershipDisarmedLetsThroughAndMatchesThePreviousBehavior(t *testing.T
 		t.Fatalf("NewLeadership: %v", err)
 	}
 	if l.Armed() {
-		t.Fatal("sem ZAPGW_LIDERANCA_ARQUIVO a guarda tem de ficar DESARMADA — e' a instalacao de no unico")
+		t.Fatal("without ZAPGW_LIDERANCA_ARQUIVO the guard has to stay DISARMED — it is the single-node install")
 	}
 	if ok, reason := l.Holder(); !ok {
-		t.Fatalf("guarda desarmada tem de responder titular=true; veio false (%s)", reason)
+		t.Fatalf("a disarmed guard has to answer titular=true; got false (%s)", reason)
 	}
 
 	var called bool
@@ -63,16 +63,16 @@ func TestLeadershipDisarmedLetsThroughAndMatchesThePreviousBehavior(t *testing.T
 	// Disarmed, Require returns the handler ITSELF: there is nothing to check,
 	// and wrapping it would only add work on the critical path.
 	if got := l.Require(internal); fmt.Sprintf("%p", got) != fmt.Sprintf("%p", internal) {
-		t.Error("desarmada, Require deveria devolver o handler original sem embrulho")
+		t.Error("disarmed, Require should return the original handler without wrapping")
 	}
 
 	w := httptest.NewRecorder()
 	l.Require(internal).ServeHTTP(w, httptest.NewRequest("POST", "/v1/messages", nil))
 	if !called {
-		t.Fatal("guarda desarmada barrou o envio — isso quebraria toda instalacao de no unico")
+		t.Fatal("a disarmed guard blocked the send — this would break every single-node install")
 	}
 	if w.Code != http.StatusOK {
-		t.Fatalf("status = %d, queria 200", w.Code)
+		t.Fatalf("status = %d, wanted 200", w.Code)
 	}
 }
 
@@ -81,14 +81,14 @@ func TestLeadershipWithFreshLeaseLetsTheSendThrough(t *testing.T) {
 	l := &Leadership{file: path, validity: 15 * time.Second}
 
 	if ok, reason := l.Holder(); !ok {
-		t.Fatalf("concessao de 1s com limite de 15s tem de valer; recusou: %s", reason)
+		t.Fatalf("a 1s lease with a 15s limit has to hold; refused: %s", reason)
 	}
 
 	var called bool
 	w := httptest.NewRecorder()
 	l.Require(markingHandler(&called)).ServeHTTP(w, httptest.NewRequest("POST", "/v1/messages", nil))
 	if !called || w.Code != http.StatusOK {
-		t.Fatalf("titular legitimo foi barrado: chamou=%v status=%d", called, w.Code)
+		t.Fatalf("the legitimate holder was blocked: called=%v status=%d", called, w.Code)
 	}
 }
 
@@ -99,48 +99,48 @@ func TestLeadershipWithSTALELeaseRefusesAsRetryable(t *testing.T) {
 
 	ok, reason := l.Holder()
 	if ok {
-		t.Fatal("concessao de 90s com limite de 15s NAO pode valer — este e o standby que subiu e nunca foi promovido")
+		t.Fatal("a 90s lease with a 15s limit CANNOT hold — this is the standby that came up and was never promoted")
 	}
 	if reason == "" {
-		t.Error("a recusa tem de dizer POR QUE; motivo vazio faz alguem reiniciar o servico procurando defeito que nao existe")
+		t.Error("the refusal has to say WHY; an empty reason makes someone restart the service looking for a defect that does not exist")
 	}
 
 	var called bool
 	w := httptest.NewRecorder()
 	l.Require(markingHandler(&called)).ServeHTTP(w, httptest.NewRequest("POST", "/v1/messages", nil))
 	if called {
-		t.Fatal("o handler de envio foi chamado sem lideranca — e' exatamente a mensagem duplicada que a guarda existe para impedir")
+		t.Fatal("the send handler was called without leadership — this is exactly the duplicate message the guard exists to prevent")
 	}
 	if w.Code != http.StatusServiceUnavailable {
-		t.Fatalf("status = %d, queria 503: o consumidor precisa REPETIR, nao desistir", w.Code)
+		t.Fatalf("status = %d, wanted 503: the consumer needs to RETRY, not give up", w.Code)
 	}
 	var body errorResponse
 	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
-		t.Fatalf("corpo nao e JSON de erro: %v", err)
+		t.Fatalf("body is not error JSON: %v", err)
 	}
 	if body.Error.Class != "retryable" {
-		t.Errorf("classe = %q, queria \"retryable\" — um 4xx faria o consumidor DESISTIR de uma mensagem que so' precisava de outro destino", body.Error.Class)
+		t.Errorf("class = %q, wanted \"retryable\" — a 4xx would make the consumer GIVE UP on a message that only needed another destination", body.Error.Class)
 	}
 }
 
 // 🔴 Fail closed: not being able to VERIFY is not "everything is fine".
 func TestLeadershipWithoutFileRefusesInsteadOfAssumingAllIsWell(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "nao-existe")
+	path := filepath.Join(t.TempDir(), "does-not-exist")
 	l := &Leadership{file: path, validity: 15 * time.Second, logf: func(string, ...any) {}}
 
 	ok, reason := l.Holder()
 	if ok {
-		t.Fatal("arquivo de concessao AUSENTE tem de recusar — 'nao consegui verificar' nunca pode virar 'pode enviar'")
+		t.Fatal("a MISSING lease file has to refuse — 'nao consegui verificar' can never turn into 'can send'")
 	}
 	if reason == "" {
-		t.Error("a recusa por ausencia tem de dizer o caminho que faltou")
+		t.Error("the refusal for absence has to say which path was missing")
 	}
 
 	var called bool
 	w := httptest.NewRecorder()
 	l.Require(markingHandler(&called)).ServeHTTP(w, httptest.NewRequest("POST", "/v1/messages", nil))
 	if called || w.Code != http.StatusServiceUnavailable {
-		t.Fatalf("ausencia de concessao deixou passar: chamou=%v status=%d", called, w.Code)
+		t.Fatalf("absence of a lease let it through: called=%v status=%d", called, w.Code)
 	}
 }
 
@@ -149,10 +149,10 @@ func TestNewLeadershipRefusesToStartWithUnreadableOrNonPositiveValidity(t *testi
 		name  string
 		value string
 	}{
-		{"texto que nao e duracao", "quinze segundos"},
-		{"numero sem unidade", "15"},
+		{"text that is not a duration", "quinze segundos"},
+		{"number without a unit", "15"},
 		{"zero", "0s"},
-		{"negativa", "-5s"},
+		{"negative", "-5s"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -166,7 +166,8 @@ func TestNewLeadershipRefusesToStartWithUnreadableOrNonPositiveValidity(t *testi
 				return ""
 			})
 			if err == nil {
-				t.Fatalf("%s = %q tinha de DERRUBAR a subida; valor ilegivel virando padrao silencioso so' aparece no dia do failover",
+				t.Fatalf("%s = %q had to BRING DOWN startup; an unreadable value turning into a silent default "+
+					"only shows up on failover day",
 					VarLeadershipValidity, c.value)
 			}
 		})
@@ -184,11 +185,11 @@ func TestNewLeadershipRefusesToStartArmedWithoutValidity(t *testing.T) {
 		return ""
 	})
 	if err == nil {
-		t.Fatal("guarda ARMADA sem ZAPGW_LIDERANCA_VALIDADE tinha de DERRUBAR a subida: qualquer default e um chute sobre o TTL alheio, e o chute errado sobrepoe dois titulares")
+		t.Fatal("an ARMED guard without ZAPGW_LIDERANCA_VALIDADE had to BRING DOWN startup: any default is a guess about someone else's TTL, and the wrong guess overlaps two holders")
 	}
 	for _, required := range []string{"V + A < T", "duplicada"} {
 		if !strings.Contains(err.Error(), required) {
-			t.Errorf("a mensagem tem de carregar %q — quem arma precisa da formula, nao de um \"faltou variavel\"; veio: %v", required, err)
+			t.Errorf("the message has to carry %q — whoever arms it needs the formula, not a \"missing variable\"; got: %v", required, err)
 		}
 	}
 }
@@ -198,10 +199,10 @@ func TestNewLeadershipRefusesToStartArmedWithoutValidity(t *testing.T) {
 func TestNewLeadershipDisarmedDoesNotRequireValidity(t *testing.T) {
 	l, err := NewLeadership(func(string) string { return "" })
 	if err != nil {
-		t.Fatalf("desarmada nao pode exigir validade: %v", err)
+		t.Fatalf("disarmed cannot require validity: %v", err)
 	}
 	if l.Armed() {
-		t.Fatal("sem arquivo a guarda tem de ficar desarmada")
+		t.Fatal("without a file the guard has to stay disarmed")
 	}
 }
 
@@ -219,13 +220,13 @@ func TestNewLeadershipReadsFileAndValidity(t *testing.T) {
 		t.Fatalf("NewLeadership: %v", err)
 	}
 	if !l.Armed() {
-		t.Fatal("com arquivo configurado a guarda tem de ficar ARMADA")
+		t.Fatal("with a configured file the guard has to be ARMED")
 	}
 	if l.file != "/run/zapgw/lider" {
-		t.Errorf("arquivo = %q, queria sem espaco nas pontas", l.file)
+		t.Errorf("file = %q, wanted no whitespace at the ends", l.file)
 	}
 	if l.validity != 7*time.Second {
-		t.Errorf("validade = %v, queria 7s", l.validity)
+		t.Errorf("validity = %v, wanted 7s", l.validity)
 	}
 }
 
@@ -242,22 +243,22 @@ func TestNewLeadershipAcceptsTheNewNamesAndTheyWin(t *testing.T) {
 		wantValidity time.Duration
 	}{
 		{
-			"as duas novas",
+			"both new",
 			map[string]string{VarLeadershipFileNew: "/run/novo/lider", VarLeadershipValidityNew: "9s"},
 			"/run/novo/lider", 9 * time.Second,
 		},
 		{
-			"as duas velhas",
+			"both old",
 			map[string]string{VarLeadershipFile: "/run/velho/lider", VarLeadershipValidity: "9s"},
 			"/run/velho/lider", 9 * time.Second,
 		},
 		{
-			"arquivo novo, validade velha: as duas vencem por conta propria",
+			"new file, old validity: each wins on its own",
 			map[string]string{VarLeadershipFileNew: "/run/novo/lider", VarLeadershipValidity: "9s"},
 			"/run/novo/lider", 9 * time.Second,
 		},
 		{
-			"as duas presentes em cada par: a NOVA vence nos dois",
+			"both present in each pair: the NEW one wins on both",
 			map[string]string{
 				VarLeadershipFileNew: "/run/novo/lider", VarLeadershipFile: "/run/velho/lider",
 				VarLeadershipValidityNew: "9s", VarLeadershipValidity: "99s",
@@ -272,10 +273,10 @@ func TestNewLeadershipAcceptsTheNewNamesAndTheyWin(t *testing.T) {
 				t.Fatalf("NewLeadership: %v", err)
 			}
 			if l.file != c.wantFile {
-				t.Errorf("arquivo = %q, quero %q", l.file, c.wantFile)
+				t.Errorf("file = %q, want %q", l.file, c.wantFile)
 			}
 			if l.validity != c.wantValidity {
-				t.Errorf("validade = %v, quero %v", l.validity, c.wantValidity)
+				t.Errorf("validity = %v, want %v", l.validity, c.wantValidity)
 			}
 		})
 	}
@@ -290,17 +291,17 @@ func TestNewLeadershipWarnsOnlyWhenOldNamesWin(t *testing.T) {
 		wantFileWarn, wantValidityWarn bool
 	}{
 		{
-			"as duas novas: caladas",
+			"both new: silent",
 			map[string]string{VarLeadershipFileNew: "/run/lider", VarLeadershipValidityNew: "9s"},
 			false, false,
 		},
 		{
-			"as duas velhas: avisam as duas",
+			"both old: both warn",
 			map[string]string{VarLeadershipFile: "/run/lider", VarLeadershipValidity: "9s"},
 			true, true,
 		},
 		{
-			"so o arquivo e velho",
+			"only the file is old",
 			map[string]string{VarLeadershipFile: "/run/lider", VarLeadershipValidityNew: "9s"},
 			true, false,
 		},
@@ -319,17 +320,17 @@ func TestNewLeadershipWarnsOnlyWhenOldNamesWin(t *testing.T) {
 			fileWarned := strings.Contains(text, VarLeadershipFile) && strings.Contains(text, "obsoleta")
 			validityWarned := strings.Contains(text, VarLeadershipValidity) && strings.Contains(text, "obsoleta")
 			if fileWarned != c.wantFileWarn {
-				t.Errorf("aviso do arquivo = %v (log: %q), quero %v", fileWarned, text, c.wantFileWarn)
+				t.Errorf("file warning = %v (log: %q), want %v", fileWarned, text, c.wantFileWarn)
 			}
 			if validityWarned != c.wantValidityWarn {
-				t.Errorf("aviso da validade = %v (log: %q), quero %v", validityWarned, text, c.wantValidityWarn)
+				t.Errorf("validity warning = %v (log: %q), want %v", validityWarned, text, c.wantValidityWarn)
 			}
 		})
 	}
 }
 
 func TestLeadershipSuppressesRepeatedRefusalLog(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "nao-existe")
+	path := filepath.Join(t.TempDir(), "does-not-exist")
 	var rows int
 	var mu sync.Mutex
 	l := &Leadership{
@@ -350,14 +351,14 @@ func TestLeadershipSuppressesRepeatedRefusalLog(t *testing.T) {
 	mu.Lock()
 	defer mu.Unlock()
 	if rows != 1 {
-		t.Fatalf("20 recusas produziram %d linhas de log; queria 1 — sob lideranca perdida TODA requisicao recusa, e o log repetido esconde o resto do journal", rows)
+		t.Fatalf("20 refusals produced %d log lines; wanted 1 — under lost leadership EVERY request refuses, and a repeated log hides the rest of the journal", rows)
 	}
 }
 
 // Guard against a concurrency defect: the suite's `-race` needs to exercise
 // Require in parallel, which is how it actually runs (an HTTP handler).
 func TestLeadershipIsSafeUnderConcurrency(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "nao-existe")
+	path := filepath.Join(t.TempDir(), "does-not-exist")
 	l := &Leadership{file: path, validity: 15 * time.Second, logf: func(string, ...any) {}}
 	stored := l.Require(markingHandler(new(bool)))
 
