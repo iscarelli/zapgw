@@ -113,27 +113,27 @@ func TestRenewerRenewsWhenFewerThan30DaysAreLeft(t *testing.T) {
 	rv.Check(context.Background())
 
 	if n := g.count(); n != 1 {
-		t.Fatalf("a Meta foi chamada %d vez(es), quero exatamente 1", n)
+		t.Fatalf("Meta was called %d time(s), want exactly 1", n)
 	}
 	inst, err := store.FindInstance(slug)
 	if err != nil {
 		t.Fatalf("FindInstance: %v", err)
 	}
 	if inst.SendToken != "token-novo-da-meta" {
-		t.Errorf("SendToken = %q, quero o token novo", inst.SendToken)
+		t.Errorf("SendToken = %q, want the new token", inst.SendToken)
 	}
 	if want := now.Format(time.RFC3339); inst.TokenSetAt != want {
-		t.Errorf("TokenSetAt = %q, quero %q (prazo reiniciado a partir de agora)", inst.TokenSetAt, want)
+		t.Errorf("TokenSetAt = %q, want %q (deadline restarted from now)", inst.TokenSetAt, want)
 	}
 	r, err := store.SummarizeInstance(slug)
 	if err != nil {
 		t.Fatalf("SummarizeInstance: %v", err)
 	}
 	if want := now.Format(time.RFC3339); r.TokenRenewedAt != want {
-		t.Errorf("TokenRenewedAt = %q, quero %q", r.TokenRenewedAt, want)
+		t.Errorf("TokenRenewedAt = %q, want %q", r.TokenRenewedAt, want)
 	}
 	if failure := rv.FailingSince(slug); !failure.IsZero() {
-		t.Errorf("FailingSince = %v, quero zero (a renovacao deu certo)", failure)
+		t.Errorf("FailingSince = %v, want zero (the renewal succeeded)", failure)
 	}
 }
 
@@ -151,7 +151,7 @@ func TestRenewerDoesNotCallMetaWhenMoreThan30DaysAreLeft(t *testing.T) {
 	rv.Check(context.Background())
 
 	if n := g.count(); n != 0 {
-		t.Fatalf("a Meta foi chamada %d vez(es), quero 0 — faltam 50 dias, bem acima do limiar de %d",
+		t.Fatalf("Meta was called %d time(s), want 0 — 50 days are left, well above the %d threshold",
 			n, DaysToRenewIGToken)
 	}
 	inst, err := store.FindInstance(slug)
@@ -159,7 +159,7 @@ func TestRenewerDoesNotCallMetaWhenMoreThan30DaysAreLeft(t *testing.T) {
 		t.Fatalf("FindInstance: %v", err)
 	}
 	if inst.SendToken != "token-antigo" {
-		t.Errorf("SendToken mudou para %q sem a Meta ter sido chamada", inst.SendToken)
+		t.Errorf("SendToken changed to %q without Meta having been called", inst.SendToken)
 	}
 }
 
@@ -184,20 +184,20 @@ func TestDecideIGTokenRenewal(t *testing.T) {
 		age  time.Duration
 		want igTokenRenewalDecision
 	}{
-		{"2 horas: jovem demais para a Meta aceitar", 2 * time.Hour, decisionTokenTooYoung},
-		{"23h59: ainda jovem demais (fronteira, por baixo)", 23*time.Hour + 59*time.Minute, decisionTokenTooYoung},
-		{"exatamente 24h: ja pode, mas nao e hora ainda", 24 * time.Hour, decisionWait},
-		{"10 dias: aguardando", 10 * 24 * time.Hour, decisionWait},
-		{"29 dias e 23h: ainda aguardando (fronteira, por baixo)", 29*24*time.Hour + 23*time.Hour, decisionWait},
-		{"exatamente 30 dias: renova (fronteira, por cima)", 30 * 24 * time.Hour, decisionRenew},
-		{"59 dias: renova", 59 * 24 * time.Hour, decisionRenew},
-		{"exatamente 60 dias: expirado (fronteira)", 60 * 24 * time.Hour, decisionExpired},
-		{"90 dias: expirado", 90 * 24 * time.Hour, decisionExpired},
+		{"2 hours: too young for Meta to accept", 2 * time.Hour, decisionTokenTooYoung},
+		{"23h59: still too young (boundary, from below)", 23*time.Hour + 59*time.Minute, decisionTokenTooYoung},
+		{"exactly 24h: already allowed, but not yet time", 24 * time.Hour, decisionWait},
+		{"10 days: waiting", 10 * 24 * time.Hour, decisionWait},
+		{"29 days and 23h: still waiting (boundary, from below)", 29*24*time.Hour + 23*time.Hour, decisionWait},
+		{"exactly 30 days: renews (boundary, from above)", 30 * 24 * time.Hour, decisionRenew},
+		{"59 days: renews", 59 * 24 * time.Hour, decisionRenew},
+		{"exactly 60 days: expired (boundary)", 60 * 24 * time.Hour, decisionExpired},
+		{"90 days: expired", 90 * 24 * time.Hour, decisionExpired},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			if got := decideIGTokenRenewal(c.age); got != c.want {
-				t.Errorf("decideIGTokenRenewal(%s) = %v, quero %v", c.age, got, c.want)
+				t.Errorf("decideIGTokenRenewal(%s) = %v, want %v", c.age, got, c.want)
 			}
 		})
 	}
@@ -217,17 +217,17 @@ func TestRenewerSkipsTokenYoungerThan24hWithoutCallingOrAlarming(t *testing.T) {
 	rv.Check(context.Background())
 
 	if n := g.count(); n != 0 {
-		t.Fatalf("a Meta foi chamada %d vez(es), quero 0 — o token tem so 2h de vida", n)
+		t.Fatalf("Meta was called %d time(s), want 0 — the token is only 2h old", n)
 	}
 	if strings.Contains(logBuf.String(), "ALARME") {
-		t.Errorf("log contem ALARME sem motivo:\n%s", logBuf.String())
+		t.Errorf("log contains ALARME with no reason:\n%s", logBuf.String())
 	}
 	inst, err := store.FindInstance(slug)
 	if err != nil {
 		t.Fatalf("FindInstance: %v", err)
 	}
 	if inst.SendToken != "token-antigo" {
-		t.Errorf("SendToken mudou para %q", inst.SendToken)
+		t.Errorf("SendToken changed to %q", inst.SendToken)
 	}
 }
 
@@ -254,7 +254,7 @@ func TestRenewerWhenTheWriteFailsKeepsTheOldTokenAndDoesNotMarkRenewed(t *testin
 	rv.persist = func(slug, newToken string, now time.Time) error {
 		persistenceRequest = true
 		if newToken != "token-novo-da-meta" {
-			t.Errorf("persistir recebeu newToken = %q, quero o que a Meta devolveu", newToken)
+			t.Errorf("persist received newToken = %q, want what Meta returned", newToken)
 		}
 		return errWrite
 	}
@@ -263,10 +263,10 @@ func TestRenewerWhenTheWriteFailsKeepsTheOldTokenAndDoesNotMarkRenewed(t *testin
 	rv.Check(context.Background())
 
 	if !persistenceRequest {
-		t.Fatal("a gravacao nunca foi tentada — o teste nao teria como provar a garantia (d)")
+		t.Fatal("the write was never attempted — the test would have no way to prove guarantee (d)")
 	}
 	if n := g.count(); n != 1 {
-		t.Fatalf("a Meta foi chamada %d vez(es), quero exatamente 1", n)
+		t.Fatalf("Meta was called %d time(s), want exactly 1", n)
 	}
 	// (1) the gateway keeps the OLD TOKEN — read from the real database,
 	// which rv.persist (injected) never touched.
@@ -275,19 +275,19 @@ func TestRenewerWhenTheWriteFailsKeepsTheOldTokenAndDoesNotMarkRenewed(t *testin
 		t.Fatalf("FindInstance: %v", err)
 	}
 	if inst.SendToken != "token-antigo" {
-		t.Errorf("SendToken = %q — o gateway NAO deveria ter trocado o token com a gravacao falhando", inst.SendToken)
+		t.Errorf("SendToken = %q — the gateway should NOT have swapped the token while the write failed", inst.SendToken)
 	}
 	// (2) does NOT mark it as renewed: FailingSince has to be filled in,
 	// not zero (zero is what clearFailure writes on SUCCESS).
 	if failure := rv.FailingSince(slug); failure.IsZero() {
-		t.Error("FailingSince = zero — o laco tratou uma gravacao que falhou como sucesso")
+		t.Error("FailingSince = zero — the loop treated a failed write as a success")
 	}
 	// (3) an ALARME comes out.
 	if !strings.Contains(logBuf.String(), "ALARME") {
-		t.Fatalf("log sem ALARME:\n%s", logBuf.String())
+		t.Fatalf("log without ALARME:\n%s", logBuf.String())
 	}
 	if !strings.Contains(logBuf.String(), "GRAVACAO falhou") {
-		t.Errorf("log nao menciona a gravacao ter falhado:\n%s", logBuf.String())
+		t.Errorf("log does not mention the write having failed:\n%s", logBuf.String())
 	}
 }
 
@@ -306,20 +306,20 @@ func TestRenewerWhenMetaRefusesAlarmsWithDaysLeftInTheText(t *testing.T) {
 	rv.Check(context.Background())
 
 	if !strings.Contains(logBuf.String(), "ALARME") {
-		t.Fatalf("log sem ALARME:\n%s", logBuf.String())
+		t.Fatalf("log without ALARME:\n%s", logBuf.String())
 	}
 	if !strings.Contains(logBuf.String(), "29 dia") {
-		t.Errorf("log nao cita os dias restantes (29):\n%s", logBuf.String())
+		t.Errorf("log does not cite the remaining days (29):\n%s", logBuf.String())
 	}
 	inst, err := store.FindInstance(slug)
 	if err != nil {
 		t.Fatalf("FindInstance: %v", err)
 	}
 	if inst.SendToken != "token-antigo" {
-		t.Errorf("SendToken = %q — a Meta recusou, nada deveria ter mudado", inst.SendToken)
+		t.Errorf("SendToken = %q — Meta refused, nothing should have changed", inst.SendToken)
 	}
 	if failure := rv.FailingSince(slug); failure.IsZero() {
-		t.Error("FailingSince = zero — a recusa da Meta deveria ter marcado a falha")
+		t.Error("FailingSince = zero — Meta's refusal should have marked the failure")
 	}
 }
 
@@ -361,17 +361,17 @@ func TestRenewerNeverRunsForAWhatsappInstance(t *testing.T) {
 	rv.Check(context.Background())
 
 	if n := g.count(); n != 0 {
-		t.Fatalf("a Meta foi chamada %d vez(es) por causa de uma instancia WHATSAPP, quero 0", n)
+		t.Fatalf("Meta was called %d time(s) because of a WHATSAPP instance, want 0", n)
 	}
 	if strings.Contains(logBuf.String(), "ALARME") {
-		t.Errorf("uma instancia whatsapp gerou ALARME do renovador de instagram:\n%s", logBuf.String())
+		t.Errorf("a whatsapp instance generated an ALARME from the instagram renewer:\n%s", logBuf.String())
 	}
 	inst, err := store.FindInstance("lojinha")
 	if err != nil {
 		t.Fatalf("FindInstance: %v", err)
 	}
 	if inst.SendToken != "token-whatsapp" {
-		t.Errorf("SendToken mudou para %q", inst.SendToken)
+		t.Errorf("SendToken changed to %q", inst.SendToken)
 	}
 }
 
@@ -412,7 +412,7 @@ func TestRenewerCheckOneRefusesWhatsappInstanceOutright(t *testing.T) {
 	rv.checkOne(context.Background(), "lojinha")
 
 	if n := g.count(); n != 0 {
-		t.Fatalf("checkOne chamou a Meta %d vez(es) direto para uma instancia WHATSAPP, quero 0", n)
+		t.Fatalf("checkOne called Meta %d time(s) directly for a WHATSAPP instance, want 0", n)
 	}
 }
 
@@ -434,14 +434,14 @@ func TestRenewerChecksInstagramInstanceEvenWhenPaused(t *testing.T) {
 	rv.Check(context.Background())
 
 	if n := g.count(); n != 1 {
-		t.Fatalf("a Meta foi chamada %d vez(es) para a instancia PAUSADA, quero exatamente 1", n)
+		t.Fatalf("Meta was called %d time(s) for the PAUSED instance, want exactly 1", n)
 	}
 	inst, err := store.FindInstance(slug)
 	if err != nil {
 		t.Fatalf("FindInstance: %v", err)
 	}
 	if inst.SendToken != "token-novo-mesmo-pausada" {
-		t.Errorf("SendToken = %q, quero o token novo — pausa nao pode impedir a renovacao", inst.SendToken)
+		t.Errorf("SendToken = %q, want the new token — pausing cannot block renewal", inst.SendToken)
 	}
 }
 
@@ -463,7 +463,7 @@ func TestRenewerStartSurvivesAPanicAndContinuesOnTheNextTick(t *testing.T) {
 		calls++
 		switch calls {
 		case 1:
-			panic("panico de teste — primeira volta")
+			panic("test panic — first round")
 		case 2:
 			close(secondRound)
 		}
@@ -475,6 +475,6 @@ func TestRenewerStartSurvivesAPanicAndContinuesOnTheNextTick(t *testing.T) {
 	case <-secondRound:
 		// the second round happened — the first one's panic did NOT kill the loop.
 	case <-time.After(5 * time.Second):
-		t.Fatal("a segunda volta do laco nunca aconteceu depois do panico — o recover nao protegeu a goroutine")
+		t.Fatal("the loop's second round never happened after the panic — recover did not protect the goroutine")
 	}
 }
