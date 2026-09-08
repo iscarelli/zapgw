@@ -150,7 +150,7 @@ func (h *ReadsHandler) mark(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusUnauthorized, "config", "token ausente ou invalido", 0)
 			return
 		}
-		log.Printf("zapgw: erro de store ao autenticar em %s: %v", readsRoute, err)
+		log.Printf("zapgw: store error while authenticating on %s: %v", readsRoute, err)
 		respondError(w, http.StatusServiceUnavailable, "retryable", "indisponivel", 0)
 		return
 	}
@@ -199,7 +199,7 @@ func (h *ReadsHandler) mark(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !CanUse(consumer, p.Instance) {
-		log.Printf("zapgw: consumidor %q pediu marcar leitura na instancia %q, que nao e dele",
+		log.Printf("zapgw: consumer %q asked to mark a read on instance %q, which is not theirs",
 			consumer.Name, p.Instance)
 		respondError(w, http.StatusForbidden, "config", "instancia nao autorizada para este consumidor", 0)
 		return
@@ -212,7 +212,7 @@ func (h *ReadsHandler) mark(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusNotFound, "config", "instancia desconhecida", 0)
 			return
 		}
-		log.Printf("zapgw: erro de store ao buscar instancia %q em %s: %v", p.Instance, readsRoute, err)
+		log.Printf("zapgw: store error while looking up instance %q on %s: %v", p.Instance, readsRoute, err)
 		respondError(w, http.StatusServiceUnavailable, "retryable", "indisponivel", 0)
 		return
 	}

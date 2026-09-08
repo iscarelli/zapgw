@@ -72,7 +72,7 @@ func knownType(kind string) string {
 	return kind
 }
 
-// aceita reports whether `tipo` is among the types `t` declares it accepts.
+// accepts reports whether `tipo` is among the types `t` declares it accepts.
 //
 // THE COMPARISON IS BY EXPLICIT INCLUSION, NEVER BY EXCLUSION — the same
 // discipline as config.ValidateInstanceType (internal/config/store.go):

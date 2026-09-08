@@ -212,7 +212,7 @@ func (v *Watchdog) Start() {
 			func() {
 				defer func() {
 					if rec := recover(); rec != nil {
-						log.Printf("zapgw: vigia do token sofreu panico (recuperado): %v", rec)
+						log.Printf("zapgw: token watchdog suffered a panic (recovered): %v", rec)
 					}
 				}()
 				v.work(context.Background())
@@ -233,7 +233,7 @@ func (v *Watchdog) Check(ctx context.Context) {
 	if err != nil {
 		// Just logs. The watcher never brings anything down: it's
 		// monitoring, and the next tick tries again.
-		log.Printf("zapgw: vigia do token nao conseguiu listar instancias: %v", err)
+		log.Printf("zapgw: token watchdog could not list instances: %v", err)
 		return
 	}
 	for _, r := range instances {
@@ -267,7 +267,7 @@ func (v *Watchdog) CheckInstance(ctx context.Context, slug string) {
 func (v *Watchdog) checkOne(ctx context.Context, slug string) {
 	inst, err := v.store.FindInstance(slug)
 	if err != nil {
-		log.Printf("zapgw: vigia do token nao conseguiu ler a instancia %q: %v", slug, err)
+		log.Printf("zapgw: token watchdog could not read instance %q: %v", slug, err)
 		v.record(slug, err)
 		return
 	}

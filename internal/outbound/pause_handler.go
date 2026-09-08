@@ -79,7 +79,7 @@ func (h *PauseHandler) pause(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusUnauthorized, "config", "token ausente ou invalido", 0)
 			return
 		}
-		log.Printf("zapgw: erro de store ao autenticar em %s: %v", pauseRoute, err)
+		log.Printf("zapgw: store error while authenticating on %s: %v", pauseRoute, err)
 		respondError(w, http.StatusServiceUnavailable, "retryable", "indisponivel", 0)
 		return
 	}
@@ -125,7 +125,7 @@ func (h *PauseHandler) pause(w http.ResponseWriter, r *http.Request) {
 	// THE BOND BEFORE ANYTHING ELSE — 403 before 404, like the sibling
 	// routes.
 	if !CanUse(consumer, p.Instance) {
-		log.Printf("zapgw: consumidor %q pediu pausar a instancia %q, que nao e dele",
+		log.Printf("zapgw: consumer %q asked to pause instance %q, which is not theirs",
 			consumer.Name, p.Instance)
 		respondError(w, http.StatusForbidden, "config", "instancia nao autorizada para este consumidor", 0)
 		return
@@ -133,12 +133,12 @@ func (h *PauseHandler) pause(w http.ResponseWriter, r *http.Request) {
 
 	if err := h.store.PauseInstance(p.Instance); err != nil {
 		if errors.Is(err, config.ErrInstanceNotFound) {
-			log.Printf("zapgw: consumidor %q tem vinculo com a instancia %q, que NAO existe mais no banco",
+			log.Printf("zapgw: consumer %q has a link to instance %q, which NO LONGER exists in the database",
 				consumer.Name, p.Instance)
 			respondError(w, http.StatusNotFound, "config", "esta instancia nao existe mais no gateway", 0)
 			return
 		}
-		log.Printf("zapgw: erro de store ao pausar a instancia %q: %v", p.Instance, err)
+		log.Printf("zapgw: store error while pausing instance %q: %v", p.Instance, err)
 		respondError(w, http.StatusServiceUnavailable, "retryable", "indisponivel", 0)
 		return
 	}

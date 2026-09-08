@@ -218,7 +218,7 @@ func (rv *InstagramRenewer) Start() {
 			func() {
 				defer func() {
 					if rec := recover(); rec != nil {
-						log.Printf("zapgw: renovador do token instagram sofreu panico (recuperado): %v", rec)
+						log.Printf("zapgw: instagram token renewer suffered a panic (recovered): %v", rec)
 					}
 				}()
 				rv.work(context.Background())
@@ -244,7 +244,7 @@ func (rv *InstagramRenewer) Check(ctx context.Context) {
 		// Just logs. The renewer never brings anything down: it's
 		// monitoring, and the next tick tries again — SAME rule as
 		// Watchdog.Check.
-		log.Printf("zapgw: renovador do token instagram nao conseguiu listar instancias: %v", err)
+		log.Printf("zapgw: instagram token renewer could not list instances: %v", err)
 		return
 	}
 	for _, r := range instances {
@@ -259,7 +259,7 @@ func (rv *InstagramRenewer) Check(ctx context.Context) {
 func (rv *InstagramRenewer) checkOne(ctx context.Context, slug string) {
 	inst, err := rv.store.FindInstance(slug)
 	if err != nil {
-		log.Printf("zapgw: renovador do token instagram nao conseguiu ler a instancia %q: %v", slug, err)
+		log.Printf("zapgw: instagram token renewer could not read instance %q: %v", slug, err)
 		return
 	}
 
@@ -327,7 +327,7 @@ func (rv *InstagramRenewer) checkOne(ctx context.Context, slug string) {
 	}
 
 	rv.clearFailure(slug)
-	log.Printf("zapgw: token do instagram da instancia %q renovado — validade reiniciada por %s a partir de agora",
+	log.Printf("zapgw: instagram token for instance %q renewed — validity restarted for %s from now",
 		slug, InstagramTokenValidity)
 }
 

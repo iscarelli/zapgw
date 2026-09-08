@@ -388,7 +388,7 @@ func (s *ConnectorProbe) Start() {
 			func() {
 				defer func() {
 					if rec := recover(); rec != nil {
-						log.Printf("zapgw: sonda do conector sofreu panico (recuperado): %v", rec)
+						log.Printf("zapgw: connector probe suffered a panic (recovered): %v", rec)
 					}
 				}()
 				s.Measure(context.Background())

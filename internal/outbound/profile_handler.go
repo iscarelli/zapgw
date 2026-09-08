@@ -225,7 +225,7 @@ func (h *ProfileHandler) authenticate(w http.ResponseWriter, r *http.Request) (c
 		respondError(w, http.StatusUnauthorized, "config", "token ausente ou invalido", 0)
 		return config.Consumer{}, false
 	}
-	log.Printf("zapgw: erro de store ao autenticar em /v1/perfil: %v", err)
+	log.Printf("zapgw: store error while authenticating on /v1/perfil: %v", err)
 	respondError(w, http.StatusServiceUnavailable, "retryable", "indisponivel", 0)
 	return config.Consumer{}, false
 }
@@ -241,7 +241,7 @@ func (h *ProfileHandler) instanceActive(
 	// BEFORE any call to Meta: without this, a leaked token from system A
 	// would read (or write!) B's profile — which describes B's business.
 	if !CanUse(consumer, slug) {
-		log.Printf("zapgw: consumidor %q pediu o perfil da instancia %q, que nao e dele",
+		log.Printf("zapgw: consumer %q asked for the profile of instance %q, which is not theirs",
 			consumer.Name, slug)
 		respondError(w, http.StatusForbidden, "config",
 			"instancia nao autorizada para este consumidor", 0)
@@ -256,7 +256,7 @@ func (h *ProfileHandler) instanceActive(
 			respondError(w, http.StatusNotFound, "config", "instancia desconhecida", 0)
 			return config.Instance{}, false
 		}
-		log.Printf("zapgw: erro de store ao buscar instancia %q em %s: %v", slug, route, err)
+		log.Printf("zapgw: store error while looking up instance %q on %s: %v", slug, route, err)
 		respondError(w, http.StatusServiceUnavailable, "retryable", "indisponivel", 0)
 		return config.Instance{}, false
 	}

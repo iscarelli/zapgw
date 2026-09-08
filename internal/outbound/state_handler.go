@@ -194,7 +194,7 @@ func (h *StateHandler) state(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusUnauthorized, "config", "token ausente ou invalido", 0)
 			return
 		}
-		log.Printf("zapgw: erro de store ao autenticar em GET /v1/estado: %v", err)
+		log.Printf("zapgw: store error while authenticating on GET /v1/estado: %v", err)
 		respondError(w, http.StatusServiceUnavailable, "retryable", "indisponivel", 0)
 		return
 	}
@@ -218,7 +218,7 @@ func (h *StateHandler) state(w http.ResponseWriter, r *http.Request) {
 	// the response status which slugs exist, and would read business B's
 	// traffic volume.
 	if !CanUse(consumer, slug) {
-		log.Printf("zapgw: consumidor %q pediu o estado da instancia %q, que nao e dele",
+		log.Printf("zapgw: consumer %q asked for the state of instance %q, which is not theirs",
 			consumer.Name, slug)
 		respondError(w, http.StatusForbidden, "config", "instancia nao autorizada para este consumidor", 0)
 		return
@@ -268,7 +268,7 @@ func (h *StateHandler) state(w http.ResponseWriter, r *http.Request) {
 		// 503, and not 200 with the state half-built: a read failure returned
 		// as a zeroed state would be a lie wearing a fact's face, and it
 		// would land exactly on the value the consumer uses to NOT alarm.
-		log.Printf("zapgw: erro ao montar o estado em GET /v1/estado: %v", err)
+		log.Printf("zapgw: error assembling state on GET /v1/estado: %v", err)
 		respondError(w, http.StatusServiceUnavailable, "retryable", "indisponivel", 0)
 		return
 	}

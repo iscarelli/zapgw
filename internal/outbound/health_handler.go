@@ -103,7 +103,7 @@ func (h *HealthHandler) health(w http.ResponseWriter, r *http.Request) {
 		}
 		// The only log in this file: database down isn't probe noise, and
 		// without this line the gateway would go silent about its own failure.
-		log.Printf("zapgw: erro de store ao autenticar no probe de saude: %v", err)
+		log.Printf("zapgw: store error while authenticating on the health probe: %v", err)
 		respondError(w, http.StatusServiceUnavailable, "retryable", "indisponivel", 0)
 		return
 	}
@@ -124,7 +124,7 @@ func (h *HealthHandler) health(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusNotFound, "config", "instancia desconhecida", 0)
 			return
 		}
-		log.Printf("zapgw: erro de store ao buscar instancia %q no probe de saude: %v", slug, err)
+		log.Printf("zapgw: store error while looking up instance %q on the health probe: %v", slug, err)
 		respondError(w, http.StatusServiceUnavailable, "retryable", "indisponivel", 0)
 		return
 	}

@@ -1,8 +1,8 @@
 // POST /v1/fumaca — the consumer proves the channel and, IF Meta accepts,
 // the instance activates (T-084).
 //
-// WHY IT EXISTS: step 4 of the model (docs/MODELO-DE-USO.md, "O fluxo, e
-// quem faz cada passo" — the consumer "Prova o canal (`fumaca`)") wasn't
+// WHY IT EXISTS: step 4 of the model (docs/MODELO-DE-USO.md, "The flow, and
+// who does each step" — the consumer "Proves the channel (`fumaca`)") wasn't
 // runnable by a THIRD-PARTY consumer: `zapgw fumaca` is a command line
 // that opens the local database, and a third party has no shell on the
 // gateway machine. Until this task, the OWNER did the proving, after the
@@ -143,7 +143,7 @@ func (h *SmokeHandler) smoke(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusUnauthorized, "config", "token ausente ou invalido", 0)
 			return
 		}
-		log.Printf("zapgw: erro de store ao autenticar em %s: %v", smokeRoute, err)
+		log.Printf("zapgw: store error while authenticating on %s: %v", smokeRoute, err)
 		respondError(w, http.StatusServiceUnavailable, "retryable", "indisponivel", 0)
 		return
 	}
@@ -189,7 +189,7 @@ func (h *SmokeHandler) smoke(w http.ResponseWriter, r *http.Request) {
 	// otherwise this route becomes an oracle answering "does this slug
 	// exist?" to whoever has any token at all.
 	if !CanUse(consumer, p.Instance) {
-		log.Printf("zapgw: consumidor %q pediu fumaca na instancia %q, que nao e dele",
+		log.Printf("zapgw: consumer %q asked for a smoke test on instance %q, which is not theirs",
 			consumer.Name, p.Instance)
 		respondError(w, http.StatusForbidden, "config", "instancia nao autorizada para este consumidor", 0)
 		return
@@ -233,7 +233,7 @@ func (h *SmokeHandler) smokeResponse(r SmokeResult) SmokeResponse {
 		// (and the message, if there was one, already went out) — the
 		// timestamp is enrichment, not the guarantee. A failure here just
 		// logs.
-		log.Printf("zapgw: erro de store ao ler o carimbo de ativacao da instancia %q: %v", r.Instance.Slug, err)
+		log.Printf("zapgw: store error while reading the activation timestamp of instance %q: %v", r.Instance.Slug, err)
 		return resp
 	}
 	if when, ok := events[config.CounterSent]; ok {
@@ -250,7 +250,7 @@ func (h *SmokeHandler) smokeResponse(r SmokeResult) SmokeResponse {
 // (docs/MODELO-DE-USO.md).
 func (h *SmokeHandler) respondSmokeError(w http.ResponseWriter, slug, consumer string, err error) {
 	if errors.Is(err, config.ErrInstanceNotFound) {
-		log.Printf("zapgw: consumidor %q tem vinculo com a instancia %q, que NAO existe mais no banco", consumer, slug)
+		log.Printf("zapgw: consumer %q has a link to instance %q, which NO LONGER exists in the database", consumer, slug)
 		respondError(w, http.StatusNotFound, "config", "esta instancia nao existe mais no gateway", 0)
 		return
 	}

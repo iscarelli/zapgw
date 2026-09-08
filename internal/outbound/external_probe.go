@@ -282,7 +282,7 @@ func (s *ExternalProbe) Start() {
 			func() {
 				defer func() {
 					if rec := recover(); rec != nil {
-						log.Printf("zapgw: sonda externa sofreu panico (recuperado): %v", rec)
+						log.Printf("zapgw: external probe suffered a panic (recovered): %v", rec)
 					}
 				}()
 				s.Measure(context.Background())
