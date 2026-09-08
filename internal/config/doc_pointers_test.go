@@ -83,6 +83,22 @@ var docPointerPattern = regexp.MustCompile(
 var docsFilesExcludedFromTheSweep = map[string]string{
 	"docs/TASKS.md": "the work queue: task specs use \"arquivo.go\"/\"caminho/arquivo.go\" " +
 		"as literal example format text, not pointers to real files",
+
+	// T-238's Do item 0 — the fix that un-breaks the gate itself. The
+	// changelog is a RECORD: docs/CHANGELOG.md cites `implanta/deploy.sh`
+	// in four lines because that path was true on the day each entry was
+	// written, and T-230 later renamed the directory to `deploy/`.
+	// "Correcting" the record would be inventing history it never had,
+	// and adding one exception per future rename makes this list grow
+	// forever. Excluding the whole file once, with the reason on record,
+	// is the rule this project already applies to docs/TASKS.md above —
+	// the changelog is equally not a "subsystem doc" in CLAUDE.md's
+	// `Código:` sense (it never claims to describe current code, only to
+	// record what happened when).
+	"docs/CHANGELOG.md": "a historical record, not a subsystem doc: its entries cite the " +
+		"path that was true on the day they were written (e.g. `implanta/deploy.sh`, " +
+		"renamed to `deploy/` by T-230) and are never rewritten to match a later rename " +
+		"— \"fixing\" them would fabricate history that never existed",
 }
 
 // externalRepoPrefixes are the ONLY "repo:path" prefixes this gate treats as
