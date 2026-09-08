@@ -148,7 +148,7 @@ func commitsIntroducedInRange(root, oldSha, newSha string) ([]string, error) {
 // that has never pushed anything, or a repo with no remote configured),
 // `--remotes` matches zero refs, so `--not --remotes` excludes nothing and
 // this returns EVERY commit reachable from newSha — the safe, slower
-// fallback the task calls for ("varra todos os commits alcancaveis") instead
+// fallback the task calls for ("sweep every reachable commit") instead
 // of inventing a base. This is not a special case in the code below; it
 // falls out of what `--not --remotes` means when the exclusion set is empty,
 // and is covered by TestPrePushGateNewRefNoRemoteAtAllSweepsEverything.
@@ -263,7 +263,7 @@ func commitParentCount(root, commit string) (int, error) {
 	}
 	fields := strings.Fields(strings.TrimSpace(string(out)))
 	if len(fields) == 0 {
-		return 0, fmt.Errorf("git rev-list --parents -n 1 %s: saida vazia", commit)
+		return 0, fmt.Errorf("git rev-list --parents -n 1 %s: empty output", commit)
 	}
 	return len(fields) - 1, nil // fields[0] is the commit itself
 }
@@ -363,7 +363,7 @@ func writeCommitFileToTemp(root, commit, path, tempRoot string) error {
 		// place, but this function is about to os.WriteFile a
 		// git-controlled path onto disk — refusing it here costs one line
 		// and removes any doubt.
-		return fmt.Errorf("caminho suspeito (contem '..'), recusado por seguranca: %q", path)
+		return fmt.Errorf("suspicious path (contains '..'), refused for safety: %q", path)
 	}
 	dest := filepath.Join(tempRoot, filepath.FromSlash(path))
 	if err := os.MkdirAll(filepath.Dir(dest), 0o755); err != nil {
@@ -400,44 +400,44 @@ func sweepCommitsForPersonalData(t *testing.T, root string, commits []string, ne
 	for _, commit := range commits {
 		files, ferr := filesChangedInCommit(root, commit)
 		if ferr != nil {
-			return "", "", fmt.Errorf("listar os arquivos alterados pelo commit %s: %w", commit, ferr)
+			return "", "", fmt.Errorf("list the files changed by commit %s: %w", commit, ferr)
 		}
 		if len(files) == 0 {
-			// So' delecoes, OU um merge cujo `-c` nao achou nenhum arquivo que
-			// difira de TODOS os pais (merge limpo, sem resolucao de
-			// conflito — ver filesChangedInCommit): nenhum conteudo novo
-			// para inspecionar.
+			// Only deletions, OR a merge whose `-c` found no file that
+			// differs from ALL parents (a clean merge, with no conflict
+			// resolution — see filesChangedInCommit): no new content to
+			// inspect.
 			continue
 		}
 
 		tmp := t.TempDir()
 		for _, f := range files {
 			if werr := writeCommitFileToTemp(root, commit, f, tmp); werr != nil {
-				return "", "", fmt.Errorf("materializar %s do commit %s: %w", f, commit, werr)
+				return "", "", fmt.Errorf("materialize %s from commit %s: %w", f, commit, werr)
 			}
 		}
 
 		phoneHits, _, perr := sweepPhoneNumbersOutsideTheAllowlist(tmp, files)
 		if perr != nil {
-			return "", "", fmt.Errorf("varredura de telefone no commit %s: %w", commit, perr)
+			return "", "", fmt.Errorf("phone sweep on commit %s: %w", commit, perr)
 		}
 		if len(phoneHits) > 0 {
-			return commit, fmt.Sprintf("o commit %s introduz telefone fora da allowlist "+
-				"(mesmo que um commit posterior no mesmo push apague o arquivo):\n%s",
+			return commit, fmt.Sprintf("commit %s introduces a phone number outside the allowlist "+
+				"(even though a later commit in the same push deletes the file):\n%s",
 				commit, strings.Join(phoneHits, "\n")), nil
 		}
 
 		nameHits, _, nerr := sweepForbiddenNamesOutsideTheGate(tmp, files, needles)
 		if nerr != nil {
-			return "", "", fmt.Errorf("varredura de nome no commit %s: %w", commit, nerr)
+			return "", "", fmt.Errorf("name sweep on commit %s: %w", commit, nerr)
 		}
 		if len(nameHits) > 0 {
 			lines := make([]string, 0, len(nameHits))
 			for _, f := range nameHits {
 				lines = append(lines, fmt.Sprintf("%s:%d: %s", f.file, f.line, f.match))
 			}
-			return commit, fmt.Sprintf("o commit %s introduz nome fora do portao "+
-				"(mesmo que um commit posterior no mesmo push apague o arquivo):\n%s",
+			return commit, fmt.Sprintf("commit %s introduces a name outside the gate "+
+				"(even though a later commit in the same push deletes the file):\n%s",
 				commit, strings.Join(lines, "\n")), nil
 		}
 	}
@@ -463,7 +463,7 @@ func sweepTagMessage(t *testing.T, root, sha string, needles []string) (matched 
 
 	isTag, terr := isAnnotatedTagObject(root, sha)
 	if terr != nil {
-		return false, "", fmt.Errorf("determinar se %s e' uma tag anotada: %w", sha, terr)
+		return false, "", fmt.Errorf("determine whether %s is an annotated tag: %w", sha, terr)
 	}
 	if !isTag {
 		return false, "", nil
@@ -471,36 +471,36 @@ func sweepTagMessage(t *testing.T, root, sha string, needles []string) (matched 
 
 	tagMessage, merr := annotatedTagMessage(root, sha)
 	if merr != nil {
-		return false, "", fmt.Errorf("ler a mensagem da tag %s: %w", sha, merr)
+		return false, "", fmt.Errorf("read tag %s's message: %w", sha, merr)
 	}
 
 	const tagMessageRelativePath = "tag-message.txt"
 	tmp := t.TempDir()
 	if werr := os.WriteFile(filepath.Join(tmp, tagMessageRelativePath), []byte(tagMessage), 0o644); werr != nil {
-		return false, "", fmt.Errorf("escrever a mensagem da tag %s em arquivo temporario: %w", sha, werr)
+		return false, "", fmt.Errorf("write tag %s's message to a temp file: %w", sha, werr)
 	}
 
 	phoneHits, _, perr := sweepPhoneNumbersOutsideTheAllowlist(tmp, []string{tagMessageRelativePath})
 	if perr != nil {
-		return false, "", fmt.Errorf("varredura de telefone na mensagem da tag %s: %w", sha, perr)
+		return false, "", fmt.Errorf("phone sweep on tag %s's message: %w", sha, perr)
 	}
 	if len(phoneHits) > 0 {
-		return true, fmt.Sprintf("a MENSAGEM da tag %s introduz telefone fora da allowlist "+
-			"(mesmo quando a tag nao acrescenta nenhum commit novo):\n%s",
+		return true, fmt.Sprintf("tag %s's MESSAGE introduces a phone number outside the allowlist "+
+			"(even when the tag adds no new commit):\n%s",
 			sha, strings.Join(phoneHits, "\n")), nil
 	}
 
 	nameHits, _, nerr := sweepForbiddenNamesOutsideTheGate(tmp, []string{tagMessageRelativePath}, needles)
 	if nerr != nil {
-		return false, "", fmt.Errorf("varredura de nome na mensagem da tag %s: %w", sha, nerr)
+		return false, "", fmt.Errorf("name sweep on tag %s's message: %w", sha, nerr)
 	}
 	if len(nameHits) > 0 {
 		lines := make([]string, 0, len(nameHits))
 		for _, f := range nameHits {
-			lines = append(lines, fmt.Sprintf("mensagem da tag, linha %d: %s", f.line, f.match))
+			lines = append(lines, fmt.Sprintf("tag message, line %d: %s", f.line, f.match))
 		}
-		return true, fmt.Sprintf("a MENSAGEM da tag %s introduz nome fora do portao "+
-			"(mesmo quando a tag nao acrescenta nenhum commit novo):\n%s",
+		return true, fmt.Sprintf("tag %s's MESSAGE introduces a name outside the gate "+
+			"(even when the tag adds no new commit):\n%s",
 			sha, strings.Join(lines, "\n")), nil
 	}
 
@@ -538,24 +538,24 @@ func TestPrePushGate(t *testing.T) {
 	oldSha := strings.TrimSpace(os.Getenv(prePushOldShaEnvVar))
 	newSha := strings.TrimSpace(os.Getenv(prePushNewShaEnvVar))
 	if oldSha == "" || newSha == "" {
-		t.Skip("TestPrePushGate so' verifica algo quando .githooks/pre-push a invoca, com " +
-			prePushOldShaEnvVar + " e " + prePushNewShaEnvVar + " definidas (os dois extremos do " +
-			"intervalo sendo empurrado — oldSha pode ser o sha zero de git, que significa \"ref nova, " +
-			"sem base no remoto\"). Fora desse contexto (por exemplo 'go test ./...' comum, parte do " +
-			"Verify deste projeto) nao ha intervalo a calcular — isto NAO e' um portao de dado pessoal " +
-			"sendo pulado, e' orquestracao sem entrada: os dois portoes que realmente varrem dado " +
-			"pessoal (TestNoPhoneNumberOutsideTheAllowlistInTheRepo, " +
-			"TestNoCustomerNameOutsideTheGateInTheRepo) continuam rodando e falhando fechado sempre.")
+		t.Skip("TestPrePushGate only checks something when .githooks/pre-push invokes it, with " +
+			prePushOldShaEnvVar + " and " + prePushNewShaEnvVar + " set (the two endpoints of the " +
+			"interval being pushed — oldSha can be git's zero sha, which means \"new ref, no base " +
+			"on the remote\"). Outside that context (e.g. a plain 'go test ./...', part of this " +
+			"project's Verify) there is no interval to compute — this is NOT a personal-data gate " +
+			"being skipped, it's orchestration with no input: the two gates that actually sweep " +
+			"personal data (TestNoPhoneNumberOutsideTheAllowlistInTheRepo, " +
+			"TestNoCustomerNameOutsideTheGateInTheRepo) keep running and failing closed always.")
 	}
 
 	root, err := moduleRootForTheAllowlist()
 	if err != nil {
-		t.Fatalf("localizar a raiz do modulo (falha fechada): %v", err)
+		t.Fatalf("locate the module root (closed failure): %v", err)
 	}
 
 	commits, err := commitsForPushedInterval(root, oldSha, newSha)
 	if err != nil {
-		t.Fatalf("calcular os commits do intervalo %s..%s (falha fechada): %v", oldSha, newSha, err)
+		t.Fatalf("compute the commits in interval %s..%s (closed failure): %v", oldSha, newSha, err)
 	}
 
 	if len(commits) == 0 {
@@ -567,30 +567,30 @@ func TestPrePushGate(t *testing.T) {
 		// remote-tracking ref this repository knows about?
 		reachable, rerr := objectAlreadyReachableFromRemotes(root, newSha)
 		if rerr != nil {
-			t.Fatalf("o intervalo %s..%s nao contem nenhum commit novo, e nao consegui confirmar se "+
-				"%s ja esta alcancavel a partir de alguma ref de rastreamento remoto (falha fechada): %v",
+			t.Fatalf("interval %s..%s contains no new commit, and I could not confirm whether "+
+				"%s is already reachable from some remote-tracking ref (closed failure): %v",
 				oldSha, newSha, newSha, rerr)
 		}
 		if !reachable {
-			t.Fatalf("o intervalo %s..%s nao contem nenhum commit novo, e %s NAO esta alcancavel a "+
-				"partir de nenhuma ref de rastreamento remoto (falha fechada) — um push com algo a "+
-				"empurrar sempre tem ao menos um commit novo OU aponta para algo ja publicado; nenhum "+
-				"dos dois e' o caso aqui, entao a MEDICAO nao pode ser confiada, nunca tratada como "+
-				"\"nada para verificar\"", oldSha, newSha, newSha)
+			t.Fatalf("interval %s..%s contains no new commit, and %s is NOT reachable "+
+				"from any remote-tracking ref (closed failure) — a push with something to "+
+				"push always has at least one new commit OR points at something already published; "+
+				"neither is the case here, so the MEASUREMENT cannot be trusted, never treated as "+
+				"\"nothing to check\"", oldSha, newSha, newSha)
 		}
-		t.Logf("intervalo %s..%s nao acrescenta nenhum commit novo ao remoto, e isto e' legitimo: %s "+
-			"ja esta alcancavel a partir de uma ref de rastreamento remoto (ex.: uma tag apontando "+
-			"para um commit ja publicado). Continuando so' com a varredura da propria ref abaixo.",
+		t.Logf("interval %s..%s adds no new commit to the remote, and this is legitimate: %s "+
+			"is already reachable from a remote-tracking ref (e.g. a tag pointing "+
+			"at an already-published commit). Continuing only with the ref's own sweep below.",
 			oldSha, newSha, newSha)
 	} else {
-		t.Logf("intervalo %s..%s tem %d commit(s) novo(s)", oldSha, newSha, len(commits))
+		t.Logf("interval %s..%s has %d new commit(s)", oldSha, newSha, len(commits))
 	}
 
 	needles, source, err := loadForbiddenNames()
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
-	t.Logf("agulhas de nome carregadas de: %s (%d agulha(s))", source, len(needles))
+	t.Logf("name needles loaded from: %s (%d needle(s))", source, len(needles))
 
 	// T-204: the tag object's own MESSAGE travels to `origin` on a tag
 	// push, whether or not the tag introduces any new commit — swept here,
@@ -598,18 +598,18 @@ func TestPrePushGate(t *testing.T) {
 	// else in this file.
 	tagBlocked, tagMessageResult, err := sweepTagMessage(t, root, newSha, needles)
 	if err != nil {
-		t.Fatalf("%v (falha fechada)", err)
+		t.Fatalf("%v (closed failure)", err)
 	}
 	if tagBlocked {
-		t.Fatalf("BLOQUEADO: %s", tagMessageResult)
+		t.Fatalf("BLOCKED: %s", tagMessageResult)
 	}
 
 	badCommit, message, err := sweepCommitsForPersonalData(t, root, commits, needles)
 	if err != nil {
-		t.Fatalf("%v (falha fechada)", err)
+		t.Fatalf("%v (closed failure)", err)
 	}
 	if badCommit != "" {
-		t.Fatalf("BLOQUEADO: %s", message)
+		t.Fatalf("BLOCKED: %s", message)
 	}
 }
 
@@ -649,7 +649,7 @@ func newDisposableRemoteAndClone(t *testing.T) (cloneDir string) {
 	mustGit(t, cloneDir, "checkout", "-q", "-b", "main")
 
 	if err := os.WriteFile(filepath.Join(cloneDir, "base.txt"), []byte("base\n"), 0o644); err != nil {
-		t.Fatalf("escrever base.txt: %v", err)
+		t.Fatalf("write base.txt: %v", err)
 	}
 	mustGit(t, cloneDir, "add", "base.txt")
 	mustGit(t, cloneDir, "commit", "-q", "-m", "base commit")
@@ -669,7 +669,7 @@ func TestPrePushGateNewRefCleanBranchPasses(t *testing.T) {
 
 	mustGit(t, cloneDir, "checkout", "-q", "-b", "feature-clean")
 	if err := os.WriteFile(filepath.Join(cloneDir, "feature.txt"), []byte("nothing sensitive here\n"), 0o644); err != nil {
-		t.Fatalf("escrever feature.txt: %v", err)
+		t.Fatalf("write feature.txt: %v", err)
 	}
 	mustGit(t, cloneDir, "add", "feature.txt")
 	mustGit(t, cloneDir, "commit", "-q", "-m", "clean feature commit")
@@ -680,17 +680,17 @@ func TestPrePushGateNewRefCleanBranchPasses(t *testing.T) {
 		t.Fatalf("commitsForPushedInterval: %v", err)
 	}
 	if len(commits) != 1 || commits[0] != newSha {
-		t.Fatalf("esperava exatamente [%s] (so' o commit exclusivo da branch nova, sem o commit "+
-			"'base' ja publicado em origin/main); obtive %v", newSha, commits)
+		t.Fatalf("expected exactly [%s] (only the new branch's exclusive commit, without the "+
+			"'base' commit already published on origin/main); got %v", newSha, commits)
 	}
 
-	needles := []string{"NomeQueNaoAparece1200"}
+	needles := []string{"NameThatDoesNotAppear1200"}
 	badCommit, message, err := sweepCommitsForPersonalData(t, cloneDir, commits, needles)
 	if err != nil {
 		t.Fatalf("sweepCommitsForPersonalData: %v", err)
 	}
 	if badCommit != "" {
-		t.Fatalf("branch limpa nao deveria bloquear, mas bloqueou no commit %s: %s", badCommit, message)
+		t.Fatalf("clean branch should not have blocked, but blocked on commit %s: %s", badCommit, message)
 	}
 }
 
@@ -703,12 +703,12 @@ func TestPrePushGateNewRefCleanBranchPasses(t *testing.T) {
 // refusal, not a needle match — see docs/ARMADILHAS.md).
 func TestPrePushGateNewRefBlocksNeedleDeletedLater(t *testing.T) {
 	cloneDir := newDisposableRemoteAndClone(t)
-	const needle = "AgulhaDeTesteQueSomeDepois"
+	const needle = "TestNeedleThatDisappearsLater"
 
 	mustGit(t, cloneDir, "checkout", "-q", "-b", "feature-leak")
 	if err := os.WriteFile(filepath.Join(cloneDir, "leak.txt"),
 		[]byte("this file mentions "+needle+" right here\n"), 0o644); err != nil {
-		t.Fatalf("escrever leak.txt: %v", err)
+		t.Fatalf("write leak.txt: %v", err)
 	}
 	mustGit(t, cloneDir, "add", "leak.txt")
 	mustGit(t, cloneDir, "commit", "-q", "-m", "commit A: introduces the needle")
@@ -723,8 +723,8 @@ func TestPrePushGateNewRefBlocksNeedleDeletedLater(t *testing.T) {
 		t.Fatalf("commitsForPushedInterval: %v", err)
 	}
 	if len(commits) != 2 || commits[0] != commitA || commits[1] != newSha {
-		t.Fatalf("esperava [%s %s] (commit A e depois B, nesta ordem, sem o commit 'base' ja "+
-			"publicado); obtive %v", commitA, newSha, commits)
+		t.Fatalf("expected [%s %s] (commit A then B, in this order, without the already-published "+
+			"'base' commit); got %v", commitA, newSha, commits)
 	}
 
 	badCommit, message, err := sweepCommitsForPersonalData(t, cloneDir, commits, []string{needle})
@@ -732,20 +732,20 @@ func TestPrePushGateNewRefBlocksNeedleDeletedLater(t *testing.T) {
 		t.Fatalf("sweepCommitsForPersonalData: %v", err)
 	}
 	if badCommit == "" {
-		t.Fatalf("esperava bloqueio (o commit B apaga o arquivo, mas o commit A ainda o introduz " +
-			"para o remoto) — a arvore final esta limpa, e e' exatamente o buraco que T-199 fecha; " +
-			"se isto passar em branco, o gate voltou a olhar so' a arvore final")
+		t.Fatalf("expected a block (commit B deletes the file, but commit A still introduces it " +
+			"to the remote) — the final tree is clean, and that is exactly the hole T-199 closes; " +
+			"if this passes silently, the gate went back to looking only at the final tree")
 	}
 	if badCommit != commitA {
-		t.Fatalf("bloqueou no commit errado: esperava commit A (%s), bloqueou em %s — a mensagem "+
-			"tem de citar a AGULHA e o commit que a introduziu, nao qualquer bloqueio", commitA, badCommit)
+		t.Fatalf("blocked on the wrong commit: expected commit A (%s), blocked on %s — the message "+
+			"has to cite the NEEDLE and the commit that introduced it, not just any block", commitA, badCommit)
 	}
 	if !strings.Contains(message, needle) {
-		t.Fatalf("a mensagem de bloqueio nao cita a agulha %q — isto e' \"nao consegui verificar\" "+
-			"disfarcado de achado; mensagem: %s", needle, message)
+		t.Fatalf("the block message does not cite the needle %q — this is \"could not verify\" "+
+			"disguised as a finding; message: %s", needle, message)
 	}
 	if !strings.Contains(message, "leak.txt") {
-		t.Fatalf("a mensagem de bloqueio nao cita o arquivo leak.txt; mensagem: %s", message)
+		t.Fatalf("the block message does not cite the file leak.txt; message: %s", message)
 	}
 }
 
@@ -758,7 +758,7 @@ func TestPrePushGateNewRefBlocksNeedleDeletedLater(t *testing.T) {
 // commits back from HEAD is still found.
 func TestPrePushGateNewRefNoRemoteAtAllSweepsEverything(t *testing.T) {
 	dir := t.TempDir()
-	const needle = "AgulhaSemRemotoNenhum"
+	const needle = "NeedleWithNoRemoteAtAll"
 
 	mustGit(t, dir, "init", "-q")
 	mustGit(t, dir, "config", "user.email", "prepush-gate-test@example.invalid")
@@ -766,20 +766,20 @@ func TestPrePushGateNewRefNoRemoteAtAllSweepsEverything(t *testing.T) {
 	mustGit(t, dir, "checkout", "-q", "-b", "main")
 
 	if err := os.WriteFile(filepath.Join(dir, "old.txt"), []byte("older commit, no needle\n"), 0o644); err != nil {
-		t.Fatalf("escrever old.txt: %v", err)
+		t.Fatalf("write old.txt: %v", err)
 	}
 	mustGit(t, dir, "add", "old.txt")
 	mustGit(t, dir, "commit", "-q", "-m", "older commit")
 
 	if err := os.WriteFile(filepath.Join(dir, "leak.txt"), []byte("has "+needle+" inside\n"), 0o644); err != nil {
-		t.Fatalf("escrever leak.txt: %v", err)
+		t.Fatalf("write leak.txt: %v", err)
 	}
 	mustGit(t, dir, "add", "leak.txt")
 	mustGit(t, dir, "commit", "-q", "-m", "commit with the needle")
 	newSha := mustGit(t, dir, "rev-parse", "HEAD")
 
 	if remotes := mustGit(t, dir, "remote"); remotes != "" {
-		t.Fatalf("fixture invalida: esperava zero remotos, obtive %q", remotes)
+		t.Fatalf("invalid fixture: expected zero remotes, got %q", remotes)
 	}
 
 	commits, err := commitsForPushedInterval(dir, zeroSha, newSha)
@@ -787,8 +787,8 @@ func TestPrePushGateNewRefNoRemoteAtAllSweepsEverything(t *testing.T) {
 		t.Fatalf("commitsForPushedInterval: %v", err)
 	}
 	if len(commits) != 2 {
-		t.Fatalf("sem remoto nenhum, esperava varrer os 2 commits alcancaveis (fallback seguro); "+
-			"obtive %d: %v", len(commits), commits)
+		t.Fatalf("with no remote at all, expected to sweep the 2 reachable commits (safe fallback); "+
+			"got %d: %v", len(commits), commits)
 	}
 
 	badCommit, message, err := sweepCommitsForPersonalData(t, dir, commits, []string{needle})
@@ -796,11 +796,11 @@ func TestPrePushGateNewRefNoRemoteAtAllSweepsEverything(t *testing.T) {
 		t.Fatalf("sweepCommitsForPersonalData: %v", err)
 	}
 	if badCommit == "" {
-		t.Fatalf("esperava bloqueio: sem remoto, o fallback tem de varrer todos os commits " +
-			"alcancaveis, e um deles tem a agulha")
+		t.Fatalf("expected a block: with no remote, the fallback has to sweep every reachable " +
+			"commit, and one of them has the needle")
 	}
 	if !strings.Contains(message, needle) || !strings.Contains(message, "leak.txt") {
-		t.Fatalf("mensagem de bloqueio nao cita a agulha e o arquivo esperados: %s", message)
+		t.Fatalf("block message does not cite the expected needle and file: %s", message)
 	}
 }
 
@@ -817,7 +817,7 @@ func TestPrePushGateCleanMergeOnMainPasses(t *testing.T) {
 
 	mustGit(t, cloneDir, "checkout", "-q", "-b", "clean-a")
 	if err := os.WriteFile(filepath.Join(cloneDir, "clean_a.txt"), []byte("branch A file, no needle\n"), 0o644); err != nil {
-		t.Fatalf("escrever clean_a.txt: %v", err)
+		t.Fatalf("write clean_a.txt: %v", err)
 	}
 	mustGit(t, cloneDir, "add", "clean_a.txt")
 	mustGit(t, cloneDir, "commit", "-q", "-m", "branch A: adds its own file")
@@ -825,7 +825,7 @@ func TestPrePushGateCleanMergeOnMainPasses(t *testing.T) {
 	mustGit(t, cloneDir, "checkout", "-q", "main")
 	mustGit(t, cloneDir, "checkout", "-q", "-b", "clean-b")
 	if err := os.WriteFile(filepath.Join(cloneDir, "clean_b.txt"), []byte("branch B file, no needle\n"), 0o644); err != nil {
-		t.Fatalf("escrever clean_b.txt: %v", err)
+		t.Fatalf("write clean_b.txt: %v", err)
 	}
 	mustGit(t, cloneDir, "add", "clean_b.txt")
 	mustGit(t, cloneDir, "commit", "-q", "-m", "branch B: adds a different file")
@@ -839,19 +839,19 @@ func TestPrePushGateCleanMergeOnMainPasses(t *testing.T) {
 		t.Fatalf("commitsForPushedInterval: %v", err)
 	}
 	if len(commits) != 3 {
-		t.Fatalf("esperava 3 commits novos (A, B e o merge; 'base' ja esta em origin/main), obtive %d: %v",
+		t.Fatalf("expected 3 new commits (A, B and the merge; 'base' is already on origin/main), got %d: %v",
 			len(commits), commits)
 	}
 
 	start := time.Now()
-	badCommit, message, err := sweepCommitsForPersonalData(t, cloneDir, commits, []string{"NomeQueNaoAparece1201"})
+	badCommit, message, err := sweepCommitsForPersonalData(t, cloneDir, commits, []string{"NameThatDoesNotAppear1201"})
 	elapsed := time.Since(start)
-	t.Logf("merge limpo (3 commits, sem conflito): sweep levou %s", elapsed)
+	t.Logf("clean merge (3 commits, no conflict): sweep took %s", elapsed)
 	if err != nil {
 		t.Fatalf("sweepCommitsForPersonalData: %v", err)
 	}
 	if badCommit != "" {
-		t.Fatalf("merge limpo nao deveria bloquear, mas bloqueou no commit %s: %s", badCommit, message)
+		t.Fatalf("clean merge should not have blocked, but blocked on commit %s: %s", badCommit, message)
 	}
 }
 
@@ -866,69 +866,69 @@ func TestPrePushGateCleanMergeOnMainPasses(t *testing.T) {
 // commit itself and the file, not a commit that merely "looks blocked".
 func TestPrePushGateBlocksNeedleOnlyInMergeResolution(t *testing.T) {
 	cloneDir := newDisposableRemoteAndClone(t)
-	const needle = "AgulhaDeMergeQueSoExisteNaResolucao1201"
+	const needle = "MergeNeedleThatOnlyExistsInTheResolution1201"
 
 	// A shared file both branches will edit on the SAME line, guaranteeing
 	// a real conflict instead of git auto-merging disjoint hunks.
-	if err := os.WriteFile(filepath.Join(cloneDir, "shared.txt"), []byte("linha original\n"), 0o644); err != nil {
-		t.Fatalf("escrever shared.txt: %v", err)
+	if err := os.WriteFile(filepath.Join(cloneDir, "shared.txt"), []byte("original line\n"), 0o644); err != nil {
+		t.Fatalf("write shared.txt: %v", err)
 	}
 	mustGit(t, cloneDir, "add", "shared.txt")
 	mustGit(t, cloneDir, "commit", "-q", "-m", "adds shared.txt")
 	mustGit(t, cloneDir, "push", "-q", "origin", "main")
 
 	mustGit(t, cloneDir, "checkout", "-q", "-b", "conflict-a")
-	if err := os.WriteFile(filepath.Join(cloneDir, "shared.txt"), []byte("linha da branch A\n"), 0o644); err != nil {
-		t.Fatalf("escrever shared.txt (A): %v", err)
+	if err := os.WriteFile(filepath.Join(cloneDir, "shared.txt"), []byte("branch A line\n"), 0o644); err != nil {
+		t.Fatalf("write shared.txt (A): %v", err)
 	}
 	mustGit(t, cloneDir, "add", "shared.txt")
-	mustGit(t, cloneDir, "commit", "-q", "-m", "conflict-a: edita shared.txt")
+	mustGit(t, cloneDir, "commit", "-q", "-m", "conflict-a: edits shared.txt")
 	commitA := mustGit(t, cloneDir, "rev-parse", "HEAD")
 
 	mustGit(t, cloneDir, "checkout", "-q", "main")
 	mustGit(t, cloneDir, "checkout", "-q", "-b", "conflict-b")
-	if err := os.WriteFile(filepath.Join(cloneDir, "shared.txt"), []byte("linha da branch B\n"), 0o644); err != nil {
-		t.Fatalf("escrever shared.txt (B): %v", err)
+	if err := os.WriteFile(filepath.Join(cloneDir, "shared.txt"), []byte("branch B line\n"), 0o644); err != nil {
+		t.Fatalf("write shared.txt (B): %v", err)
 	}
 	mustGit(t, cloneDir, "add", "shared.txt")
-	mustGit(t, cloneDir, "commit", "-q", "-m", "conflict-b: edita shared.txt (diferente)")
+	mustGit(t, cloneDir, "commit", "-q", "-m", "conflict-b: edits shared.txt (differently)")
 	commitB := mustGit(t, cloneDir, "rev-parse", "HEAD")
 
 	mustGit(t, cloneDir, "checkout", "-q", "conflict-a")
 	mergeCmd := exec.Command("git", "merge", "--no-edit", "conflict-b")
 	mergeCmd.Dir = cloneDir
-	_ = mergeCmd.Run() // esperado sair com erro: conflito de verdade em shared.txt
+	_ = mergeCmd.Run() // expected to exit with an error: a real conflict in shared.txt
 
 	if !strings.Contains(mustGit(t, cloneDir, "status", "--short"), "UU shared.txt") {
-		t.Fatalf("fixture invalida: esperava conflito UU em shared.txt, git status: %s",
+		t.Fatalf("invalid fixture: expected a UU conflict in shared.txt, git status: %s",
 			mustGit(t, cloneDir, "status", "--short"))
 	}
 
-	// Resolve o conflito escrevendo um texto que NAO existe em nenhum dos
-	// dois pais — a agulha so' passa a existir na resolucao do merge.
-	resolved := "resolvido no merge, contem a agulha: " + needle + "\n"
+	// Resolve the conflict by writing text that does NOT exist in either
+	// parent — the needle only comes to exist in the merge's resolution.
+	resolved := "resolved in the merge, contains the needle: " + needle + "\n"
 	if err := os.WriteFile(filepath.Join(cloneDir, "shared.txt"), []byte(resolved), 0o644); err != nil {
-		t.Fatalf("escrever a resolucao: %v", err)
+		t.Fatalf("write the resolution: %v", err)
 	}
 	mustGit(t, cloneDir, "add", "shared.txt")
-	mustGit(t, cloneDir, "commit", "-q", "-m", "resolve o conflito (introduz a agulha so' aqui)")
+	mustGit(t, cloneDir, "commit", "-q", "-m", "resolves the conflict (introduces the needle only here)")
 	mergeSha := mustGit(t, cloneDir, "rev-parse", "HEAD")
 
-	// Confirma a premissa do teste: a agulha nao esta em nenhum dos pais.
+	// Confirms the test's premise: the needle is not in either parent.
 	forA := mustGitAllowingContent(t, cloneDir, "show", commitA+":shared.txt")
 	forB := mustGitAllowingContent(t, cloneDir, "show", commitB+":shared.txt")
 	if strings.Contains(forA, needle) || strings.Contains(forB, needle) {
-		t.Fatalf("fixture invalida: a agulha ja aparece num dos pais (A=%q B=%q)", forA, forB)
+		t.Fatalf("invalid fixture: the needle already appears in one of the parents (A=%q B=%q)", forA, forB)
 	}
 
 	commits, err := commitsForPushedInterval(cloneDir, zeroSha, mergeSha)
 	if err != nil {
 		t.Fatalf("commitsForPushedInterval: %v", err)
 	}
-	// commitA, commitB, e o commit de merge — nao o "adds shared.txt", que
-	// ja foi empurrado para origin/main acima.
+	// commitA, commitB, and the merge commit — not "adds shared.txt", which
+	// was already pushed to origin/main above.
 	if len(commits) != 3 {
-		t.Fatalf("esperava 3 commits novos (A, B, merge), obtive %d: %v", len(commits), commits)
+		t.Fatalf("expected 3 new commits (A, B, merge), got %d: %v", len(commits), commits)
 	}
 
 	badCommit, message, err := sweepCommitsForPersonalData(t, cloneDir, commits, []string{needle})
@@ -936,22 +936,22 @@ func TestPrePushGateBlocksNeedleOnlyInMergeResolution(t *testing.T) {
 		t.Fatalf("sweepCommitsForPersonalData: %v", err)
 	}
 	if badCommit == "" {
-		t.Fatalf("esperava bloqueio: a agulha so' existe na resolucao do merge, e antes do T-201 " +
-			"filesChangedInCommit devolvia diff VAZIO para commit de merge — exatamente o buraco que " +
-			"esta tarefa fecha; se isto passar em branco, o gate voltou a nao olhar dentro de merges")
+		t.Fatalf("expected a block: the needle only exists in the merge's resolution, and before " +
+			"T-201 filesChangedInCommit returned an EMPTY diff for a merge commit — exactly the hole " +
+			"this task closes; if this passes silently, the gate went back to not looking inside merges")
 	}
 	if badCommit != mergeSha {
-		t.Fatalf("bloqueou no commit errado: esperava o commit de MERGE (%s) — a agulha nao esta em "+
-			"nenhum dos pais (%s, %s) —, bloqueou em %s", mergeSha, commitA, commitB, badCommit)
+		t.Fatalf("blocked on the wrong commit: expected the MERGE commit (%s) — the needle is not in "+
+			"either parent (%s, %s) —, blocked on %s", mergeSha, commitA, commitB, badCommit)
 	}
 	if !strings.Contains(message, needle) {
-		t.Fatalf("a mensagem de bloqueio nao cita a agulha %q: %s", needle, message)
+		t.Fatalf("the block message does not cite the needle %q: %s", needle, message)
 	}
 	if !strings.Contains(message, "shared.txt") {
-		t.Fatalf("a mensagem de bloqueio nao cita o arquivo shared.txt: %s", message)
+		t.Fatalf("the block message does not cite the file shared.txt: %s", message)
 	}
 	if !strings.Contains(message, mergeSha) {
-		t.Fatalf("a mensagem de bloqueio nao cita o commit de merge %s: %s", mergeSha, message)
+		t.Fatalf("the block message does not cite the merge commit %s: %s", mergeSha, message)
 	}
 }
 
@@ -995,8 +995,8 @@ func TestPrePushGateAnnotatedTagOnPublishedCommitPushesClean(t *testing.T) {
 		t.Fatalf("commitsForPushedInterval: %v", err)
 	}
 	if len(commits) != 0 {
-		t.Fatalf("uma tag no commit base (ja publicado em origin/main) nao deveria acrescentar "+
-			"nenhum commit novo; obtive %v", commits)
+		t.Fatalf("a tag on the base commit (already published on origin/main) should not add "+
+			"any new commit; got %v", commits)
 	}
 
 	reachable, rerr := objectAlreadyReachableFromRemotes(cloneDir, tagSha)
@@ -1004,18 +1004,18 @@ func TestPrePushGateAnnotatedTagOnPublishedCommitPushesClean(t *testing.T) {
 		t.Fatalf("objectAlreadyReachableFromRemotes: %v", rerr)
 	}
 	if !reachable {
-		t.Fatalf("esperava que %s (tag sobre o commit base %s, ja em origin/main) fosse alcancavel "+
-			"a partir de uma ref de rastreamento remoto — esta e' exatamente a distincao que T-204 "+
-			"introduz entre \"zero porque nada foi medido\" e \"zero porque e' legitimo\"", tagSha, baseSha)
+		t.Fatalf("expected %s (tag on base commit %s, already on origin/main) to be reachable "+
+			"from a remote-tracking ref — this is exactly the distinction T-204 introduces "+
+			"between \"zero because nothing was measured\" and \"zero because it's legitimate\"", tagSha, baseSha)
 	}
 
-	needles := []string{"NomeQueNaoAparece1204Limpo"}
+	needles := []string{"NameThatDoesNotAppear1204Clean"}
 	matched, message, serr := sweepTagMessage(t, cloneDir, tagSha, needles)
 	if serr != nil {
 		t.Fatalf("sweepTagMessage: %v", serr)
 	}
 	if matched {
-		t.Fatalf("mensagem de tag limpa nao deveria bloquear, mas bloqueou: %s", message)
+		t.Fatalf("clean tag message should not have blocked, but blocked: %s", message)
 	}
 }
 
@@ -1030,7 +1030,7 @@ func TestPrePushGateAnnotatedTagOnPublishedCommitPushesClean(t *testing.T) {
 // it.
 func TestPrePushGateBlocksNeedleInTagMessageEvenWithZeroCommits(t *testing.T) {
 	cloneDir := newDisposableRemoteAndClone(t)
-	const needle = "AgulhaDeMensagemDeTag1204"
+	const needle = "TagMessageNeedle1204"
 
 	mustGit(t, cloneDir, "tag", "-a", "v0.204.1", "-m",
 		"release note that accidentally mentions "+needle+" right here")
@@ -1041,15 +1041,15 @@ func TestPrePushGateBlocksNeedleInTagMessageEvenWithZeroCommits(t *testing.T) {
 		t.Fatalf("commitsForPushedInterval: %v", err)
 	}
 	if len(commits) != 0 {
-		t.Fatalf("fixture invalida: esperava intervalo vazio (tag sobre o commit base ja publicado), "+
-			"obtive %v", commits)
+		t.Fatalf("invalid fixture: expected an empty interval (tag on an already-published base "+
+			"commit), got %v", commits)
 	}
 	reachable, rerr := objectAlreadyReachableFromRemotes(cloneDir, tagSha)
 	if rerr != nil {
 		t.Fatalf("objectAlreadyReachableFromRemotes: %v", rerr)
 	}
 	if !reachable {
-		t.Fatalf("fixture invalida: esperava %s alcancavel a partir de origin/main", tagSha)
+		t.Fatalf("invalid fixture: expected %s reachable from origin/main", tagSha)
 	}
 
 	matched, message, serr := sweepTagMessage(t, cloneDir, tagSha, []string{needle})
@@ -1057,15 +1057,15 @@ func TestPrePushGateBlocksNeedleInTagMessageEvenWithZeroCommits(t *testing.T) {
 		t.Fatalf("sweepTagMessage: %v", serr)
 	}
 	if !matched {
-		t.Fatalf("esperava bloqueio: a agulha so' existe na MENSAGEM da tag, e o intervalo de commits " +
-			"e' vazio — exatamente o caso que T-204 introduz; se isto passar em branco, o portao voltou " +
-			"a nao olhar para a mensagem da tag")
+		t.Fatalf("expected a block: the needle only exists in the tag's MESSAGE, and the commit " +
+			"interval is empty — exactly the case T-204 introduces; if this passes silently, the " +
+			"gate went back to not looking at the tag message")
 	}
 	if !strings.Contains(message, needle) {
-		t.Fatalf("a mensagem de bloqueio nao cita a agulha %q: %s", needle, message)
+		t.Fatalf("the block message does not cite the needle %q: %s", needle, message)
 	}
 	if !strings.Contains(message, tagSha) {
-		t.Fatalf("a mensagem de bloqueio nao cita a tag %s: %s", tagSha, message)
+		t.Fatalf("the block message does not cite the tag %s: %s", tagSha, message)
 	}
 }
 
@@ -1081,7 +1081,7 @@ func TestObjectAlreadyReachableFromRemotesFalseForUnpublishedCommit(t *testing.T
 
 	mustGit(t, cloneDir, "checkout", "-q", "-b", "feature-unpublished")
 	if err := os.WriteFile(filepath.Join(cloneDir, "unpublished.txt"), []byte("never pushed\n"), 0o644); err != nil {
-		t.Fatalf("escrever unpublished.txt: %v", err)
+		t.Fatalf("write unpublished.txt: %v", err)
 	}
 	mustGit(t, cloneDir, "add", "unpublished.txt")
 	mustGit(t, cloneDir, "commit", "-q", "-m", "commit that never reached origin")
@@ -1092,8 +1092,8 @@ func TestObjectAlreadyReachableFromRemotesFalseForUnpublishedCommit(t *testing.T
 		t.Fatalf("objectAlreadyReachableFromRemotes: %v", err)
 	}
 	if reachable {
-		t.Fatalf("um commit nunca empurrado nao deveria estar alcancavel a partir de nenhuma ref de " +
-			"rastreamento remoto, mas o teste disse que estava")
+		t.Fatalf("a commit that was never pushed should not be reachable from any remote-tracking " +
+			"ref, but the test said it was")
 	}
 }
 
@@ -1110,11 +1110,11 @@ func TestSweepTagMessageSkipsLightweightTagsAndPlainCommits(t *testing.T) {
 	mustGit(t, cloneDir, "tag", "v0.204.2-lightweight") // no -a, no -m: not a tag OBJECT
 	lightweightSha := mustGit(t, cloneDir, "rev-parse", "v0.204.2-lightweight")
 	if lightweightSha != commitSha {
-		t.Fatalf("fixture invalida: tag leve deveria apontar direto para o commit %s, apontou para %s",
+		t.Fatalf("invalid fixture: the lightweight tag should point straight at commit %s, pointed at %s",
 			commitSha, lightweightSha)
 	}
 
-	needles := []string{"AgulhaQueNaoDeveriaImportarAqui1204"}
+	needles := []string{"NeedleThatShouldNotMatterHere1204"}
 
 	for _, sha := range []string{commitSha, lightweightSha} {
 		matched, message, err := sweepTagMessage(t, cloneDir, sha, needles)
@@ -1122,7 +1122,7 @@ func TestSweepTagMessageSkipsLightweightTagsAndPlainCommits(t *testing.T) {
 			t.Fatalf("sweepTagMessage(%s): %v", sha, err)
 		}
 		if matched {
-			t.Fatalf("sweepTagMessage(%s) bloqueou, mas nao ha objeto de tag anotada aqui: %s", sha, message)
+			t.Fatalf("sweepTagMessage(%s) blocked, but there is no annotated tag object here: %s", sha, message)
 		}
 	}
 }
@@ -1136,7 +1136,7 @@ func TestSweepTagMessageSkipsLightweightTagsAndPlainCommits(t *testing.T) {
 // annotatedTagMessage returns ONLY the text after the header's blank line.
 func TestAnnotatedTagMessageStripsHeaderLines(t *testing.T) {
 	cloneDir := newDisposableRemoteAndClone(t)
-	mustGit(t, cloneDir, "tag", "-a", "v0.204.3", "-m", "so' isto deveria sobrar")
+	mustGit(t, cloneDir, "tag", "-a", "v0.204.3", "-m", "only this should remain")
 	tagSha := mustGit(t, cloneDir, "rev-parse", "v0.204.3")
 
 	msg, err := annotatedTagMessage(cloneDir, tagSha)
@@ -1144,9 +1144,9 @@ func TestAnnotatedTagMessageStripsHeaderLines(t *testing.T) {
 		t.Fatalf("annotatedTagMessage: %v", err)
 	}
 	if strings.Contains(msg, "tagger ") || strings.Contains(msg, "object ") || strings.Contains(msg, "type commit") {
-		t.Fatalf("annotatedTagMessage vazou linhas de cabecalho, deveria conter so' a mensagem: %q", msg)
+		t.Fatalf("annotatedTagMessage leaked header lines, should contain only the message: %q", msg)
 	}
-	if !strings.Contains(msg, "so' isto deveria sobrar") {
-		t.Fatalf("annotatedTagMessage nao contem o texto esperado da mensagem: %q", msg)
+	if !strings.Contains(msg, "only this should remain") {
+		t.Fatalf("annotatedTagMessage does not contain the expected message text: %q", msg)
 	}
 }

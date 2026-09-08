@@ -30,7 +30,7 @@ func testStore(t *testing.T) *Store {
 	if err != nil {
 		t.Fatalf("NewVault: %v", err)
 	}
-	s, err := OpenStore(filepath.Join(t.TempDir(), "teste.db"), vault)
+	s, err := OpenStore(filepath.Join(t.TempDir(), "test.db"), vault)
 	if err != nil {
 		t.Fatalf("OpenStore: %v", err)
 	}
@@ -66,7 +66,7 @@ func TestStoreKeepsAndReturnsAnInstance(t *testing.T) {
 		t.Fatalf("FindInstance: %v", err)
 	}
 	if got.AppSecret != "app-secret-de-teste" {
-		t.Errorf("AppSecret = %q — a ida e volta pela cifra quebrou", got.AppSecret)
+		t.Errorf("AppSecret = %q — the round trip through encryption broke", got.AppSecret)
 	}
 	if got.VerifyToken != "verify-token-de-teste" {
 		t.Errorf("VerifyToken = %q", got.VerifyToken)
@@ -89,7 +89,7 @@ func TestStoreKeepsTheCredentialENCRYPTEDInTheFile(t *testing.T) {
 	// The SQLite file goes into the nightly backup. If the credential were
 	// in the clear, the backup would start carrying N businesses' tokens readable.
 	vault, _ := NewVault(testKey)
-	path := filepath.Join(t.TempDir(), "teste.db")
+	path := filepath.Join(t.TempDir(), "test.db")
 	s, err := OpenStore(path, vault)
 	if err != nil {
 		t.Fatalf("OpenStore: %v", err)
@@ -106,7 +106,7 @@ func TestStoreKeepsTheCredentialENCRYPTEDInTheFile(t *testing.T) {
 		"https://consumidor.interno/webhooks/zapgw",
 	} {
 		if containsBytes(raw, secret) {
-			t.Errorf("o segredo %q aparece EM CLARO no arquivo do banco", secret)
+			t.Errorf("secret %q shows up IN THE CLEAR in the database file", secret)
 		}
 	}
 }
@@ -115,7 +115,7 @@ func TestStoreFlagsANonexistentInstance(t *testing.T) {
 	s := testStore(t)
 
 	if _, err := s.FindInstance("nao-existe"); !errors.Is(err, ErrInstanceNotFound) {
-		t.Fatalf("erro = %v, quero ErrInstanceNotFound", err)
+		t.Fatalf("err = %v, want ErrInstanceNotFound", err)
 	}
 }
 
@@ -152,7 +152,7 @@ func TestStoreRefusesARepeatedSlug(t *testing.T) {
 	}
 
 	if err := s.CreateInstance(testInstance()); err == nil {
-		t.Fatal("slug repetido foi aceito — o slug e a URL do webhook, tem de ser unico")
+		t.Fatal("repeated slug was accepted — the slug is the webhook's URL, it has to be unique")
 	}
 }
 
@@ -173,7 +173,7 @@ func countInstances(t *testing.T, s *Store) int {
 	t.Helper()
 	var n int
 	if err := s.DB().QueryRow(`SELECT count(*) FROM instancia`).Scan(&n); err != nil {
-		t.Fatalf("contar instancias: %v", err)
+		t.Fatalf("count instances: %v", err)
 	}
 	return n
 }
@@ -189,18 +189,18 @@ func TestCreateInstanceRefusesASlugOutsideTheShape(t *testing.T) {
 		// different route, and whoever pasted it into Meta has no way to
 		// suspect it. Percent-encoding turns back into a slash once decoded
 		// on the path.
-		{"barra", "loja/racer"},
-		{"espaco", "loja racer"},
-		{"maiuscula", "Lojinha"},
-		{"hifen no comeco", "-lojinha"},
-		{"hifen no fim", "lojinha-"},
-		{"vazio", ""},
-		{"so espacos", "   "},
-		{"curto demais", "ab"},
-		{"comprido demais", strings.Repeat("a", 41)},
+		{"slash", "loja/racer"},
+		{"space", "loja racer"},
+		{"uppercase", "Lojinha"},
+		{"leading hyphen", "-lojinha"},
+		{"trailing hyphen", "lojinha-"},
+		{"empty", ""},
+		{"only spaces", "   "},
+		{"too short", "ab"},
+		{"too long", strings.Repeat("a", 41)},
 		{"query string", "loja?x=1"},
-		{"acento", "lojinha-café"},
-		{"ponto", "lojinha.racer"},
+		{"accent", "lojinha-café"},
+		{"dot", "lojinha.racer"},
 		{"underscore", "lojinha_racer"},
 		{"percent encoding", "loja%2Fracer"},
 	}
@@ -213,15 +213,15 @@ func TestCreateInstanceRefusesASlugOutsideTheShape(t *testing.T) {
 			err := s.CreateInstance(i)
 
 			if !errors.Is(err, ErrInvalidSlug) {
-				t.Fatalf("CreateInstance(%q) = %v, quero ErrInvalidSlug", c.slug, err)
+				t.Fatalf("CreateInstance(%q) = %v, want ErrInvalidSlug", c.slug, err)
 			}
 			// The message has to SAY which rule broke: a bare "invalid
 			// slug" makes whoever typed it guess among six rules.
 			if err.Error() == ErrInvalidSlug.Error() {
-				t.Errorf("o erro nao diz qual regra quebrou: %q", err.Error())
+				t.Errorf("the error does not say which rule broke: %q", err.Error())
 			}
 			if n := countInstances(t, s); n != 0 {
-				t.Errorf("%d instancia(s) gravada(s) apesar da recusa — a validacao correu DEPOIS do insert", n)
+				t.Errorf("%d instance(s) written despite the refusal — validation ran AFTER the insert", n)
 			}
 		})
 	}
@@ -239,7 +239,7 @@ func TestCreateInstanceAcceptsTheProductionSlugAndAnEmptyCallback(t *testing.T) 
 	i.CallbackURL = ""
 
 	if err := s.CreateInstance(i); err != nil {
-		t.Fatalf("CreateInstance: %v — a validacao invalidou a instancia que roda hoje", err)
+		t.Fatalf("CreateInstance: %v — validation invalidated the instance that runs today", err)
 	}
 
 	got, err := s.FindInstance("tenant-one")
@@ -247,7 +247,7 @@ func TestCreateInstanceAcceptsTheProductionSlugAndAnEmptyCallback(t *testing.T) 
 		t.Fatalf("FindInstance: %v", err)
 	}
 	if got.CallbackURL != "" {
-		t.Errorf("CallbackURL = %q, quero vazia", got.CallbackURL)
+		t.Errorf("CallbackURL = %q, want empty", got.CallbackURL)
 	}
 }
 
@@ -265,19 +265,19 @@ func TestCreateInstanceRefusesACallbackOutsideHTTPS(t *testing.T) {
 		url  string
 		mark string
 	}{
-		{"http externo", "http://consumidor.interno/webhooks/zapgw", "consumidor.interno"},
-		{"http para IP da LAN", "http://10.0.0.19:9000/hook", "10.0.0.19"},
+		{"external http", "http://consumidor.interno/webhooks/zapgw", "consumidor.interno"},
+		{"http to a LAN IP", "http://10.0.0.19:9000/hook", "10.0.0.19"},
 		// The following two are the "a guard has TWO sides" trap: a
 		// HasPrefix("http://127.0.0.1") would accept both, and the local
 		// test exception would become a door to the internet.
-		{"host que so COMECA com 127.0.0.1", "http://127.0.0.1.consumidor.example/hook", "consumidor.example"},
-		{"loopback no userinfo, host de fora", "http://127.0.0.1@consumidor.example/hook", "consumidor.example"},
-		{"https no meio, nao no esquema", "http://consumidor.example/https://x", "consumidor.example"},
-		{"esquema que nao e http", "ftp://consumidor.interno/hook", "consumidor.interno"},
-		{"https sem host", "https://", ""},
-		{"sem esquema nenhum", "consumidor.interno/hook", "consumidor.interno"},
-		{"so espacos", "   ", ""},
-		{"loopback vizinho, fora da excecao escrita", "http://127.0.0.2:9000", "127.0.0.2"},
+		{"host that only STARTS with 127.0.0.1", "http://127.0.0.1.consumidor.example/hook", "consumidor.example"},
+		{"loopback in the userinfo, host from outside", "http://127.0.0.1@consumidor.example/hook", "consumidor.example"},
+		{"https in the middle, not the scheme", "http://consumidor.example/https://x", "consumidor.example"},
+		{"scheme that isn't http", "ftp://consumidor.interno/hook", "consumidor.interno"},
+		{"https with no host", "https://", ""},
+		{"no scheme at all", "consumidor.interno/hook", "consumidor.interno"},
+		{"only spaces", "   ", ""},
+		{"neighboring loopback, outside the written exception", "http://127.0.0.2:9000", "127.0.0.2"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -288,17 +288,17 @@ func TestCreateInstanceRefusesACallbackOutsideHTTPS(t *testing.T) {
 			err := s.CreateInstance(i)
 
 			if !errors.Is(err, ErrInsecureCallback) {
-				t.Fatalf("CreateInstance com callback %q = %v, quero ErrInsecureCallback", c.url, err)
+				t.Fatalf("CreateInstance with callback %q = %v, want ErrInsecureCallback", c.url, err)
 			}
 			// The callback URL is encrypted at rest precisely to not reveal
 			// the consumers' topology; the error goes to the log and the
 			// terminal, so it must NOT carry the URL back
 			// (docs/ARMADILHAS.md, "Erros e log").
 			if c.mark != "" && strings.Contains(err.Error(), c.mark) {
-				t.Errorf("o erro revela o destino da callback (%q): %q", c.mark, err.Error())
+				t.Errorf("the error reveals the callback's destination (%q): %q", c.mark, err.Error())
 			}
 			if n := countInstances(t, s); n != 0 {
-				t.Errorf("%d instancia(s) gravada(s) apesar da recusa", n)
+				t.Errorf("%d instance(s) written despite the refusal", n)
 			}
 		})
 	}
@@ -314,11 +314,11 @@ func TestCreateInstanceAcceptsHTTPSCallbackAndTheTestLoopback(t *testing.T) {
 		url  string
 	}{
 		{"https", "https://consumidor.interno/webhooks/zapgw"},
-		{"https com porta e query", "https://consumidor.interno:8443/hook?x=1"},
-		{"vazia", ""},
-		{"loopback de teste", "http://127.0.0.1:9000"},
-		{"localhost de teste", "http://localhost:9000/hook"},
-		{"esquema em maiuscula", "HTTPS://consumidor.interno/hook"},
+		{"https with port and query", "https://consumidor.interno:8443/hook?x=1"},
+		{"empty", ""},
+		{"test loopback", "http://127.0.0.1:9000"},
+		{"test localhost", "http://localhost:9000/hook"},
+		{"uppercase scheme", "HTTPS://consumidor.interno/hook"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -327,7 +327,7 @@ func TestCreateInstanceAcceptsHTTPSCallbackAndTheTestLoopback(t *testing.T) {
 			i.CallbackURL = c.url
 
 			if err := s.CreateInstance(i); err != nil {
-				t.Fatalf("CreateInstance com callback %q: %v", c.url, err)
+				t.Fatalf("CreateInstance with callback %q: %v", c.url, err)
 			}
 
 			got, err := s.FindInstance(i.Slug)
@@ -335,7 +335,7 @@ func TestCreateInstanceAcceptsHTTPSCallbackAndTheTestLoopback(t *testing.T) {
 				t.Fatalf("FindInstance: %v", err)
 			}
 			if got.CallbackURL != c.url {
-				t.Errorf("CallbackURL = %q, quero %q", got.CallbackURL, c.url)
+				t.Errorf("CallbackURL = %q, want %q", got.CallbackURL, c.url)
 			}
 		})
 	}
@@ -370,14 +370,14 @@ func TestRegisterMetaRefusesEmptyIdentification(t *testing.T) {
 		pnid  string
 		field string // the field the error has to NAME
 	}{
-		{"sem waba_id", "", "PNID1", "waba_id"},
-		{"sem phone_number_id", "WABA1", "", "phone_number_id"},
-		{"sem os dois", "", "", "waba_id"},
+		{"no waba_id", "", "PNID1", "waba_id"},
+		{"no phone_number_id", "WABA1", "", "phone_number_id"},
+		{"neither", "", "", "waba_id"},
 		// Blank doesn't count as filled in: "   " is what's left over from
 		// a field the consumer's panel sent empty, and it would never
 		// match any waba_id.
-		{"waba_id so de espacos", "   ", "PNID1", "waba_id"},
-		{"phone_number_id so de espacos", "WABA1", "\t\n ", "phone_number_id"},
+		{"waba_id is only spaces", "   ", "PNID1", "waba_id"},
+		{"phone_number_id is only spaces", "WABA1", "\t\n ", "phone_number_id"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -392,13 +392,13 @@ func TestRegisterMetaRefusesEmptyIdentification(t *testing.T) {
 			_, err := s.RegisterMeta("lojinha", reg, time.Now())
 
 			if !errors.Is(err, ErrIncompleteIdentification) {
-				t.Fatalf("RegisterMeta(waba=%q, pnid=%q) = %v, quero ErrIncompleteIdentification", c.waba, c.pnid, err)
+				t.Fatalf("RegisterMeta(waba=%q, pnid=%q) = %v, want ErrIncompleteIdentification", c.waba, c.pnid, err)
 			}
 			// The error has to say WHICH of the two is missing: a bare
 			// "incomplete identification" makes whoever typed it choose
 			// between two fields.
 			if !strings.Contains(err.Error(), c.field) {
-				t.Errorf("o erro nao nomeia o campo que falta (%q): %q", c.field, err.Error())
+				t.Errorf("the error does not name the missing field (%q): %q", c.field, err.Error())
 			}
 			// NOTHING was written: the validation ran BEFORE the UPDATE. If
 			// it ran after, the instance would end up with half an
@@ -408,10 +408,10 @@ func TestRegisterMetaRefusesEmptyIdentification(t *testing.T) {
 				t.Fatalf("SummarizeInstance: %v", err)
 			}
 			if r.WabaID != "" || r.PhoneNumberID != "" {
-				t.Errorf("gravou identificacao apesar da recusa: waba=%q pnid=%q", r.WabaID, r.PhoneNumberID)
+				t.Errorf("wrote identification despite the refusal: waba=%q pnid=%q", r.WabaID, r.PhoneNumberID)
 			}
 			if r.RegisteredAt != "" {
-				t.Errorf("a janela ABRIU num cadastro recusado (cadastro_em = %q) — um pedido invalido gastaria as 24h", r.RegisteredAt)
+				t.Errorf("the window OPENED on a refused registration (cadastro_em = %q) — an invalid request would spend the 24h", r.RegisteredAt)
 			}
 		})
 	}
@@ -430,7 +430,7 @@ func TestStoreIsBornWithTheInstancePaused(t *testing.T) {
 
 	got, _ := s.FindInstance("lojinha")
 	if got.Active {
-		t.Fatal("instancia nasceu ATIVA — tem de nascer pausada")
+		t.Fatal("instance was born ACTIVE — it has to be born paused")
 	}
 }
 
@@ -449,7 +449,7 @@ func TestActivateInstanceTurnsTheInstanceOn(t *testing.T) {
 		t.Fatalf("FindInstance: %v", err)
 	}
 	if !got.Active {
-		t.Fatal("Ativo = false depois de ActivateInstance — o teste de fumaca nao teria como ligar a instancia")
+		t.Fatal("Active = false after ActivateInstance — the smoke test would have no way to turn the instance on")
 	}
 }
 
@@ -463,7 +463,7 @@ func TestActivateInstanceFlagsANonexistentSlug(t *testing.T) {
 
 	err := s.ActivateInstance("slug-que-nao-existe")
 	if !errors.Is(err, ErrInstanceNotFound) {
-		t.Fatalf("erro = %v, quero ErrInstanceNotFound", err)
+		t.Fatalf("err = %v, want ErrInstanceNotFound", err)
 	}
 }
 
@@ -485,7 +485,7 @@ func TestPauseInstanceTurnsTheInstanceOff(t *testing.T) {
 		t.Fatalf("FindInstance: %v", err)
 	}
 	if got.Active {
-		t.Fatal("Ativo = true depois de PauseInstance — nao ha como tirar do ar um canal quebrado")
+		t.Fatal("Active = true after PauseInstance — there would be no way to take a broken channel offline")
 	}
 }
 
@@ -496,7 +496,7 @@ func TestPauseInstanceFlagsANonexistentSlug(t *testing.T) {
 
 	err := s.PauseInstance("slug-que-nao-existe")
 	if !errors.Is(err, ErrInstanceNotFound) {
-		t.Fatalf("erro = %v, quero ErrInstanceNotFound", err)
+		t.Fatalf("err = %v, want ErrInstanceNotFound", err)
 	}
 }
 
@@ -547,7 +547,7 @@ func rowsOf(t *testing.T, s *Store, table, slug string) int {
 	var n int
 	if err := s.DB().QueryRow(
 		`SELECT count(*) FROM `+table+` WHERE slug = ?`, slug).Scan(&n); err != nil {
-		t.Fatalf("contar %s de %q: %v", table, slug, err)
+		t.Fatalf("count %s of %q: %v", table, slug, err)
 	}
 	return n
 }
@@ -566,7 +566,7 @@ func TestRemoveInstanceDeletesEVERYTHINGOfItsAndNOTHINGThatIsNot(t *testing.T) {
 	neighbor.PhoneNumberID = "PNID2"
 	neighbor.WabaID = "WABA2"
 	if err := s.CreateInstance(neighbor); err != nil {
-		t.Fatalf("CreateInstance vizinha: %v", err)
+		t.Fatalf("CreateInstance neighbor: %v", err)
 	}
 	populateInstance(t, s, "lojinha")
 	populateInstance(t, s, "clinica")
@@ -578,27 +578,27 @@ func TestRemoveInstanceDeletesEVERYTHINGOfItsAndNOTHINGThatIsNot(t *testing.T) {
 
 	for _, table := range tablesWithSlug {
 		if n := rowsOf(t, s, table, "lojinha"); n != 0 {
-			t.Errorf("sobraram %d linha(s) em %s da instancia removida", n, table)
+			t.Errorf("%d row(s) remained in %s of the removed instance", n, table)
 		}
 		if n := rowsOf(t, s, table, "clinica"); n != 1 {
-			t.Errorf("a instancia VIZINHA perdeu linha em %s: n = %d, quero 1", table, n)
+			t.Errorf("the NEIGHBORING instance lost a row in %s: n = %d, want 1", table, n)
 		}
 	}
 	if _, err := s.FindInstance("lojinha"); !errors.Is(err, ErrInstanceNotFound) {
-		t.Errorf("FindInstance depois de remover: err = %v", err)
+		t.Errorf("FindInstance after removal: err = %v", err)
 	}
 	if _, err := s.FindInstance("clinica"); err != nil {
-		t.Errorf("a instancia vizinha sumiu junto: %v", err)
+		t.Errorf("the neighboring instance disappeared too: %v", err)
 	}
 	// The report has to match what happened: it's what goes to the
 	// screen, and it's the only chance for someone to notice they deleted
 	// the wrong instance.
 	if len(deleted) != len(tablesWithSlug) {
-		t.Fatalf("relatorio com %d tabelas, quero %d", len(deleted), len(tablesWithSlug))
+		t.Fatalf("report with %d tables, want %d", len(deleted), len(tablesWithSlug))
 	}
 	for _, a := range deleted {
 		if a.Rows != 1 {
-			t.Errorf("%s: relatou %d linha(s), quero 1", a.Table, a.Rows)
+			t.Errorf("%s: reported %d row(s), want 1", a.Table, a.Rows)
 		}
 	}
 }
@@ -617,7 +617,7 @@ func TestRemoveInstanceCOVERSEveryTableWithASlugColumn(t *testing.T) {
 	rows, err := s.DB().Query(
 		`SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'`)
 	if err != nil {
-		t.Fatalf("listar tabelas: %v", err)
+		t.Fatalf("list tables: %v", err)
 	}
 	defer rows.Close()
 
@@ -625,15 +625,15 @@ func TestRemoveInstanceCOVERSEveryTableWithASlugColumn(t *testing.T) {
 	for rows.Next() {
 		var name string
 		if err := rows.Scan(&name); err != nil {
-			t.Fatalf("ler nome de tabela: %v", err)
+			t.Fatalf("read table name: %v", err)
 		}
 		tables = append(tables, name)
 	}
 	if err := rows.Err(); err != nil {
-		t.Fatalf("iterar tabelas: %v", err)
+		t.Fatalf("iterate tables: %v", err)
 	}
 	if len(tables) == 0 {
-		t.Fatal("nenhuma tabela no banco de teste — o teste passaria sem verificar nada")
+		t.Fatal("no table in the test database — the test would pass without checking anything")
 	}
 
 	covered := map[string]bool{}
@@ -645,20 +645,20 @@ func TestRemoveInstanceCOVERSEveryTableWithASlugColumn(t *testing.T) {
 		var hasSlug int
 		if err := s.DB().QueryRow(
 			`SELECT count(*) FROM pragma_table_info(?) WHERE name = 'slug'`, table).Scan(&hasSlug); err != nil {
-			t.Fatalf("colunas de %s: %v", table, err)
+			t.Fatalf("columns of %s: %v", table, err)
 		}
 		if hasSlug == 0 {
 			continue
 		}
 		withSlug++
 		if !covered[table] {
-			t.Errorf("a tabela %q tem coluna `slug` e NAO esta em tablesWithSlug — "+
-				"remover uma instancia deixaria linha orfa nela, invisivel ate alguem reusar o slug", table)
+			t.Errorf("table %q has a `slug` column and is NOT in tablesWithSlug — "+
+				"removing an instance would leave an orphan row in it, invisible until someone reuses the slug", table)
 		}
 	}
 	if withSlug != len(tablesWithSlug) {
-		t.Errorf("o banco tem %d tabela(s) com coluna `slug` e a lista tem %d — "+
-			"uma entrada da lista nao corresponde a tabela nenhuma", withSlug, len(tablesWithSlug))
+		t.Errorf("the database has %d table(s) with a `slug` column and the list has %d — "+
+			"one entry in the list does not correspond to any table", withSlug, len(tablesWithSlug))
 	}
 }
 
@@ -676,12 +676,12 @@ func TestRemoveInstanceREFUSESAnACTIVEInstance(t *testing.T) {
 	}
 
 	if _, err := s.RemoveInstance("lojinha"); !errors.Is(err, ErrInstanceActive) {
-		t.Fatalf("err = %v, quero ErrInstanceActive", err)
+		t.Fatalf("err = %v, want ErrInstanceActive", err)
 	}
 	// The refusal cannot have deleted anything along the way.
 	for _, table := range tablesWithSlug {
 		if n := rowsOf(t, s, table, "lojinha"); n != 1 {
-			t.Errorf("a recusa apagou linha em %s: n = %d, quero 1", table, n)
+			t.Errorf("the refusal deleted a row in %s: n = %d, want 1", table, n)
 		}
 	}
 }
@@ -689,7 +689,7 @@ func TestRemoveInstanceREFUSESAnACTIVEInstance(t *testing.T) {
 func TestRemoveInstanceFlagsANonexistentSlug(t *testing.T) {
 	s := testStore(t)
 	if _, err := s.RemoveInstance("nao-existe"); !errors.Is(err, ErrInstanceNotFound) {
-		t.Fatalf("err = %v, quero ErrInstanceNotFound", err)
+		t.Fatalf("err = %v, want ErrInstanceNotFound", err)
 	}
 }
 
@@ -706,7 +706,7 @@ func TestRemovingAPausedInstanceWorksAfterPausing(t *testing.T) {
 		t.Fatalf("PauseInstance: %v", err)
 	}
 	if _, err := s.RemoveInstance("lojinha"); err != nil {
-		t.Fatalf("RemoveInstance depois de pausar: %v", err)
+		t.Fatalf("RemoveInstance after pausing: %v", err)
 	}
 }
 
@@ -723,9 +723,9 @@ func instanceLikeTheProductionOne(t *testing.T, s *Store) Instance {
 	t.Helper()
 	i := testInstance()
 	i.Slug = "tenant-one"
-	i.AppSecret = "aleatorio-que-a-meta-NAO-conhece"
-	i.VerifyToken = "aleatorio-que-a-meta-NAO-conhece-tambem"
-	i.SendToken = "token-envio-REAL-que-esta-enviando-agora"
+	i.AppSecret = "random-that-meta-does-NOT-know"
+	i.VerifyToken = "random-that-meta-does-NOT-know-either"
+	i.SendToken = "REAL-send-token-that-is-sending-right-now"
 	i.DeliverySecret = "segredo-entrega-de-teste"
 	i.CallbackURL = ""
 	if err := s.CreateInstance(i); err != nil {
@@ -749,7 +749,7 @@ func TestRotatingSwapsOnlyTheAppSecretAndLeavesTheRestINTACT(t *testing.T) {
 	before := instanceLikeTheProductionOne(t, s)
 
 	if err := s.RotateInstance(before.Slug, Rotation{
-		AppSecret: ptr("app-secret-REAL-do-painel-da-meta"),
+		AppSecret: ptr("REAL-app-secret-from-the-meta-panel"),
 	}); err != nil {
 		t.Fatalf("RotateInstance: %v", err)
 	}
@@ -758,8 +758,8 @@ func TestRotatingSwapsOnlyTheAppSecretAndLeavesTheRestINTACT(t *testing.T) {
 	if err != nil {
 		t.Fatalf("FindInstance: %v", err)
 	}
-	if got.AppSecret != "app-secret-REAL-do-painel-da-meta" {
-		t.Errorf("AppSecret = %q — a troca nao chegou ao banco", got.AppSecret)
+	if got.AppSecret != "REAL-app-secret-from-the-meta-panel" {
+		t.Errorf("AppSecret = %q — the swap did not reach the database", got.AppSecret)
 	}
 	untouched := []struct {
 		field string
@@ -778,14 +778,14 @@ func TestRotatingSwapsOnlyTheAppSecretAndLeavesTheRestINTACT(t *testing.T) {
 	}
 	for _, c := range untouched {
 		if c.got != c.want {
-			t.Errorf("%s = %q depois de rotacionar SO o app_secret, quero %q intacto", c.field, c.got, c.want)
+			t.Errorf("%s = %q after rotating ONLY app_secret, want %q untouched", c.field, c.got, c.want)
 		}
 	}
 	if got.TimeoutMs != before.TimeoutMs {
-		t.Errorf("TimeoutMs = %d, quero %d intacto", got.TimeoutMs, before.TimeoutMs)
+		t.Errorf("TimeoutMs = %d, want %d untouched", got.TimeoutMs, before.TimeoutMs)
 	}
 	if !got.Active {
-		t.Error("a instancia foi PAUSADA pela rotacao — o canal sairia do ar sozinho")
+		t.Error("the instance was PAUSED by the rotation — the channel would go offline on its own")
 	}
 }
 
@@ -797,10 +797,10 @@ func TestRotatingSwapsTheFiveFieldsAndReturnsInTheClear(t *testing.T) {
 	before := instanceLikeTheProductionOne(t, s)
 
 	newOnes := Rotation{
-		AppSecret:      ptr("novo-app-secret"),
-		VerifyToken:    ptr("novo-verify-token"),
-		SendToken:      ptr("novo-token-envio"),
-		DeliverySecret: ptr("novo-segredo-entrega"),
+		AppSecret:      ptr("new-app-secret"),
+		VerifyToken:    ptr("new-verify-token"),
+		SendToken:      ptr("new-send-token"),
+		DeliverySecret: ptr("new-delivery-secret"),
 		CallbackURL:    ptr("https://novo-consumidor.interno/hook"),
 	}
 	if err := s.RotateInstance(before.Slug, newOnes); err != nil {
@@ -827,7 +827,7 @@ func TestRotatingSwapsTheFiveFieldsAndReturnsInTheClear(t *testing.T) {
 	}
 	for _, c := range check {
 		if c.got != c.want {
-			t.Errorf("%s = %q, quero %q", c.field, c.got, c.want)
+			t.Errorf("%s = %q, want %q", c.field, c.got, c.want)
 		}
 	}
 }
@@ -841,14 +841,14 @@ func TestRotatingWritesTheNEWValueENCRYPTEDInTheFile(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewVault: %v", err)
 	}
-	path := filepath.Join(t.TempDir(), "teste.db")
+	path := filepath.Join(t.TempDir(), "test.db")
 	s, err := OpenStore(path, vault)
 	if err != nil {
 		t.Fatalf("OpenStore: %v", err)
 	}
 	i := instanceLikeTheProductionOne(t, s)
 	if err := s.RotateInstance(i.Slug, Rotation{
-		AppSecret:   ptr("app-secret-REAL-nao-pode-aparecer-em-claro"),
+		AppSecret:   ptr("REAL-app-secret-cannot-appear-in-the-clear"),
 		CallbackURL: ptr("https://novo-consumidor.interno/hook"),
 	}); err != nil {
 		t.Fatalf("RotateInstance: %v", err)
@@ -857,11 +857,11 @@ func TestRotatingWritesTheNEWValueENCRYPTEDInTheFile(t *testing.T) {
 
 	raw := readFile(t, path)
 	for _, secret := range []string{
-		"app-secret-REAL-nao-pode-aparecer-em-claro",
+		"REAL-app-secret-cannot-appear-in-the-clear",
 		"https://novo-consumidor.interno/hook",
 	} {
 		if containsBytes(raw, secret) {
-			t.Errorf("o valor rotacionado %q aparece EM CLARO no arquivo do banco", secret)
+			t.Errorf("the rotated value %q shows up IN THE CLEAR in the database file", secret)
 		}
 	}
 }
@@ -877,13 +877,13 @@ func TestRotatingRefusesACallbackOutsideHTTPS(t *testing.T) {
 		url  string
 		mark string
 	}{
-		{"http externo", "http://consumidor.externo/webhooks/zapgw", "consumidor.externo"},
-		{"http para IP da LAN", "http://10.0.0.19:9000/hook", "10.0.0.19"},
-		{"host que so COMECA com 127.0.0.1", "http://127.0.0.1.consumidor.example/hook", "consumidor.example"},
-		{"loopback no userinfo, host de fora", "http://127.0.0.1@consumidor.example/hook", "consumidor.example"},
-		{"esquema que nao e http", "ftp://consumidor.externo/hook", "consumidor.externo"},
-		{"https sem host", "https://", ""},
-		{"so espacos", "   ", ""},
+		{"external http", "http://consumidor.externo/webhooks/zapgw", "consumidor.externo"},
+		{"http to a LAN IP", "http://10.0.0.19:9000/hook", "10.0.0.19"},
+		{"host that only STARTS with 127.0.0.1", "http://127.0.0.1.consumidor.example/hook", "consumidor.example"},
+		{"loopback in the userinfo, host from outside", "http://127.0.0.1@consumidor.example/hook", "consumidor.example"},
+		{"scheme that isn't http", "ftp://consumidor.externo/hook", "consumidor.externo"},
+		{"https with no host", "https://", ""},
+		{"only spaces", "   ", ""},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -896,27 +896,27 @@ func TestRotatingRefusesACallbackOutsideHTTPS(t *testing.T) {
 			}
 
 			err := s.RotateInstance(before.Slug, Rotation{
-				AppSecret:   ptr("app-secret-novo"),
+				AppSecret:   ptr("new-app-secret"),
 				CallbackURL: ptr(c.url),
 			})
 
 			if !errors.Is(err, ErrInsecureCallback) {
-				t.Fatalf("RotateInstance com callback %q = %v, quero ErrInsecureCallback", c.url, err)
+				t.Fatalf("RotateInstance with callback %q = %v, want ErrInsecureCallback", c.url, err)
 			}
 			// The URL is encrypted at rest precisely to not reveal the
 			// consumers' topology; the error goes to the log and the terminal.
 			if c.mark != "" && strings.Contains(err.Error(), c.mark) {
-				t.Errorf("o erro revela o destino da callback (%q): %q", c.mark, err.Error())
+				t.Errorf("the error reveals the callback's destination (%q): %q", c.mark, err.Error())
 			}
 			got, err := s.FindInstance(before.Slug)
 			if err != nil {
 				t.Fatalf("FindInstance: %v", err)
 			}
 			if got.CallbackURL != before.CallbackURL {
-				t.Errorf("CallbackURL = %q apesar da recusa, quero %q", got.CallbackURL, before.CallbackURL)
+				t.Errorf("CallbackURL = %q despite the refusal, want %q", got.CallbackURL, before.CallbackURL)
 			}
 			if got.AppSecret != before.AppSecret {
-				t.Error("o app_secret foi trocado apesar de a rotacao ter sido RECUSADA — a validacao correu depois do UPDATE")
+				t.Error("app_secret was swapped even though the rotation was REFUSED — validation ran after the UPDATE")
 			}
 		})
 	}
@@ -932,10 +932,10 @@ func TestRotatingAcceptsHTTPSCallbackAndTheTestLoopback(t *testing.T) {
 		url  string
 	}{
 		{"https", "https://consumidor.interno/webhooks/zapgw"},
-		{"https com porta e query", "https://consumidor.interno:8443/hook?x=1"},
-		{"vazia (instancia so de saida)", ""},
-		{"loopback de teste", "http://127.0.0.1:9000"},
-		{"localhost de teste", "http://localhost:9000/hook"},
+		{"https with port and query", "https://consumidor.interno:8443/hook?x=1"},
+		{"empty (outbound-only instance)", ""},
+		{"test loopback", "http://127.0.0.1:9000"},
+		{"test localhost", "http://localhost:9000/hook"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -946,7 +946,7 @@ func TestRotatingAcceptsHTTPSCallbackAndTheTestLoopback(t *testing.T) {
 			}
 
 			if err := s.RotateInstance(before.Slug, Rotation{CallbackURL: ptr(c.url)}); err != nil {
-				t.Fatalf("RotateInstance com callback %q: %v", c.url, err)
+				t.Fatalf("RotateInstance with callback %q: %v", c.url, err)
 			}
 
 			got, err := s.FindInstance(before.Slug)
@@ -954,7 +954,7 @@ func TestRotatingAcceptsHTTPSCallbackAndTheTestLoopback(t *testing.T) {
 				t.Fatalf("FindInstance: %v", err)
 			}
 			if got.CallbackURL != c.url {
-				t.Errorf("CallbackURL = %q, quero %q", got.CallbackURL, c.url)
+				t.Errorf("CallbackURL = %q, want %q", got.CallbackURL, c.url)
 			}
 		})
 	}
@@ -976,7 +976,7 @@ func TestRotatingFlagsANonexistentSlug(t *testing.T) {
 	err := s.RotateInstance("slug-que-nao-existe", Rotation{AppSecret: ptr("x")})
 
 	if !errors.Is(err, ErrInstanceNotFound) {
-		t.Fatalf("erro = %v, quero ErrInstanceNotFound", err)
+		t.Fatalf("err = %v, want ErrInstanceNotFound", err)
 	}
 }
 
@@ -991,11 +991,11 @@ func TestRotatingWithNoFieldAtAllFlagsInsteadOfFakingSuccess(t *testing.T) {
 	err := s.RotateInstance(before.Slug, Rotation{})
 
 	if !errors.Is(err, ErrEmptyRotation) {
-		t.Fatalf("erro = %v, quero ErrEmptyRotation", err)
+		t.Fatalf("err = %v, want ErrEmptyRotation", err)
 	}
 	got, _ := s.FindInstance(before.Slug)
 	if got.AppSecret != before.AppSecret || got.SendToken != before.SendToken {
-		t.Error("a rotacao vazia mexeu em campo")
+		t.Error("the empty rotation touched a field")
 	}
 }
 
@@ -1011,28 +1011,28 @@ func TestRotatingDoesNotTouchANOTHERInstance(t *testing.T) {
 	neighbor.Slug = "clinica"
 	neighbor.PhoneNumberID = "PNID2"
 	neighbor.WabaID = "WABA2"
-	neighbor.AppSecret = "app-secret-da-clinica"
-	neighbor.SendToken = "token-envio-da-clinica"
+	neighbor.AppSecret = "clinica-app-secret"
+	neighbor.SendToken = "clinica-send-token"
 	if err := s.CreateInstance(neighbor); err != nil {
-		t.Fatalf("CreateInstance vizinha: %v", err)
+		t.Fatalf("CreateInstance neighbor: %v", err)
 	}
 
 	if err := s.RotateInstance(target.Slug, Rotation{
-		AppSecret: ptr("app-secret-so-da-lojinha"),
-		SendToken: ptr("token-envio-so-da-lojinha"),
+		AppSecret: ptr("app-secret-only-for-lojinha"),
+		SendToken: ptr("send-token-only-for-lojinha"),
 	}); err != nil {
 		t.Fatalf("RotateInstance: %v", err)
 	}
 
 	got, err := s.FindInstance(neighbor.Slug)
 	if err != nil {
-		t.Fatalf("FindInstance vizinha: %v", err)
+		t.Fatalf("FindInstance neighbor: %v", err)
 	}
 	if got.AppSecret != neighbor.AppSecret {
-		t.Errorf("o app_secret da OUTRA instancia virou %q — a rotacao vazou entre inquilinos", got.AppSecret)
+		t.Errorf("the OTHER instance's app_secret became %q — the rotation leaked between tenants", got.AppSecret)
 	}
 	if got.SendToken != neighbor.SendToken {
-		t.Errorf("o token_envio da OUTRA instancia virou %q — o canal dela sairia do ar", got.SendToken)
+		t.Errorf("the OTHER instance's send_token became %q — its channel would go offline", got.SendToken)
 	}
 }
 
@@ -1055,18 +1055,18 @@ func ciphertextsOf(t *testing.T, r InstanceSummary) map[string]bool {
 	t.Helper()
 	wantAll := []string{"app_secret", "verify_token", "token_envio", "callback_url", "segredo_entrega", "bundle_ca"}
 	if len(r.Encrypted) != len(wantAll) {
-		t.Fatalf("%q: %d campos cifrados, quero %d: %+v", r.Slug, len(r.Encrypted), len(wantAll), r.Encrypted)
+		t.Fatalf("%q: %d encrypted field(s), want %d: %+v", r.Slug, len(r.Encrypted), len(wantAll), r.Encrypted)
 	}
 	m := map[string]bool{}
 	for _, c := range r.Encrypted {
 		if _, repeated := m[c.Name]; repeated {
-			t.Fatalf("%q: o campo %q aparece duas vezes: %+v", r.Slug, c.Name, r.Encrypted)
+			t.Fatalf("%q: field %q shows up twice: %+v", r.Slug, c.Name, r.Encrypted)
 		}
 		m[c.Name] = c.Registered
 	}
 	for _, name := range wantAll {
 		if _, has := m[name]; !has {
-			t.Fatalf("%q: falta o campo %q no resumo: %+v", r.Slug, name, r.Encrypted)
+			t.Fatalf("%q: field %q is missing from the summary: %+v", r.Slug, name, r.Encrypted)
 		}
 	}
 	return m
@@ -1108,13 +1108,13 @@ func TestListInstancesReturnsALLOfThemWithTheRightState(t *testing.T) {
 		t.Fatalf("ListInstances: %v", err)
 	}
 	if len(list) != len(cases) {
-		t.Fatalf("%d instancia(s) na lista, quero %d: %+v", len(list), len(cases), list)
+		t.Fatalf("%d instance(s) in the list, want %d: %+v", len(list), len(cases), list)
 	}
 	// Order by slug: without a defined order, the same list comes out
 	// different on every call and "what changed since yesterday?" stops
 	// having an answer.
 	if list[0].Slug != "clinica" || list[1].Slug != "padaria" || list[2].Slug != "tenant-one" {
-		t.Errorf("a lista nao veio ordenada por slug: %q, %q, %q", list[0].Slug, list[1].Slug, list[2].Slug)
+		t.Errorf("the list did not come out sorted by slug: %q, %q, %q", list[0].Slug, list[1].Slug, list[2].Slug)
 	}
 
 	bySlug := map[string]InstanceSummary{}
@@ -1124,20 +1124,20 @@ func TestListInstancesReturnsALLOfThemWithTheRightState(t *testing.T) {
 	for _, c := range cases {
 		r, found := bySlug[c.slug]
 		if !found {
-			t.Fatalf("a instancia %q nao apareceu na lista", c.slug)
+			t.Fatalf("instance %q did not show up in the list", c.slug)
 		}
 		if r.Active != c.active {
-			t.Errorf("%q: Ativo = %v, quero %v — estado invertido manda quem opera mexer na instancia errada", c.slug, r.Active, c.active)
+			t.Errorf("%q: Active = %v, want %v — a flipped state sends whoever operates it to touch the wrong instance", c.slug, r.Active, c.active)
 		}
 		// The identifiers too: they aren't secret, and they're what lets
 		// the row be matched to Meta's panel. Swapped between columns,
 		// they send the operator looking for another tenant's number.
 		if r.PhoneNumberID != c.pnid || r.WabaID != c.waba || r.DisplayNumber != c.number {
-			t.Errorf("%q: pnid=%q waba=%q numero=%q, quero %q/%q/%q",
+			t.Errorf("%q: pnid=%q waba=%q number=%q, want %q/%q/%q",
 				c.slug, r.PhoneNumberID, r.WabaID, r.DisplayNumber, c.pnid, c.waba, c.number)
 		}
 		if r.TimeoutMs != 5000 {
-			t.Errorf("%q: TimeoutMs = %d, quero 5000", c.slug, r.TimeoutMs)
+			t.Errorf("%q: TimeoutMs = %d, want 5000", c.slug, r.TimeoutMs)
 		}
 	}
 }
@@ -1147,10 +1147,10 @@ func TestListInstancesOnAnEmptyDatabaseIsNotAnError(t *testing.T) {
 	// here would make someone just starting out think the command is broken.
 	list, err := testStore(t).ListInstances()
 	if err != nil {
-		t.Fatalf("ListInstances em banco vazio: %v", err)
+		t.Fatalf("ListInstances on an empty database: %v", err)
 	}
 	if len(list) != 0 {
-		t.Errorf("%d instancia(s) num banco vazio: %+v", len(list), list)
+		t.Errorf("%d instance(s) in an empty database: %+v", len(list), list)
 	}
 }
 
@@ -1187,7 +1187,7 @@ func TestListInstancesSaysWhoIsRegisteredInBothDirections(t *testing.T) {
 		t.Fatalf("ListInstances: %v", err)
 	}
 	if len(list) != 2 {
-		t.Fatalf("%d instancia(s), quero 2", len(list))
+		t.Fatalf("%d instance(s), want 2", len(list))
 	}
 	bySlug := map[string]InstanceSummary{list[0].Slug: list[0], list[1].Slug: list[1]}
 
@@ -1205,7 +1205,7 @@ func TestListInstancesSaysWhoIsRegisteredInBothDirections(t *testing.T) {
 		got := ciphertextsOf(t, bySlug[slug])
 		for field, isRegistered := range expected {
 			if got[field] != isRegistered {
-				t.Errorf("%s.%s: cadastrado = %v, quero %v", slug, field, got[field], isRegistered)
+				t.Errorf("%s.%s: registered = %v, want %v", slug, field, got[field], isRegistered)
 			}
 		}
 	}
@@ -1229,13 +1229,13 @@ func TestListInstancesRecognizesBothFormsOfEmptyInTheMigratedDatabase(t *testing
 		t.Helper()
 		c, err := vault.Encrypt(plaintext)
 		if err != nil {
-			t.Fatalf("cifrar: %v", err)
+			t.Fatalf("encrypt: %v", err)
 		}
 		return c
 	}
 	db, err := sql.Open("sqlite", path)
 	if err != nil {
-		t.Fatalf("abrir banco antigo: %v", err)
+		t.Fatalf("open old database: %v", err)
 	}
 	if _, err := db.Exec(`
 		INSERT INTO instancia (slug, waba_id, phone_number_id, numero_exibido,
@@ -1244,15 +1244,15 @@ func TestListInstancesRecognizesBothFormsOfEmptyInTheMigratedDatabase(t *testing
 		VALUES ('tenant-one','WABA1','PNID1','5532999990000',?,?,?,?,?,5000,1)`,
 		encrypt("app-secret-de-teste"), encrypt("verify-token-de-teste"),
 		encrypt("token-envio-de-teste"), encrypt(""), encrypt("segredo-entrega-de-teste")); err != nil {
-		t.Fatalf("inserir instancia antiga: %v", err)
+		t.Fatalf("insert old instance: %v", err)
 	}
 	if err := db.Close(); err != nil {
-		t.Fatalf("fechar banco antigo: %v", err)
+		t.Fatalf("close old database: %v", err)
 	}
 
 	s, err := openAt(t, path)
 	if err != nil {
-		t.Fatalf("OpenStore sobre banco de v0.4.0: %v", err)
+		t.Fatalf("OpenStore on a v0.4.0 database: %v", err)
 	}
 
 	// The fixture only counts if both forms are really there: without
@@ -1261,13 +1261,13 @@ func TestListInstancesRecognizesBothFormsOfEmptyInTheMigratedDatabase(t *testing
 	var callback, bundle string
 	if err := s.DB().QueryRow(
 		`SELECT callback_url, bundle_ca FROM instancia WHERE slug = 'tenant-one'`).Scan(&callback, &bundle); err != nil {
-		t.Fatalf("ler as colunas cruas: %v", err)
+		t.Fatalf("read the raw columns: %v", err)
 	}
 	if callback == "" {
-		t.Fatal("a fixture gravou callback_url literalmente vazia — o caso do cifrado de \"\" nao seria exercitado")
+		t.Fatal("the fixture wrote callback_url literally empty — the case of \"\"'s ciphertext would not be exercised")
 	}
 	if bundle != "" {
-		t.Fatalf("a fixture nao produziu o DEFAULT '' do ALTER TABLE em bundle_ca (%q)", bundle)
+		t.Fatalf("the fixture did not produce the ALTER TABLE's '' DEFAULT in bundle_ca (%q)", bundle)
 	}
 
 	list, err := s.ListInstances()
@@ -1275,7 +1275,7 @@ func TestListInstancesRecognizesBothFormsOfEmptyInTheMigratedDatabase(t *testing
 		t.Fatalf("ListInstances: %v", err)
 	}
 	if len(list) != 1 {
-		t.Fatalf("%d instancia(s), quero 1", len(list))
+		t.Fatalf("%d instance(s), want 1", len(list))
 	}
 	got := ciphertextsOf(t, list[0])
 	for field, isRegistered := range map[string]bool{
@@ -1283,11 +1283,11 @@ func TestListInstancesRecognizesBothFormsOfEmptyInTheMigratedDatabase(t *testing
 		"segredo_entrega": true, "callback_url": false, "bundle_ca": false,
 	} {
 		if got[field] != isRegistered {
-			t.Errorf("%s: cadastrado = %v, quero %v", field, got[field], isRegistered)
+			t.Errorf("%s: registered = %v, want %v", field, got[field], isRegistered)
 		}
 	}
 	if !list[0].Active {
-		t.Error("a instancia apareceu PAUSADA — ela esta ativa no banco")
+		t.Error("the instance showed up PAUSED — it is active in the database")
 	}
 }
 
@@ -1301,7 +1301,7 @@ func TestListInstancesRecognizesBothFormsOfEmptyInTheMigratedDatabase(t *testing
 func TestListInstancesWorksWithTheWRONGENCRYPTIONKEY(t *testing.T) {
 	const otherKey = "00000000000000000000000000000000000000000000000000000000000000ff"
 
-	path := filepath.Join(t.TempDir(), "teste.db")
+	path := filepath.Join(t.TempDir(), "test.db")
 	rightVault, err := NewVault(testKey)
 	if err != nil {
 		t.Fatalf("NewVault: %v", err)
@@ -1320,16 +1320,16 @@ func TestListInstancesWorksWithTheWRONGENCRYPTIONKEY(t *testing.T) {
 		t.Fatalf("ActivateInstance: %v", err)
 	}
 	if err := rightStore.Close(); err != nil {
-		t.Fatalf("Fechar: %v", err)
+		t.Fatalf("Close: %v", err)
 	}
 
 	wrongVault, err := NewVault(otherKey)
 	if err != nil {
-		t.Fatalf("NewVault(outra): %v", err)
+		t.Fatalf("NewVault(other): %v", err)
 	}
 	s, err := OpenStore(path, wrongVault)
 	if err != nil {
-		t.Fatalf("OpenStore com a outra chave: %v", err)
+		t.Fatalf("OpenStore with the other key: %v", err)
 	}
 	t.Cleanup(func() { _ = s.Close() })
 
@@ -1337,18 +1337,18 @@ func TestListInstancesWorksWithTheWRONGENCRYPTIONKEY(t *testing.T) {
 	// pass green with both keys equal, claiming to have proven something
 	// it never even exercised — the trap shape documented in docs/ARMADILHAS.md.
 	if _, err := s.FindInstance("tenant-one"); err == nil {
-		t.Fatal("FindInstance funcionou com a outra chave — a fixture nao trocou a chave de verdade")
+		t.Fatal("FindInstance worked with the other key — the fixture did not really swap the key")
 	}
 
 	list, err := s.ListInstances()
 	if err != nil {
-		t.Fatalf("ListInstances com a chave errada: %v — quem opera fica cego justamente no incidente", err)
+		t.Fatalf("ListInstances with the wrong key: %v — whoever operates it goes blind exactly during the incident", err)
 	}
 	if len(list) != 1 || list[0].Slug != "tenant-one" {
-		t.Fatalf("lista = %+v, quero a tenant-one", list)
+		t.Fatalf("list = %+v, want tenant-one", list)
 	}
 	if !list[0].Active {
-		t.Error("a instancia apareceu pausada com a chave errada — o estado nao depende da cifra")
+		t.Error("the instance showed up paused with the wrong key — state does not depend on the cipher")
 	}
 	got := ciphertextsOf(t, list[0])
 	for field, isRegistered := range map[string]bool{
@@ -1356,14 +1356,14 @@ func TestListInstancesWorksWithTheWRONGENCRYPTIONKEY(t *testing.T) {
 		"segredo_entrega": true, "callback_url": false, "bundle_ca": false,
 	} {
 		if got[field] != isRegistered {
-			t.Errorf("%s: cadastrado = %v com a chave errada, quero %v", field, got[field], isRegistered)
+			t.Errorf("%s: registered = %v with the wrong key, want %v", field, got[field], isRegistered)
 		}
 	}
 
 	// And showing too: both reads answer the same question, and one that
 	// decrypted would only break on the command nobody tested.
 	if _, err := s.SummarizeInstance("tenant-one"); err != nil {
-		t.Errorf("SummarizeInstance com a chave errada: %v", err)
+		t.Errorf("SummarizeInstance with the wrong key: %v", err)
 	}
 }
 
@@ -1391,7 +1391,7 @@ func TestListInstancesReturnsNoSECRETAtAll(t *testing.T) {
 	// The guard only counts if both reads returned the instance: over an
 	// empty list, "no secret shows up" is trivially true and verifies nothing.
 	if len(list) != 1 || summary.Slug != "tenant-one" {
-		t.Fatalf("a leitura nao devolveu a instancia (lista=%+v, resumo=%+v) — a assercao de vazamento nao verificaria nada", list, summary)
+		t.Fatalf("the read did not return the instance (list=%+v, summary=%+v) — the leak assertion would not verify anything", list, summary)
 	}
 	// %+v ALONGSIDE %#v: %#v escapes the line break, and the CA bundle is
 	// multiline — searching only the escaped form wouldn't find the whole
@@ -1410,7 +1410,7 @@ func TestListInstancesReturnsNoSECRETAtAll(t *testing.T) {
 		"bundle_ca":       i.CABundle,
 	} {
 		if strings.Contains(everything, plaintext) {
-			t.Errorf("o valor em claro de %s esta no resumo", name)
+			t.Errorf("the plaintext value of %s is in the summary", name)
 		}
 	}
 
@@ -1422,14 +1422,14 @@ func TestListInstancesReturnsNoSECRETAtAll(t *testing.T) {
 		SELECT app_secret, verify_token, token_envio, callback_url, segredo_entrega, bundle_ca
 		  FROM instancia WHERE slug = 'tenant-one'`).Scan(
 		&encrypted[0], &encrypted[1], &encrypted[2], &encrypted[3], &encrypted[4], &encrypted[5]); err != nil {
-		t.Fatalf("ler as colunas cruas: %v", err)
+		t.Fatalf("read the raw columns: %v", err)
 	}
 	for n, ciphertext := range encrypted {
 		if ciphertext == "" {
-			t.Fatalf("a coluna %d esta vazia no banco — a assercao procuraria a string vazia e nao verificaria nada", n)
+			t.Fatalf("column %d is empty in the database — the assertion would look for the empty string and not verify anything", n)
 		}
 		if strings.Contains(everything, ciphertext) {
-			t.Errorf("o CIFRADO da coluna %d esta no resumo — falta so a chave para abri-lo", n)
+			t.Errorf("the CIPHERTEXT of column %d is in the summary — only the key is missing to open it", n)
 		}
 	}
 }
@@ -1445,10 +1445,10 @@ func TestShowInstanceFlagsANonexistentSlug(t *testing.T) {
 
 	got, err := s.SummarizeInstance("nao-existe")
 	if !errors.Is(err, ErrInstanceNotFound) {
-		t.Fatalf("erro = %v, quero ErrInstanceNotFound", err)
+		t.Fatalf("err = %v, want ErrInstanceNotFound", err)
 	}
 	if got.Slug != "" {
-		t.Errorf("devolveu um resumo (%+v) junto com a recusa", got)
+		t.Errorf("returned a summary (%+v) alongside the refusal", got)
 	}
 }
 
@@ -1469,10 +1469,10 @@ func TestShowInstanceSaysTheSAMEAsTheListing(t *testing.T) {
 		t.Fatalf("SummarizeInstance: %v", err)
 	}
 	if len(fromTheList) != 1 {
-		t.Fatalf("%d instancia(s) na lista, quero 1", len(fromTheList))
+		t.Fatalf("%d instance(s) in the list, want 1", len(fromTheList))
 	}
 	if fmt.Sprintf("%+v", fromTheList[0]) != fmt.Sprintf("%+v", one) {
-		t.Errorf("listar e mostrar discordam sobre %q:\nlistar:  %+v\nmostrar: %+v", i.Slug, fromTheList[0], one)
+		t.Errorf("list and show disagree about %q:\nlist: %+v\nshow: %+v", i.Slug, fromTheList[0], one)
 	}
 }
 
@@ -1496,7 +1496,7 @@ func TestStoreKeepsTheTokenAsAHashNeverInTheClear(t *testing.T) {
 	_ = s.Close()
 
 	if containsBytes(readFile(t, path), "token-secreto-do-consumidor") {
-		t.Fatal("o token do consumidor aparece EM CLARO no arquivo do banco")
+		t.Fatal("the consumer's token shows up IN THE CLEAR in the database file")
 	}
 }
 
@@ -1517,7 +1517,7 @@ func TestStoreFindsAConsumerByToken(t *testing.T) {
 		t.Errorf("Name = %q", c.Name)
 	}
 	if len(c.Instances) != 1 || c.Instances[0] != "lojinha" {
-		t.Errorf("Instances = %v, quero [lojinha]", c.Instances)
+		t.Errorf("Instances = %v, want [lojinha]", c.Instances)
 	}
 }
 
@@ -1525,7 +1525,7 @@ func TestStoreRefusesAnUnknownToken(t *testing.T) {
 	s := testStore(t)
 
 	if _, err := s.ConsumerByToken("token-que-nao-existe"); !errors.Is(err, ErrConsumerNotFound) {
-		t.Fatalf("erro = %v, quero ErrConsumerNotFound", err)
+		t.Fatalf("err = %v, want ErrConsumerNotFound", err)
 	}
 }
 
@@ -1544,7 +1544,7 @@ func TestStoreDoesNotConfuseConsumers(t *testing.T) {
 	other.PhoneNumberID = "PNID2"
 	other.WabaID = "WABA2"
 	if err := s.CreateInstance(other); err != nil {
-		t.Fatalf("CreateInstance outra: %v", err)
+		t.Fatalf("CreateInstance other: %v", err)
 	}
 
 	if err := s.CreateConsumer("sistema-a", "token-a", []string{"lojinha"}); err != nil {
@@ -1573,7 +1573,7 @@ func TestStoreRefusesAConsumerWithARepeatedToken(t *testing.T) {
 	}
 
 	if err := s.CreateConsumer("b", "mesmo-token", []string{"lojinha"}); err == nil {
-		t.Fatal("dois consumidores com o mesmo token foram aceitos — o token E a identidade")
+		t.Fatal("two consumers with the same token were accepted — the token IS the identity")
 	}
 }
 
@@ -1597,17 +1597,17 @@ func TestRotateConsumerKillsTheOldTokenAndSAVESTheLinks(t *testing.T) {
 	}
 
 	if _, err := s.ConsumerByToken("token-vazado"); !errors.Is(err, ErrConsumerNotFound) {
-		t.Errorf("o token antigo ainda vale (err = %v) — a rotacao nao revogou nada", err)
+		t.Errorf("the old token still works (err = %v) — the rotation revoked nothing", err)
 	}
 	c, err := s.ConsumerByToken("token-novo")
 	if err != nil {
-		t.Fatalf("o token novo nao autentica: %v", err)
+		t.Fatalf("the new token does not authenticate: %v", err)
 	}
 	if c.Name != "consumer-b" {
-		t.Errorf("Name = %q, quero consumer-b", c.Name)
+		t.Errorf("Name = %q, want consumer-b", c.Name)
 	}
 	if len(c.Instances) != 1 || c.Instances[0] != "lojinha" {
-		t.Errorf("Instances = %v, quero [lojinha] — o vinculo nao sobreviveu a rotacao", c.Instances)
+		t.Errorf("Instances = %v, want [lojinha] — the link did not survive the rotation", c.Instances)
 	}
 }
 
@@ -1629,14 +1629,14 @@ func TestRotateConsumerDoesNotTouchTheOTHERConsumer(t *testing.T) {
 	// An UPDATE without a WHERE would swap both — and the symptom would be
 	// a consumer who asked for nothing losing access.
 	if _, err := s.ConsumerByToken("token-b"); err != nil {
-		t.Errorf("o token do OUTRO consumidor parou de valer: %v", err)
+		t.Errorf("the OTHER consumer's token stopped working: %v", err)
 	}
 }
 
 func TestRotateConsumerFlagsANonexistentName(t *testing.T) {
 	s := testStore(t)
 	if err := s.RotateConsumer("nao-existe", "token"); !errors.Is(err, ErrConsumerNotFound) {
-		t.Fatalf("err = %v, quero ErrConsumerNotFound", err)
+		t.Fatalf("err = %v, want ErrConsumerNotFound", err)
 	}
 }
 
@@ -1650,7 +1650,7 @@ func TestListConsumersJoinsTheLinksAndShowsWhoHasNone(t *testing.T) {
 	other.PhoneNumberID = "PNID2"
 	other.WabaID = "WABA2"
 	if err := s.CreateInstance(other); err != nil {
-		t.Fatalf("CreateInstance outra: %v", err)
+		t.Fatalf("CreateInstance other: %v", err)
 	}
 	if err := s.CreateConsumer("sistema-a", "token-a", []string{"lojinha", "clinica"}); err != nil {
 		t.Fatalf("CreateConsumer a: %v", err)
@@ -1658,7 +1658,7 @@ func TestListConsumersJoinsTheLinksAndShowsWhoHasNone(t *testing.T) {
 	// With NO link at all: the case a plain JOIN would hide, and it's
 	// exactly the one that gets 403 on everything.
 	if _, err := s.DB().Exec(`INSERT INTO consumidor (nome, token_hash) VALUES ('orfao','h')`); err != nil {
-		t.Fatalf("inserir orfao: %v", err)
+		t.Fatalf("insert orphan: %v", err)
 	}
 
 	list, err := s.ListConsumers()
@@ -1666,16 +1666,16 @@ func TestListConsumersJoinsTheLinksAndShowsWhoHasNone(t *testing.T) {
 		t.Fatalf("ListConsumers: %v", err)
 	}
 	if len(list) != 2 {
-		t.Fatalf("len(lista) = %d, quero 2 (%v)", len(list), list)
+		t.Fatalf("len(list) = %d, want 2 (%v)", len(list), list)
 	}
 	// Stable order by name: "orfao" < "sistema-a".
 	if list[0].Name != "orfao" || len(list[0].Instances) != 0 {
-		t.Errorf("lista[0] = %+v, quero orfao sem vinculo", list[0])
+		t.Errorf("list[0] = %+v, want orfao with no link", list[0])
 	}
 	if list[1].Name != "sistema-a" ||
 		len(list[1].Instances) != 2 ||
 		list[1].Instances[0] != "clinica" || list[1].Instances[1] != "lojinha" {
-		t.Errorf("lista[1] = %+v, quero sistema-a com [clinica lojinha]", list[1])
+		t.Errorf("list[1] = %+v, want sistema-a with [clinica lojinha]", list[1])
 	}
 }
 
@@ -1683,13 +1683,13 @@ func TestHashTokenIsDeterministicAndHides(t *testing.T) {
 	h1 := HashToken("abc")
 	h2 := HashToken("abc")
 	if h1 != h2 {
-		t.Fatal("HashToken nao e deterministico — a busca por token nunca acharia")
+		t.Fatal("HashToken is not deterministic — the search by token would never find it")
 	}
 	if h1 == HashToken("abd") {
-		t.Fatal("tokens diferentes deram o mesmo hash")
+		t.Fatal("different tokens gave the same hash")
 	}
 	if strings.Contains(h1, "abc") {
-		t.Fatal("o token aparece dentro do proprio hash")
+		t.Fatal("the token shows up inside its own hash")
 	}
 }
 
@@ -1706,10 +1706,10 @@ func TestTheForeignKeyPragmaIsOn(t *testing.T) {
 
 	var on int
 	if err := s.DB().QueryRow(`PRAGMA foreign_keys`).Scan(&on); err != nil {
-		t.Fatalf("consultar o pragma: %v", err)
+		t.Fatalf("query the pragma: %v", err)
 	}
 	if on != 1 {
-		t.Fatalf("PRAGMA foreign_keys = %d, quero 1 — as clausulas REFERENCES sao decorativas assim", on)
+		t.Fatalf("PRAGMA foreign_keys = %d, want 1 — the REFERENCES clauses are decorative like this", on)
 	}
 }
 
@@ -1718,12 +1718,12 @@ func TestStoreRefusesAConsumerLinkedToANonexistentInstance(t *testing.T) {
 
 	err := s.CreateConsumer("fantasma", "token-x", []string{"slug-que-nao-existe"})
 	if err == nil {
-		t.Fatal("vinculo orfao aceito — autorizaria uma instancia que ninguem cadastrou")
+		t.Fatal("orphan link accepted — it would authorize an instance nobody registered")
 	}
 
 	// And the consumer cannot have been left behind: the transaction undoes everything.
 	if _, err := s.ConsumerByToken("token-x"); !errors.Is(err, ErrConsumerNotFound) {
-		t.Fatalf("o consumidor sobrou apos a falha do vinculo: %v", err)
+		t.Fatalf("the consumer survived the link's failure: %v", err)
 	}
 }
 
@@ -1738,10 +1738,10 @@ func TestStoreRefusesABatchWithAnInvalidSlugInTheMiddle(t *testing.T) {
 
 	err := s.CreateConsumer("meio", "token-y", []string{"lojinha", "nao-existe"})
 	if err == nil {
-		t.Fatal("lote com slug invalido foi aceito")
+		t.Fatal("batch with an invalid slug was accepted")
 	}
 	if _, err := s.ConsumerByToken("token-y"); !errors.Is(err, ErrConsumerNotFound) {
-		t.Fatalf("o consumidor sobrou apos a falha parcial: %v", err)
+		t.Fatalf("the consumer survived the partial failure: %v", err)
 	}
 }
 
@@ -1757,10 +1757,10 @@ func TestIdempotencyBlocksASecondSend(t *testing.T) {
 		t.Fatalf("ReserveIdempotency: %v", err)
 	}
 	if !reserved {
-		t.Fatal("a primeira reserva nao foi concedida")
+		t.Fatal("the first reservation was not granted")
 	}
 	if alreadySent != "" {
-		t.Fatalf("alreadySent = %q na primeira vez", alreadySent)
+		t.Fatalf("alreadySent = %q on the first time", alreadySent)
 	}
 
 	if err := s.ConfirmIdempotency("sistema-a", "chave-1", "wamid.PRIMEIRO"); err != nil {
@@ -1769,13 +1769,13 @@ func TestIdempotencyBlocksASecondSend(t *testing.T) {
 
 	alreadySent, reserved, err = s.ReserveIdempotency("sistema-a", "chave-1", "")
 	if err != nil {
-		t.Fatalf("ReserveIdempotency (2a): %v", err)
+		t.Fatalf("ReserveIdempotency (2nd): %v", err)
 	}
 	if reserved {
-		t.Fatal("a segunda reserva foi concedida — a mensagem sairia DUAS vezes")
+		t.Fatal("the second reservation was granted — the message would go out TWICE")
 	}
 	if alreadySent != "wamid.PRIMEIRO" {
-		t.Fatalf("alreadySent = %q, quero o id do primeiro envio", alreadySent)
+		t.Fatalf("alreadySent = %q, want the first send's id", alreadySent)
 	}
 }
 
@@ -1793,7 +1793,7 @@ func TestIdempotencyDoesNotConfuseConsumers(t *testing.T) {
 		t.Fatalf("ReserveIdempotency: %v", err)
 	}
 	if !reserved {
-		t.Fatalf("o sistema B foi bloqueado pela chave do A (alreadySent=%q)", alreadySent)
+		t.Fatalf("system B was blocked by system A's key (alreadySent=%q)", alreadySent)
 	}
 }
 
@@ -1812,7 +1812,7 @@ func TestIdempotencyReleasesWhenTheSendFails(t *testing.T) {
 		t.Fatalf("ReserveIdempotency: %v", err)
 	}
 	if !reserved {
-		t.Fatal("a chave nao voltou a valer depois da falha")
+		t.Fatal("the key did not become usable again after the failure")
 	}
 }
 
@@ -1828,10 +1828,10 @@ func TestIdempotencySecondCallWhileTheFirstIsRunning(t *testing.T) {
 		t.Fatalf("ReserveIdempotency: %v", err)
 	}
 	if reserved {
-		t.Fatal("reservou duas vezes com um envio em andamento")
+		t.Fatal("reserved twice with a send in progress")
 	}
 	if alreadySent != "" {
-		t.Fatalf("alreadySent = %q, mas o envio ainda nem terminou", alreadySent)
+		t.Fatalf("alreadySent = %q, but the send hasn't even finished yet", alreadySent)
 	}
 }
 
@@ -1849,12 +1849,12 @@ func TestIdempotencyIsPurged(t *testing.T) {
 		t.Fatalf("PurgeIdempotency: %v", err)
 	}
 	if n != 1 {
-		t.Fatalf("purgou %d, quero 1", n)
+		t.Fatalf("purged %d, want 1", n)
 	}
 
 	_, reserved, _ := s.ReserveIdempotency("sistema-a", "antiga", "")
 	if !reserved {
-		t.Fatal("a chave purgada continua bloqueando")
+		t.Fatal("the purged key is still blocking")
 	}
 }
 
@@ -1872,12 +1872,12 @@ func TestThePurgeDoesNotDeleteARecentRecord(t *testing.T) {
 		t.Fatalf("PurgeIdempotency: %v", err)
 	}
 	if n != 0 {
-		t.Fatalf("purgou %d registros recentes, quero 0", n)
+		t.Fatalf("purged %d recent record(s), want 0", n)
 	}
 
 	id, reserved, _ := s.ReserveIdempotency("sistema-a", "recente", "")
 	if reserved {
-		t.Fatal("o registro recente sumiu — um retry duplicaria a mensagem")
+		t.Fatal("the recent record disappeared — a retry would duplicate the message")
 	}
 	if id != "wamid.X" {
 		t.Fatalf("id = %q", id)
@@ -1898,7 +1898,7 @@ func TestIdempotencyKeepsNoMessageContent(t *testing.T) {
 	raw := readFile(t, path)
 	for _, column := range []string{"texto", "corpo", "payload", "mensagem", "para", "telefone"} {
 		if containsBytes(raw, "idempotencia") && containsBytes(raw, column) {
-			t.Errorf("a tabela de idempotencia parece guardar %q — isso e mensagem, nao entrega", column)
+			t.Errorf("the idempotencia table seems to keep %q — that's a message, not a delivery record", column)
 		}
 	}
 }
@@ -1933,7 +1933,7 @@ func TestIdempotencyUnderConcurrencyOnlyGivesTheThreeOutcomes(t *testing.T) {
 	for i := range errs {
 		if errs[i] != nil {
 			withError++
-			t.Errorf("goroutine %d voltou com erro: %v", i, errs[i])
+			t.Errorf("goroutine %d came back with an error: %v", i, errs[i])
 		}
 		if reservations[i] {
 			withOwnership++
@@ -1941,11 +1941,11 @@ func TestIdempotencyUnderConcurrencyOnlyGivesTheThreeOutcomes(t *testing.T) {
 	}
 
 	if withError > 0 {
-		t.Fatalf("%d de %d chamadas voltaram com erro de banco — o contrato promete tres desfechos, nenhum deles e erro",
+		t.Fatalf("%d of %d calls came back with a database error — the contract promises three outcomes, none of them an error",
 			withError, goroutines)
 	}
 	if withOwnership != 1 {
-		t.Fatalf("%d goroutines reservaram, quero exatamente 1 — mais de uma faria a mensagem sair mais de uma vez",
+		t.Fatalf("%d goroutines reserved, want exactly 1 — more than one would send the message out more than once",
 			withOwnership)
 	}
 }
@@ -1974,10 +1974,10 @@ func TestIdempotencyUnderConcurrencyOnDifferentKeys(t *testing.T) {
 
 	for i := range errs {
 		if errs[i] != nil {
-			t.Errorf("goroutine %d voltou com erro: %v", i, errs[i])
+			t.Errorf("goroutine %d came back with an error: %v", i, errs[i])
 		}
 		if !reservations[i] {
-			t.Errorf("goroutine %d nao reservou a propria chave, exclusiva dela", i)
+			t.Errorf("goroutine %d did not reserve its own, exclusive key", i)
 		}
 	}
 }
@@ -1990,26 +1990,26 @@ func TestThePragmasAreAllOn(t *testing.T) {
 
 	var fk int
 	if err := s.DB().QueryRow(`PRAGMA foreign_keys`).Scan(&fk); err != nil {
-		t.Fatalf("consultar foreign_keys: %v", err)
+		t.Fatalf("query foreign_keys: %v", err)
 	}
 	if fk != 1 {
-		t.Errorf("foreign_keys = %d, quero 1", fk)
+		t.Errorf("foreign_keys = %d, want 1", fk)
 	}
 
 	var busy int
 	if err := s.DB().QueryRow(`PRAGMA busy_timeout`).Scan(&busy); err != nil {
-		t.Fatalf("consultar busy_timeout: %v", err)
+		t.Fatalf("query busy_timeout: %v", err)
 	}
 	if busy <= 0 {
-		t.Errorf("busy_timeout = %d, quero > 0 — sem ele o SQLite falha na hora em vez de esperar", busy)
+		t.Errorf("busy_timeout = %d, want > 0 — without it SQLite fails right away instead of waiting", busy)
 	}
 
 	var mode string
 	if err := s.DB().QueryRow(`PRAGMA journal_mode`).Scan(&mode); err != nil {
-		t.Fatalf("consultar journal_mode: %v", err)
+		t.Fatalf("query journal_mode: %v", err)
 	}
 	if !strings.EqualFold(mode, "wal") {
-		t.Errorf("journal_mode = %q, quero wal", mode)
+		t.Errorf("journal_mode = %q, want wal", mode)
 	}
 }
 
@@ -2021,21 +2021,21 @@ func TestIdempotencyRefusesAKeyReusedWithADifferentRequest(t *testing.T) {
 
 	_, reserved, err := s.ReserveIdempotency("sistema-a", "pedido-12345", "hash-da-primeira")
 	if err != nil || !reserved {
-		t.Fatalf("primeira reserva: reservou=%v err=%v", reserved, err)
+		t.Fatalf("first reservation: reserved=%v err=%v", reserved, err)
 	}
 	if err := s.ConfirmIdempotency("sistema-a", "pedido-12345", "wamid.PRIMEIRA"); err != nil {
-		t.Fatalf("Confirmar: %v", err)
+		t.Fatalf("Confirm: %v", err)
 	}
 
 	id, reserved, err := s.ReserveIdempotency("sistema-a", "pedido-12345", "hash-da-SEGUNDA")
 	if !errors.Is(err, ErrKeyWithDifferentRequest) {
-		t.Fatalf("erro = %v, quero ErrKeyWithDifferentRequest", err)
+		t.Fatalf("err = %v, want ErrKeyWithDifferentRequest", err)
 	}
 	if reserved {
-		t.Error("reservou com pedido diferente")
+		t.Error("reserved with a different request")
 	}
 	if id != "" {
-		t.Errorf("devolveu id %q de OUTRA mensagem", id)
+		t.Errorf("returned id %q of ANOTHER message", id)
 	}
 }
 
@@ -2050,13 +2050,13 @@ func TestIdempotencyAcceptsARetryOfTheSameRequest(t *testing.T) {
 
 	id, reserved, err := s.ReserveIdempotency("sistema-a", "k1", "mesmo-hash")
 	if err != nil {
-		t.Fatalf("retry legitimo recusado: %v", err)
+		t.Fatalf("legitimate retry refused: %v", err)
 	}
 	if reserved {
-		t.Error("reservou de novo em vez de devolver o id")
+		t.Error("reserved again instead of returning the id")
 	}
 	if id != "wamid.X" {
-		t.Errorf("id = %q, quero wamid.X", id)
+		t.Errorf("id = %q, want wamid.X", id)
 	}
 }
 
@@ -2078,13 +2078,13 @@ func TestIdempotencyRefusesADifferentRequestEvenWithAnEmptyStoredHash(t *testing
 
 	id, reserved, err := s.ReserveIdempotency("sistema-a", "k1", "hash-de-um-pedido-diferente")
 	if !errors.Is(err, ErrKeyWithDifferentRequest) {
-		t.Fatalf("erro = %v, quero ErrKeyWithDifferentRequest", err)
+		t.Fatalf("err = %v, want ErrKeyWithDifferentRequest", err)
 	}
 	if reserved {
-		t.Error("reservou com pedido diferente so porque o hash gravado era vazio")
+		t.Error("reserved with a different request just because the stored hash was empty")
 	}
 	if id != "" {
-		t.Errorf("devolveu id %q de OUTRA mensagem", id)
+		t.Errorf("returned id %q of ANOTHER message", id)
 	}
 }
 
@@ -2095,7 +2095,7 @@ func TestConfirmIdempotencyFlagsANonexistentKey(t *testing.T) {
 
 	err := s.ConfirmIdempotency("sistema-a", "nunca-reservada", "wamid.X")
 	if !errors.Is(err, ErrIdempotencyVanished) {
-		t.Fatalf("erro = %v, quero ErrIdempotencyVanished", err)
+		t.Fatalf("err = %v, want ErrIdempotencyVanished", err)
 	}
 }
 
@@ -2160,14 +2160,14 @@ func priorDatabase(t *testing.T, ddl string, userVersion int) string {
 	path := filepath.Join(t.TempDir(), "antigo.db")
 	db, err := sql.Open("sqlite", path)
 	if err != nil {
-		t.Fatalf("abrir banco antigo: %v", err)
+		t.Fatalf("open old database: %v", err)
 	}
 	defer func() { _ = db.Close() }()
 	if _, err := db.Exec(ddl); err != nil {
-		t.Fatalf("criar esquema antigo: %v", err)
+		t.Fatalf("create old schema: %v", err)
 	}
 	if _, err := db.Exec(fmt.Sprintf("PRAGMA user_version = %d", userVersion)); err != nil {
-		t.Fatalf("gravar user_version: %v", err)
+		t.Fatalf("write user_version: %v", err)
 	}
 	return path
 }
@@ -2183,15 +2183,15 @@ func columns(t *testing.T, s *Store, table string) map[string]bool {
 	for rows.Next() {
 		var name string
 		if err := rows.Scan(&name); err != nil {
-			t.Fatalf("ler coluna: %v", err)
+			t.Fatalf("read column: %v", err)
 		}
 		names[name] = true
 	}
 	if err := rows.Err(); err != nil {
-		t.Fatalf("iterar colunas: %v", err)
+		t.Fatalf("iterate columns: %v", err)
 	}
 	if len(names) == 0 {
-		t.Fatalf("a tabela %q nao tem coluna nenhuma — a consulta nao verificou nada", table)
+		t.Fatalf("table %q has no column at all — the query verified nothing", table)
 	}
 	return names
 }
@@ -2219,28 +2219,28 @@ func TestOpenStoreMigratesADatabaseFromThePreviousVersionAndSendingWorks(t *test
 
 	s, err := openAt(t, path)
 	if err != nil {
-		t.Fatalf("OpenStore sobre banco da versao anterior: %v", err)
+		t.Fatalf("OpenStore on a previous-version database: %v", err)
 	}
 
 	if !columns(t, s, "idempotencia")["hash_pedido"] {
-		t.Fatal("a coluna hash_pedido NAO chegou ao banco que ja existia — todo envio devolveria 503")
+		t.Fatal("column hash_pedido did NOT reach the pre-existing database — every send would return 503")
 	}
 
 	// And a send needs to work end to end over the migrated database:
 	// reserve, confirm, and the different-request guard in force.
 	_, reserved, err := s.ReserveIdempotency("sistema-a", "k1", "hash-do-pedido")
 	if err != nil || !reserved {
-		t.Fatalf("reservar no banco migrado: reservou=%v err=%v", reserved, err)
+		t.Fatalf("reserve on the migrated database: reserved=%v err=%v", reserved, err)
 	}
 	if err := s.ConfirmIdempotency("sistema-a", "k1", "wamid.X"); err != nil {
-		t.Fatalf("confirmar no banco migrado: %v", err)
+		t.Fatalf("confirm on the migrated database: %v", err)
 	}
 	id, reserved, err := s.ReserveIdempotency("sistema-a", "k1", "hash-do-pedido")
 	if err != nil || reserved || id != "wamid.X" {
-		t.Fatalf("retry legitimo: id=%q reservou=%v err=%v", id, reserved, err)
+		t.Fatalf("legitimate retry: id=%q reserved=%v err=%v", id, reserved, err)
 	}
 	if _, _, err := s.ReserveIdempotency("sistema-a", "k1", "outro-hash"); !errors.Is(err, ErrKeyWithDifferentRequest) {
-		t.Fatalf("erro = %v, quero ErrKeyWithDifferentRequest — a guarda nao veio junto com a coluna", err)
+		t.Fatalf("err = %v, want ErrKeyWithDifferentRequest — the guard did not arrive together with the column", err)
 	}
 }
 
@@ -2253,10 +2253,10 @@ func TestOpenStoreDoesNotBreakOnADatabaseThatAlreadyHasTheColumnWithoutAVersion(
 
 	s, err := openAt(t, path)
 	if err != nil {
-		t.Fatalf("OpenStore sobre banco que ja tem a coluna: %v", err)
+		t.Fatalf("OpenStore on a database that already has the column: %v", err)
 	}
 	if !columns(t, s, "idempotencia")["hash_pedido"] {
-		t.Fatal("a coluna hash_pedido sumiu")
+		t.Fatal("column hash_pedido disappeared")
 	}
 }
 
@@ -2269,10 +2269,10 @@ func TestOpenStoreRefusesASchemaFromTheFuture(t *testing.T) {
 
 	s, err := openAt(t, path)
 	if !errors.Is(err, ErrSchemaFromTheFuture) {
-		t.Fatalf("erro = %v, quero ErrSchemaFromTheFuture", err)
+		t.Fatalf("err = %v, want ErrSchemaFromTheFuture", err)
 	}
 	if s != nil {
-		t.Error("devolveu um Store utilizavel apesar de recusar o esquema")
+		t.Error("returned a usable Store despite refusing the schema")
 	}
 }
 
@@ -2284,24 +2284,24 @@ func TestANewDatabaseIsBornAtTheCurrentVersionAndReopeningDoesNotMigrateAgain(t 
 
 	s, err := openAt(t, path)
 	if err != nil {
-		t.Fatalf("primeira abertura: %v", err)
+		t.Fatalf("first open: %v", err)
 	}
 	if v := schemaVersionRead(t, s); v != len(migrations) {
-		t.Fatalf("user_version = %d apos criar, quero %d", v, len(migrations))
+		t.Fatalf("user_version = %d after creation, want %d", v, len(migrations))
 	}
 	if !columns(t, s, "idempotencia")["hash_pedido"] {
-		t.Fatal("banco novo nasceu sem hash_pedido")
+		t.Fatal("the new database was born without hash_pedido")
 	}
 	if err := s.Close(); err != nil {
-		t.Fatalf("Fechar: %v", err)
+		t.Fatalf("Close: %v", err)
 	}
 
 	s2, err := openAt(t, path)
 	if err != nil {
-		t.Fatalf("reabertura: %v", err)
+		t.Fatalf("reopen: %v", err)
 	}
 	if v := schemaVersionRead(t, s2); v != len(migrations) {
-		t.Fatalf("user_version = %d apos reabrir, quero %d", v, len(migrations))
+		t.Fatalf("user_version = %d after reopening, want %d", v, len(migrations))
 	}
 }
 
@@ -2314,38 +2314,38 @@ func TestAMigrationThatFailsLeavesNoHalfSchema(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "meio.db")
 	db, err := sql.Open("sqlite", path)
 	if err != nil {
-		t.Fatalf("abrir: %v", err)
+		t.Fatalf("open: %v", err)
 	}
 	defer func() { _ = db.Close() }()
 
 	boom := errors.New("boom")
 	steps := []migration{
-		{"cria a tabela marca", func(ctx context.Context, c *sql.Conn) error {
+		{"creates the marker table", func(ctx context.Context, c *sql.Conn) error {
 			_, err := c.ExecContext(ctx, `CREATE TABLE marca (x INTEGER)`)
 			return err
 		}},
-		{"falha de proposito", func(context.Context, *sql.Conn) error { return boom }},
+		{"fails on purpose", func(context.Context, *sql.Conn) error { return boom }},
 	}
 
 	if err := migrate(context.Background(), db, steps); !errors.Is(err, boom) {
-		t.Fatalf("erro = %v, quero o erro da migracao que falhou", err)
+		t.Fatalf("err = %v, want the failed migration's error", err)
 	}
 
 	var howMany int
 	if err := db.QueryRow(
 		`SELECT count(*) FROM sqlite_master WHERE type='table' AND name='marca'`).Scan(&howMany); err != nil {
-		t.Fatalf("consultar sqlite_master: %v", err)
+		t.Fatalf("query sqlite_master: %v", err)
 	}
 	if howMany != 0 {
-		t.Error("a tabela criada pela migracao 1 sobreviveu a falha da 2 — o banco ficou pela metade")
+		t.Error("the table created by migration 1 survived migration 2's failure — the database ended up half-migrated")
 	}
 
 	var version int
 	if err := db.QueryRow(`PRAGMA user_version`).Scan(&version); err != nil {
-		t.Fatalf("ler user_version: %v", err)
+		t.Fatalf("read user_version: %v", err)
 	}
 	if version != 0 {
-		t.Errorf("user_version = %d apos falhar, quero 0 — o banco se diria migrado sem estar", version)
+		t.Errorf("user_version = %d after failing, want 0 — the database would claim to be migrated without being", version)
 	}
 }
 
@@ -2353,7 +2353,7 @@ func schemaVersionRead(t *testing.T, s *Store) int {
 	t.Helper()
 	var v int
 	if err := s.DB().QueryRow(`PRAGMA user_version`).Scan(&v); err != nil {
-		t.Fatalf("ler user_version: %v", err)
+		t.Fatalf("read user_version: %v", err)
 	}
 	return v
 }
@@ -2383,7 +2383,7 @@ func testCA(t *testing.T, name string) string {
 	t.Helper()
 	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
-		t.Fatalf("gerar chave: %v", err)
+		t.Fatalf("generate key: %v", err)
 	}
 	template := x509.Certificate{
 		SerialNumber:          big.NewInt(7),
@@ -2396,7 +2396,7 @@ func testCA(t *testing.T, name string) string {
 	}
 	der, err := x509.CreateCertificate(rand.Reader, &template, &template, &key.PublicKey, key)
 	if err != nil {
-		t.Fatalf("criar certificado: %v", err)
+		t.Fatalf("create certificate: %v", err)
 	}
 	return string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der}))
 }
@@ -2416,7 +2416,7 @@ func TestStoreKeepsAndReturnsTheCABundle(t *testing.T) {
 		t.Fatalf("FindInstance: %v", err)
 	}
 	if got.CABundle != ca {
-		t.Errorf("BundleCA nao sobreviveu a ida e volta pela cifra:\n%q", got.CABundle)
+		t.Errorf("BundleCA did not survive the round trip through encryption:\n%q", got.CABundle)
 	}
 }
 
@@ -2430,7 +2430,7 @@ func TestStoreKeepsTheCABundleENCRYPTEDInTheFile(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewVault: %v", err)
 	}
-	path := filepath.Join(t.TempDir(), "teste.db")
+	path := filepath.Join(t.TempDir(), "test.db")
 	s, err := OpenStore(path, vault)
 	if err != nil {
 		t.Fatalf("OpenStore: %v", err)
@@ -2449,7 +2449,7 @@ func TestStoreKeepsTheCABundleENCRYPTEDInTheFile(t *testing.T) {
 	rows := strings.Split(strings.TrimSpace(ca), "\n")
 	for _, needle := range []string{ca, rows[1]} {
 		if containsBytes(raw, needle) {
-			t.Errorf("o bundle de CA aparece EM CLARO no arquivo do banco (%q)", needle)
+			t.Errorf("the CA bundle shows up IN THE CLEAR in the database file (%q)", needle)
 		}
 	}
 }
@@ -2459,12 +2459,12 @@ func TestStoreKeepsTheCABundleENCRYPTEDInTheFile(t *testing.T) {
 // goes mute without creation having flagged anything.
 func TestCreateInstanceRefusesACABundleWithNoCertificate(t *testing.T) {
 	cases := map[string]string{
-		"texto solto":              "isto nao e um PEM",
-		"PEM sem certificado":      "-----BEGIN CERTIFICATE-----\nnao sou base64 de um cert\n-----END CERTIFICATE-----\n",
-		"bloco de outro tipo":      "-----BEGIN PRIVATE KEY-----\nMHcCAQEEIA==\n-----END PRIVATE KEY-----\n",
-		"so espaco em branco":      "   \n\t ",
-		"cabecalho sem o corpo":    "-----BEGIN CERTIFICATE-----\n",
-		"base64 que nao e um X509": "-----BEGIN CERTIFICATE-----\naGVsbG8gbXVuZG8=\n-----END CERTIFICATE-----\n",
+		"loose text":                "isto nao e um PEM",
+		"PEM with no certificate":   "-----BEGIN CERTIFICATE-----\nnao sou base64 de um cert\n-----END CERTIFICATE-----\n",
+		"block of another type":     "-----BEGIN PRIVATE KEY-----\nMHcCAQEEIA==\n-----END PRIVATE KEY-----\n",
+		"only whitespace":           "   \n\t ",
+		"header with no body":       "-----BEGIN CERTIFICATE-----\n",
+		"base64 that isn't an X509": "-----BEGIN CERTIFICATE-----\naGVsbG8gbXVuZG8=\n-----END CERTIFICATE-----\n",
 	}
 	for name, bundle := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -2472,10 +2472,10 @@ func TestCreateInstanceRefusesACABundleWithNoCertificate(t *testing.T) {
 			i := testInstance()
 			i.CABundle = bundle
 			if err := s.CreateInstance(i); !errors.Is(err, ErrInvalidCABundle) {
-				t.Fatalf("erro = %v, quero ErrInvalidCABundle", err)
+				t.Fatalf("err = %v, want ErrInvalidCABundle", err)
 			}
 			if n := countInstances(t, s); n != 0 {
-				t.Errorf("%d instancia(s) criada(s) apesar da recusa", n)
+				t.Errorf("%d instance(s) created despite the refusal", n)
 			}
 		})
 	}
@@ -2488,14 +2488,14 @@ func TestCreateInstanceRefusesACABundleWithNoCertificate(t *testing.T) {
 func TestCreateInstanceAcceptsAnInstanceWithNoCABundle(t *testing.T) {
 	s := testStore(t)
 	if err := s.CreateInstance(testInstance()); err != nil {
-		t.Fatalf("CreateInstance sem bundle: %v", err)
+		t.Fatalf("CreateInstance with no bundle: %v", err)
 	}
 	got, err := s.FindInstance("lojinha")
 	if err != nil {
 		t.Fatalf("FindInstance: %v", err)
 	}
 	if got.CABundle != "" {
-		t.Errorf("BundleCA = %q, quero vazio", got.CABundle)
+		t.Errorf("BundleCA = %q, want empty", got.CABundle)
 	}
 }
 
@@ -2518,13 +2518,13 @@ func TestOpenStoreMigratesAPreExistingInstanceWithNoCABundle(t *testing.T) {
 		t.Helper()
 		c, err := vault.Encrypt(plaintext)
 		if err != nil {
-			t.Fatalf("cifrar: %v", err)
+			t.Fatalf("encrypt: %v", err)
 		}
 		return c
 	}
 	db, err := sql.Open("sqlite", path)
 	if err != nil {
-		t.Fatalf("abrir banco antigo: %v", err)
+		t.Fatalf("open old database: %v", err)
 	}
 	// The real instance: EMPTY callback_url (outbound only), like the one running today.
 	if _, err := db.Exec(`
@@ -2534,35 +2534,35 @@ func TestOpenStoreMigratesAPreExistingInstanceWithNoCABundle(t *testing.T) {
 		VALUES ('tenant-one','WABA1','PNID1','5532999990000',?,?,?,?,?,5000,1)`,
 		encrypt("app-secret-de-teste"), encrypt("verify-token-de-teste"),
 		encrypt("token-envio-de-teste"), encrypt(""), encrypt("segredo-entrega-de-teste")); err != nil {
-		t.Fatalf("inserir instancia antiga: %v", err)
+		t.Fatalf("insert old instance: %v", err)
 	}
 	if err := db.Close(); err != nil {
-		t.Fatalf("fechar banco antigo: %v", err)
+		t.Fatalf("close old database: %v", err)
 	}
 
 	s, err := openAt(t, path)
 	if err != nil {
-		t.Fatalf("OpenStore sobre banco de v0.4.0: %v", err)
+		t.Fatalf("OpenStore on a v0.4.0 database: %v", err)
 	}
 	if !columns(t, s, "instancia")["bundle_ca"] {
-		t.Fatal("a coluna bundle_ca NAO chegou ao banco que ja existia")
+		t.Fatal("column bundle_ca did NOT reach the pre-existing database")
 	}
 
 	got, err := s.FindInstance("tenant-one")
 	if err != nil {
-		t.Fatalf("FindInstance depois da migracao: %v — a instancia que roda em producao parou de ser legivel", err)
+		t.Fatalf("FindInstance after the migration: %v — the instance running in production stopped being readable", err)
 	}
 	if got.CABundle != "" {
-		t.Errorf("BundleCA = %q, quero vazio", got.CABundle)
+		t.Errorf("BundleCA = %q, want empty", got.CABundle)
 	}
 	if got.AppSecret != "app-secret-de-teste" || got.DeliverySecret != "segredo-entrega-de-teste" {
-		t.Errorf("os segredos da instancia antiga nao voltaram inteiros: %+v", got)
+		t.Errorf("the old instance's secrets did not come back intact: %+v", got)
 	}
 	if got.CallbackURL != "" {
-		t.Errorf("CallbackURL = %q, quero vazia", got.CallbackURL)
+		t.Errorf("CallbackURL = %q, want empty", got.CallbackURL)
 	}
 	if !got.Active {
-		t.Error("a instancia voltou PAUSADA depois da migracao — o canal sairia do ar sozinho")
+		t.Error("the instance came back PAUSED after the migration — the channel would go offline on its own")
 	}
 }
 
@@ -2586,7 +2586,7 @@ func TestTheMigrationFillsStampsSinceOnAPreExistingInstance(t *testing.T) {
 	path := priorDatabase(t, schemaWithRequestHash, 2)
 	db, err := sql.Open("sqlite", path)
 	if err != nil {
-		t.Fatalf("abrir banco antigo: %v", err)
+		t.Fatalf("open old database: %v", err)
 	}
 	// Arbitrary values in the encrypted columns: this test reads through
 	// SummarizeInstance, which decrypts NOTHING — what it asserts is about
@@ -2596,33 +2596,33 @@ func TestTheMigrationFillsStampsSinceOnAPreExistingInstance(t *testing.T) {
 		    app_secret, verify_token, token_envio, callback_url, segredo_entrega,
 		    timeout_ms, ativo)
 		VALUES ('tenant-one','WABA1','PNID1','5532999990000','x','x','x','x','x',5000,1)`); err != nil {
-		t.Fatalf("inserir instancia antiga: %v", err)
+		t.Fatalf("insert old instance: %v", err)
 	}
 	if err := db.Close(); err != nil {
-		t.Fatalf("fechar banco antigo: %v", err)
+		t.Fatalf("close old database: %v", err)
 	}
 
 	s, err := openAt(t, path)
 	if err != nil {
-		t.Fatalf("OpenStore sobre banco de v0.4.0: %v", err)
+		t.Fatalf("OpenStore on a v0.4.0 database: %v", err)
 	}
 	r, err := s.SummarizeInstance("tenant-one")
 	if err != nil {
-		t.Fatalf("SummarizeInstance depois da migracao: %v", err)
+		t.Fatalf("SummarizeInstance after the migration: %v", err)
 	}
 	if r.StampsSince == "" {
-		t.Fatal("carimbos_desde ficou VAZIO na instancia pre-existente — o ALTER TABLE rodou e o UPDATE nao")
+		t.Fatal("carimbos_desde came out EMPTY on the pre-existing instance — the ALTER TABLE ran and the UPDATE did not")
 	}
 	when, err := time.Parse(time.RFC3339, r.StampsSince)
 	if err != nil {
-		t.Fatalf("carimbos_desde = %q, que nao e RFC3339: %v", r.StampsSince, err)
+		t.Fatalf("carimbos_desde = %q, which is not RFC3339: %v", r.StampsSince, err)
 	}
 	// It has to be the instant the MIGRATION ran. A compiled date (the
 	// v0.23.0 one, for example) would pass "isn't empty" and would lie on
 	// every instance — and lie in the dangerous direction, claiming stamp
 	// coverage that never happened.
 	if when.Before(beforeTheMigration) {
-		t.Errorf("carimbos_desde = %q, anterior ao instante em que a migracao rodou (%s) — parece constante compilada",
+		t.Errorf("carimbos_desde = %q, earlier than the instant the migration ran (%s) — looks like a compiled constant",
 			r.StampsSince, beforeTheMigration.Format(time.RFC3339))
 	}
 }
@@ -2637,40 +2637,40 @@ func TestTheMigrationFillsTokenSetAtAndKeepsTokenRenewedAtEmpty(t *testing.T) {
 	path := priorDatabase(t, schemaWithRequestHash, 2)
 	db, err := sql.Open("sqlite", path)
 	if err != nil {
-		t.Fatalf("abrir banco antigo: %v", err)
+		t.Fatalf("open old database: %v", err)
 	}
 	if _, err := db.Exec(`
 		INSERT INTO instancia (slug, waba_id, phone_number_id, numero_exibido,
 		    app_secret, verify_token, token_envio, callback_url, segredo_entrega,
 		    timeout_ms, ativo)
 		VALUES ('tenant-one','WABA1','PNID1','5532999990000','x','x','x','x','x',5000,1)`); err != nil {
-		t.Fatalf("inserir instancia antiga: %v", err)
+		t.Fatalf("insert old instance: %v", err)
 	}
 	if err := db.Close(); err != nil {
-		t.Fatalf("fechar banco antigo: %v", err)
+		t.Fatalf("close old database: %v", err)
 	}
 
 	s, err := openAt(t, path)
 	if err != nil {
-		t.Fatalf("OpenStore sobre banco de v0.4.0: %v", err)
+		t.Fatalf("OpenStore on a v0.4.0 database: %v", err)
 	}
 	r, err := s.SummarizeInstance("tenant-one")
 	if err != nil {
-		t.Fatalf("SummarizeInstance depois da migracao: %v", err)
+		t.Fatalf("SummarizeInstance after the migration: %v", err)
 	}
 	if r.TokenSetAt == "" {
-		t.Fatal("token_definido_em ficou VAZIO na instancia pre-existente — o ALTER TABLE rodou e o UPDATE nao")
+		t.Fatal("token_definido_em came out EMPTY on the pre-existing instance — the ALTER TABLE ran and the UPDATE did not")
 	}
 	when, err := time.Parse(time.RFC3339, r.TokenSetAt)
 	if err != nil {
-		t.Fatalf("token_definido_em = %q, que nao e RFC3339: %v", r.TokenSetAt, err)
+		t.Fatalf("token_definido_em = %q, which is not RFC3339: %v", r.TokenSetAt, err)
 	}
 	if when.Before(beforeTheMigration) {
-		t.Errorf("token_definido_em = %q, anterior ao instante em que a migracao rodou (%s) — parece constante compilada",
+		t.Errorf("token_definido_em = %q, earlier than the instant the migration ran (%s) — looks like a compiled constant",
 			r.TokenSetAt, beforeTheMigration.Format(time.RFC3339))
 	}
 	if r.TokenRenewedAt != "" {
-		t.Errorf("token_renovado_em = %q, quero \"\" — o laco automatico nunca renovou este token", r.TokenRenewedAt)
+		t.Errorf("token_renovado_em = %q, want \"\" — the automatic loop never renewed this token", r.TokenRenewedAt)
 	}
 }
 
@@ -2691,14 +2691,14 @@ func TestStampsSinceIsPerInstanceNotAConstant(t *testing.T) {
 
 	first := testInstance()
 	if err := s.CreateInstanceAt(first, birthOfTheFirst); err != nil {
-		t.Fatalf("CreateInstanceAt(primeira): %v", err)
+		t.Fatalf("CreateInstanceAt(first): %v", err)
 	}
 	second := testInstance()
 	second.Slug = "clinica"
 	second.PhoneNumberID = "PNID2"
 	second.WabaID = "WABA2"
 	if err := s.CreateInstanceAt(second, birthOfTheSecond); err != nil {
-		t.Fatalf("CreateInstanceAt(segunda): %v", err)
+		t.Fatalf("CreateInstanceAt(second): %v", err)
 	}
 
 	rp, err := s.SummarizeInstance(first.Slug)
@@ -2711,13 +2711,13 @@ func TestStampsSinceIsPerInstanceNotAConstant(t *testing.T) {
 	}
 
 	if want := birthOfTheFirst.Format(time.RFC3339); rp.StampsSince != want {
-		t.Errorf("%s.carimbos_desde = %q, quero %q", first.Slug, rp.StampsSince, want)
+		t.Errorf("%s.carimbos_desde = %q, want %q", first.Slug, rp.StampsSince, want)
 	}
 	if want := birthOfTheSecond.Format(time.RFC3339); rs.StampsSince != want {
-		t.Errorf("%s.carimbos_desde = %q, quero %q", second.Slug, rs.StampsSince, want)
+		t.Errorf("%s.carimbos_desde = %q, want %q", second.Slug, rs.StampsSince, want)
 	}
 	if rp.StampsSince == rs.StampsSince {
-		t.Errorf("as duas instancias respondem %q — isto e uma constante global, nao um dado por instancia",
+		t.Errorf("both instances answer %q — this is a global constant, not per-instance data",
 			rp.StampsSince)
 	}
 }
@@ -2744,7 +2744,7 @@ func migrationIndex(t *testing.T, name string) int {
 			return i
 		}
 	}
-	t.Fatalf("migracao %q nao existe na lista — o nome mudou?", name)
+	t.Fatalf("migration %q does not exist in the list — did the name change?", name)
 	return -1
 }
 
@@ -2765,33 +2765,33 @@ func TestTheTransitMigrationCounterpartyAndWamidInTheClearReplaceTheHMAC(t *test
 	path := filepath.Join(t.TempDir(), "antes-t094.db")
 	db, err := sql.Open("sqlite", path+"?_pragma=foreign_keys(1)")
 	if err != nil {
-		t.Fatalf("abrir banco antigo: %v", err)
+		t.Fatalf("open old database: %v", err)
 	}
 	previous := migrations[:migrationIndex(t, "transito.contraparte-e-wamid-em-claro")]
 	if err := migrate(context.Background(), db, previous); err != nil {
-		t.Fatalf("aplicar migracoes anteriores a T-094: %v", err)
+		t.Fatalf("apply migrations prior to T-094: %v", err)
 	}
 	// A REAL row from v0.32.0: HMAC in the two old columns, as T-091 wrote them.
 	if _, err := db.Exec(`
 		INSERT INTO transito (slug, direcao, hmac_contraparte, hmac_wamid, tipo, correlacao, carimbo, desfecho)
 		VALUES ('lojinha','entrada','hash-do-telefone','hash-do-wamid','mensagem','c-de-producao',1769000000,'consumidor guardou (200)')`); err != nil {
-		t.Fatalf("inserir linha de v0.32.0: %v", err)
+		t.Fatalf("insert v0.32.0 row: %v", err)
 	}
 	if err := db.Close(); err != nil {
-		t.Fatalf("fechar banco antigo: %v", err)
+		t.Fatalf("close old database: %v", err)
 	}
 
 	s, err := openAt(t, path)
 	if err != nil {
-		t.Fatalf("OpenStore sobre banco de v0.32.0: %v", err)
+		t.Fatalf("OpenStore on a v0.32.0 database: %v", err)
 	}
 
 	cols := columns(t, s, "transito")
 	if cols["hmac_contraparte"] || cols["hmac_wamid"] {
-		t.Fatalf("as colunas HMAC continuam no esquema depois da migracao: %+v", cols)
+		t.Fatalf("the HMAC columns are still in the schema after the migration: %+v", cols)
 	}
 	if !cols["contraparte"] || !cols["wamid"] {
-		t.Fatalf("as colunas em claro nao chegaram: %+v", cols)
+		t.Fatalf("the clear-text columns did not arrive: %+v", cols)
 	}
 
 	// The OLD ROW survives, but contraparte/wamid stay EMPTY FOREVER —
@@ -2799,14 +2799,14 @@ func TestTheTransitMigrationCounterpartyAndWamidInTheClearReplaceTheHMAC(t *test
 	var counterparty, wamid, outcome string
 	if err := s.DB().QueryRow(`SELECT contraparte, wamid, desfecho FROM transito WHERE slug = 'lojinha'`).
 		Scan(&counterparty, &wamid, &outcome); err != nil {
-		t.Fatalf("ler a linha antiga depois da migracao: %v", err)
+		t.Fatalf("read the old row after the migration: %v", err)
 	}
 	if counterparty != "" || wamid != "" {
-		t.Fatalf("contraparte=%q wamid=%q — HMAC e' de mao unica, a linha antiga tem de ficar VAZIA, nao inventada",
+		t.Fatalf("contraparte=%q wamid=%q — HMAC is one-way, the old row has to stay EMPTY, not invented",
 			counterparty, wamid)
 	}
 	if outcome != "consumidor guardou (200)" {
-		t.Fatalf("desfecho = %q — a migracao nao pode perder o resto da linha antiga", outcome)
+		t.Fatalf("desfecho = %q — the migration cannot lose the rest of the old row", outcome)
 	}
 
 	// And the database stays WRITABLE and SEARCHABLE after the migration: a
@@ -2816,14 +2816,14 @@ func TestTheTransitMigrationCounterpartyAndWamidInTheClearReplaceTheHMAC(t *test
 		Slug: "lojinha", Direction: DirectionInbound,
 		Counterparty: "5511999990000", Type: "mensagem", Correlation: "c-novo",
 	}, time.Now()); err != nil {
-		t.Fatalf("WriteTransit depois da migracao: %v", err)
+		t.Fatalf("WriteTransit after the migration: %v", err)
 	}
 	found, err := s.SearchTransit("lojinha", "99990000", time.Time{})
 	if err != nil {
-		t.Fatalf("SearchTransit depois da migracao: %v", err)
+		t.Fatalf("SearchTransit after the migration: %v", err)
 	}
 	if len(found) != 1 {
-		t.Fatalf("achadas = %d, quero 1 — a linha nova nao foi achada pelos ultimos 8 digitos", len(found))
+		t.Fatalf("found = %d, want 1 — the new row was not found by the last 8 digits", len(found))
 	}
 }
 
@@ -2934,9 +2934,9 @@ func TestRemoveInstanceUnderConcurrencyNeverDeletesAnInstanceThatWasActive(t *te
 
 	const rounds = 300
 	for round := 0; round < rounds; round++ {
-		slug := fmt.Sprintf("corrida-remocao-%d", round)
+		slug := fmt.Sprintf("removal-race-%d", round)
 		if err := s.CreateInstance(testInstanceWithSlug(slug)); err != nil {
-			t.Fatalf("rodada %d: CreateInstance: %v", round, err)
+			t.Fatalf("round %d: CreateInstance: %v", round, err)
 		}
 		// Born PAUSED (testInstanceWithSlug doesn't activate it) — it's
 		// the comment's scenario: the "is it paused?" check needs to
@@ -2959,8 +2959,8 @@ func TestRemoveInstanceUnderConcurrencyNeverDeletesAnInstanceThatWasActive(t *te
 		wg.Wait()
 
 		if errActivate == nil && errRemove == nil {
-			t.Fatalf("rodada %d: ActivateInstance e RemoveInstance sucederam OS DOIS — "+
-				"a instancia foi apagada tendo estado ativa no meio do caminho", round)
+			t.Fatalf("round %d: ActivateInstance AND RemoveInstance BOTH succeeded — "+
+				"the instance was deleted having been active along the way", round)
 		}
 	}
 }
@@ -2990,9 +2990,9 @@ func TestRegisterMetaUnderConcurrencyAtTheWindowBoundaryNeverWritesOutsideTheWin
 	t0 := time.Date(2026, 7, 10, 8, 0, 0, 0, time.UTC)
 
 	for round := 0; round < rounds; round++ {
-		slug := fmt.Sprintf("corrida-cadastro-%d", round)
+		slug := fmt.Sprintf("registration-race-%d", round)
 		if err := s.CreateInstance(instanceWithOnlyTheSlug(slug)); err != nil {
-			t.Fatalf("rodada %d: CreateInstance: %v", round, err)
+			t.Fatalf("round %d: CreateInstance: %v", round, err)
 		}
 
 		nowOf := make([]time.Time, goroutinesPerRound)
@@ -3024,10 +3024,10 @@ func TestRegisterMetaUnderConcurrencyAtTheWindowBoundaryNeverWritesOutsideTheWin
 
 		r, err := s.SummarizeInstance(slug)
 		if err != nil {
-			t.Fatalf("rodada %d: SummarizeInstance: %v", round, err)
+			t.Fatalf("round %d: SummarizeInstance: %v", round, err)
 		}
 		if r.RegisteredAt == "" {
-			t.Fatalf("rodada %d: nenhuma chamada abriu a janela — pelo menos uma tinha de suceder", round)
+			t.Fatalf("round %d: no call opened the window — at least one had to succeed", round)
 		}
 		winner := WindowFrom(r.RegisteredAt)
 
@@ -3036,8 +3036,8 @@ func TestRegisterMetaUnderConcurrencyAtTheWindowBoundaryNeverWritesOutsideTheWin
 				continue
 			}
 			if !winner.IsOpen(nowOf[i]) {
-				t.Fatalf("rodada %d: goroutine %d gravou com agora=%s, fora da janela vencedora [%s, %s) — "+
-					"a janela fechou e mesmo assim uma chamada gravou",
+				t.Fatalf("round %d: goroutine %d wrote with now=%s, outside the winning window [%s, %s) — "+
+					"the window closed and a call still wrote",
 					round, i, nowOf[i], winner.OpenedAt, winner.ClosesAt)
 			}
 		}

@@ -35,21 +35,21 @@ import (
 	_ "modernc.org/sqlite" // pure Go driver: no cgo, the binary is static
 )
 
-var ErrInstanceNotFound = errors.New("config: instancia nao encontrada")
+var ErrInstanceNotFound = errors.New("config: instance not found")
 
 // ErrInvalidSlug: the proposed slug doesn't fit in a webhook URL.
-var ErrInvalidSlug = errors.New("config: slug invalido")
+var ErrInvalidSlug = errors.New("config: invalid slug")
 
 // ErrInsecureCallback: the callback_url would deliver the raw body outside an encrypted channel.
-var ErrInsecureCallback = errors.New("config: callback_url insegura")
+var ErrInsecureCallback = errors.New("config: insecure callback_url")
 
 // ErrInvalidCABundle: the registered CA bundle contains no certificate at all.
-var ErrInvalidCABundle = errors.New("config: bundle de CA invalido")
+var ErrInvalidCABundle = errors.New("config: invalid CA bundle")
 
 // ErrIncompleteIdentification: the registration would leave the instance
 // without a waba_id or without a phone_number_id — the two keys by which a
 // webhook is attributed to it.
-var ErrIncompleteIdentification = errors.New("config: instancia sem identificacao completa")
+var ErrIncompleteIdentification = errors.New("config: instance without complete identification")
 
 // --- T-097: Instagram, the first slice ---------------------------------------
 //
@@ -68,7 +68,7 @@ const (
 
 // ErrUnknownInstanceType: `--tipo` (or the Type field) is neither
 // TypeWhatsApp nor TypeInstagram.
-var ErrUnknownInstanceType = errors.New("config: tipo de instancia desconhecido")
+var ErrUnknownInstanceType = errors.New("config: unknown instance type")
 
 // ErrFieldDoesNotApplyToType: a field that only exists on the OTHER type came
 // filled in — e.g. `ig_id` on a `whatsapp` instance, or `waba_id` on an
@@ -81,7 +81,7 @@ var ErrUnknownInstanceType = errors.New("config: tipo de instancia desconhecido"
 // database, looking like it means something. See the "half identification"
 // entry in WhatsApp provisioning (further below): the same discipline, now
 // between TWO types instead of two fields of the same type.
-var ErrFieldDoesNotApplyToType = errors.New("config: campo nao se aplica a este tipo de instancia")
+var ErrFieldDoesNotApplyToType = errors.New("config: field does not apply to this instance type")
 
 // ValidateInstanceType normalizes `tipo` (empty -> TypeWhatsApp, the same
 // reading every row prior to this task already has in the database) and
@@ -109,23 +109,23 @@ func ValidateInstanceType(typ, wabaID, phoneNumberID, displayNumber, igID string
 	switch typ {
 	case TypeWhatsApp:
 		if strings.TrimSpace(igID) != "" {
-			return typ, fmt.Errorf("%w: ig_id numa instancia %s", ErrFieldDoesNotApplyToType, TypeWhatsApp)
+			return typ, fmt.Errorf("%w: ig_id on a %s instance", ErrFieldDoesNotApplyToType, TypeWhatsApp)
 		}
 	case TypeInstagram:
 		for _, c := range []struct{ name, value string }{
 			{"waba_id", wabaID}, {"phone_number_id", phoneNumberID}, {"numero_exibido", displayNumber},
 		} {
 			if strings.TrimSpace(c.value) != "" {
-				return typ, fmt.Errorf("%w: %s numa instancia %s — quem endereça uma conta Instagram e o ig_id, nunca telefone",
+				return typ, fmt.Errorf("%w: %s on a %s instance — an Instagram account is addressed by ig_id, never by phone",
 					ErrFieldDoesNotApplyToType, c.name, TypeInstagram)
 			}
 		}
 		if strings.TrimSpace(igID) == "" {
-			return typ, fmt.Errorf("%w: ig_id vazio — esta fatia nao tem cadastro por API para Instagram, "+
-				"entao a identificacao so pode chegar na criacao", ErrIncompleteIdentification)
+			return typ, fmt.Errorf("%w: empty ig_id — this slice has no API registration for Instagram, "+
+				"so identification can only arrive at creation", ErrIncompleteIdentification)
 		}
 	default:
-		return typ, fmt.Errorf("%w: %q (conheco %q e %q)", ErrUnknownInstanceType, typ, TypeWhatsApp, TypeInstagram)
+		return typ, fmt.Errorf("%w: %q (I know %q and %q)", ErrUnknownInstanceType, typ, TypeWhatsApp, TypeInstagram)
 	}
 	return typ, nil
 }
@@ -183,7 +183,7 @@ func ValidateIdentification(wabaID, phoneNumberID string) error {
 		{"phone_number_id", phoneNumberID},
 	} {
 		if strings.TrimSpace(c.value) == "" {
-			return fmt.Errorf("%w: %s esta vazio — sem ele o webhook desta instancia nao tem como ser atribuido a ela, e o gateway recusa o lote inteiro com ALARME",
+			return fmt.Errorf("%w: %s is empty — without it this instance's webhook has no way to be attributed to it, and the gateway refuses the whole batch with an ALARM",
 				ErrIncompleteIdentification, c.field)
 		}
 	}
@@ -219,16 +219,16 @@ func ValidateSlug(slug string) error {
 		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') || r == '-' {
 			continue
 		}
-		return fmt.Errorf("%w: %q tem o caractere %q — so valem minusculas de a a z, digitos e hifen",
+		return fmt.Errorf("%w: %q has the character %q — only lowercase a to z, digits and hyphen are allowed",
 			ErrInvalidSlug, slug, r)
 	}
 	const minLen, maxLen = 3, 40
 	if len(slug) < minLen || len(slug) > maxLen {
-		return fmt.Errorf("%w: %q tem %d caractere(s) — o tamanho tem de ficar entre %d e %d",
+		return fmt.Errorf("%w: %q has %d character(s) — the length has to be between %d and %d",
 			ErrInvalidSlug, slug, len(slug), minLen, maxLen)
 	}
 	if strings.HasPrefix(slug, "-") || strings.HasSuffix(slug, "-") {
-		return fmt.Errorf("%w: %q comeca ou termina em hifen", ErrInvalidSlug, slug)
+		return fmt.Errorf("%w: %q starts or ends with a hyphen", ErrInvalidSlug, slug)
 	}
 	return nil
 }
@@ -271,7 +271,7 @@ func ValidateCallbackURL(raw string) error {
 		}
 	}
 	// net/url's error carries the whole URL; that's why it is NOT wrapped.
-	return fmt.Errorf("%w: a entrega leva o corpo cru da mensagem, entao a callback_url tem de ser https:// — a unica excecao e http://127.0.0.1 ou http://localhost, para teste local (a URL nao e repetida aqui porque e cifrada em repouso)",
+	return fmt.Errorf("%w: delivery carries the message's raw body, so callback_url has to be https:// — the only exception is http://127.0.0.1 or http://localhost, for local testing (the URL is not repeated here because it's encrypted at rest)",
 		ErrInsecureCallback)
 }
 
@@ -308,8 +308,8 @@ func ValidateCABundle(bundle string) error {
 	// deliverer uses to build its pool, not a second rule that could
 	// diverge from it.
 	if !x509.NewCertPool().AppendCertsFromPEM([]byte(bundle)) {
-		return fmt.Errorf("%w: nenhum certificado X.509 foi lido do PEM (o conteudo nao e repetido aqui porque e cifrado em repouso)."+
-			" Para usar a store de CAs do sistema, deixe o bundle VAZIO — branco nao vale como vazio", ErrInvalidCABundle)
+		return fmt.Errorf("%w: no X.509 certificate was read from the PEM (the content is not repeated here because it's encrypted at rest)."+
+			" To use the system's CA store, leave the bundle EMPTY — whitespace does not count as empty", ErrInvalidCABundle)
 	}
 	return nil
 }
@@ -387,7 +387,7 @@ type Store struct {
 // Coming up like this would be worse than failing: the old binary doesn't
 // know the columns and tables the new one created, would write over them
 // with the old rules and silently corrupt what the new binary writes.
-var ErrSchemaFromTheFuture = errors.New("config: esquema do banco e mais novo que o binario")
+var ErrSchemaFromTheFuture = errors.New("config: database schema is newer than the binary")
 
 // migracao is a schema step. The INDEX in the list is the version: applying
 // the migration at index i takes the database from user_version i to i+1.
@@ -542,14 +542,14 @@ var migrations = []migration{
 		// this step drops right below — it has to fall BEFORE the DROP
 		// COLUMN, or SQLite refuses to drop an indexed column.
 		if _, err := c.ExecContext(ctx, `DROP INDEX IF EXISTS idx_transito_busca`); err != nil {
-			return fmt.Errorf("derrubar idx_transito_busca: %w", err)
+			return fmt.Errorf("drop idx_transito_busca: %w", err)
 		}
 		// Two representations of the same fact diverge (docs/ARMADILHAS.md,
 		// "a armadilha-mãe deste projeto") — that's why the HMAC
 		// columns are DROPPED, not left dead alongside the clear ones.
 		for _, column := range []string{"hmac_contraparte", "hmac_wamid"} {
 			if _, err := c.ExecContext(ctx, fmt.Sprintf(`ALTER TABLE transito DROP COLUMN %s`, column)); err != nil {
-				return fmt.Errorf("derrubar transito.%s: %w", column, err)
+				return fmt.Errorf("drop transito.%s: %w", column, err)
 			}
 		}
 		// The new index matches on the EXPRESSION substr(contraparte, -8) —
@@ -765,7 +765,7 @@ func OpenStore(path string, vault *Vault) (*Store, error) {
 		"&_pragma=journal_mode(WAL)"
 	db, err := sql.Open("sqlite", dsn)
 	if err != nil {
-		return nil, fmt.Errorf("config: abrir banco: %w", err)
+		return nil, fmt.Errorf("config: open database: %w", err)
 	}
 	if err := migrate(context.Background(), db, migrations); err != nil {
 		_ = db.Close()
@@ -791,7 +791,7 @@ func OpenStore(path string, vault *Vault) (*Store, error) {
 func migrate(ctx context.Context, db *sql.DB, steps []migration) error {
 	conn, err := db.Conn(ctx)
 	if err != nil {
-		return fmt.Errorf("config: conexao para migrar: %w", err)
+		return fmt.Errorf("config: connection to migrate: %w", err)
 	}
 	defer func() { _ = conn.Close() }()
 
@@ -800,7 +800,7 @@ func migrate(ctx context.Context, db *sql.DB, steps []migration) error {
 	// starting up together would both read the same old user_version and
 	// only discover the conflict when writing.
 	if _, err := conn.ExecContext(ctx, `BEGIN IMMEDIATE`); err != nil {
-		return fmt.Errorf("config: abrir transacao de migracao: %w", err)
+		return fmt.Errorf("config: open migration transaction: %w", err)
 	}
 	committed := false
 	defer func() {
@@ -811,26 +811,26 @@ func migrate(ctx context.Context, db *sql.DB, steps []migration) error {
 
 	var version int
 	if err := conn.QueryRowContext(ctx, `PRAGMA user_version`).Scan(&version); err != nil {
-		return fmt.Errorf("config: ler versao do esquema: %w", err)
+		return fmt.Errorf("config: read schema version: %w", err)
 	}
 	if version > len(steps) {
-		return fmt.Errorf("%w: banco na versao %d, este binario conhece ate a %d",
+		return fmt.Errorf("%w: database at version %d, this binary knows up to %d",
 			ErrSchemaFromTheFuture, version, len(steps))
 	}
 
 	for i := version; i < len(steps); i++ {
 		if err := steps[i].apply(ctx, conn); err != nil {
-			return fmt.Errorf("config: migracao %d (%s): %w", i+1, steps[i].name, err)
+			return fmt.Errorf("config: migration %d (%s): %w", i+1, steps[i].name, err)
 		}
 	}
 
 	// PRAGMA doesn't accept a bound parameter; the value is the length of a
 	// list from the code itself, never outside input.
 	if _, err := conn.ExecContext(ctx, fmt.Sprintf(`PRAGMA user_version = %d`, len(steps))); err != nil {
-		return fmt.Errorf("config: gravar versao do esquema: %w", err)
+		return fmt.Errorf("config: write schema version: %w", err)
 	}
 	if _, err := conn.ExecContext(ctx, `COMMIT`); err != nil {
-		return fmt.Errorf("config: commit da migracao: %w", err)
+		return fmt.Errorf("config: migration commit: %w", err)
 	}
 	committed = true
 	return nil
@@ -848,7 +848,7 @@ func addColumn(ctx context.Context, c *sql.Conn, table, column, typ string) erro
 	var howMany int
 	if err := c.QueryRowContext(ctx,
 		`SELECT count(*) FROM pragma_table_info(?) WHERE name = ?`, table, column).Scan(&howMany); err != nil {
-		return fmt.Errorf("consultar colunas de %s: %w", table, err)
+		return fmt.Errorf("query columns of %s: %w", table, err)
 	}
 	if howMany > 0 {
 		return nil
@@ -856,7 +856,7 @@ func addColumn(ctx context.Context, c *sql.Conn, table, column, typ string) erro
 	// Names come from constants in this file, never from outside — ALTER
 	// TABLE doesn't accept a bound parameter for an identifier.
 	if _, err := c.ExecContext(ctx, fmt.Sprintf(`ALTER TABLE %s ADD COLUMN %s %s`, table, column, typ)); err != nil {
-		return fmt.Errorf("acrescentar %s.%s: %w", table, column, err)
+		return fmt.Errorf("add %s.%s: %w", table, column, err)
 	}
 	return nil
 }
@@ -927,7 +927,7 @@ func (s *Store) CreateInstanceAt(i Instance, now time.Time) error {
 	for n, plaintext := range []string{i.AppSecret, i.VerifyToken, i.SendToken, i.CallbackURL, i.DeliverySecret, i.CABundle} {
 		ciphertext, err := s.vault.Encrypt(plaintext)
 		if err != nil {
-			return fmt.Errorf("config: cifrar: %w", err)
+			return fmt.Errorf("config: encrypt: %w", err)
 		}
 		secrets[n] = ciphertext
 	}
@@ -950,7 +950,7 @@ func (s *Store) CreateInstanceAt(i Instance, now time.Time) error {
 		secrets[0], secrets[1], secrets[2], secrets[3], secrets[4], secrets[5],
 		i.TimeoutMs, stampOf(now), i.Type, i.IgID, stampOf(now))
 	if err != nil {
-		return fmt.Errorf("config: inserir instancia: %w", err)
+		return fmt.Errorf("config: insert instance: %w", err)
 	}
 	return nil
 }
@@ -982,13 +982,13 @@ const RegistrationWindow = 24 * time.Hour
 // this error has to say WHY it closed (when it opened, when it closed) and
 // WHAT TO DO (talk to the owner, who reopens it with `zapgw instancia
 // reabrir-cadastro`).
-var ErrRegistrationWindowClosed = errors.New("config: janela de cadastro fechada")
+var ErrRegistrationWindowClosed = errors.New("config: registration window closed")
 
 // ErrIncompleteRegistration: a field is missing without which the registration
 // is useless. The error NAMES the field and never carries the VALUE — two
 // of this type's fields are secret, and the error goes to the log and the
 // response.
-var ErrIncompleteRegistration = errors.New("config: cadastro incompleto")
+var ErrIncompleteRegistration = errors.New("config: incomplete registration")
 
 // MetaRegistration is what the CONSUMER sends: their entire Meta account.
 //
@@ -1046,14 +1046,14 @@ func ValidateMetaRegistration(c MetaRegistration) error {
 	// it, because whoever reads this message has no channel to ask.
 	for _, field := range []struct{ name, value, why string }{
 		{"numero_exibido", c.DisplayNumber,
-			"e o numero como ele aparece para o cliente; sem ele o gateway nao consegue dizer de qual numero esta instancia fala"},
+			"is the number as it appears to the customer; without it the gateway cannot say which number this instance speaks for"},
 		{"app_secret", c.AppSecret,
-			"e o segredo do seu App na Meta; sem ele o gateway nao consegue verificar a assinatura dos webhooks que ela manda, e recusa todos"},
+			"is your App's secret on Meta; without it the gateway cannot verify the signature of the webhooks it sends, and refuses all of them"},
 		{"token_envio", c.SendToken,
-			"e o token permanente do System User; sem ele nenhuma mensagem sai"},
+			"is the System User's permanent token; without it no message goes out"},
 	} {
 		if strings.TrimSpace(field.value) == "" {
-			return fmt.Errorf("%w: %s esta vazio — %s", ErrIncompleteRegistration, field.name, field.why)
+			return fmt.Errorf("%w: %s is empty — %s", ErrIncompleteRegistration, field.name, field.why)
 		}
 	}
 	if err := ValidateCallbackURL(c.CallbackURL); err != nil {
@@ -1152,12 +1152,12 @@ func (s *Store) RegisterMeta(slug string, c MetaRegistration, now time.Time) (Wi
 		return Window{}, ErrInstanceNotFound
 	}
 	if err != nil {
-		return Window{}, fmt.Errorf("config: ler a janela de cadastro: %w", err)
+		return Window{}, fmt.Errorf("config: read the registration window: %w", err)
 	}
 
 	window := WindowFrom(stamp)
 	if !window.IsOpen(now) {
-		return window, fmt.Errorf("%w: a primeira insercao foi em %s e a janela de %s fechou em %s",
+		return window, fmt.Errorf("%w: the first insert was at %s and the %s window closed at %s",
 			ErrRegistrationWindowClosed, stampOf(window.OpenedAt), RegistrationWindow, stampOf(window.ClosesAt))
 	}
 	// The FIRST insert is the one that starts the clock; the following ones
@@ -1187,7 +1187,7 @@ func (s *Store) RegisterMeta(slug string, c MetaRegistration, now time.Time) (Wi
 	for _, field := range encrypted {
 		ciphertext, err := s.vault.Encrypt(field.plaintext)
 		if err != nil {
-			return Window{}, fmt.Errorf("config: cifrar: %w", err)
+			return Window{}, fmt.Errorf("config: encrypt: %w", err)
 		}
 		parts = append(parts, field.column+" = ?")
 		args = append(args, ciphertext)
@@ -1209,10 +1209,10 @@ func (s *Store) RegisterMeta(slug string, c MetaRegistration, now time.Time) (Wi
 	// see the header.
 	if _, err := tx.Exec(
 		`UPDATE instancia SET `+strings.Join(parts, ", ")+` WHERE slug = ?`, args...); err != nil {
-		return Window{}, fmt.Errorf("config: gravar o cadastro da instancia: %w", err)
+		return Window{}, fmt.Errorf("config: write the instance's registration: %w", err)
 	}
 	if err := tx.Commit(); err != nil {
-		return Window{}, fmt.Errorf("config: commit do cadastro: %w", err)
+		return Window{}, fmt.Errorf("config: registration commit: %w", err)
 	}
 	return window, nil
 }
@@ -1235,7 +1235,7 @@ func (s *Store) RegisterMeta(slug string, c MetaRegistration, now time.Time) (Wi
 func (s *Store) ReopenRegistrationWindow(slug string) error {
 	res, err := s.db.Exec(`UPDATE instancia SET cadastro_em = '' WHERE slug = ?`, slug)
 	if err != nil {
-		return fmt.Errorf("config: reabrir a janela de cadastro: %w", err)
+		return fmt.Errorf("config: reopen the registration window: %w", err)
 	}
 	// RowsAffected is the only proof the slug existed: an UPDATE that
 	// matches no row is NOT an error to SQLite. Without this, reopening a
@@ -1243,7 +1243,7 @@ func (s *Store) ReopenRegistrationWindow(slug string) error {
 	// they unlocked it, and the consumer would keep hitting the same error.
 	rows, err := res.RowsAffected()
 	if err != nil {
-		return fmt.Errorf("config: linhas afetadas: %w", err)
+		return fmt.Errorf("config: rows affected: %w", err)
 	}
 	if rows == 0 {
 		return ErrInstanceNotFound
@@ -1291,13 +1291,13 @@ func (s *Store) setActive(slug string, active bool) error {
 	}
 	res, err := s.db.Exec(`UPDATE instancia SET ativo = ? WHERE slug = ?`, value, slug)
 	if err != nil {
-		return fmt.Errorf("config: mudar estado da instancia: %w", err)
+		return fmt.Errorf("config: change instance state: %w", err)
 	}
 	// RowsAffected is the only proof the slug existed: an UPDATE that
 	// matches no row is NOT an error to SQLite.
 	rows, err := res.RowsAffected()
 	if err != nil {
-		return fmt.Errorf("config: linhas afetadas: %w", err)
+		return fmt.Errorf("config: rows affected: %w", err)
 	}
 	if rows == 0 {
 		return ErrInstanceNotFound
@@ -1344,7 +1344,7 @@ type Rotation struct {
 // It's an error instead of a no-op because the dangerous outcome is the
 // SILENT one: whoever forgot to export the variable in the shell would see
 // "rotated" and leave thinking the real secret is on the gateway.
-var ErrEmptyRotation = errors.New("config: rotacao sem campo nenhum para trocar")
+var ErrEmptyRotation = errors.New("config: rotation with no field at all to swap")
 
 // RotateInstance swaps, on an instance that ALREADY EXISTS, only the
 // fields filled in on r — through the same encrypted paths as provisioning.
@@ -1385,7 +1385,7 @@ func (s *Store) RotateInstance(slug string, r Rotation) error {
 			if errors.Is(err, sql.ErrNoRows) {
 				return ErrInstanceNotFound
 			}
-			return fmt.Errorf("config: ler tipo da instancia para validar --ig-id: %w", err)
+			return fmt.Errorf("config: read instance type to validate --ig-id: %w", err)
 		}
 		if _, err := ValidateInstanceType(currentType, "", "", "", *r.IgID); err != nil {
 			return err
@@ -1413,7 +1413,7 @@ func (s *Store) RotateInstance(slug string, r Rotation) error {
 		}
 		ciphertext, err := s.vault.Encrypt(*c.newValue)
 		if err != nil {
-			return fmt.Errorf("config: cifrar: %w", err)
+			return fmt.Errorf("config: encrypt: %w", err)
 		}
 		parts = append(parts, c.column+" = ?")
 		args = append(args, ciphertext)
@@ -1444,7 +1444,7 @@ func (s *Store) RotateInstance(slug string, r Rotation) error {
 	res, err := s.db.Exec(
 		`UPDATE instancia SET `+strings.Join(parts, ", ")+` WHERE slug = ?`, args...)
 	if err != nil {
-		return fmt.Errorf("config: rotacionar segredos da instancia: %w", err)
+		return fmt.Errorf("config: rotate instance secrets: %w", err)
 	}
 	// RowsAffected is the only proof the slug existed: an UPDATE that
 	// matches no row is NOT an error to SQLite. Without this, rotating a
@@ -1452,7 +1452,7 @@ func (s *Store) RotateInstance(slug string, r Rotation) error {
 	// the old secret — and that would only show up once Meta started delivering.
 	rows, err := res.RowsAffected()
 	if err != nil {
-		return fmt.Errorf("config: linhas afetadas: %w", err)
+		return fmt.Errorf("config: rows affected: %w", err)
 	}
 	if rows == 0 {
 		return ErrInstanceNotFound
@@ -1487,7 +1487,7 @@ func (s *Store) RotateInstance(slug string, r Rotation) error {
 func (s *Store) RenewInstagramTokenAt(slug, newToken string, now time.Time) error {
 	ciphertext, err := s.vault.Encrypt(newToken)
 	if err != nil {
-		return fmt.Errorf("config: cifrar: %w", err)
+		return fmt.Errorf("config: encrypt: %w", err)
 	}
 	stamp := stampOf(now)
 	res, err := s.db.Exec(
@@ -1495,11 +1495,11 @@ func (s *Store) RenewInstagramTokenAt(slug, newToken string, now time.Time) erro
 		   WHERE slug = ? AND tipo = ?`,
 		ciphertext, stamp, stamp, slug, TypeInstagram)
 	if err != nil {
-		return fmt.Errorf("config: renovar o token do instagram: %w", err)
+		return fmt.Errorf("config: renew the instagram token: %w", err)
 	}
 	rows, err := res.RowsAffected()
 	if err != nil {
-		return fmt.Errorf("config: linhas afetadas: %w", err)
+		return fmt.Errorf("config: rows affected: %w", err)
 	}
 	if rows == 0 {
 		return ErrInstanceNotFound
@@ -1514,7 +1514,7 @@ func (s *Store) RenewInstagramTokenAt(slug, newToken string, now time.Time) erro
 // cheap; the reverse order has no undo, because the six encrypted fields
 // don't exist anywhere outside the database (and the encryption key alone
 // doesn't recreate them).
-var ErrInstanceActive = errors.New("config: instancia ativa nao pode ser removida")
+var ErrInstanceActive = errors.New("config: active instance cannot be removed")
 
 // tablesWithSlug is EVERY table whose row belongs to ONE instance, in the
 // order they have to be deleted (children before `instancia`, because
@@ -1586,7 +1586,7 @@ func (s *Store) RemoveInstance(slug string) ([]RowsDeleted, error) {
 		return nil, ErrInstanceNotFound
 	}
 	if err != nil {
-		return nil, fmt.Errorf("config: ler estado da instancia: %w", err)
+		return nil, fmt.Errorf("config: read instance state: %w", err)
 	}
 	if active != 0 {
 		return nil, ErrInstanceActive
@@ -1600,17 +1600,17 @@ func (s *Store) RemoveInstance(slug string) ([]RowsDeleted, error) {
 		// see T-048's mandatory mutation.
 		res, err := tx.Exec(`DELETE FROM `+table+` WHERE slug = ?`, slug)
 		if err != nil {
-			return nil, fmt.Errorf("config: apagar %s da instancia %q: %w", table, slug, err)
+			return nil, fmt.Errorf("config: delete %s of instance %q: %w", table, slug, err)
 		}
 		rows, err := res.RowsAffected()
 		if err != nil {
-			return nil, fmt.Errorf("config: linhas afetadas em %s: %w", table, err)
+			return nil, fmt.Errorf("config: rows affected in %s: %w", table, err)
 		}
 		deleted = append(deleted, RowsDeleted{Table: table, Rows: rows})
 	}
 
 	if err := tx.Commit(); err != nil {
-		return nil, fmt.Errorf("config: commit da remocao: %w", err)
+		return nil, fmt.Errorf("config: removal commit: %w", err)
 	}
 	return deleted, nil
 }
@@ -1644,7 +1644,7 @@ func (s *Store) findBy(where string, arg string) (Instance, error) {
 		return Instance{}, ErrInstanceNotFound
 	}
 	if err != nil {
-		return Instance{}, fmt.Errorf("config: buscar instancia: %w", err)
+		return Instance{}, fmt.Errorf("config: find instance: %w", err)
 	}
 	i.Active = active != 0
 
@@ -1652,12 +1652,12 @@ func (s *Store) findBy(where string, arg string) (Instance, error) {
 	for n, ciphertext := range []string{appSecret, verifyToken, sendToken, callbackURL, deliverySecret} {
 		plaintext, err := s.vault.Decrypt(ciphertext)
 		if err != nil {
-			return Instance{}, fmt.Errorf("config: decifrar: %w", err)
+			return Instance{}, fmt.Errorf("config: decrypt: %w", err)
 		}
 		*targets[n] = plaintext
 	}
 	if i.CABundle, err = s.decryptOptional(caBundle); err != nil {
-		return Instance{}, fmt.Errorf("config: decifrar bundle de CA: %w", err)
+		return Instance{}, fmt.Errorf("config: decrypt CA bundle: %w", err)
 	}
 	return i, nil
 }
@@ -1763,7 +1763,7 @@ const summaryColumns = `slug, numero_exibido, phone_number_id, waba_id, timeout_
 func (s *Store) ListInstances() ([]InstanceSummary, error) {
 	rows, err := s.db.Query(`SELECT ` + summaryColumns + ` FROM instancia ORDER BY slug`)
 	if err != nil {
-		return nil, fmt.Errorf("config: listar instancias: %w", err)
+		return nil, fmt.Errorf("config: list instances: %w", err)
 	}
 	defer rows.Close()
 
@@ -1771,7 +1771,7 @@ func (s *Store) ListInstances() ([]InstanceSummary, error) {
 	for rows.Next() {
 		r, err := s.readSummary(rows.Scan)
 		if err != nil {
-			return nil, fmt.Errorf("config: ler instancia da lista: %w", err)
+			return nil, fmt.Errorf("config: read instance from the list: %w", err)
 		}
 		list = append(list, r)
 	}
@@ -1781,7 +1781,7 @@ func (s *Store) ListInstances() ([]InstanceSummary, error) {
 	// than reality is this project's most expensive failure shape
 	// (docs/ARMADILHAS.md, "Meta").
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("config: iterar instancias: %w", err)
+		return nil, fmt.Errorf("config: iterate instances: %w", err)
 	}
 	return list, nil
 }
@@ -1798,7 +1798,7 @@ func (s *Store) SummarizeInstance(slug string) (InstanceSummary, error) {
 		return InstanceSummary{}, ErrInstanceNotFound
 	}
 	if err != nil {
-		return InstanceSummary{}, fmt.Errorf("config: resumir instancia: %w", err)
+		return InstanceSummary{}, fmt.Errorf("config: summarize instance: %w", err)
 	}
 	return r, nil
 }
@@ -1896,7 +1896,7 @@ func (s *Store) decryptOptional(ciphertext string) (string, error) {
 // or that name (rotation, T-055). It's the SAME error on purpose: both
 // cases say "that consumer doesn't exist here", and the caller
 // distinguishes by what it asked.
-var ErrConsumerNotFound = errors.New("config: consumidor nao encontrado")
+var ErrConsumerNotFound = errors.New("config: consumer not found")
 
 // Consumer is who can call the gateway, and the instances they can use.
 //
@@ -1940,13 +1940,13 @@ func (s *Store) CreateConsumer(name, token string, instances []string) error {
 	if _, err := tx.Exec(
 		`INSERT INTO consumidor (nome, token_hash) VALUES (?,?)`,
 		name, HashToken(token)); err != nil {
-		return fmt.Errorf("config: inserir consumidor: %w", err)
+		return fmt.Errorf("config: insert consumer: %w", err)
 	}
 	for _, slug := range instances {
 		if _, err := tx.Exec(
 			`INSERT INTO consumidor_instancia (consumidor, slug) VALUES (?,?)`,
 			name, slug); err != nil {
-			return fmt.Errorf("config: vincular instancia %q: %w", slug, err)
+			return fmt.Errorf("config: link instance %q: %w", slug, err)
 		}
 	}
 	if err := tx.Commit(); err != nil {
@@ -1980,7 +1980,7 @@ func (s *Store) RotateConsumer(name, token string) error {
 	res, err := s.db.Exec(
 		`UPDATE consumidor SET token_hash = ? WHERE nome = ?`, HashToken(token), name)
 	if err != nil {
-		return fmt.Errorf("config: rotacionar token do consumidor: %w", err)
+		return fmt.Errorf("config: rotate consumer token: %w", err)
 	}
 	// RowsAffected is the only proof the name existed: an UPDATE that
 	// matches no row is NOT an error to SQLite. Without this, rotating a
@@ -1989,7 +1989,7 @@ func (s *Store) RotateConsumer(name, token string) error {
 	// keep working.
 	rows, err := res.RowsAffected()
 	if err != nil {
-		return fmt.Errorf("config: linhas afetadas: %w", err)
+		return fmt.Errorf("config: rows affected: %w", err)
 	}
 	if rows == 0 {
 		return ErrConsumerNotFound
@@ -2015,7 +2015,7 @@ func (s *Store) ListConsumers() ([]Consumer, error) {
 		LEFT JOIN consumidor_instancia ci ON ci.consumidor = c.nome
 		ORDER BY c.nome, ci.slug`)
 	if err != nil {
-		return nil, fmt.Errorf("config: listar consumidores: %w", err)
+		return nil, fmt.Errorf("config: list consumers: %w", err)
 	}
 	defer rows.Close()
 
@@ -2023,7 +2023,7 @@ func (s *Store) ListConsumers() ([]Consumer, error) {
 	for rows.Next() {
 		var name, slug string
 		if err := rows.Scan(&name, &slug); err != nil {
-			return nil, fmt.Errorf("config: ler consumidor: %w", err)
+			return nil, fmt.Errorf("config: read consumer: %w", err)
 		}
 		if len(list) == 0 || list[len(list)-1].Name != name {
 			list = append(list, Consumer{Name: name})
@@ -2034,7 +2034,7 @@ func (s *Store) ListConsumers() ([]Consumer, error) {
 		}
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("config: iterar consumidores: %w", err)
+		return nil, fmt.Errorf("config: iterate consumers: %w", err)
 	}
 	return list, nil
 }
@@ -2048,25 +2048,25 @@ func (s *Store) ConsumerByToken(token string) (Consumer, error) {
 		return Consumer{}, ErrConsumerNotFound
 	}
 	if err != nil {
-		return Consumer{}, fmt.Errorf("config: buscar consumidor: %w", err)
+		return Consumer{}, fmt.Errorf("config: find consumer: %w", err)
 	}
 
 	rows, err := s.db.Query(
 		`SELECT slug FROM consumidor_instancia WHERE consumidor = ? ORDER BY slug`, c.Name)
 	if err != nil {
-		return Consumer{}, fmt.Errorf("config: instancias do consumidor: %w", err)
+		return Consumer{}, fmt.Errorf("config: consumer's instances: %w", err)
 	}
 	defer rows.Close()
 
 	for rows.Next() {
 		var slug string
 		if err := rows.Scan(&slug); err != nil {
-			return Consumer{}, fmt.Errorf("config: ler instancia: %w", err)
+			return Consumer{}, fmt.Errorf("config: read instance: %w", err)
 		}
 		c.Instances = append(c.Instances, slug)
 	}
 	if err := rows.Err(); err != nil {
-		return Consumer{}, fmt.Errorf("config: iterar instancias: %w", err)
+		return Consumer{}, fmt.Errorf("config: iterate instances: %w", err)
 	}
 	return c, nil
 }
@@ -2097,7 +2097,7 @@ func (s *Store) ConsumerByToken(token string) (Consumer, error) {
 // It happens because the contract recommends using the entity's id as the
 // key, and the same entity usually sends several messages (reminder,
 // billing, apology).
-var ErrKeyWithDifferentRequest = errors.New("config: chave de idempotencia ja usada com outro pedido")
+var ErrKeyWithDifferentRequest = errors.New("config: idempotency key already used with a different request")
 
 // ErrIdempotencyVanished: the key didn't exist at confirmation time.
 //
@@ -2106,7 +2106,7 @@ var ErrKeyWithDifferentRequest = errors.New("config: chave de idempotencia ja us
 // will reserve again and RESEND. It's the only path where idempotency
 // fails without anything else flagging it, and that's why it needs its own
 // error.
-var ErrIdempotencyVanished = errors.New("config: registro de idempotencia sumiu antes da confirmacao")
+var ErrIdempotencyVanished = errors.New("config: idempotency record vanished before confirmation")
 
 // ReserveIdempotency tries to take ownership of (consumidor, key) for
 // the request identified by requestHash.
@@ -2127,12 +2127,12 @@ func (s *Store) ReserveIdempotency(consumer, key, requestHash string) (string, b
 		ON CONFLICT (consumidor, chave) DO NOTHING`,
 		consumer, key, requestHash, time.Now().Unix())
 	if err != nil {
-		return "", false, fmt.Errorf("config: reservar idempotencia: %w", err)
+		return "", false, fmt.Errorf("config: reserve idempotencia: %w", err)
 	}
 
 	rows, err := res.RowsAffected()
 	if err != nil {
-		return "", false, fmt.Errorf("config: linhas afetadas: %w", err)
+		return "", false, fmt.Errorf("config: rows affected: %w", err)
 	}
 	if rows == 1 {
 		return "", true, nil // ownership is ours
@@ -2150,7 +2150,7 @@ func (s *Store) ReserveIdempotency(consumer, key, requestHash string) (string, b
 		return "", false, nil
 	}
 	if err != nil {
-		return "", false, fmt.Errorf("config: ler idempotencia: %w", err)
+		return "", false, fmt.Errorf("config: read idempotencia: %w", err)
 	}
 
 	// An EMPTY stored hash doesn't count as "equal to anything" — the
@@ -2179,11 +2179,11 @@ func (s *Store) ConfirmIdempotency(consumer, key, waMessageID string) error {
 		`UPDATE idempotencia SET wa_message_id = ? WHERE consumidor = ? AND chave = ?`,
 		waMessageID, consumer, key)
 	if err != nil {
-		return fmt.Errorf("config: confirmar idempotencia: %w", err)
+		return fmt.Errorf("config: confirm idempotencia: %w", err)
 	}
 	rows, err := res.RowsAffected()
 	if err != nil {
-		return fmt.Errorf("config: linhas afetadas: %w", err)
+		return fmt.Errorf("config: rows affected: %w", err)
 	}
 	if rows == 0 {
 		return ErrIdempotencyVanished
@@ -2199,7 +2199,7 @@ func (s *Store) ReleaseIdempotency(consumer, key string) error {
 	_, err := s.db.Exec(
 		`DELETE FROM idempotencia WHERE consumidor = ? AND chave = ?`, consumer, key)
 	if err != nil {
-		return fmt.Errorf("config: liberar idempotencia: %w", err)
+		return fmt.Errorf("config: release idempotencia: %w", err)
 	}
 	return nil
 }
@@ -2213,11 +2213,11 @@ func (s *Store) PurgeIdempotency(before time.Time) (int, error) {
 	res, err := s.db.Exec(
 		`DELETE FROM idempotencia WHERE criado_em < ?`, before.Unix())
 	if err != nil {
-		return 0, fmt.Errorf("config: purgar idempotencia: %w", err)
+		return 0, fmt.Errorf("config: purge idempotencia: %w", err)
 	}
 	n, err := res.RowsAffected()
 	if err != nil {
-		return 0, fmt.Errorf("config: linhas purgadas: %w", err)
+		return 0, fmt.Errorf("config: rows purged: %w", err)
 	}
 	return int(n), nil
 }

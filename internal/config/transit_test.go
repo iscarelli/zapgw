@@ -52,10 +52,10 @@ func TestSearchTransitFindsTheSameRowWithAnySpellingOfThePhoneNumber(t *testing.
 			t.Fatalf("SearchTransit(%q): %v", g, err)
 		}
 		if len(found) != 1 {
-			t.Fatalf("grafia %q (ultimosOito=%q): achadas = %d, quero 1", g, lastEight, len(found))
+			t.Fatalf("spelling %q (lastEight=%q): found = %d, want 1", g, lastEight, len(found))
 		}
 		if found[0].Direction != DirectionInbound || found[0].Type != string(meta.EventTypeMessage) {
-			t.Fatalf("grafia %q: linha achada = %+v, nao bate com o que foi gravado", g, found[0])
+			t.Fatalf("spelling %q: found row = %+v, doesn't match what was written", g, found[0])
 		}
 	}
 }
@@ -83,7 +83,7 @@ func TestSearchTransitWithEmptyLastEightDoesNotFindAccountWebhooks(t *testing.T)
 		t.Fatalf("SearchTransit(\"\"): %v", err)
 	}
 	if len(found) != 0 {
-		t.Fatalf("achadas = %d, quero 0 — ultimosOito vazio nao pode achar linha sem contraparte", len(found))
+		t.Fatalf("found = %d, want 0 — an empty lastEight cannot find a row with no counterpart", len(found))
 	}
 }
 
@@ -111,13 +111,13 @@ func TestSearchTransitBringsTheWamidWhenItExistsAndEmptyWithoutIt(t *testing.T) 
 		Slug: "lojinha", Direction: DirectionInbound,
 		Counterparty: meta.Canonicalize(number), Type: string(meta.EventTypeMessage), Correlation: "c-entrada",
 	}, time.Now()); err != nil {
-		t.Fatalf("WriteTransit (entrada, sem wamid): %v", err)
+		t.Fatalf("WriteTransit (inbound, no wamid): %v", err)
 	}
 	if err := s.WriteTransit(TransitRecord{
 		Slug: "lojinha", Direction: DirectionOutbound,
 		Counterparty: meta.Canonicalize(number), Wamid: wamid, Type: "texto", Correlation: "c-saida", Outcome: "enviado",
 	}, time.Now()); err != nil {
-		t.Fatalf("WriteTransit (saida, com wamid): %v", err)
+		t.Fatalf("WriteTransit (outbound, with wamid): %v", err)
 	}
 
 	lastEight := meta.LastEightDigits(number)
@@ -126,17 +126,17 @@ func TestSearchTransitBringsTheWamidWhenItExistsAndEmptyWithoutIt(t *testing.T) 
 		t.Fatalf("SearchTransit: %v", err)
 	}
 	if len(found) != 2 {
-		t.Fatalf("achadas = %d, quero 2", len(found))
+		t.Fatalf("found = %d, want 2", len(found))
 	}
 
 	// SearchTransit returns from the MOST RECENT to the OLDEST — the
 	// outbound one (written last) comes first.
 	outboundRow, inboundRow := found[0], found[1]
 	if outboundRow.Direction != DirectionOutbound || outboundRow.Wamid != wamid {
-		t.Fatalf("linha de saida = %+v, queria Wamid = %q", outboundRow, wamid)
+		t.Fatalf("outbound row = %+v, wanted Wamid = %q", outboundRow, wamid)
 	}
 	if inboundRow.Direction != DirectionInbound || inboundRow.Wamid != "" {
-		t.Fatalf("linha de entrada = %+v, queria Wamid = \"\"", inboundRow)
+		t.Fatalf("inbound row = %+v, wanted Wamid = \"\"", inboundRow)
 	}
 }
 
@@ -145,7 +145,7 @@ func TestSearchTransitBringsTheWamidWhenItExistsAndEmptyWithoutIt(t *testing.T) 
 func TestHMACCorrelationOfEmptyIsEmpty(t *testing.T) {
 	s := testStore(t)
 	if got := s.HMACCorrelation(""); got != "" {
-		t.Fatalf("HMACCorrelation(\"\") = %q, quero vazio", got)
+		t.Fatalf("HMACCorrelation(\"\") = %q, want empty", got)
 	}
 }
 
@@ -166,10 +166,10 @@ func TestHMACCorrelationIsDeterministicAndDoesNotTakeThePlainValueBack(t *testin
 	a := s.HMACCorrelation(key)
 	b := s.HMACCorrelation(key)
 	if a != b {
-		t.Fatalf("HMACCorrelation(x) duas vezes deu %q e %q — nao e deterministico", a, b)
+		t.Fatalf("HMACCorrelation(x) twice gave %q and %q — it isn't deterministic", a, b)
 	}
 	if a == key {
-		t.Fatal("HMACCorrelation devolveu o proprio valor em claro")
+		t.Fatal("HMACCorrelation returned the plain value itself")
 	}
 
 	if err := s.WriteTransit(TransitRecord{
@@ -185,16 +185,16 @@ func TestHMACCorrelationIsDeterministicAndDoesNotTakeThePlainValueBack(t *testin
 		t.Fatalf("SearchTransitByCorrelation: %v", err)
 	}
 	if len(found) != 1 {
-		t.Fatalf("achadas por HMAC = %d, quero 1", len(found))
+		t.Fatalf("found by HMAC = %d, want 1", len(found))
 	}
 
 	// A search by the key IN THE CLEAR finds nothing — the column doesn't store the value.
 	nothing, err := s.SearchTransitByCorrelation("lojinha", key, time.Time{})
 	if err != nil {
-		t.Fatalf("SearchTransitByCorrelation (valor em claro): %v", err)
+		t.Fatalf("SearchTransitByCorrelation (plain value): %v", err)
 	}
 	if len(nothing) != 0 {
-		t.Fatalf("achadas pela chave EM CLARO = %d, quero 0 — a coluna nao pode guardar o valor cru", len(nothing))
+		t.Fatalf("found by the PLAIN key = %d, want 0 — the column cannot keep the raw value", len(nothing))
 	}
 }
 
@@ -208,12 +208,12 @@ func TestWriteTransitRefusesAnUnknownDirection(t *testing.T) {
 	}
 	err := s.WriteTransit(TransitRecord{Slug: "lojinha", Direction: "lateral"}, time.Now())
 	if err == nil {
-		t.Fatal("WriteTransit aceitou uma direcao fora do vocabulario")
+		t.Fatal("WriteTransit accepted a direction outside the vocabulary")
 	}
 }
 
 // TestPurgeTransitDeletesOnlyWhatIsPastTheTTL is T-091's Verify (d): the SAME
-// mold as TestPurgarContadoresApagaSoOQueVenceu / PurgeIdempotency —
+// mold as TestPurgeCountersDeletesOnlyWhatIsPastTheAge / PurgeIdempotency —
 // writes an OLD row and a NEW one, purges with a deadline only the old one
 // crosses, and requires that ONLY the old one disappear.
 func TestPurgeTransitDeletesOnlyWhatIsPastTheTTL(t *testing.T) {
@@ -229,12 +229,12 @@ func TestPurgeTransitDeletesOnlyWhatIsPastTheTTL(t *testing.T) {
 	if err := s.WriteTransit(TransitRecord{
 		Slug: "lojinha", Direction: DirectionInbound, Correlation: "velha",
 	}, oldOne); err != nil {
-		t.Fatalf("WriteTransit (velha): %v", err)
+		t.Fatalf("WriteTransit (old): %v", err)
 	}
 	if err := s.WriteTransit(TransitRecord{
 		Slug: "lojinha", Direction: DirectionInbound, Correlation: "nova",
 	}, newOne); err != nil {
-		t.Fatalf("WriteTransit (nova): %v", err)
+		t.Fatalf("WriteTransit (new): %v", err)
 	}
 
 	n, err := s.PurgeTransit(now.Add(-30 * 24 * time.Hour))
@@ -242,22 +242,22 @@ func TestPurgeTransitDeletesOnlyWhatIsPastTheTTL(t *testing.T) {
 		t.Fatalf("PurgeTransit: %v", err)
 	}
 	if n != 1 {
-		t.Fatalf("PurgeTransit apagou %d linha(s), quero 1 (so a velha)", n)
+		t.Fatalf("PurgeTransit deleted %d row(s), want 1 (only the old one)", n)
 	}
 
 	var remainingOnes int
 	if err := s.DB().QueryRow(`SELECT count(*) FROM transito WHERE slug = ?`, "lojinha").Scan(&remainingOnes); err != nil {
-		t.Fatalf("contar transito restante: %v", err)
+		t.Fatalf("count remaining transit: %v", err)
 	}
 	if remainingOnes != 1 {
-		t.Fatalf("restaram %d linha(s), quero 1 (a nova)", remainingOnes)
+		t.Fatalf("%d row(s) remained, want 1 (the new one)", remainingOnes)
 	}
 	var remainingCorrelation string
 	if err := s.DB().QueryRow(`SELECT correlacao FROM transito WHERE slug = ?`, "lojinha").Scan(&remainingCorrelation); err != nil {
-		t.Fatalf("ler correlacao restante: %v", err)
+		t.Fatalf("read remaining correlation: %v", err)
 	}
 	if remainingCorrelation != "nova" {
-		t.Fatalf("a linha restante e %q, quero a %q — a purga apagou a linha errada", remainingCorrelation, "nova")
+		t.Fatalf("the remaining row is %q, want %q — the purge deleted the wrong row", remainingCorrelation, "nova")
 	}
 }
 
@@ -285,7 +285,7 @@ func TestNumbersForLastEightReturnsAllTheDistinctOnes(t *testing.T) {
 	const numberA = "5511900000001" // synthetic — area code 11
 	const numberB = "5532900000001" // synthetic — area code 32, SAME last 8 digits as A
 	if meta.LastEightDigits(numberA) != meta.LastEightDigits(numberB) {
-		t.Fatalf("fixture errada: A e B deveriam compartilhar os ultimos 8 digitos (A=%q B=%q)",
+		t.Fatalf("wrong fixture: A and B should share the last 8 digits (A=%q B=%q)",
 			meta.LastEightDigits(numberA), meta.LastEightDigits(numberB))
 	}
 
@@ -305,7 +305,7 @@ func TestNumbersForLastEightReturnsAllTheDistinctOnes(t *testing.T) {
 		t.Fatalf("NumbersForLastEight: %v", err)
 	}
 	if len(numbers) != 2 {
-		t.Fatalf("numeros = %v, quero os DOIS numeros distintos (A e B)", numbers)
+		t.Fatalf("numbers = %v, want BOTH distinct numbers (A and B)", numbers)
 	}
 }
 
@@ -328,7 +328,7 @@ func TestNumbersForLastEightWithEmptyFindsNothing(t *testing.T) {
 		t.Fatalf("NumbersForLastEight(\"\"): %v", err)
 	}
 	if len(numbers) != 0 {
-		t.Fatalf("numeros = %v, queria vazio", numbers)
+		t.Fatalf("numbers = %v, wanted empty", numbers)
 	}
 }
 
@@ -358,21 +358,21 @@ func TestClearInstanceTransitDeletesOnlyItsOwn(t *testing.T) {
 		t.Fatalf("ClearInstanceTransit: %v", err)
 	}
 	if n != 1 {
-		t.Fatalf("linhas apagadas = %d, quero 1", n)
+		t.Fatalf("deleted rows = %d, want 1", n)
 	}
 
 	var remainingLojinha, remainingOther int
 	if err := s.DB().QueryRow(`SELECT count(*) FROM transito WHERE slug = ?`, "lojinha").Scan(&remainingLojinha); err != nil {
-		t.Fatalf("contar lojinha: %v", err)
+		t.Fatalf("count lojinha: %v", err)
 	}
 	if err := s.DB().QueryRow(`SELECT count(*) FROM transito WHERE slug = ?`, "outra").Scan(&remainingOther); err != nil {
-		t.Fatalf("contar outra: %v", err)
+		t.Fatalf("count outra: %v", err)
 	}
 	if remainingLojinha != 0 {
-		t.Fatalf("lojinha deveria estar vazia, restaram %d", remainingLojinha)
+		t.Fatalf("lojinha should be empty, %d remained", remainingLojinha)
 	}
 	if remainingOther != 1 {
-		t.Fatalf("outra NAO deveria ter sido tocada, restaram %d (quero 1)", remainingOther)
+		t.Fatalf("outra should NOT have been touched, %d remained (want 1)", remainingOther)
 	}
 }
 
@@ -406,7 +406,7 @@ func TestClearTransitByPhoneDeletesAcrossAllInstancesAndCountsPerSlug(t *testing
 	if err := s.WriteTransit(TransitRecord{
 		Slug: "lojinha", Direction: DirectionInbound, Counterparty: notTarget, Type: "mensagem", Correlation: "preservada",
 	}, time.Now()); err != nil {
-		t.Fatalf("WriteTransit nao-alvo: %v", err)
+		t.Fatalf("WriteTransit non-target: %v", err)
 	}
 
 	deleted, err := s.ClearTransitByPhone(target)
@@ -418,24 +418,24 @@ func TestClearTransitByPhoneDeletesAcrossAllInstancesAndCountsPerSlug(t *testing
 		bySlug[a.Slug] = a.Rows
 	}
 	if bySlug["lojinha"] != 2 {
-		t.Fatalf("lojinha: apagadas = %d, quero 2", bySlug["lojinha"])
+		t.Fatalf("lojinha: deleted = %d, want 2", bySlug["lojinha"])
 	}
 	if bySlug["outra"] != 1 {
-		t.Fatalf("outra: apagadas = %d, quero 1", bySlug["outra"])
+		t.Fatalf("outra: deleted = %d, want 1", bySlug["outra"])
 	}
 
 	var remainingTarget, remainingPreserved int
 	if err := s.DB().QueryRow(`SELECT count(*) FROM transito WHERE contraparte = ?`, target).Scan(&remainingTarget); err != nil {
-		t.Fatalf("contar alvo: %v", err)
+		t.Fatalf("count target: %v", err)
 	}
 	if err := s.DB().QueryRow(`SELECT count(*) FROM transito WHERE contraparte = ?`, notTarget).Scan(&remainingPreserved); err != nil {
-		t.Fatalf("contar nao-alvo: %v", err)
+		t.Fatalf("count non-target: %v", err)
 	}
 	if remainingTarget != 0 {
-		t.Fatalf("restaram %d linha(s) do alvo, quero 0", remainingTarget)
+		t.Fatalf("%d row(s) of the target remained, want 0", remainingTarget)
 	}
 	if remainingPreserved != 1 {
-		t.Fatalf("a linha do numero NAO-alvo foi tocada: restaram %d, quero 1", remainingPreserved)
+		t.Fatalf("the NON-target number's row was touched: %d remained, want 1", remainingPreserved)
 	}
 }
 
@@ -459,10 +459,10 @@ func TestHighestLogRowidGoesBackToZeroWhenTheTableBecomesEmpty(t *testing.T) {
 
 	before, err := s.HighestLogRowid("")
 	if err != nil {
-		t.Fatalf("HighestLogRowid antes: %v", err)
+		t.Fatalf("HighestLogRowid before: %v", err)
 	}
 	if before < 3 {
-		t.Fatalf("HighestLogRowid antes = %d, esperava pelo menos 3", before)
+		t.Fatalf("HighestLogRowid before = %d, expected at least 3", before)
 	}
 
 	if _, err := s.ClearInstanceTransit("lojinha"); err != nil {
@@ -471,10 +471,10 @@ func TestHighestLogRowidGoesBackToZeroWhenTheTableBecomesEmpty(t *testing.T) {
 
 	after, err := s.HighestLogRowid("")
 	if err != nil {
-		t.Fatalf("HighestLogRowid depois: %v", err)
+		t.Fatalf("HighestLogRowid after: %v", err)
 	}
 	if after != 0 {
-		t.Fatalf("HighestLogRowid depois de apagar tudo = %d, quero 0", after)
+		t.Fatalf("HighestLogRowid after deleting everything = %d, want 0", after)
 	}
 }
 
@@ -489,14 +489,14 @@ func (f *alwaysFailingTransitStore) WriteTransit(TransitRecord, time.Time) error
 	return errTestTransit
 }
 
-var errTestTransit = errors.New("falha de teste")
+var errTestTransit = errors.New("test failure")
 
 func TestTransitRecordNeverPropagatesAnError(t *testing.T) {
 	fake := &alwaysFailingTransitStore{}
 	tr := NewTransitWithStore(fake)
 	tr.Record(TransitRecord{Slug: "lojinha", Direction: DirectionInbound})
 	if fake.calls != 1 {
-		t.Fatalf("chamadas = %d, quero 1 — Register nao chamou o store", fake.calls)
+		t.Fatalf("calls = %d, want 1 — Record did not call the store", fake.calls)
 	}
 }
 
@@ -521,12 +521,12 @@ func TestClearTransitByPhoneUnderConcurrencyTheCountMatchesWhatActuallyDisappear
 	const rounds = 30
 	const preExisting = 5
 	const insertedInTheRace = 20
-	const target = "5511900000099" // sintetico
+	const target = "5511900000099" // synthetic
 
 	for round := 0; round < rounds; round++ {
-		slug := fmt.Sprintf("corrida-limpeza-%d", round)
+		slug := fmt.Sprintf("cleanup-race-%d", round)
 		if err := s.CreateInstance(testInstanceWithSlug(slug)); err != nil {
-			t.Fatalf("rodada %d: CreateInstance: %v", round, err)
+			t.Fatalf("round %d: CreateInstance: %v", round, err)
 		}
 
 		// Some rows already exist BEFORE the race starts, so the cleanup
@@ -536,7 +536,7 @@ func TestClearTransitByPhoneUnderConcurrencyTheCountMatchesWhatActuallyDisappear
 				Slug: slug, Direction: DirectionInbound, Counterparty: target,
 				Type: "mensagem", Correlation: fmt.Sprintf("pre-%d-%d", round, i),
 			}, time.Now()); err != nil {
-				t.Fatalf("rodada %d: WriteTransit pre-existente: %v", round, err)
+				t.Fatalf("round %d: WriteTransit pre-existing: %v", round, err)
 			}
 		}
 
@@ -548,11 +548,11 @@ func TestClearTransitByPhoneUnderConcurrencyTheCountMatchesWhatActuallyDisappear
 				err := retryOnBusy(t, func() error {
 					return s.WriteTransit(TransitRecord{
 						Slug: slug, Direction: DirectionInbound, Counterparty: target,
-						Type: "mensagem", Correlation: fmt.Sprintf("corrida-%d-%d", round, n),
+						Type: "mensagem", Correlation: fmt.Sprintf("race-%d-%d", round, n),
 					}, time.Now())
 				})
 				if err != nil {
-					t.Errorf("rodada %d: WriteTransit concorrente: %v", round, err)
+					t.Errorf("round %d: concurrent WriteTransit: %v", round, err)
 				}
 			}(i)
 		}
@@ -569,7 +569,7 @@ func TestClearTransitByPhoneUnderConcurrencyTheCountMatchesWhatActuallyDisappear
 		wg.Wait()
 
 		if errCleanup != nil {
-			t.Fatalf("rodada %d: ClearTransitByPhone: %v", round, errCleanup)
+			t.Fatalf("round %d: ClearTransitByPhone: %v", round, errCleanup)
 		}
 		var reported int64
 		for _, a := range deleted {
@@ -578,14 +578,14 @@ func TestClearTransitByPhoneUnderConcurrencyTheCountMatchesWhatActuallyDisappear
 
 		var remaining int64
 		if err := s.DB().QueryRow(`SELECT count(*) FROM transito WHERE contraparte = ?`, target).Scan(&remaining); err != nil {
-			t.Fatalf("rodada %d: contar restantes: %v", round, err)
+			t.Fatalf("round %d: count remaining: %v", round, err)
 		}
 
 		totalCreated := int64(preExisting + insertedInTheRace)
 		actuallyRemoved := totalCreated - remaining
 		if reported != actuallyRemoved {
-			t.Fatalf("rodada %d: ClearTransitByPhone reportou %d apagadas, mas sumiram %d de fato "+
-				"(criadas=%d, restam=%d) — a contagem nao bate com o que sumiu",
+			t.Fatalf("round %d: ClearTransitByPhone reported %d deleted, but %d actually disappeared "+
+				"(created=%d, remaining=%d) — the count doesn't match what disappeared",
 				round, reported, actuallyRemoved, totalCreated, remaining)
 		}
 
@@ -596,7 +596,7 @@ func TestClearTransitByPhoneUnderConcurrencyTheCountMatchesWhatActuallyDisappear
 			_, err := s.ClearTransitByPhone(target)
 			return err
 		}); err != nil {
-			t.Fatalf("rodada %d: limpeza de saneamento: %v", round, err)
+			t.Fatalf("round %d: sanitation cleanup: %v", round, err)
 		}
 	}
 }
@@ -611,17 +611,17 @@ func TestTransitRetentionDaysAcceptsNewNameAndItWins(t *testing.T) {
 		vars map[string]string
 		want int
 	}{
-		{"default sem nenhuma", map[string]string{}, DefaultTransitRetentionDays},
-		{"so a nova", map[string]string{TransitRetentionEnvVarNew: "9"}, 9},
-		{"so a velha", map[string]string{TransitRetentionEnvVar: "14"}, 14},
-		{"as duas: a NOVA vence", map[string]string{
+		{"default with neither", map[string]string{}, DefaultTransitRetentionDays},
+		{"only the new one", map[string]string{TransitRetentionEnvVarNew: "9"}, 9},
+		{"only the old one", map[string]string{TransitRetentionEnvVar: "14"}, 14},
+		{"both: the NEW one wins", map[string]string{
 			TransitRetentionEnvVarNew: "9", TransitRetentionEnvVar: "14",
 		}, 9},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			if has := TransitRetentionDays(func(k string) string { return c.vars[k] }); has != c.want {
-				t.Errorf("TransitRetentionDays = %d, quero %d", has, c.want)
+				t.Errorf("TransitRetentionDays = %d, want %d", has, c.want)
 			}
 		})
 	}
@@ -635,9 +635,9 @@ func TestTransitRetentionDaysWarnsOnlyWhenOldNameWins(t *testing.T) {
 		vars     map[string]string
 		wantWarn bool
 	}{
-		{"so a velha: avisa", map[string]string{TransitRetentionEnvVar: "10"}, true},
-		{"so a nova: fica calado", map[string]string{TransitRetentionEnvVarNew: "10"}, false},
-		{"nenhuma: fica calado", map[string]string{}, false},
+		{"only the old one: warns", map[string]string{TransitRetentionEnvVar: "10"}, true},
+		{"only the new one: stays silent", map[string]string{TransitRetentionEnvVarNew: "10"}, false},
+		{"neither: stays silent", map[string]string{}, false},
 	}
 	original := log.Writer()
 	for _, c := range cases {
@@ -647,9 +647,9 @@ func TestTransitRetentionDaysWarnsOnlyWhenOldNameWins(t *testing.T) {
 			TransitRetentionDays(func(k string) string { return c.vars[k] })
 			log.SetOutput(original)
 			warned := strings.Contains(buf.String(), TransitRetentionEnvVar) &&
-				strings.Contains(buf.String(), "obsoleta")
+				strings.Contains(buf.String(), "deprecated")
 			if warned != c.wantWarn {
-				t.Errorf("aviso = %v (log: %q), quero %v", warned, buf.String(), c.wantWarn)
+				t.Errorf("warned = %v (log: %q), want %v", warned, buf.String(), c.wantWarn)
 			}
 		})
 	}

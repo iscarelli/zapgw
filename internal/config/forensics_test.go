@@ -27,7 +27,7 @@ func idempotencyDatabase(t *testing.T, name string, rows ...SendAtRisk) string {
 	path := filepath.Join(t.TempDir(), name)
 	db, err := sql.Open("sqlite", path)
 	if err != nil {
-		t.Fatalf("criar %s: %v", name, err)
+		t.Fatalf("create %s: %v", name, err)
 	}
 	defer func() { _ = db.Close() }()
 
@@ -38,12 +38,12 @@ func idempotencyDatabase(t *testing.T, name string, rows ...SendAtRisk) string {
 		criado_em     INTEGER NOT NULL,
 		PRIMARY KEY (consumidor, chave)
 	)`); err != nil {
-		t.Fatalf("criar tabela em %s: %v", name, err)
+		t.Fatalf("create table in %s: %v", name, err)
 	}
 	for _, l := range rows {
 		if _, err := db.Exec(`INSERT INTO idempotencia (consumidor, chave, wa_message_id, criado_em) VALUES (?,?,?,?)`,
 			l.Consumer, l.Key, l.Wamid, l.CreatedAt); err != nil {
-			t.Fatalf("inserir em %s: %v", name, err)
+			t.Fatalf("insert into %s: %v", name, err)
 		}
 	}
 	return path
@@ -53,7 +53,7 @@ func fileSum(t *testing.T, path string) string {
 	t.Helper()
 	b, err := os.ReadFile(path)
 	if err != nil {
-		t.Fatalf("ler %s: %v", path, err)
+		t.Fatalf("read %s: %v", path, err)
 	}
 	sum := sha256.Sum256(b)
 	return hex.EncodeToString(sum[:])
@@ -78,17 +78,17 @@ func TestCompareFailoverSeparatesConfirmedFromOpen(t *testing.T) {
 	}
 
 	if len(c.Confirmed) != 1 || c.Confirmed[0].Key != "k-saiu" {
-		t.Fatalf("Confirmed = %+v; queria so k-saiu — e' a que CHEGOU a Meta e o restaurado esqueceu", c.Confirmed)
+		t.Fatalf("Confirmed = %+v; wanted only k-saiu — it's the one that REACHED Meta and the restored one forgot", c.Confirmed)
 	}
 	if len(c.Open) != 1 || c.Open[0].Key != "k-duvida" {
-		t.Fatalf("Open = %+v; queria so k-duvida", c.Open)
+		t.Fatalf("Open = %+v; wanted only k-duvida", c.Open)
 	}
 	if c.ReadInOld != 3 || c.ReadInCurrent != 2 {
-		t.Errorf("lidas = (%d, %d); queria (3, 2) — o tamanho do que foi comparado tem de sair no relatorio",
+		t.Errorf("read = (%d, %d); wanted (3, 2) — the size of what was compared has to show up in the report",
 			c.ReadInOld, c.ReadInCurrent)
 	}
 	if !c.Lost() {
-		t.Error("Perdeu() = false com uma confirmada e uma em aberto")
+		t.Error("Lost() = false with one confirmed and one open")
 	}
 }
 
@@ -107,7 +107,7 @@ func TestCompareFailoverDoesNotTouchTheOldDatabase(t *testing.T) {
 	beforeFile := fileSum(t, old)
 	beforeVersion := schemaVersion(t, old)
 	if beforeVersion != 0 {
-		t.Fatalf("o banco de teste tinha de nascer em user_version=0 (como um banco antigo); veio %d", beforeVersion)
+		t.Fatalf("the test database had to be born at user_version=0 (like an old database); came out %d", beforeVersion)
 	}
 
 	if _, err := CompareFailover(old, current); err != nil {
@@ -115,10 +115,10 @@ func TestCompareFailoverDoesNotTouchTheOldDatabase(t *testing.T) {
 	}
 
 	if after := fileSum(t, old); after != beforeFile {
-		t.Error("o BANCO ANTIGO MUDOU depois da pericia — a ferramenta destruiu a evidencia que veio periciar")
+		t.Error("the OLD DATABASE CHANGED after the forensics run — the tool destroyed the evidence it came to examine")
 	}
 	if after := schemaVersion(t, old); after != beforeVersion {
-		t.Errorf("user_version foi de %d para %d: rodou MIGRACAO no banco antigo", beforeVersion, after)
+		t.Errorf("user_version went from %d to %d: it ran a MIGRATION on the old database", beforeVersion, after)
 	}
 }
 
@@ -126,12 +126,12 @@ func schemaVersion(t *testing.T, path string) int {
 	t.Helper()
 	db, err := sql.Open("sqlite", path+"?mode=ro")
 	if err != nil {
-		t.Fatalf("abrir %s: %v", path, err)
+		t.Fatalf("open %s: %v", path, err)
 	}
 	defer func() { _ = db.Close() }()
 	var v int
 	if err := db.QueryRow(`PRAGMA user_version`).Scan(&v); err != nil {
-		t.Fatalf("ler user_version de %s: %v", path, err)
+		t.Fatalf("read user_version from %s: %v", path, err)
 	}
 	return v
 }
@@ -149,7 +149,7 @@ func TestCompareFailoverWithNoLossInventsNothing(t *testing.T) {
 		t.Fatalf("CompareFailover: %v", err)
 	}
 	if c.Lost() {
-		t.Fatalf("achou perda onde os dois bancos sao iguais: %+v", c)
+		t.Fatalf("found a loss where the two databases are equal: %+v", c)
 	}
 }
 
@@ -166,10 +166,10 @@ func TestCompareFailoverExposesThatTheOldOneWasEmpty(t *testing.T) {
 		t.Fatalf("CompareFailover: %v", err)
 	}
 	if c.Lost() {
-		t.Error("antigo vazio nao pode produzir perda")
+		t.Error("an empty old database cannot produce a loss")
 	}
 	if c.ReadInOld != 0 {
-		t.Errorf("ReadInOld = %d, queria 0 — e' esse numero que deixa quem le desconfiar do arquivo errado", c.ReadInOld)
+		t.Errorf("ReadInOld = %d, wanted 0 — it's this number that lets the reader suspect the wrong file", c.ReadInOld)
 	}
 }
 
@@ -196,17 +196,17 @@ func TestCompareFailoverHasAStableOrderAndByTime(t *testing.T) {
 	}
 	for i := 1; i < len(first.Confirmed); i++ {
 		if first.Confirmed[i-1].CreatedAt > first.Confirmed[i].CreatedAt {
-			t.Fatalf("saiu fora de ordem em %d: %d depois de %d",
+			t.Fatalf("came out of order at %d: %d after %d",
 				i, first.Confirmed[i].CreatedAt, first.Confirmed[i-1].CreatedAt)
 		}
 	}
 	second, err := CompareFailover(old, current)
 	if err != nil {
-		t.Fatalf("CompareFailover (2a): %v", err)
+		t.Fatalf("CompareFailover (2nd): %v", err)
 	}
 	for i := range first.Confirmed {
 		if first.Confirmed[i] != second.Confirmed[i] {
-			t.Fatalf("duas execucoes deram ordens diferentes na posicao %d", i)
+			t.Fatalf("two runs gave different orders at position %d", i)
 		}
 	}
 }

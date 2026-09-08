@@ -77,7 +77,7 @@ func (s *Store) RecordCallbackCertificate(slug string, expiresAt, observedAt tim
 		  expira_em = excluded.expira_em, observado_em = excluded.observado_em`,
 		slug, stampOf(expiresAt), stampOf(observedAt))
 	if err != nil {
-		return fmt.Errorf("config: registrar certificado do callback: %w", err)
+		return fmt.Errorf("config: record callback certificate: %w", err)
 	}
 	return nil
 }
@@ -101,18 +101,18 @@ func (s *Store) CallbackCertificate(slug string) (CertificateObservation, error)
 		return CertificateObservation{}, nil
 	}
 	if err != nil {
-		return CertificateObservation{}, fmt.Errorf("config: ler certificado do callback: %w", err)
+		return CertificateObservation{}, fmt.Errorf("config: read callback certificate: %w", err)
 	}
 
 	expiresAt, err := time.Parse(time.RFC3339, expires)
 	if err != nil {
 		return CertificateObservation{}, fmt.Errorf(
-			"config: expira_em do certificado (slug=%q) nao e RFC3339: %w", slug, err)
+			"config: expira_em of the certificate (slug=%q) is not RFC3339: %w", slug, err)
 	}
 	observedAt, err := time.Parse(time.RFC3339, observed)
 	if err != nil {
 		return CertificateObservation{}, fmt.Errorf(
-			"config: observado_em do certificado (slug=%q) nao e RFC3339: %w", slug, err)
+			"config: observado_em of the certificate (slug=%q) is not RFC3339: %w", slug, err)
 	}
 	return CertificateObservation{ExpiresAt: expiresAt.UTC(), ObservedAt: observedAt.UTC()}, nil
 }
@@ -165,6 +165,6 @@ func (o *CertificateObserver) Record(slug string, expiresAt, observedAt time.Tim
 	o.mu.Lock()
 	defer o.mu.Unlock()
 	if err := o.store.RecordCallbackCertificate(slug, expiresAt, observedAt); err != nil {
-		log.Printf("zapgw: falha ao gravar a validade do certificado do callback (slug=%q): %v", slug, err)
+		log.Printf("zapgw: failed to record the callback certificate's validity (slug=%q): %v", slug, err)
 	}
 }

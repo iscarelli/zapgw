@@ -1,6 +1,6 @@
-// env_alias.go — T-214 (CAMADA 4 of this project's "accept both, count the
+// env_alias.go — T-214 (LAYER 4 of this project's "accept both, count the
 // old one" migration idiom — see internal/outbound/input_aliases.go for the
-// same idiom applied to the API contract, CAMADA 3). Here it applies to the
+// same idiom applied to the API contract, LAYER 3). Here it applies to the
 // OPERATOR's surface: the ZAPGW_* variables read from /etc/zapgw/env and the
 // CLI verbs.
 //
@@ -49,12 +49,12 @@ func EnvOrOld(getenv func(string) string, newName, oldName string) (value string
 //
 // Goes through `log`, not a return value collected somewhere: this is the
 // SAME channel main.go already uses for every other startup line ("guarda de
-// lideranca ARMADA", …), and it is also what a `zapgw <verbo>` run from a
-// terminal already has on stderr — a CLI invocation IS its own "arranque"
+// lideranca ARMADA", …), and it is also what a `zapgw <verb>` run from a
+// terminal already has on stderr — a CLI invocation IS its own "boot"
 // for this purpose, just like the server's boot is.
 func WarnOldEnvVar(oldNameUsed bool, oldName, newName string) {
 	if !oldNameUsed {
 		return
 	}
-	log.Printf("zapgw: variavel de ambiente %s esta obsoleta -- use %s no lugar (T-214)", oldName, newName)
+	log.Printf("zapgw: environment variable %s is deprecated -- use %s instead (T-214)", oldName, newName)
 }

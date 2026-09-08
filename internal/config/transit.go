@@ -75,7 +75,7 @@ const (
 // the two known ones. It's an error, not a silent write — the same reason
 // as ErrUnknownCounterKey (counter.go): a value outside the
 // closed vocabulary is exactly the kind of thing nobody reviews afterward.
-var ErrInvalidTransitDirection = errors.New("config: direcao de transito invalida (quero entrada ou saida)")
+var ErrInvalidTransitDirection = errors.New("config: invalid transit direction (want entrada or saida)")
 
 // transitSchema is T-091's migration, FROZEN — like baseSchema
 // (store.go), it no longer gets edited: it SHIPPED in v0.32.0 (2026-07-29
@@ -236,7 +236,7 @@ func (s *Store) WriteTransit(r TransitRecord, when time.Time) error {
 		VALUES (?,?,?,?,?,?,?,?)`,
 		r.Slug, r.Direction, r.Counterparty, r.Wamid, r.Type, r.Correlation, when.Unix(), r.Outcome)
 	if err != nil {
-		return fmt.Errorf("config: gravar transito: %w", err)
+		return fmt.Errorf("config: record transit: %w", err)
 	}
 	return nil
 }
@@ -249,11 +249,11 @@ func (s *Store) WriteTransit(r TransitRecord, when time.Time) error {
 func (s *Store) PurgeTransit(before time.Time) (int, error) {
 	res, err := s.db.Exec(`DELETE FROM transito WHERE carimbo < ?`, before.Unix())
 	if err != nil {
-		return 0, fmt.Errorf("config: purgar transito: %w", err)
+		return 0, fmt.Errorf("config: purge transit: %w", err)
 	}
 	n, err := res.RowsAffected()
 	if err != nil {
-		return 0, fmt.Errorf("config: linhas purgadas de transito: %w", err)
+		return 0, fmt.Errorf("config: rows purged from transit: %w", err)
 	}
 	return int(n), nil
 }
@@ -338,7 +338,7 @@ func (s *Store) NumbersForLastEight(lastEight string) ([]string, error) {
 		 WHERE substr(contraparte, -8) = ? AND contraparte != ''
 		 ORDER BY contraparte`, lastEight)
 	if err != nil {
-		return nil, fmt.Errorf("config: buscar numeros por ultimos oito digitos: %w", err)
+		return nil, fmt.Errorf("config: search numbers by last eight digits: %w", err)
 	}
 	defer rows.Close()
 
@@ -346,12 +346,12 @@ func (s *Store) NumbersForLastEight(lastEight string) ([]string, error) {
 	for rows.Next() {
 		var n string
 		if err := rows.Scan(&n); err != nil {
-			return nil, fmt.Errorf("config: ler numero por ultimos oito digitos: %w", err)
+			return nil, fmt.Errorf("config: read number by last eight digits: %w", err)
 		}
 		numbers = append(numbers, n)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("config: iterar numeros por ultimos oito digitos: %w", err)
+		return nil, fmt.Errorf("config: iterate numbers by last eight digits: %w", err)
 	}
 	return numbers, nil
 }
@@ -366,11 +366,11 @@ func (s *Store) NumbersForLastEight(lastEight string) ([]string, error) {
 func (s *Store) ClearInstanceTransit(slug string) (int64, error) {
 	res, err := s.db.Exec(`DELETE FROM transito WHERE slug = ?`, slug)
 	if err != nil {
-		return 0, fmt.Errorf("config: limpar transito da instancia %q: %w", slug, err)
+		return 0, fmt.Errorf("config: clear transit for instance %q: %w", slug, err)
 	}
 	n, err := res.RowsAffected()
 	if err != nil {
-		return 0, fmt.Errorf("config: linhas apagadas de transito da instancia %q: %w", slug, err)
+		return 0, fmt.Errorf("config: rows deleted from transit for instance %q: %w", slug, err)
 	}
 	return n, nil
 }
@@ -405,29 +405,29 @@ func (s *Store) ClearTransitByPhone(number string) ([]TransitRowsDeleted, error)
 	rows, err := tx.Query(`
 		SELECT slug, COUNT(*) FROM transito WHERE contraparte = ? GROUP BY slug ORDER BY slug`, number)
 	if err != nil {
-		return nil, fmt.Errorf("config: contar transito do telefone antes de apagar: %w", err)
+		return nil, fmt.Errorf("config: count transit for the phone number before deleting: %w", err)
 	}
 	var deleted []TransitRowsDeleted
 	for rows.Next() {
 		var a TransitRowsDeleted
 		if err := rows.Scan(&a.Slug, &a.Rows); err != nil {
 			rows.Close()
-			return nil, fmt.Errorf("config: ler contagem de transito do telefone: %w", err)
+			return nil, fmt.Errorf("config: read transit count for the phone number: %w", err)
 		}
 		deleted = append(deleted, a)
 	}
 	if err := rows.Err(); err != nil {
 		rows.Close()
-		return nil, fmt.Errorf("config: iterar contagem de transito do telefone: %w", err)
+		return nil, fmt.Errorf("config: iterate transit count for the phone number: %w", err)
 	}
 	rows.Close()
 
 	if _, err := tx.Exec(`DELETE FROM transito WHERE contraparte = ?`, number); err != nil {
-		return nil, fmt.Errorf("config: apagar transito do telefone: %w", err)
+		return nil, fmt.Errorf("config: delete transit for the phone number: %w", err)
 	}
 
 	if err := tx.Commit(); err != nil {
-		return nil, fmt.Errorf("config: commit da limpeza por telefone: %w", err)
+		return nil, fmt.Errorf("config: commit the phone-number cleanup: %w", err)
 	}
 	return deleted, nil
 }
@@ -456,7 +456,7 @@ func (s *Store) HighestLogRowid(slug string) (int64, error) {
 		err = s.db.QueryRow(`SELECT MAX(rowid) FROM transito WHERE slug = ?`, slug).Scan(&highest)
 	}
 	if err != nil {
-		return 0, fmt.Errorf("config: maior rowid de transito: %w", err)
+		return 0, fmt.Errorf("config: highest transit rowid: %w", err)
 	}
 	if !highest.Valid {
 		return 0, nil
@@ -491,7 +491,7 @@ func (s *Store) SearchTransitByCorrelation(slug, hmacCorrelation string, since t
 func (s *Store) queryTransit(query string, args ...any) ([]TransitLine, error) {
 	rows, err := s.db.Query(query, args...)
 	if err != nil {
-		return nil, fmt.Errorf("config: buscar transito: %w", err)
+		return nil, fmt.Errorf("config: search transit: %w", err)
 	}
 	defer rows.Close()
 
@@ -500,7 +500,7 @@ func (s *Store) queryTransit(query string, args ...any) ([]TransitLine, error) {
 		var stamp int64
 		var l TransitLine
 		if err := rows.Scan(&stamp, &l.Direction, &l.Wamid, &l.Type, &l.Outcome); err != nil {
-			return nil, fmt.Errorf("config: ler linha de transito: %w", err)
+			return nil, fmt.Errorf("config: read transit row: %w", err)
 		}
 		l.Stamp = time.Unix(stamp, 0).UTC()
 		found = append(found, l)
@@ -510,7 +510,7 @@ func (s *Store) queryTransit(query string, args ...any) ([]TransitLine, error) {
 	// out, and a search shorter than reality is this project's most
 	// expensive failure shape.
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("config: iterar transito: %w", err)
+		return nil, fmt.Errorf("config: iterate transit: %w", err)
 	}
 	return found, nil
 }
@@ -602,7 +602,7 @@ func (s *Store) LogLinesSince(slug string, rowid int64) ([]LogLine, error) {
 func (s *Store) queryLog(query string, args ...any) ([]LogLine, error) {
 	rows, err := s.db.Query(query, args...)
 	if err != nil {
-		return nil, fmt.Errorf("config: buscar log de transito: %w", err)
+		return nil, fmt.Errorf("config: search transit log: %w", err)
 	}
 	defer rows.Close()
 
@@ -611,7 +611,7 @@ func (s *Store) queryLog(query string, args ...any) ([]LogLine, error) {
 		var stamp int64
 		var l LogLine
 		if err := rows.Scan(&l.Rowid, &stamp, &l.Slug, &l.Direction, &l.Counterparty, &l.Type, &l.Outcome); err != nil {
-			return nil, fmt.Errorf("config: ler linha de log: %w", err)
+			return nil, fmt.Errorf("config: read log row: %w", err)
 		}
 		l.Stamp = time.Unix(stamp, 0).UTC()
 		found = append(found, l)
@@ -619,7 +619,7 @@ func (s *Store) queryLog(query string, args ...any) ([]LogLine, error) {
 	// rows.Err() is NOT optional (docs/ARMADILHAS.md, "Meta"): see
 	// queryTransit, above, for the reason.
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("config: iterar log de transito: %w", err)
+		return nil, fmt.Errorf("config: iterate transit log: %w", err)
 	}
 	return found, nil
 }
@@ -666,7 +666,7 @@ func NewTransitWithStore(store TransitStore) *Transit {
 // answered to Meta or the consumer — only a log line is left behind.
 func (t *Transit) Record(r TransitRecord) {
 	if err := t.store.WriteTransit(r, time.Now()); err != nil {
-		log.Printf("zapgw: falha ao gravar log de transito (slug=%q direcao=%q correlacao=%q): %v",
+		log.Printf("zapgw: failed to record transit log (slug=%q direction=%q correlation=%q): %v",
 			r.Slug, r.Direction, r.Correlation, err)
 	}
 }

@@ -20,7 +20,7 @@ import (
 )
 
 // ErrInvalidKey: the encryption key doesn't work. The service must NOT come up like this.
-var ErrInvalidKey = errors.New("config: chave de cifra invalida (quero 32 bytes em hex)")
+var ErrInvalidKey = errors.New("config: invalid encryption key (want 32 bytes in hex)")
 
 type Vault struct {
 	aead cipher.AEAD
@@ -71,11 +71,11 @@ func (c *Vault) Decrypt(ciphertext string) (string, error) {
 	}
 	n := c.aead.NonceSize()
 	if len(raw) < n {
-		return "", errors.New("config: cifrado curto demais")
+		return "", errors.New("config: ciphertext too short")
 	}
 	plaintext, err := c.aead.Open(nil, raw[:n], raw[n:], nil)
 	if err != nil {
-		return "", fmt.Errorf("config: abrir: %w", err)
+		return "", fmt.Errorf("config: open: %w", err)
 	}
 	return string(plaintext), nil
 }

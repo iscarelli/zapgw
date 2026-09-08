@@ -15,13 +15,13 @@ func TestCallbackCertificateWithNoObservationIsNotAnError(t *testing.T) {
 
 	o, err := s.CallbackCertificate("lojinha")
 	if err != nil {
-		t.Fatalf("CallbackCertificate numa instancia sem observacao: %v", err)
+		t.Fatalf("CallbackCertificate on an instance with no observation: %v", err)
 	}
 	if o.Observed() {
-		t.Errorf("Observed() = true sem nenhuma entrega ter acontecido (%+v)", o)
+		t.Errorf("Observed() = true with no delivery having happened (%+v)", o)
 	}
 	if !o.ExpiresAt.IsZero() || !o.ObservedAt.IsZero() {
-		t.Errorf("observacao inventada do nada: %+v", o)
+		t.Errorf("observation made up out of nothing: %+v", o)
 	}
 }
 
@@ -42,13 +42,13 @@ func TestCallbackCertificateKeepsBothStamps(t *testing.T) {
 		t.Fatalf("CallbackCertificate: %v", err)
 	}
 	if !o.Observed() {
-		t.Fatal("Observed() = false depois de uma observacao gravada")
+		t.Fatal("Observed() = false after an observation was recorded")
 	}
 	if !o.ExpiresAt.Equal(expires) {
-		t.Errorf("ExpiresAt = %v, quero %v", o.ExpiresAt, expires)
+		t.Errorf("ExpiresAt = %v, want %v", o.ExpiresAt, expires)
 	}
 	if !o.ObservedAt.Equal(observed) {
-		t.Errorf("ObservedAt = %v, quero %v", o.ObservedAt, observed)
+		t.Errorf("ObservedAt = %v, want %v", o.ObservedAt, observed)
 	}
 
 	// And the NEIGHBORING instance still has no observation: an observation
@@ -59,7 +59,7 @@ func TestCallbackCertificateKeepsBothStamps(t *testing.T) {
 		t.Fatalf("CallbackCertificate(clinica): %v", err)
 	}
 	if other.Observed() {
-		t.Errorf("a observacao de lojinha apareceu em clinica: %+v", other)
+		t.Errorf("lojinha's observation showed up in clinica: %+v", other)
 	}
 }
 
@@ -72,13 +72,13 @@ func TestCallbackCertificateOverwritesWithTheMostRecentObservation(t *testing.T)
 
 	oldStamp := time.Now().Add(90 * 24 * time.Hour).UTC().Truncate(time.Second)
 	if err := s.RecordCallbackCertificate("lojinha", oldStamp, time.Now().Add(-time.Hour)); err != nil {
-		t.Fatalf("primeira observacao: %v", err)
+		t.Fatalf("first observation: %v", err)
 	}
 
 	smaller := time.Now().Add(2 * 24 * time.Hour).UTC().Truncate(time.Second)
 	now := time.Now().UTC().Truncate(time.Second)
 	if err := s.RecordCallbackCertificate("lojinha", smaller, now); err != nil {
-		t.Fatalf("segunda observacao: %v", err)
+		t.Fatalf("second observation: %v", err)
 	}
 
 	o, err := s.CallbackCertificate("lojinha")
@@ -86,10 +86,10 @@ func TestCallbackCertificateOverwritesWithTheMostRecentObservation(t *testing.T)
 		t.Fatalf("CallbackCertificate: %v", err)
 	}
 	if !o.ExpiresAt.Equal(smaller) {
-		t.Errorf("ExpiresAt = %v, quero %v — a observacao mais recente e a que descreve o agora", o.ExpiresAt, smaller)
+		t.Errorf("ExpiresAt = %v, want %v — the most recent observation is the one that describes now", o.ExpiresAt, smaller)
 	}
 	if !o.ObservedAt.Equal(now) {
-		t.Errorf("ObservedAt = %v, quero %v", o.ObservedAt, now)
+		t.Errorf("ObservedAt = %v, want %v", o.ObservedAt, now)
 	}
 }
 
@@ -103,16 +103,16 @@ func TestCallbackCertificateWithAnUnreadableStampIsAnError(t *testing.T) {
 
 	if _, err := s.DB().Exec(
 		`INSERT INTO certificado_do_callback (slug, expira_em, observado_em) VALUES (?, ?, ?)`,
-		"lojinha", "ontem de manha", "2026-07-28T12:00:00Z"); err != nil {
-		t.Fatalf("gravar carimbo ilegivel: %v", err)
+		"lojinha", "yesterday morning", "2026-07-28T12:00:00Z"); err != nil {
+		t.Fatalf("write unreadable stamp: %v", err)
 	}
 
 	o, err := s.CallbackCertificate("lojinha")
 	if err == nil {
-		t.Fatalf("carimbo ilegivel passou como observacao valida: %+v", o)
+		t.Fatalf("unreadable stamp passed as a valid observation: %+v", o)
 	}
 	if !strings.Contains(err.Error(), "expira_em") {
-		t.Errorf("erro = %v — tem de dizer QUAL carimbo nao decodifica", err)
+		t.Errorf("err = %v — must say WHICH stamp doesn't decode", err)
 	}
 }
 
@@ -124,7 +124,7 @@ type alwaysFailingStore struct{ calls int }
 
 func (s *alwaysFailingStore) RecordCallbackCertificate(string, time.Time, time.Time) error {
 	s.calls++
-	return errors.New("banco fora do ar")
+	return errors.New("database is down")
 }
 
 func TestTheObserverDoesNotPropagateAWriteFailure(t *testing.T) {
@@ -135,11 +135,11 @@ func TestTheObserverDoesNotPropagateAWriteFailure(t *testing.T) {
 	o.Record("lojinha", time.Now(), time.Now())
 
 	if fake.calls != 1 {
-		t.Fatalf("chamadas = %d, quero 1", fake.calls)
+		t.Fatalf("calls = %d, want 1", fake.calls)
 	}
 }
 
-// A nil Observador is a no-op: no delivery test, and no path that doesn't
+// A nil Observer is a no-op: no delivery test, and no path that doesn't
 // care about certificates, can blow up because of a tracking subsystem.
 func TestANilObserverDoesNotPanic(t *testing.T) {
 	var o *CertificateObserver
