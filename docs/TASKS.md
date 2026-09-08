@@ -204,8 +204,198 @@ instancias foram rotacionadas. Duas licoes que custaram na hora e valem alem des
 
 > A fila do periodo privado esta em `iscarelli/zapgw-dev`, congelada. Tarefa nova nasce aqui.
 
+## [ ] T-222  Fix the error vocabulary the consumer contract documents
+Vikunja: 1466
+Why:     `docs/CONTRATO-CONSUMIDOR.md` documenta o erro como `classe` com
+         `permanente`/`retentavel`/`desconhecido`. O gateway EMITE `class` com
+         `permanent`/`retryable`/`config`/`unknown` desde a virada da T-209
+         (`internal/outbound/handler.go:277`, `internal/meta/errors.go:29-32`). E' doc falso no
+         documento que os consumidores leem para integrar: quem escrever um `switch` a partir dele
+         nunca casa. Medido em 2026-09-06.
+Files:   docs/CONTRATO-CONSUMIDOR.md, docs/CONTRATO-CONSUMIDOR.pt-BR.md, docs/INVENTARIO-VALORES.md,
+         docs/ARMADILHAS.md, docs/ARMADILHAS.pt-BR.md, docs/MIGRACAO-CONTRATO-EN.md
+Do:      🔴 NAO E' SED GLOBAL, e a armadilha ja esta escrita no proprio `ARMADILHAS.md`: um
+         `.replace()` que troca toda ocorrencia. Parte das ocorrencias e' LEGITIMA.
+         1. Va arquivo por arquivo. Em cada ocorrencia decida entre tres casos:
+            (a) e' o VALOR/CHAVE que o gateway emite hoje -> corrija para a forma inglesa;
+            (b) e' o doc de MIGRACAO citando a forma VELHA de proposito (`retentavel` ->
+                `retryable`) -> NAO toque;
+            (c) e' prosa em portugues nos arquivos `.pt-BR.md` usando a palavra como palavra
+                ("erro permanente") -> NAO toque; so' o literal muda.
+         2. Confira cada afirmacao contra o CODIGO, nunca contra o doc antigo. Aponte `arquivo:linha`.
+         3. Se achar outro campo do corpo de erro documentado com nome errado, conserte no mesmo
+            passo e diga no relatorio quais eram.
+         NAO mexa em codigo. Esta tarefa e' so' documentacao.
+Verify:  Para cada nome novo, prove contra o codigo que ele e' o emitido:
+         `grep -rn 'json:"class"' internal/outbound/handler.go` e
+         `grep -rn 'ErrorClass = ' internal/meta/errors.go`
+         E depois, no doc corrigido: nenhuma ocorrencia de `classe`/`retentavel`/`permanente`/
+         `desconhecido` pode estar descrevendo o que o gateway EMITE HOJE — liste no relatorio, uma
+         a uma, as que voce deixou e em qual dos casos (b)/(c) cada uma cai.
+         `CGO_ENABLED=0 go build ./... && go test ./...` (nao deve mudar nada, e' so' garantia).
+
+## [ ] T-223  Translate the remaining Portuguese in internal/meta
+Why:     o repo e' publico e a decisao de 2026-08-20 e' codigo em INGLES. Os identificadores ja
+         viraram (3818 na passagem de 30/08) e a T-219 fez `cmd/`; o que sobrou em `internal/` sao
+         COMENTARIOS e MENSAGENS DE TESTE. Medido em 2026-09-07: 143 arquivos `.go`, ~5.370 linhas
+         com palavra portuguesa, das quais ~2.522 sao mensagem de teste (`t.Errorf`/`t.Fatalf`).
+Files:   internal/meta/*.go (producao e teste)
+Do:      Traduza para ingles TODO comentario e TODA string que seja texto humano.
+         🔴 NAO TOQUE em nada que seja LITERAL DE FIO. Em cada string, decida antes:
+         (a) mensagem de falha de teste / comentario -> traduza;
+         (b) chave ou valor JSON, tag de struct, nome de env, caminho de rota, nome de flag,
+             valor de vocabulario que a Meta ou o consumidor enxerga -> NAO TOQUE;
+         (c) string que e' comparada com (b) dentro do teste -> NAO TOQUE, ela e' o fio.
+         Na duvida entre (a) e (b), NAO traduza e liste a ocorrencia no relatorio.
+Verify:  CGO_ENABLED=0 go build ./... && go test ./... && go vet ./... && gofmt -l cmd internal
+         E o diff NAO pode conter linha alterada que case com tag json, `flag.`, `os.Getenv` ou
+         `HandleFunc` — prove rodando e colando a saida (tem de vir vazia):
+         `git diff -U0 -- internal/meta | grep -E '^[-+]' | grep -E 'json:|flag\.|os\.Getenv|HandleFunc'`
+         Liste no relatorio as ocorrencias que voce deixou em portugues e por que.
+
+## [ ] T-224  Translate the remaining Portuguese in internal/config
+After:   T-223
+Why:     mesma razao da T-223. Este pacote guarda os tres PORTOES (telefone, nome, pre-push) —
+         traduzir a mensagem de um portao sem quebra-lo e' parte do trabalho.
+Files:   internal/config/*.go (producao e teste)
+Do:      Igual a T-223, com uma restricao a mais:
+         🔴 As AGULHAS dos portoes e os nomes de env (`ZAPGW_FORBIDDEN_NAMES`) sao fio — nao toque.
+         🔴 A mensagem que distingue "reprovou" de "nao consegui verificar" tem de continuar
+         distinguindo os dois DEPOIS da traducao. E' o ponto inteiro do portao de nome.
+Verify:  o mesmo da T-223, trocando o caminho do diff para `internal/config`.
+         E MAIS: prove que o portao de nome ainda reprova por ausencia de agulha —
+         `ZAPGW_FORBIDDEN_NAMES= go test ./internal/config/ -run TestNames` tem de FALHAR dizendo,
+         em ingles, que nao conseguiu verificar. Cole a mensagem no relatorio.
+
+## [ ] T-225  Translate the remaining Portuguese in internal/inbound
+After:   T-224
+Why:     mesma razao da T-223. Aqui mora o portao de TLS (`deliver_test.go`), cuja agulha e'
+         montada por concatenacao para o teste nao se auto-acusar.
+Files:   internal/inbound/*.go (producao e teste)
+Do:      Igual a T-223.
+         🔴 NAO reescreva a montagem por concatenacao da agulha de TLS. Se traduzir um comentario
+         ao redor dela, confira depois que o teste ainda encontra a agulha plantada.
+Verify:  o mesmo da T-223, caminho `internal/inbound`. E `go test ./internal/inbound/ -v -run TLS`
+         tem de continuar verde com os 24 testes.
+
+## [ ] T-226  Translate the remaining Portuguese in internal/outbound
+After:   T-225
+Why:     mesma razao da T-223, e e' o maior volume (~1.900 ocorrencias medidas em 2026-09-07).
+         E' tambem o pacote mais perigoso: aqui moram as tags JSON do contrato e a tabela de
+         apelidos de entrada.
+Files:   internal/outbound/*.go (producao e teste)
+Do:      Igual a T-223, e leia isto antes de abrir o primeiro arquivo:
+         🔴 `input_aliases.go` e' uma TABELA DE FIO INTEIRA. Traduza os comentarios dela; nao toque
+         em nenhuma das duas colunas de nenhum par.
+         🔴 As tags json `instancia`, `tipo`, `texto`, `secoes`, `botoes`, `contatos`, `releituras`
+         e as outras 30 sao CONTRATO VIVO, nao traducao pendente — elas tem tarefa propria e dono
+         proprio (o dono do projeto). Nao encoste.
+         🔴 As rotas (`/v1/estado`, etc.) e a tabela de isolamento sao fio.
+Verify:  o mesmo da T-223, caminho `internal/outbound`.
+         E MAIS: `go test ./internal/outbound/ -run 'TestRequestTopLevelKeysAreAllAccountedFor|Isolamento|Isolation'`
+         verde, e o diff sem nenhuma linha tocando tag json.
+
+## [ ] T-227  Translate the Portuguese comments left in cmd/
+After:   T-226
+Why:     a T-219 traduziu as STRINGS de `cmd/`, nao os comentarios. E' o resto do mesmo trabalho.
+Files:   cmd/zapgw/*.go, cmd/grafo-falso/*.go
+Do:      So' comentarios e mensagens de teste. 🔴 As grafias dos VERBOS e os NOMES das flags sao
+         contrato de CLI e territorio da T-220 — nao toque nelas aqui.
+Verify:  CGO_ENABLED=0 go build ./... && go test ./... && go vet ./... && gofmt -l cmd internal
+
+## [ ] T-228  Rename the Portuguese test fixtures to English
+After:   T-227
+Why:     42 arquivos em `testdata/corpus/` e um em `internal/inbound/testdata/` tem nome portugues
+         (`mensagem_texto.json`, `reacao_removida.json`, `assinatura-entrega.json`). Nome de arquivo
+         e' a parte da traducao que aparece na listagem do repositorio publico.
+Files:   testdata/corpus/*.json, testdata/corpus/README.md, internal/inbound/testdata/*.json,
+         internal/meta/corpus_test.go, internal/inbound/*_test.go
+Do:      1. Renomeie com `git mv` (nunca copiar e apagar — perde a historia do arquivo).
+         2. Atualize TODO leitor: `grep -rn "corpus/" --include="*.go" .` e o README do corpus.
+         3. 🔴 O CONTEUDO dos JSON e' payload da Meta: nao traduza NADA dentro deles. So' o nome.
+         4. Traduza `testdata/corpus/README.md` para ingles (788 ocorrencias PT medidas).
+Verify:  CGO_ENABLED=0 go build ./... && go test ./... e `git status` sem arquivo orfao, e
+         `grep -rn "mensagem_texto|reacao_|assinatura-entrega|documento_com_legenda" -E .` vazio
+         fora de `docs/CHANGELOG.md`.
+
+## [ ] T-229  Translate the deploy scripts, the CI and the env example
+After:   T-228
+Why:     `implanta/deploy.sh` (302 ocorrencias PT), `implanta/valida-lideranca.sh` (105),
+         `.githooks/pre-push` (41), `.github/workflows/verify.yml` (63), `.env.example` (69) e
+         `implanta/zapgw.service` (22). Sao os arquivos que um estranho abre primeiro.
+Files:   implanta/deploy.sh, implanta/profile-zapgw.sh, implanta/valida-lideranca.sh,
+         implanta/zapgw.service, .githooks/pre-push, .github/workflows/verify.yml, .env.example
+Do:      Traduza COMENTARIO e MENSAGEM DE SAIDA.
+         🔴 NAO TOQUE: nome de variavel de ambiente, nome de passo do workflow que outra coisa
+         referencie, caminho, nome de unit, nome de arquivo, nem nenhuma string comparada por `case`
+         ou por teste de igualdade. Se um `case` casa com texto portugues, ele e' fio.
+         🔴 `.env.example` so' pode ter PLACEHOLDER literal — nenhum valor real entra.
+Verify:  `bash -n implanta/deploy.sh implanta/profile-zapgw.sh implanta/valida-lideranca.sh .githooks/pre-push`
+         sem erro. 🔴 O deploy NAO roda como verify — ele muda producao. Prova estatica so'.
+         Liste no relatorio o que sobrou em portugues em cada arquivo e por que.
+
+## [ ] T-230  Rename the Portuguese directories and script names
+After:   T-229
+Why:     `cmd/grafo-falso/`, `implanta/` e `implanta/valida-lideranca.sh` sao os ultimos nomes
+         portugueses da arvore. Nome de diretorio aparece em toda listagem do repositorio publico.
+🔥 O PERIGO E' O MESMO DA T-220: `main` != IMPLANTADO, e aqui tem chamador FORA do repositorio.
+         `~/.zapgw/deploy-zapgw.sh` (na maquina do dono, fora do repo) le `implanta/deploy.sh`.
+         Renomear `implanta/` sem atualizar esse script quebra o deploy na proxima execucao, calado.
+Files:   cmd/grafo-falso/ -> cmd/fakegraph/, implanta/ -> deploy/,
+         implanta/valida-lideranca.sh -> check-leadership.sh, e TODO referenciador
+Do:      1. VARRA os referenciadores ANTES de renomear e liste-os no relatorio:
+            `grep -rn "implanta/|grafo-falso|valida-lideranca" -E .`
+            (inclua `.go`, `.md`, `.sh`, `.yml`, `.service`)
+         2. `git mv` os diretorios e o script.
+         3. Atualize cada referenciador encontrado no passo 1.
+         4. 🙋 PARE e diga no relatorio: `~/.zapgw/deploy-zapgw.sh` e a unit no CT 125 estao FORA do
+            repositorio e sao do planner. Nao tente alcanca-los.
+Verify:  CGO_ENABLED=0 go build ./... && go test ./... && gofmt -l cmd internal
+         E a varredura do passo 1 rodada de novo vem vazia, fora de `docs/CHANGELOG.md`, que e'
+         historico e cita o nome antigo de proposito.
+
+## [ ] T-231  Translate the English side of the docs that is still Portuguese
+After:   T-230
+Why:     a decisao de 2026-08-20 e' documentacao em PT-BR **e** EN, com o par `NOME.md` (EN) +
+         `NOME.pt-BR.md` (PT). Medido em 2026-09-07, o lado EN de varios ainda carrega prosa
+         portuguesa: `CONTRATO-CONSUMIDOR.md` (330), `ARMADILHAS.md` (160), `MIGRACAO-CONTRATO-EN.md`
+         (119), `INVENTARIO-STRINGS.md` (353), `INVENTARIO-CHAVES.md` (152), `INVENTARIO-VALORES.md`
+         (62), `HANDOFF.md` (72). Doc bilingue com metade da metade em portugues nao e' bilingue.
+Files:   docs/CONTRATO-CONSUMIDOR.md, docs/ARMADILHAS.md, docs/MIGRACAO-CONTRATO-EN.md,
+         docs/INVENTARIO-CHAVES.md, docs/INVENTARIO-STRINGS.md, docs/INVENTARIO-VALORES.md,
+         docs/MANUAL-DO-INTEGRADOR.md, docs/MODELO-DE-USO.md, docs/ONBOARDING-META.md,
+         docs/META-CAMPOS-DE-WEBHOOK.md, docs/MIGRACAO-PARA-O-ZAPGW.md, README.md, CLAUDE.md,
+         HANDOFF.md
+Do:      🔴 Boa parte das ocorrencias e' LEGITIMA e tem de ficar: e' o NOME PORTUGUES DA CHAVE sendo
+         citado (`instancia`, `token_envio`, `botoes_template`). Um inventario de chaves portuguesas
+         escrito em ingles continua citando as chaves em portugues.
+         Va arquivo por arquivo. Em cada ocorrencia decida:
+         (a) PROSA portuguesa no arquivo EN -> traduza;
+         (b) LITERAL citado (chave, valor, comando, nome de arquivo) -> NAO toque;
+         (c) citacao textual do dono ou do consumidor -> NAO toque, e' fala de outra pessoa.
+         NAO mexa em nenhum `.pt-BR.md`: eles sao portugueses de proposito.
+         Confira que o cabecalho `Código:` de cada doc ainda aponta para arquivo que existe.
+Verify:  liste no relatorio, por arquivo, quantas ocorrencias voce traduziu e quantas deixou em (b)
+         ou (c). `go test ./internal/config/ -run TestDoc` verde (os ponteiros dos docs).
+
+## [ ] T-232  Translate docs/CHANGELOG.md to English
+After:   T-231
+Why:     o changelog e' o registro permanente e publico do projeto, e a regra desta casa e' projeto
+         em ingles. Medido: 463 ocorrencias portuguesas em 524 linhas.
+Files:   docs/CHANGELOG.md
+Do:      Traduza o TEXTO de cada entrada. 🔴 NAO reescreva o que cada entrada AFIRMA, nao junte
+         entradas, nao corrija nada que pareca errado — changelog e' registro, e corrigir registro
+         retroativamente e' inventar historia. Se achar uma entrada falsa, DIGA no relatorio e
+         deixe como esta; quem apaga parte falsa e' o planner.
+         Nomes de tarefa e ids ficam identicos — eles sao a identidade da tarefa.
+         Traduza o cabecalho `## Nao lancado` para `## Unreleased`.
+Verify:  o arquivo tem exatamente o mesmo numero de bullets e os mesmos ids antes e depois:
+         `grep -c '^- ' docs/CHANGELOG.md` e `grep -o 'T-[0-9]*' docs/CHANGELOG.md | sort | uniq -c`
+         iguais aos de `git show HEAD:docs/CHANGELOG.md`. Cole os dois no relatorio.
+
 ## [ ] T-220  Remove the Portuguese spellings of the CLI verbs
-After:   T-219
+After:   T-232 — e o movimento sincronizado (mesclar + deployar + atualizar
+         /root/rotaciona-token.sh no CT 125) e do PLANNER, nao do implementador.
 Why:     o projeto e' publico e a decisao de 2026-08-30 e' codigo em INGLES. A T-218 fez a ponte
          (o ingles passou a funcionar); manter a grafia portuguesa para sempre transforma a ponte em
          destino. O portao do contador NAO se aplica aqui: ele existe para o apelido de ENTRADA, que
@@ -236,32 +426,3 @@ Verify:  CGO_ENABLED=0 go build ./... && go test ./... && go vet ./... && gofmt 
    125 usa `zapgw instancia listar`. Ele vive fora do repositorio e tem de ser atualizado no mesmo
    dia, ou quebra na proxima rotacao de token.
 
-## [ ] T-222  Fix the error vocabulary the consumer contract documents
-Vikunja: 1466
-Why:     `docs/CONTRATO-CONSUMIDOR.md` documenta o erro como `classe` com
-         `permanente`/`retentavel`/`desconhecido`. O gateway EMITE `class` com
-         `permanent`/`retryable`/`config`/`unknown` desde a virada da T-209
-         (`internal/outbound/handler.go:277`, `internal/meta/errors.go:29-32`). E' doc falso no
-         documento que os consumidores leem para integrar: quem escrever um `switch` a partir dele
-         nunca casa. Medido em 2026-09-06.
-Files:   docs/CONTRATO-CONSUMIDOR.md, docs/CONTRATO-CONSUMIDOR.pt-BR.md, docs/INVENTARIO-VALORES.md,
-         docs/ARMADILHAS.md, docs/ARMADILHAS.pt-BR.md, docs/MIGRACAO-CONTRATO-EN.md
-Do:      🔴 NAO E' SED GLOBAL, e a armadilha ja esta escrita no proprio `ARMADILHAS.md`: um
-         `.replace()` que troca toda ocorrencia. Parte das ocorrencias e' LEGITIMA.
-         1. Va arquivo por arquivo. Em cada ocorrencia decida entre tres casos:
-            (a) e' o VALOR/CHAVE que o gateway emite hoje -> corrija para a forma inglesa;
-            (b) e' o doc de MIGRACAO citando a forma VELHA de proposito (`retentavel` ->
-                `retryable`) -> NAO toque;
-            (c) e' prosa em portugues nos arquivos `.pt-BR.md` usando a palavra como palavra
-                ("erro permanente") -> NAO toque; so' o literal muda.
-         2. Confira cada afirmacao contra o CODIGO, nunca contra o doc antigo. Aponte `arquivo:linha`.
-         3. Se achar outro campo do corpo de erro documentado com nome errado, conserte no mesmo
-            passo e diga no relatorio quais eram.
-         NAO mexa em codigo. Esta tarefa e' so' documentacao.
-Verify:  Para cada nome novo, prove contra o codigo que ele e' o emitido:
-         `grep -rn 'json:"class"' internal/outbound/handler.go` e
-         `grep -rn 'ErrorClass = ' internal/meta/errors.go`
-         E depois, no doc corrigido: nenhuma ocorrencia de `classe`/`retentavel`/`permanente`/
-         `desconhecido` pode estar descrevendo o que o gateway EMITE HOJE — liste no relatorio, uma
-         a uma, as que voce deixou e em qual dos casos (b)/(c) cada uma cai.
-         `CGO_ENABLED=0 go build ./... && go test ./...` (nao deve mudar nada, e' so' garantia).
