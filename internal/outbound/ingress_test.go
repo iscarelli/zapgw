@@ -49,17 +49,17 @@ func TestIngressViaAcceptsTheKnownPathsAndRefusesTheRest(t *testing.T) {
 		via, err := IngressVia(func(string) string { return c.env })
 		if c.wantErr {
 			if err == nil {
-				t.Errorf("%s=%q devolveu via=%q sem erro; o binario TEM de recusar subir",
+				t.Errorf("%s=%q returned via=%q with no error; the binary HAS to refuse to start",
 					VarIngressVia, c.env, via)
 			}
 			continue
 		}
 		if err != nil {
-			t.Errorf("%s=%q: erro inesperado: %v", VarIngressVia, c.env, err)
+			t.Errorf("%s=%q: unexpected error: %v", VarIngressVia, c.env, err)
 			continue
 		}
 		if via != c.want {
-			t.Errorf("%s=%q deu via=%q, quero %q", VarIngressVia, c.env, via, c.want)
+			t.Errorf("%s=%q gave via=%q, want %q", VarIngressVia, c.env, via, c.want)
 		}
 	}
 }
@@ -70,11 +70,11 @@ func TestIngressViaAcceptsTheKnownPathsAndRefusesTheRest(t *testing.T) {
 func TestIngressViaSaysWhatToDoInTheError(t *testing.T) {
 	_, err := IngressVia(func(string) string { return "tunnel" })
 	if err == nil {
-		t.Fatal("valor desconhecido tem de dar erro")
+		t.Fatal("unknown value has to give an error")
 	}
 	for _, want := range []string{VarIngressVia, "tunnel", ViaTunnel, ViaPortForwarding} {
 		if !strings.Contains(err.Error(), want) {
-			t.Errorf("a mensagem nao cita %q: %v", want, err)
+			t.Errorf("the message does not cite %q: %v", want, err)
 		}
 	}
 }
@@ -91,11 +91,11 @@ func TestConnectorAddressTrimsSurroundingSpace(t *testing.T) {
 	}
 	for raw, want := range cases {
 		if has := ConnectorAddress(func(string) string { return raw }); has != want {
-			t.Errorf("ConnectorAddress(%q) = %q, quero %q", raw, has, want)
+			t.Errorf("ConnectorAddress(%q) = %q, want %q", raw, has, want)
 		}
 	}
 	if has := ConnectorAddress(nil); has != "" {
-		t.Errorf("ConnectorAddress(nil) = %q, quero vazio", has)
+		t.Errorf("ConnectorAddress(nil) = %q, want empty", has)
 	}
 }
 
@@ -125,16 +125,16 @@ func TestConnectorProbePublishesTheConnectionsThatReadyAnswered(t *testing.T) {
 
 	c := s.Read()
 	if c.State != ConnectorObserved {
-		t.Fatalf("estado = %q, quero %q", c.State, ConnectorObserved)
+		t.Fatalf("state = %q, want %q", c.State, ConnectorObserved)
 	}
 	if c.ReadyConnections == nil || *c.ReadyConnections != 4 {
-		t.Errorf("conexoes_prontas = %v, quero 4 (o readyConnections do /ready)", c.ReadyConnections)
+		t.Errorf("ready_connections = %v, want 4 (the /ready's readyConnections)", c.ReadyConnections)
 	}
 	if c.MeasuredAt == nil {
-		t.Error("medido_em nulo depois de o conector responder")
+		t.Error("measured_at null after the connector answered")
 	}
 	if c.FailingSince != nil {
-		t.Errorf("failing_since = %v numa medicao que deu certo", *c.FailingSince)
+		t.Errorf("failing_since = %v on a measurement that succeeded", *c.FailingSince)
 	}
 }
 
@@ -152,13 +152,13 @@ func TestConnectorProbeTreatsZeroConnectionsAsAMeasurementWhateverTheHTTPStatus(
 
 	c := s.Read()
 	if c.State != ConnectorObserved {
-		t.Fatalf("estado = %q, quero %q — zero conexoes e uma MEDICAO", c.State, ConnectorObserved)
+		t.Fatalf("state = %q, want %q — zero connections is a MEASUREMENT", c.State, ConnectorObserved)
 	}
 	if c.ReadyConnections == nil || *c.ReadyConnections != 0 {
-		t.Errorf("conexoes_prontas = %v, quero 0", c.ReadyConnections)
+		t.Errorf("ready_connections = %v, want 0", c.ReadyConnections)
 	}
 	if c.FailingSince != nil {
-		t.Errorf("failing_since = %v: a pergunta VOLTOU, o que falhou foi o tunel", *c.FailingSince)
+		t.Errorf("failing_since = %v: the question CAME BACK, what failed was the tunnel", *c.FailingSince)
 	}
 }
 
@@ -186,17 +186,17 @@ func TestConnectorProbeDownComesOutUnknownWithFailingSinceAndNeverZero(t *testin
 
 	c := s.Read()
 	if c.State != ConnectorUnknown {
-		t.Fatalf("estado = %q, quero %q", c.State, ConnectorUnknown)
+		t.Fatalf("state = %q, want %q", c.State, ConnectorUnknown)
 	}
 	if c.ReadyConnections != nil {
-		t.Errorf("conexoes_prontas = %d numa medicao que NAO ACONTECEU — isso e um veredito inventado",
+		t.Errorf("ready_connections = %d on a measurement that did NOT HAPPEN — this is a made-up verdict",
 			*c.ReadyConnections)
 	}
 	if c.FailingSince == nil {
-		t.Error("failing_since nulo: sem ele, `unknown` nao distingue 'nunca perguntei' de 'pergunto e nao volta'")
+		t.Error("failing_since null: without it, `unknown` does not distinguish 'never asked' from 'ask and it does not come back'")
 	}
 	if c.MeasuredAt != nil {
-		t.Errorf("medido_em = %v sem o conector nunca ter respondido", *c.MeasuredAt)
+		t.Errorf("measured_at = %v without the connector ever having answered", *c.MeasuredAt)
 	}
 }
 
@@ -215,7 +215,7 @@ func TestConnectorProbeRefusesAnswerWithoutTheFieldInsteadOfReadingZero(t *testi
 
 	c := s.Read()
 	if c.State != ConnectorUnknown || c.ReadyConnections != nil {
-		t.Fatalf("estado = %q, conexoes_prontas = %v; quero %q com null",
+		t.Fatalf("state = %q, ready_connections = %v; want %q with null",
 			c.State, c.ReadyConnections, ConnectorUnknown)
 	}
 }
@@ -233,7 +233,7 @@ func TestConnectorProbeKeepsTheStampOfTheLastAnswerAndANCHORSFailingSince(t *tes
 
 	good := s.Read()
 	if good.MeasuredAt == nil {
-		t.Fatal("medido_em nulo depois da medicao boa")
+		t.Fatal("measured_at null after the good measurement")
 	}
 
 	// The connector drops. Two attempts, one minute apart.
@@ -246,13 +246,13 @@ func TestConnectorProbeKeepsTheStampOfTheLastAnswerAndANCHORSFailingSince(t *tes
 
 	c := s.Read()
 	if c.ReadyConnections != nil {
-		t.Errorf("conexoes_prontas = %d depois de a medicao parar de voltar", *c.ReadyConnections)
+		t.Errorf("ready_connections = %d after the measurement stopped coming back", *c.ReadyConnections)
 	}
 	if c.MeasuredAt == nil || *c.MeasuredAt != *good.MeasuredAt {
-		t.Errorf("medido_em = %v, quero o carimbo da ultima RESPOSTA (%v)", c.MeasuredAt, *good.MeasuredAt)
+		t.Errorf("measured_at = %v, want the timestamp of the last RESPONSE (%v)", c.MeasuredAt, *good.MeasuredAt)
 	}
 	if c.FailingSince == nil || *c.FailingSince != *stamp(firstFailure) {
-		t.Errorf("failing_since = %v, quero a PRIMEIRA falha da sequencia (%v)",
+		t.Errorf("failing_since = %v, want the FIRST failure of the streak (%v)",
 			c.FailingSince, *stamp(firstFailure))
 	}
 }
@@ -267,17 +267,17 @@ func TestConnectorProbeDegradesStaleMeasurementToUnknown(t *testing.T) {
 	s.Measure(context.Background())
 
 	if c := s.Read(); c.State != ConnectorObserved {
-		t.Fatalf("estado logo depois de medir = %q, quero %q", c.State, ConnectorObserved)
+		t.Fatalf("state right after measuring = %q, want %q", c.State, ConnectorObserved)
 	}
 
 	clock = clock.Add(connectorMeasurementValidity + time.Second)
 	c := s.Read()
 	if c.State != ConnectorUnknown || c.ReadyConnections != nil {
-		t.Errorf("estado = %q, conexoes_prontas = %v depois de a medicao vencer; quero %q com null",
+		t.Errorf("state = %q, ready_connections = %v after the measurement expired; want %q with null",
 			c.State, c.ReadyConnections, ConnectorUnknown)
 	}
 	if c.MeasuredAt == nil {
-		t.Error("medido_em some ao vencer — e ele que diz ha quanto tempo o gateway nao ouve o conector")
+		t.Error("measured_at disappears on expiry — it is what says how long the gateway has not heard from the connector")
 	}
 }
 
@@ -294,10 +294,10 @@ func TestConnectorProbeWithoutAddressComesOutNotConfigured(t *testing.T) {
 		s.Start()
 		c := s.Read()
 		if c.State != ConnectorNotConfigured {
-			t.Errorf("%s: estado = %q, quero %q", name, c.State, ConnectorNotConfigured)
+			t.Errorf("%s: state = %q, want %q", name, c.State, ConnectorNotConfigured)
 		}
 		if c.ReadyConnections != nil || c.MeasuredAt != nil || c.FailingSince != nil {
-			t.Errorf("%s: bloco nao configurado veio com valor: %+v", name, c)
+			t.Errorf("%s: unconfigured block came with a value: %+v", name, c)
 		}
 	}
 }
@@ -339,13 +339,13 @@ type testIngress struct {
 func readIngress(t *testing.T, rec *httptest.ResponseRecorder) testIngress {
 	t.Helper()
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, quero 200; corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, want 200; body = %s", rec.Code, rec.Body.String())
 	}
 	var r struct {
 		Ingress testIngress `json:"ingress"`
 	}
 	if err := json.Unmarshal(rec.Body.Bytes(), &r); err != nil {
-		t.Fatalf("corpo nao desserializa: %v (corpo = %q)", err, rec.Body.String())
+		t.Fatalf("body does not deserialize: %v (body = %q)", err, rec.Body.String())
 	}
 	return r.Ingress
 }
@@ -371,16 +371,16 @@ func TestStateRouteStays200WithTheConnectorDownAndPublishesUnknown(t *testing.T)
 
 	e := readIngress(t, askState(t, h, "token-do-a", "lojinha"))
 	if e.Via != ViaTunnel {
-		t.Errorf("via = %q, quero %q", e.Via, ViaTunnel)
+		t.Errorf("via = %q, want %q", e.Via, ViaTunnel)
 	}
 	if e.Connector.State != ConnectorUnknown {
-		t.Errorf("conector.estado = %q, quero %q", e.Connector.State, ConnectorUnknown)
+		t.Errorf("connector.state = %q, want %q", e.Connector.State, ConnectorUnknown)
 	}
 	if e.Connector.ReadyConnections != nil {
-		t.Errorf("conector.conexoes_prontas = %d numa medicao que nao aconteceu", *e.Connector.ReadyConnections)
+		t.Errorf("connector.ready_connections = %d on a measurement that did not happen", *e.Connector.ReadyConnections)
 	}
 	if e.Connector.FailingSince == nil {
-		t.Error("conector.failing_since nulo com a sonda falhando")
+		t.Error("connector.failing_since null with the probe failing")
 	}
 }
 
@@ -396,11 +396,11 @@ func TestStateRouteNeverOMITSTheConnectorBlockWhenNoAddressIsConfigured(t *testi
 	rec := askState(t, h, "token-do-a", "lojinha")
 	var raw map[string]json.RawMessage
 	if err := json.Unmarshal(rec.Body.Bytes(), &raw); err != nil {
-		t.Fatalf("corpo nao desserializa: %v", err)
+		t.Fatalf("body does not deserialize: %v", err)
 	}
 	rawIngress, has := raw["ingress"]
 	if !has {
-		t.Fatalf("a chave `ingress` NAO esta no JSON: %s", rec.Body.String())
+		t.Fatalf("the `ingress` key is NOT in the JSON: %s", rec.Body.String())
 	}
 	var blocks map[string]json.RawMessage
 	if err := json.Unmarshal(rawIngress, &blocks); err != nil {
@@ -408,18 +408,18 @@ func TestStateRouteNeverOMITSTheConnectorBlockWhenNoAddressIsConfigured(t *testi
 	}
 	for _, key := range []string{"via", "connector", "last_webhook_at"} {
 		if _, has := blocks[key]; !has {
-			t.Errorf("a chave `entrada.%s` NAO esta no JSON: %s", key, rawIngress)
+			t.Errorf("the `ingress.%s` key is NOT in the JSON: %s", key, rawIngress)
 		}
 	}
 
 	e := readIngress(t, rec)
 	if e.Connector.State != ConnectorNotConfigured {
-		t.Errorf("conector.estado = %q, quero %q", e.Connector.State, ConnectorNotConfigured)
+		t.Errorf("connector.state = %q, want %q", e.Connector.State, ConnectorNotConfigured)
 	}
 	// With no one configuring `via`, the gateway says it doesn't know — never a
 	// plausible guess.
 	if e.Via != ViaUnknown {
-		t.Errorf("via = %q, quero %q", e.Via, ViaUnknown)
+		t.Errorf("via = %q, want %q", e.Via, ViaUnknown)
 	}
 }
 
@@ -441,10 +441,10 @@ func TestIngressLastWebhookAtIsTheSameStampAsReceived(t *testing.T) {
 
 	received := r.Counters[config.CounterReceived].LastAt
 	if received == nil {
-		t.Fatal("recebidas.ultimo_em nulo depois de contar uma recebida")
+		t.Fatal("received.last_at null after counting a received")
 	}
 	if e.LastWebhookAt == nil || *e.LastWebhookAt != *received {
-		t.Errorf("entrada.ultimo_webhook_em = %v, quero o MESMO de recebidas.ultimo_em (%q)",
+		t.Errorf("ingress.last_webhook_at = %v, want the SAME as received.last_at (%q)",
 			e.LastWebhookAt, *received)
 	}
 }
@@ -454,7 +454,7 @@ func TestIngressLastWebhookAtIsTheSameStampAsReceived(t *testing.T) {
 func TestIngressLastWebhookAtIsNullWithoutTraffic(t *testing.T) {
 	h, _ := stateRouteWithIngress(t, IngressSource{Via: ViaTunnel})
 	if e := readIngress(t, askState(t, h, "token-do-a", "lojinha")); e.LastWebhookAt != nil {
-		t.Errorf("ultimo_webhook_em = %q numa instancia que nunca recebeu nada", *e.LastWebhookAt)
+		t.Errorf("last_webhook_at = %q on an instance that never received anything", *e.LastWebhookAt)
 	}
 }
 
@@ -467,12 +467,12 @@ func TestIngressLastWebhookAtIsNullWithoutTraffic(t *testing.T) {
 func TestStatePublishesNoFieldThatASSERTSReachability(t *testing.T) {
 	body, err := json.Marshal(State{})
 	if err != nil {
-		t.Fatalf("serializar o State: %v", err)
+		t.Fatalf("serialize the State: %v", err)
 	}
 	for _, forbidden := range []string{"alcancavel", "alcancavel_de_fora", "acessivel", "publico_ok"} {
 		if strings.Contains(string(body), forbidden) {
-			t.Errorf("o State publica um campo %q — o gateway NAO consegue saber isso; "+
-				"quem responde e a sonda, de fora (ingress.go)", forbidden)
+			t.Errorf("the State publishes a field %q — the gateway CANNOT know that; "+
+				"the one who answers is the probe, from outside (ingress.go)", forbidden)
 		}
 	}
 }
@@ -489,10 +489,10 @@ func TestTheIngressBlockAppearsOnTheCLIScreen(t *testing.T) {
 
 	rows := StateRows(e)
 	if v := rowValue(t, rows, "via"); v != ViaTunnel {
-		t.Errorf("linha `via` = %q, quero %q", v, ViaTunnel)
+		t.Errorf("line `via` = %q, want %q", v, ViaTunnel)
 	}
 	if v := rowValue(t, rows, "ready_connections"); v != "4" {
-		t.Errorf("linha `ready_connections` = %q, quero \"4\"", v)
+		t.Errorf("line `ready_connections` = %q, want \"4\"", v)
 	}
 }
 
@@ -520,7 +520,7 @@ func TestIngressViaAcceptsTheNewNameAndItWins(t *testing.T) {
 				t.Fatalf("IngressVia: %v", err)
 			}
 			if via != c.want {
-				t.Errorf("via = %q, quero %q", via, c.want)
+				t.Errorf("via = %q, want %q", via, c.want)
 			}
 		})
 	}
@@ -549,7 +549,7 @@ func TestIngressViaWarnsOnlyWhenOldNameWins(t *testing.T) {
 			log.SetOutput(original)
 			warned := strings.Contains(buf.String(), VarIngressVia) && strings.Contains(buf.String(), "obsoleta")
 			if warned != c.wantWarn {
-				t.Errorf("aviso = %v (log: %q), quero %v", warned, buf.String(), c.wantWarn)
+				t.Errorf("warning = %v (log: %q), want %v", warned, buf.String(), c.wantWarn)
 			}
 		})
 	}
@@ -573,7 +573,7 @@ func TestConnectorAddressAcceptsTheNewNameAndItWins(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			if has := ConnectorAddress(func(k string) string { return c.vars[k] }); has != c.want {
-				t.Errorf("ConnectorAddress = %q, quero %q", has, c.want)
+				t.Errorf("ConnectorAddress = %q, want %q", has, c.want)
 			}
 		})
 	}
@@ -599,7 +599,7 @@ func TestConnectorAddressWarnsOnlyWhenOldNameWins(t *testing.T) {
 			log.SetOutput(original)
 			warned := strings.Contains(buf.String(), VarConnectorReady) && strings.Contains(buf.String(), "obsoleta")
 			if warned != c.wantWarn {
-				t.Errorf("aviso = %v (log: %q), quero %v", warned, buf.String(), c.wantWarn)
+				t.Errorf("warning = %v (log: %q), want %v", warned, buf.String(), c.wantWarn)
 			}
 		})
 	}
