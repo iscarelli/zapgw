@@ -57,17 +57,17 @@ func TestWatchdogMeasuresOKWithBothStampsEqual(t *testing.T) {
 
 	r := v.Read("lojinha")
 	if r.Verdict != VerdictOK {
-		t.Fatalf("veredito = %q, quero %q", r.Verdict, VerdictOK)
+		t.Fatalf("verdict = %q, want %q", r.Verdict, VerdictOK)
 	}
 	want := clock.read().Format(time.RFC3339)
 	if r.MeasuredAt == nil || *r.MeasuredAt != want {
-		t.Errorf("medido_em = %v, quero %q", r.MeasuredAt, want)
+		t.Errorf("measured_at = %v, want %q", r.MeasuredAt, want)
 	}
 	if r.CheckedAt == nil || *r.CheckedAt != want {
-		t.Errorf("conferido_em = %v, quero %q", r.CheckedAt, want)
+		t.Errorf("checked_at = %v, want %q", r.CheckedAt, want)
 	}
 	if r.CheckFailingSince != nil {
-		t.Errorf("checagem_falhando_desde = %v, quero null numa checagem que deu certo", *r.CheckFailingSince)
+		t.Errorf("check_failing_since = %v, want null on a check that succeeded", *r.CheckFailingSince)
 	}
 }
 
@@ -81,10 +81,10 @@ func TestWatchdogNeverMeasuredIsUnknownWithNullStamps(t *testing.T) {
 
 	r := v.Read("lojinha")
 	if r.Verdict != VerdictUnknown {
-		t.Fatalf("veredito = %q, quero %q", r.Verdict, VerdictUnknown)
+		t.Fatalf("verdict = %q, want %q", r.Verdict, VerdictUnknown)
 	}
 	if r.MeasuredAt != nil || r.CheckedAt != nil || r.CheckFailingSince != nil {
-		t.Errorf("carimbos = (%v, %v, %v), quero os tres nulos", r.MeasuredAt, r.CheckedAt, r.CheckFailingSince)
+		t.Errorf("stamps = (%v, %v, %v), want all three null", r.MeasuredAt, r.CheckedAt, r.CheckFailingSince)
 	}
 }
 
@@ -100,7 +100,7 @@ func TestWatchdogMarksRefusedWhenMetaRefusesTheToken(t *testing.T) {
 	v.Check(context.Background())
 
 	if r := v.Read("lojinha"); r.Verdict != VerdictRefused {
-		t.Fatalf("veredito = %q, quero %q", r.Verdict, VerdictRefused)
+		t.Fatalf("verdict = %q, want %q", r.Verdict, VerdictRefused)
 	}
 }
 
@@ -126,19 +126,19 @@ func TestWatchdogWithFailingCheckKeepsTheVerdictAndDivergesTheStamps(t *testing.
 
 	r := v.Read("lojinha")
 	if r.Verdict != VerdictOK {
-		t.Errorf("veredito = %q, quero %q — 503 da Meta nao prova nada sobre a credencial", r.Verdict, VerdictOK)
+		t.Errorf("verdict = %q, want %q — a 503 from Meta proves nothing about the credential", r.Verdict, VerdictOK)
 	}
 	if r.MeasuredAt == nil || *r.MeasuredAt != measuredAt {
-		t.Errorf("medido_em = %v, quero %q (a ultima RESPOSTA da Meta)", r.MeasuredAt, measuredAt)
+		t.Errorf("measured_at = %v, want %q (Meta's last RESPONSE)", r.MeasuredAt, measuredAt)
 	}
 	if r.CheckedAt == nil || *r.CheckedAt == measuredAt {
-		t.Errorf("conferido_em = %v — ele tem de DIVERGIR de medido_em quando a checagem falha", r.CheckedAt)
+		t.Errorf("checked_at = %v — it has to DIVERGE from measured_at when the check fails", r.CheckedAt)
 	}
 	// The FIRST failure of the streak, not the last: pushing the date on
 	// every attempt would make it say "failing for a minute" after an
 	// hour of failing.
 	if r.CheckFailingSince == nil || *r.CheckFailingSince != failAt {
-		t.Errorf("checagem_falhando_desde = %v, quero %q (a PRIMEIRA falha da sequencia)",
+		t.Errorf("check_failing_since = %v, want %q (the FIRST failure of the streak)",
 			r.CheckFailingSince, failAt)
 	}
 }
@@ -158,7 +158,7 @@ func TestWatchdogExpiresTheStaleVerdictToUnknown(t *testing.T) {
 
 	v.Check(context.Background())
 	if r := v.Read("lojinha"); r.Verdict != VerdictOK {
-		t.Fatalf("veredito inicial = %q, quero %q", r.Verdict, VerdictOK)
+		t.Fatalf("initial verdict = %q, want %q", r.Verdict, VerdictOK)
 	}
 
 	// Within the validity window, the verdict still holds — otherwise the
@@ -166,20 +166,20 @@ func TestWatchdogExpiresTheStaleVerdictToUnknown(t *testing.T) {
 	// equally wrong.
 	clock.advance(verdictValidity - time.Second)
 	if r := v.Read("lojinha"); r.Verdict != VerdictOK {
-		t.Fatalf("veredito ANTES de vencer = %q, quero %q — ele nao pode expirar cedo demais",
+		t.Fatalf("verdict BEFORE expiring = %q, want %q — it cannot expire too early",
 			r.Verdict, VerdictOK)
 	}
 
 	clock.advance(2 * time.Second)
 	r := v.Read("lojinha")
 	if r.Verdict != VerdictUnknown {
-		t.Errorf("veredito depois de %v = %q, quero %q — `ok` velho tem de degradar",
+		t.Errorf("verdict after %v = %q, want %q — a stale `ok` has to degrade",
 			verdictValidity, r.Verdict, VerdictUnknown)
 	}
 	// The timestamp of the last real response SURVIVES expiration: it's
 	// the one that says how long the gateway hasn't heard from Meta.
 	if r.MeasuredAt == nil {
-		t.Errorf("medido_em virou nulo ao expirar — some a informacao de HA QUANTO TEMPO nao ha resposta")
+		t.Errorf("measured_at became null on expiry — the information of HOW LONG there has been no response disappears")
 	}
 }
 
@@ -192,10 +192,10 @@ func TestWatchdogDoesNotCheckAPausedInstance(t *testing.T) {
 	v.Check(context.Background())
 
 	if n := m.gets.Load(); n != 0 {
-		t.Errorf("a vigia falou %d vez(es) com a Meta por instancias PAUSADAS", n)
+		t.Errorf("the watchdog talked to Meta %d time(s) for PAUSED instances", n)
 	}
 	if r := v.Read("lojinha"); r.Verdict != VerdictUnknown {
-		t.Errorf("veredito de instancia pausada = %q, quero %q — ninguem esta medindo",
+		t.Errorf("verdict of a paused instance = %q, want %q — nobody is measuring",
 			r.Verdict, VerdictUnknown)
 	}
 }
@@ -210,11 +210,11 @@ func TestWatchdogChecksEveryActiveInstance(t *testing.T) {
 	v.Check(context.Background())
 
 	if n := m.gets.Load(); n != 2 {
-		t.Errorf("chamadas a Graph API = %d, quero 2 (uma por instancia ATIVA)", n)
+		t.Errorf("Graph API calls = %d, want 2 (one per ACTIVE instance)", n)
 	}
 	for _, slug := range []string{"lojinha", "clinica"} {
 		if r := v.Read(slug); r.Verdict != VerdictOK {
-			t.Errorf("veredito de %q = %q, quero %q", slug, r.Verdict, VerdictOK)
+			t.Errorf("verdict of %q = %q, want %q", slug, r.Verdict, VerdictOK)
 		}
 	}
 }
@@ -243,7 +243,7 @@ func TestWatchdogStartSurvivesAPanicAndContinuesOnTheNextTick(t *testing.T) {
 		calls++
 		switch calls {
 		case 1:
-			panic("panico de teste — primeira volta")
+			panic("test panic — first round")
 		case 2:
 			close(secondRound)
 		}
@@ -255,7 +255,7 @@ func TestWatchdogStartSurvivesAPanicAndContinuesOnTheNextTick(t *testing.T) {
 	case <-secondRound:
 		// the second round happened — the first round's panic did NOT kill the loop.
 	case <-time.After(5 * time.Second):
-		t.Fatal("a segunda volta do laco nunca aconteceu depois do panico — o recover nao protegeu a goroutine")
+		t.Fatal("the loop's second round never happened after the panic — recover did not protect the goroutine")
 	}
 }
 
