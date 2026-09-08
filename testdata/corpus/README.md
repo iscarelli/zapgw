@@ -1,665 +1,693 @@
-# Corpus de payloads da Meta
+# Meta payload corpus
 
-Payloads **reais**, com números, ids e nomes trocados por valores de teste. O **formato** é
-preservado byte a byte — é ele que está sendo testado, não o conteúdo.
+**Real** payloads, with numbers, ids and names swapped for test values. The **format** is
+preserved byte for byte — that's what's being tested, not the content.
 
-**Nunca ponha dado pessoal aqui.** Ao acrescentar um payload novo: troque `wa_id`, `from`,
-`recipient_id`, `user_id`/`from_user_id`/`recipient_user_id`, `id` (wamid) e `profile.name` por
-valores fictícios, e confira que nenhum texto de mensagem real sobrou.
+**Never put personal data here.** When adding a new payload: swap `wa_id`, `from`,
+`recipient_id`, `user_id`/`from_user_id`/`recipient_user_id`, `id` (wamid) and `profile.name` for
+fictitious values, and check that no real message text survived.
 
-> 🔴 **O `wamid` é obrigatório na lista acima, e não por precaução: ele CARREGA o telefone do
-> destinatário.** `wamid.` é seguido de base64, e `base64 -d` no que vem depois do ponto devolve o
-> número em texto claro. Trocar `recipient_id` e deixar o `wamid` vaza o número do mesmo jeito, e o
-> arquivo parece mascarado. **Campo opaco não é campo sem conteúdo — decodifique antes de deixar
-> passar.** (Medido ao mascarar a captura da T-069; ver a nota própria no fim deste arquivo.)
+> 🔴 **`wamid` is mandatory in the list above, and not as a precaution: it CARRIES the recipient's
+> phone number.** `wamid.` is followed by base64, and `base64 -d` on what comes after the dot
+> returns the number in plain text. Swapping `recipient_id` and leaving the `wamid` leaks the
+> number the same way, and the file looks masked. **An opaque field is not a field without
+> content — decode it before letting it through.** (Measured while masking the T-069 capture; see
+> the dedicated note at the end of this file.)
 
-Cada arquivo carrega, no nome, o que ele prova. Um arquivo sem teste que o consuma não deve existir:
-`corpus_test.go` falha se algum `.json` daqui não for exercitado.
+Each file carries, in its name, what it proves. A file with no test consuming it shouldn't exist:
+`corpus_test.go` fails if any `.json` here isn't exercised.
 
-## Origem de cada arquivo
+## Origin of each file
 
-A marcação é **por arquivo**, não por lote — um lote misto (a forma antiga deste README) vira
-"todos são reais" na cabeça de quem lê rápido. Todo arquivo abaixo é um destes três:
+The marking is **per file**, not per batch — a mixed batch (this README's earlier form) turns
+into "they're all real" in a fast reader's head. Every file below is one of these three:
 
-- **captura**: veio de tráfego real da Meta, observado por um consumidor em produção
-  (`consumer-a`), com valores sensíveis mascarados de propósito (coordenadas arredondadas,
-  `id`/`sha256`/`url` de mídia substituídos por placeholder). A **forma** é literal, byte a byte;
-  os **valores** que apontariam para uma pessoa real, não.
-- **derivado da doc**: não havia captura real disponível; a forma foi copiada dos exemplos
-  publicados pela documentação oficial da Meta, com os ids trocados para o padrão fictício deste
-  corpus (`WABA_TESTE`, `PNID_TESTE`, `wamid.TESTEnnn`).
-- **sintético**: não é payload que a Meta mandou nem a doc descreveu — foi escrito à mão para
-  exercitar um caminho que nem captura nem doc cobrem sozinhos (ex.: `corpo_null.json` prova a
-  guarda de `json.Unmarshal("null", &map)`; `botao_de_template_sintetico.json` existe porque a
-  captura real tem `payload == text` e não pegaria sozinha uma leitura de campo trocada).
+- **capture**: came from real Meta traffic, observed by a consumer in production
+  (`consumer-a`), with sensitive values masked on purpose (rounded coordinates, media
+  `id`/`sha256`/`url` replaced by a placeholder). The **shape** is literal, byte for byte; the
+  **values** that would point to a real person are not.
+- **derived from the doc**: no real capture was available; the shape was copied from the examples
+  published by Meta's official documentation, with the ids swapped for this corpus's fictitious
+  pattern (`WABA_TESTE`, `PNID_TESTE`, `wamid.TESTEnnn`).
+- **synthetic**: not a payload Meta sent nor one the doc described — written by hand to exercise
+  a path that neither a capture nor the doc covers alone (e.g.: `body_null.json` proves the guard
+  on `json.Unmarshal("null", &map)`; `template_button_synthetic.json` exists because the real
+  capture has `payload == text` and wouldn't catch a swapped field read on its own).
 
-## Lastro por STATUS — os quatro têm captura real desde a T-069 (2026-07-28)
+## Backing per STATUS — all four have a real capture since T-069 (2026-07-28)
 
-**Leia isto antes de usar o corpus para validar um mapeamento de status.** A coluna "Origem" da
-tabela abaixo é por ARQUIVO; ela responde *"de onde veio este arquivo?"* e **não** responde a
-pergunta que o integrador realmente faz, que é *"contra o que eu estou testando o meu `sent`?"*.
-Esta seção responde essa.
+**Read this before using the corpus to validate a status mapping.** The "Origin" column of the
+table below is per FILE; it answers *"where did this file come from?"* and does **not** answer
+the question the integrator actually asks, which is *"what am I testing my `sent` against?"*.
+This section answers that one.
 
-| Status | Arquivo no corpus | Lastro |
+| Status | File in the corpus | Backing |
 |---|---|---|
-| `sent` | `status_sent_com_pricing.json` e `status_sent_sem_pricing.json` | ✅ **captura** — consumer-a, 2026-07-28 (T-069). São **dois** arquivos porque a medição achou **duas formas**: 49 dos 53 `sent` crus com `pricing`, **4 sem** |
-| `delivered` | `status_delivered.json` | ✅ **captura** — consumer-a, 2026-07-28 (T-069). 49 `delivered` crus, **49 com `pricing`** |
-| `read` | `status_read_com_cobranca.json` | ✅ captura real (parcial) — consumer-a, 2026-07-26 |
-| `failed` | `status_failed.json` | ✅ captura real — consumer-a, 2026-07-26 |
+| `sent` | `status_sent_with_pricing.json` and `status_sent_without_pricing.json` | ✅ **capture** — consumer-a, 2026-07-28 (T-069). There are **two** files because the measurement found **two shapes**: 49 of 53 raw `sent` had `pricing`, **4 didn't** |
+| `delivered` | `status_delivered.json` | ✅ **capture** — consumer-a, 2026-07-28 (T-069). 49 raw `delivered`, **49 with `pricing`** |
+| `read` | `status_read_with_billing.json` | ✅ real capture (partial) — consumer-a, 2026-07-26 |
+| `failed` | `status_failed.json` | ✅ real capture — consumer-a, 2026-07-26 |
 
-**Até 2026-07-28 esta seção dizia o oposto, e o que ela dizia vale guardar como aviso**, porque a
-mesma armadilha volta a cada tipo novo: `sent` não tinha fixture nenhum (`grep -rln '"sent"'` no
-corpus voltava **vazio**) e `delivered` tinha um **derivado da doc**. Quem testasse contra aquele
-`delivered` provava que concorda com a **documentação da Meta**, não com o que a Meta **manda** — é
-a família *"exemplo de doc é código que ninguém roda"* (`docs/ARMADILHAS.md`) um nível acima: ali o
-exemplo virou **fixture**, e fixture verde **parece prova**.
+**Until 2026-07-28 this section said the opposite, and what it said is worth keeping as a
+warning**, because the same trap comes back with every new type: `sent` had no fixture at all
+(`grep -rln '"sent"'` on the corpus came back **empty**) and `delivered` had a **derived-from-doc**
+one. Whoever tested against that `delivered` proved they agree with Meta's **documentation**, not
+with what Meta **sends** — it's the *"a doc example is code nobody runs"* family
+(`docs/ARMADILHAS.md`) one level up: there the example became a **fixture**, and a green fixture
+**looks like proof**.
 
-**A captura confirmou que a desconfiança valia a pena: o `delivered` derivado da doc estava errado
-em dois pontos observáveis.** Ele não trazia `pricing` (e o real traz, 49 de 49) e trazia um bloco
-`conversation` que **nenhum dos três payloads reais capturados tem**. Nenhum dos dois muda
-comportamento — `conversation` nunca foi lido pelo parser, e a ausência de `pricing` era tratada —,
-e é justamente por isso que o caso é instrutivo: um fixture pode estar errado sobre a forma sem que
-nenhum teste fique vermelho.
+**The capture confirmed the suspicion was worth it: the doc-derived `delivered` was wrong on two
+observable points.** It didn't carry `pricing` (the real one does, 49 of 49) and it carried a
+`conversation` block that **none of the three real captured payloads has**. Neither changes
+behavior — `conversation` was never read by the parser, and the absence of `pricing` was handled
+— and that's exactly why the case is instructive: a fixture can be wrong about the shape without
+any test going red.
 
-**Por que o gap de `sent` sobreviveu tanto tempo sem ninguém notar — e a lição estrutural CONTINUA
-VALENDO, porque nada mudou no mecanismo:** `TestCorpusInteiro` (`internal/meta/corpus_test.go`)
-varre os arquivos que **existem** e exige que cada um tenha teste. Nada exige o contrário — **que
-todo status tenha arquivo**. A guarda protege contra arquivo órfão e é cega para status ausente. Se
-a Meta criar um estado novo amanhã, ele some do corpus exatamente como `sent` sumiu.
+**Why the `sent` gap survived so long unnoticed — and the structural lesson STILL HOLDS, because
+nothing changed in the mechanism:** `TestTheWholeCorpus` (`internal/meta/corpus_test.go`) sweeps
+the files that **exist** and requires each one to have a test. Nothing requires the opposite —
+**that every status have a file**. The guard protects against an orphan file and is blind to a
+missing status. If Meta creates a new state tomorrow, it vanishes from the corpus exactly the way
+`sent` did.
 
-**Os quatro nomes não são um vocabulário fechado no código.** O parser repassa o `status` como veio
-(`internal/meta/parse.go:eventoDeStatus`, e o valor entra na chave do evento na mesma função); a
-lista `sent, delivered, read, failed` existe **só como comentário** em `internal/meta/types.go`. Ou
-seja: não há, hoje, nenhum lugar do código que pudesse ficar vermelho por causa de um status novo ou
-de um status sem fixture.
+**The four names aren't a closed vocabulary in the code.** The parser passes `status` through as
+it came (`internal/meta/parse.go:statusEvent`, and the value enters the event's key in the same
+function); the list `sent, delivered, read, failed` exists **only as a comment** in
+`internal/meta/types.go`. In other words: there is, today, no place in the code that could go red
+because of a new status or a status with no fixture.
 
-| Arquivo | Origem |
+| File | Origin |
 |---|---|
-| `mensagem_texto.json` | **captura** — consumer-a, 2026-07-26 (T-031). Confirma `from_user_id` e `contacts[].user_id` (formato `BR.<dígitos>`) no tráfego real — campos que NÃO aparecem nos exemplos clássicos da doc |
-| `botao_de_template.json` | **captura** — consumer-a, 2026-07-26 (T-031). Quick-reply de template real, tocado no aparelho: `type: "button"`, e `payload`/`text` vieram **iguais** (`"Falar com a gente"`) — ver `botao_de_template_sintetico.json` abaixo |
-| `botao_de_template_sintetico.json` | **sintético** (T-031). Mesmo formato do capturado acima, mas com `payload` e `text` DIFERENTES de propósito — é o que pega leitura de campo trocado, que o capturado (valores iguais) não pega sozinho |
-| `botao_interativo.json` | **captura** — consumer-a, 2026-07-26 (T-033). `button_reply.id` (`"confirmar"`) e `button_reply.title` (`"Confirmar"`) vêm DIFERENTES — o suficiente para distinguir sozinho uma leitura de campo trocada; **não tem irmão sintético** (ver nota abaixo) |
-| `reacao.json` | **captura** — consumer-a, 2026-07-26 (T-026). Reação real com emoji `❤️` (`U+2764 U+FE0F`, dois codepoints — ver a nota abaixo) |
-| `reacao_removida.json` | **captura** — consumer-a, 2026-07-26 (T-026). É o par observado da linha acima: mesma reação (mesmo alvo), desfeita 20s depois. A chave `emoji` não existe no payload — não é `""`, não é `null` |
-| `localizacao.json` | **captura** — consumer-a, 2026-07-26 (T-026). Pin solto: **sem** `name`/`address` — o caso comum observado, ao contrário do fixture anterior (derivado da doc), que tinha os dois e testava o caso raro |
-| `audio_nota_de_voz.json` | **captura** — consumer-a, 2026-07-26 (T-026). `"voice": true` e `mime_type: "audio/ogg; codecs=opus"` (com o parâmetro) confirmados no payload real |
-| `imagem.json` | **captura** — consumer-a, 2026-07-26 (T-026) |
-| `video.json` | **captura** — consumer-a, 2026-07-26 (T-026) |
-| `documento_com_legenda.json` | **captura** — consumer-a, 2026-07-26 (T-030). `caption` e `filename` vêm os dois, lado a lado, e o `filename` é o nome real (longo, com hífens e números) do arquivo do cliente |
-| `mensagem_encaminhada_sintetica.json` | **sintético** (T-059, 2026-07-28). Não existe captura real destes campos — `grep -rl forwarded testdata/corpus/` não achava nada antes deste arquivo. `context.forwarded` e `context.frequently_forwarded` vêm com valores DIFERENTES entre si (`true`/`false`), pela mesma razão de `botao_de_template_sintetico.json` existir; e o `context` **não tem `id`**, porque encaminhar não é citar |
-| `resposta_a_mensagem.json` | **captura** — consumer-a, 2026-07-26 (T-032). Mensagem de texto respondendo (citando) outra: traz `context.id` com o `wamid` da mensagem citada, ao lado de `context.from` (o número do NEGÓCIO — não modelado, ver `types.go`) |
-| `status_sent_sem_pricing.json` | **captura** — consumer-a, 2026-07-28 (T-069). O `sent` **sem** o bloco `pricing`: 4 dos 53 `sent` crus medidos (~7,5%). É o arquivo que prova que `pricing` é opcional; ver a nota própria abaixo |
-| `status_sent_com_pricing.json` | **captura** — consumer-a, 2026-07-28 (T-069). A forma comum do `sent` (49 dos 53), com `pricing` `{"billable":false,...,"category":"service"}`. Mesmo `wamid` e mesmo `timestamp` do `status_delivered.json` — de propósito, ver a nota própria abaixo |
-| `status_delivered.json` | **captura** — consumer-a, 2026-07-28 (T-069). **Substituiu** o fixture derivado da doc que existia aqui (não convive com ele). Vem com `pricing` (49 de 49 no corpus deles) e **sem** o bloco `conversation` que o derivado tinha |
-| `status_failed.json` | **captura** — consumer-a, 2026-07-26 (T-033). É a falha real de 2026-07-20 (OS LR-00014, `code 131026`, `"Message undeliverable"`) que motivou o aviso ao operador que deu origem à T-028; antes era derivado do exemplo genérico da doc (`code 131049`) |
-| `status_read_com_cobranca.json` | **captura (parcial)** — consumer-a, 2026-07-26 (T-041), colada no canal bilateral (`consumer-a-STATUS.local.md`, gitignored). O trecho `{"status":"read","pricing":{"billable":true,"pricing_model":"PMP","category":"utility","type":"regular"}}` é literal, exatamente como eles colaram; envolvido aqui no envelope-padrão deste corpus (`WABA_TESTE`/`PNID_TESTE`/`wamid.TESTE017`) porque o que foi colado não incluía `entry`/`changes`/`metadata` |
-| `status_de_template.json` | **captura (parcial)** — consumer-a, 2026-07-26 (T-043). O `change` inteiro (`field` + `value`) é literal: um dos 21 exemplares que eles guardavam em disco desde antes da migração. O nível `entry` (`id`/`time`) é o envelope-padrão deste corpus, porque o que foi entregue não incluía esse nível — e o `time` **é lido** pelo parser (entra na chave do evento), então ele não é enfeite: ver a nota própria abaixo |
-| `context_de_tipo_errado_sintetico.json` | **sintético** (T-061, 2026-07-28). `context` vem como **string** onde se espera objeto. Ninguém observou a Meta fazer isso; o arquivo descreve o que o gateway tem de AGUENTAR, não o que ela manda — ver a nota própria abaixo |
-| `context_com_campo_de_tipo_errado_sintetico.json` | **sintético** (T-061, 2026-07-28). O `context` é objeto, mas `id` vem **número** onde se espera string e `forwarded` vem **string** onde se espera booleano. É o caso que o arquivo acima não cobre: lá o parser nem entra no bloco |
-| `audio_voice_de_tipo_errado_sintetico.json` | **sintético** (T-061, 2026-07-28). Áudio com `voice` **string** onde se espera booleano — o gêmeo mais velho do `context` no mesmo defeito (o formato frágil de `voice` vinha do plano 1) |
-| `texto_de_tipo_errado_sintetico.json` | **sintético** (T-062, 2026-07-28). `"text":"oi"` — string onde se espera objeto, no tipo de mensagem mais comum de todos. Traz uma **irmã sã** no mesmo lote; ver a nota própria abaixo |
-| `audio_de_tipo_errado_sintetico.json` | **sintético** (T-062, 2026-07-28). O **bloco de mídia inteiro** com tipo errado (`"audio":"MEDIA_TESTE10"`), um nível acima do `voice` que a T-061 fechou. Irmã sã no mesmo lote |
-| `interativo_de_tipo_errado_sintetico.json` | **sintético** (T-062, 2026-07-28). `"interactive":"button_reply"` — string onde se espera objeto. Irmã sã no mesmo lote |
-| `reacao_de_tipo_errado_sintetico.json` | **sintético** (T-062, 2026-07-28). `"reaction":"wamid.TESTE001"` — string onde se espera objeto. É o arquivo que separa **bloco ausente** de **bloco ilegível**: a guarda "reação sem alvo é malformada" continua valendo, e não alcança este caso. Irmã sã no mesmo lote |
-| `botao_de_tipo_errado_sintetico.json` | **sintético** (T-062, 2026-07-28). `"button":"Falar com a gente"` — string onde se espera objeto, na resposta a botão de template (o caminho que funciona fora da janela de 24h). Irmã sã no mesmo lote |
-| `metadata_de_tipo_errado_sintetico.json` | **sintético** (T-068, 2026-07-28). `"metadata":"PNID_TESTE"` — string onde se espera objeto, um nível ACIMA da mensagem. Traz mensagem **e** status no mesmo `change`, porque era o `change` inteiro que morria |
-| `contacts_de_tipo_errado_sintetico.json` | **sintético** (T-068, 2026-07-28). `"contacts":"Fulana de Teste"` — o mais caro dos cinco medidos: apagava o **lote inteiro de mensagens de um cliente**. Mensagem e status no mesmo `change` |
-| `field_de_tipo_errado_sintetico.json` | **sintético** (T-068, 2026-07-28). `"field":42` no primeiro `change`, com um segundo `change` são. É o **único dos seis que continua devolvendo `ErrParseParcial`** — ver a nota própria abaixo |
-| `entry_id_de_tipo_errado_sintetico.json` | **sintético** (T-068, 2026-07-28). `"id":42` no primeiro `entry` (o `waba_id`), com um SEGUNDO `entry` são — que é como a Meta batcha contas diferentes na mesma chamada |
-| `status_de_tipo_errado_sintetico.json` | **sintético** (T-068, 2026-07-28). `status`, `recipient_id` e `timestamp` de tipo inesperado no primeiro status, com um status irmão são. O `timestamp` numérico **sobrevive** (é a exceção tolerante); os outros dois degradam para vazio |
-| `template_de_tipo_errado_sintetico.json` | **sintético** (T-068, 2026-07-28). `message_template_name` número e `reason` objeto, com um segundo `change` de template são. O `event` e a `message_template_category` — o que faz o evento valer a pena — sobrevivem |
-| `categoria_de_template_rebaixamento.json` | **captura** (T-174, 2026-08-28, cedida pelo consumidor `consumer-b`). `template_category_update` real: `UTILITY → MARKETING` no `instrucoes_download_app_v6`, `entry.time` 1787252135 (2026-08-20 18:55:35 UTC = 15:55:35 -03). Corpo inteiro, sem reformatar; a única troca na origem foi o `waba_id` por `WABA_TESTE`. Ver a nota própria abaixo |
-| `categoria_de_template_restauracao.json` | **captura** (T-174, 2026-08-28, mesma origem). A **volta** do MESMO `message_template_id`: `MARKETING → UTILITY`, `entry.time` 1787305767 (2026-08-21 09:49:27 UTC = 06:49:27 -03). Só o par prova que ida e volta saem com chaves de dedup diferentes |
-| `categoria_de_template_sem_anterior.json` | **captura** (T-174, 2026-08-28, mesma origem). Chega **sem `previous_category`** (`teste_sonda_503_20ago`, `new_category: MARKETING`, `entry.time` 1787244576). Uma em 18 eventos guardados pelo consumidor; é a primeira evidência real do caso que `parse.go` tratava por decisão de projeto |
-| `categoria_de_template_sintetico.json` | **sintético** (T-057, 2026-07-28). Mesmo formato, com `previous_category`, `new_category` e `correct_category` DIFERENTES entre si — no sample do painel `previous` e `correct` vêm **iguais** (`MARKETING`), e por isso ele sozinho não pega leitura de campo trocada. Mesma razão de `botao_de_template_sintetico.json` existir. **Sobreviveu à chegada das capturas (T-174) e não por hábito:** nenhuma das três traz `correct_category` ou `category_appeal_status`, então ele é o único arquivo que ainda exercita esses dois campos |
-| `qualidade_do_numero_derivado_da_doc.json` | **derivado da doc** (T-058, 2026-07-28). Sample do botão *Test* do painel para `phone_number_quality_update`, congelado byte a byte. O `display_phone_number` (`16505551111`) é o número **fictício da própria Meta**, preservado do sample — não é o número de ninguém, e não há telefone real neste arquivo |
-| `qualidade_do_numero_sintetico.json` | **sintético** (T-058, 2026-07-28). Os TRÊS limites diferentes entre si (no sample `current_limit` == `max_daily_conversations_per_business`), e a direção **cara**: `TIER_1K → TIER_50`, um rebaixamento. Ver a nota própria abaixo |
-| `alerta_de_conta_derivado_da_doc.json` | **derivado da doc** (T-058, 2026-07-28). Sample do botão *Test* do painel para `account_alerts`. **Não tem irmão sintético**, e a ausência é decisão: os campos que entram na chave já vêm com valores diferentes entre si no sample, então ele sozinho pega leitura de campo trocada (mesma decisão de `botao_interativo.json`) |
-| `corpo_null.json` | sintético (não é payload da Meta — prova a guarda de `json.Unmarshal("null", &map)`) |
+| `text_message.json` | **capture** — consumer-a, 2026-07-26 (T-031). Confirms `from_user_id` and `contacts[].user_id` (format `BR.<digits>`) in real traffic — fields that do NOT appear in the doc's classic examples |
+| `template_button.json` | **capture** — consumer-a, 2026-07-26 (T-031). A real template quick-reply, tapped on the device: `type: "button"`, and `payload`/`text` came **equal** (`"Falar com a gente"`) — see `template_button_synthetic.json` below |
+| `template_button_synthetic.json` | **synthetic** (T-031). Same shape as the capture above, but with `payload` and `text` DIFFERENT on purpose — it's what catches a swapped field read, which the capture (equal values) doesn't catch on its own |
+| `interactive_button.json` | **capture** — consumer-a, 2026-07-26 (T-033). `button_reply.id` (`"confirmar"`) and `button_reply.title` (`"Confirmar"`) come DIFFERENT — enough to tell a swapped field read apart on its own; **has no synthetic sibling** (see note below) |
+| `reaction.json` | **capture** — consumer-a, 2026-07-26 (T-026). Real reaction with emoji `❤️` (`U+2764 U+FE0F`, two code points — see note below) |
+| `reaction_removed.json` | **capture** — consumer-a, 2026-07-26 (T-026). The observed pair of the line above: same reaction (same target), undone 20s later. The `emoji` key doesn't exist in the payload — not `""`, not `null` |
+| `location.json` | **capture** — consumer-a, 2026-07-26 (T-026). A dropped pin: **without** `name`/`address` — the common case observed, unlike the earlier fixture (derived from the doc), which had both and tested the rare case |
+| `audio_voice_note.json` | **capture** — consumer-a, 2026-07-26 (T-026). `"voice": true` and `mime_type: "audio/ogg; codecs=opus"` (with the parameter) confirmed in the real payload |
+| `image.json` | **capture** — consumer-a, 2026-07-26 (T-026) |
+| `video.json` | **capture** — consumer-a, 2026-07-26 (T-026) |
+| `document_with_caption.json` | **capture** — consumer-a, 2026-07-26 (T-030). `caption` and `filename` both come, side by side, and the `filename` is the customer's real (long, with hyphens and numbers) file name |
+| `forwarded_message_synthetic.json` | **synthetic** (T-059, 2026-07-28). No real capture of these fields exists — `grep -rl forwarded testdata/corpus/` found nothing before this file. `context.forwarded` and `context.frequently_forwarded` come with DIFFERENT values from each other (`true`/`false`), for the same reason `template_button_synthetic.json` exists; and the `context` **has no `id`**, because forwarding isn't quoting |
+| `message_reply.json` | **capture** — consumer-a, 2026-07-26 (T-032). A text message replying to (quoting) another: carries `context.id` with the quoted message's `wamid`, alongside `context.from` (the BUSINESS's number — not modeled, see `types.go`) |
+| `status_sent_without_pricing.json` | **capture** — consumer-a, 2026-07-28 (T-069). The `sent` **without** the `pricing` block: 4 of 53 raw `sent` measured (~7.5%). It's the file that proves `pricing` is optional; see the dedicated note below |
+| `status_sent_with_pricing.json` | **capture** — consumer-a, 2026-07-28 (T-069). The common shape of `sent` (49 of 53), with `pricing` `{"billable":false,...,"category":"service"}`. Same `wamid` and same `timestamp` as `status_delivered.json` — on purpose, see the dedicated note below |
+| `status_delivered.json` | **capture** — consumer-a, 2026-07-28 (T-069). **Replaced** the doc-derived fixture that lived here (doesn't coexist with it). Comes with `pricing` (49 of 49 in their corpus) and **without** the `conversation` block the derived one had |
+| `status_failed.json` | **capture** — consumer-a, 2026-07-26 (T-033). It's the real failure from 2026-07-20 (ticket LR-00014, `code 131026`, `"Message undeliverable"`) that triggered the operator alert that gave rise to T-028; it used to be derived from the doc's generic example (`code 131049`) |
+| `status_read_with_billing.json` | **capture (partial)** — consumer-a, 2026-07-26 (T-041), pasted in the bilateral channel (`consumer-a-STATUS.local.md`, gitignored). The excerpt `{"status":"read","pricing":{"billable":true,"pricing_model":"PMP","category":"utility","type":"regular"}}` is literal, exactly as they pasted it; wrapped here in this corpus's standard envelope (`WABA_TESTE`/`PNID_TESTE`/`wamid.TESTE017`) because what was pasted didn't include the `entry`/`changes`/`metadata` level |
+| `template_status.json` | **capture (partial)** — consumer-a, 2026-07-26 (T-043). The whole `change` (`field` + `value`) is literal: one of 21 samples they had kept on disk since before the migration. The `entry` level (`id`/`time`) is this corpus's standard envelope, because what was delivered didn't include that level — and `time` **is read** by the parser (it enters the event's key), so it isn't decoration: see the dedicated note below |
+| `context_wrong_type_synthetic.json` | **synthetic** (T-061, 2026-07-28). `context` comes as a **string** where an object is expected. Nobody observed Meta doing this; the file describes what the gateway has to WITHSTAND, not what it sends — see the dedicated note below |
+| `context_field_wrong_type_synthetic.json` | **synthetic** (T-061, 2026-07-28). `context` is an object, but `id` comes as a **number** where a string is expected and `forwarded` comes as a **string** where a boolean is expected. It's the case the file above doesn't cover: there the parser doesn't even enter the block |
+| `audio_voice_wrong_type_synthetic.json` | **synthetic** (T-061, 2026-07-28). Audio with `voice` as a **string** where a boolean is expected — the older sibling of `context`'s same defect (the fragile shape of `voice` came from stage 1) |
+| `text_wrong_type_synthetic.json` | **synthetic** (T-062, 2026-07-28). `"text":"oi"` — a string where an object is expected, on the most common message type of all. Carries a **sane sister** in the same batch; see the dedicated note below |
+| `audio_wrong_type_synthetic.json` | **synthetic** (T-062, 2026-07-28). The **whole media block** with the wrong type (`"audio":"MEDIA_TESTE10"`), one level above the `voice` that T-061 closed. Sane sister in the same batch |
+| `interactive_wrong_type_synthetic.json` | **synthetic** (T-062, 2026-07-28). `"interactive":"button_reply"` — a string where an object is expected. Sane sister in the same batch |
+| `reaction_wrong_type_synthetic.json` | **synthetic** (T-062, 2026-07-28). `"reaction":"wamid.TESTE001"` — a string where an object is expected. It's the file that separates a **missing block** from an **unreadable block**: the "a reaction with no target is malformed" guard still holds, and it doesn't reach this case. Sane sister in the same batch |
+| `button_wrong_type_synthetic.json` | **synthetic** (T-062, 2026-07-28). `"button":"Falar com a gente"` — a string where an object is expected, in a reply to a template button (the path that works outside the 24h window). Sane sister in the same batch |
+| `metadata_wrong_type_synthetic.json` | **synthetic** (T-068, 2026-07-28). `"metadata":"PNID_TESTE"` — a string where an object is expected, one level ABOVE the message. Carries a message **and** a status in the same `change`, because it was the WHOLE `change` that died |
+| `contacts_wrong_type_synthetic.json` | **synthetic** (T-068, 2026-07-28). `"contacts":"Fulana de Teste"` — the most expensive of the five measured: it erased a **customer's whole batch of messages**. Message and status in the same `change` |
+| `field_wrong_type_synthetic.json` | **synthetic** (T-068, 2026-07-28). `"field":42` in the first `change`, with a second, sane `change`. It's the **only one of the six that still returns `ErrPartialParse`** — see the dedicated note below |
+| `entry_id_wrong_type_synthetic.json` | **synthetic** (T-068, 2026-07-28). `"id":42` in the first `entry` (the `waba_id`), with a SECOND, sane `entry` — which is how Meta batches different accounts in the same call |
+| `status_wrong_type_synthetic.json` | **synthetic** (T-068, 2026-07-28). `status`, `recipient_id` and `timestamp` of an unexpected type in the first status, with a sane sibling status. The numeric `timestamp` **survives** (it's the tolerant exception); the other two degrade to empty |
+| `template_wrong_type_synthetic.json` | **synthetic** (T-068, 2026-07-28). `message_template_name` a number and `reason` an object, with a second, sane template `change`. The `event` and the `message_template_category` — what makes the event worth having — survive |
+| `template_category_downgrade.json` | **capture** (T-174, 2026-08-28, provided by consumer `consumer-b`). A real `template_category_update`: `UTILITY → MARKETING` on `instrucoes_download_app_v6`, `entry.time` 1787252135 (2026-08-20 18:55:35 UTC = 15:55:35 -03). The whole body, unreformatted; the only swap at the source was `waba_id` for `WABA_TESTE`. See the dedicated note below |
+| `template_category_restore.json` | **capture** (T-174, 2026-08-28, same origin). The **return** of the SAME `message_template_id`: `MARKETING → UTILITY`, `entry.time` 1787305767 (2026-08-21 09:49:27 UTC = 06:49:27 -03). Only the pair proves the round trip goes out with different dedup keys |
+| `template_category_no_previous.json` | **capture** (T-174, 2026-08-28, same origin). Arrives **without `previous_category`** (`teste_sonda_503_20ago`, `new_category: MARKETING`, `entry.time` 1787244576). One in 18 events the consumer kept; it's the first real evidence of the case `parse.go` handled by a project decision |
+| `template_category_synthetic.json` | **synthetic** (T-057, 2026-07-28). Same shape, with `previous_category`, `new_category` and `correct_category` DIFFERENT from each other — in the panel's sample, `previous` and `correct` come **equal** (`MARKETING`), so it alone doesn't catch a swapped field read. Same reason `template_button_synthetic.json` exists. **It survived the captures arriving (T-174), and not out of habit:** none of the three carries `correct_category` or `category_appeal_status`, so it's the only file that still exercises those two fields |
+| `number_quality_derived_from_doc.json` | **derived from the doc** (T-058, 2026-07-28). Sample from the panel's *Test* button for `phone_number_quality_update`, frozen byte for byte. The `display_phone_number` (`16505551111`) is Meta's **own fictitious number**, preserved from the sample — it's nobody's number, and there is no real phone number in this file |
+| `number_quality_synthetic.json` | **synthetic** (T-058, 2026-07-28). The THREE limits different from each other (in the sample `current_limit` == `max_daily_conversations_per_business`), and the **expensive** direction: `TIER_1K → TIER_50`, a downgrade. See the dedicated note below |
+| `account_alert_derived_from_doc.json` | **derived from the doc** (T-058, 2026-07-28). Sample from the panel's *Test* button for `account_alerts`. **Has no synthetic sibling**, and the absence is a decision: the fields that enter the key already come with different values from each other in the sample, so it alone catches a swapped field read (same decision as `interactive_button.json`) |
+| `body_null.json` | synthetic (not a Meta payload — proves the guard on `json.Unmarshal("null", &map)`) |
 
-## Sobre os arquivos DERIVADOS da documentação — **restam dois, e o nome deles diz isso**
+## About the files DERIVED from the documentation — **two remain, and their name says so**
 
-> 🔴 **Esta seção dizia "não existe mais nenhum" até 2026-07-28.** A T-057 e a T-058 acrescentaram
-> `categoria_de_template_derivado_da_doc.json`, `qualidade_do_numero_derivado_da_doc.json` e
-> `alerta_de_conta_derivado_da_doc.json`, e os três eram derivados **por falta de alternativa** — são
-> webhooks de CONTA cujo tráfego é raro por natureza (uma reclassificação de categoria, um
-> rebaixamento de tier e um alerta de conta não acontecem toda semana), e o
-> `template_category_update` estava até **desinscrito** no App. Nenhum consumidor tinha um exemplar
-> guardado.
+> 🔴 **This section said "none remain" until 2026-07-28.** T-057 and T-058 added
+> `template_category_derived_from_doc.json`, `number_quality_derived_from_doc.json` and
+> `account_alert_derived_from_doc.json`, and all three were derived **for lack of an
+> alternative** — they are ACCOUNT webhooks whose traffic is rare by nature (a category
+> reclassification, a tier downgrade and an account alert don't happen every week), and
+> `template_category_update` was even **unsubscribed** in the App. No consumer had a sample kept.
 >
-> ✅ **Um dos três já saiu: a T-174 (2026-08-28) apagou `categoria_de_template_derivado_da_doc.json`**
-> e pôs três capturas reais no lugar (`..._rebaixamento`, `..._restauracao`, `..._sem_anterior`),
-> cedidas pelo consumidor `consumer-b`. **Ele não sobrevive ao lado delas** — é a regra logo abaixo,
-> aplicada. Continuam derivados `qualidade_do_numero_derivado_da_doc.json` e
-> `alerta_de_conta_derivado_da_doc.json`.
+> ✅ **One of the three is already gone: T-174 (2026-08-28) deleted
+> `template_category_derived_from_doc.json`** and put three real captures in its place
+> (`..._downgrade`, `..._restore`, `..._no_previous`), provided by consumer `consumer-b`. **It
+> doesn't survive alongside them** — that's the rule right below, applied. Still derived:
+> `number_quality_derived_from_doc.json` and `account_alert_derived_from_doc.json`.
 >
-> **O nome do arquivo carrega a marcação.** A tabela de origem é o registro, mas quem abre o
-> diretório vê o arquivo antes de abrir este README, e um fixture derivado que se parece com um
-> capturado é exatamente o que esta seção existe para não deixar acontecer de novo.
+> **The file name carries the marking.** The origin table is the record, but whoever opens the
+> directory sees the file before opening this README, and a derived fixture that looks like a
+> capture is exactly what this section exists to keep from happening again.
 >
-> **A regra de substituição vale para os dois que restam:** quando aparecer captura real, ela
-> **substitui** o arquivo — os dois não convivem.
+> **The replacement rule holds for the two that remain:** when a real capture shows up, it
+> **replaces** the file — the two don't coexist.
 
 
-Para a T-023 (reação, localização, legenda/nome de arquivo) e a T-028 (motivo de falha no status)
-não havia payload real disponível quando essas tarefas foram feitas — nenhum consumidor tinha
-exercitado esses caminhos ainda contra a Meta de verdade. Esses arquivos **não eram captura real**:
-a forma foi copiada dos exemplos publicados pela documentação oficial da Meta, com os ids trocados
-para o mesmo padrão fictício do resto do corpus, e nome/endereço de localização (quando presentes
-num exemplo) inventados.
+For T-023 (reaction, location, caption/file name) and T-028 (failure reason) no real payload was
+available when those tasks were done — no consumer had exercised those paths against the real
+Meta yet. Those files **weren't real captures**: the shape was copied from the examples published
+by Meta's official documentation, with the ids swapped for the rest of the corpus's same
+fictitious pattern, and location name/address (when present in an example) invented.
 
-Eles foram sendo substituídos por captura à medida que o tráfego real apareceu:
-`botao_interativo.json` e `status_failed.json` na T-033 (2026-07-26), **`status_delivered.json`,
-o último daquela safra, na T-069 (2026-07-28)**, e `categoria_de_template_derivado_da_doc.json` na
-T-174 (2026-08-28). Contando hoje, **dois arquivos da tabela acima são derivados da doc**
-(`qualidade_do_numero_derivado_da_doc.json` e `alerta_de_conta_derivado_da_doc.json` — T-058);
-todos os outros são *captura* ou *sintético*.
+They kept getting replaced by captures as real traffic showed up:
+`interactive_button.json` and `status_failed.json` in T-033 (2026-07-26), **`status_delivered.json`,
+the last of that batch, in T-069 (2026-07-28)**, and `template_category_derived_from_doc.json` in
+T-174 (2026-08-28). Counting today, **two files in the table above are derived from the doc**
+(`number_quality_derived_from_doc.json` and `account_alert_derived_from_doc.json` — T-058); all
+the others are *capture* or *synthetic*.
 
-> **A justificativa que segurou o `delivered` derivado era conforto, não argumento — e a captura
-> deu razão a quem desconfiou.** Ela dizia que não haveria o que confirmar num `delivered` real,
-> porque *"`delivered` sem motivo é exatamente o caso feliz"*. A frase raciocina sobre o campo
-> `errors[]`, que de fato não apareceria — e conclui, sem base, sobre o **payload inteiro**. A T-051
-> (2026-07-28) já a tinha marcado como frágil; a T-069, horas depois, mostrou que o derivado errava
-> a forma em dois pontos (`pricing` ausente, `conversation` presente). **"Não há o que confirmar" só
-> se sabe depois de capturar** — e os achados deste corpus são todos de coisas que ninguém tinha
-> como prever lendo a doc: `from_user_id`/`user_id` em `mensagem_texto.json`, `reason: "NONE"` e a
-> ausência de `metadata` em `status_de_template.json`, a chave `emoji` **ausente** em
-> `reacao_removida.json`, e agora o `pricing` opcional do `sent`.
+> **The justification that propped up the derived `delivered` was comfort, not argument — and the
+> capture proved the doubters right.** It said there would be nothing to confirm in a real
+> `delivered`, because *"`delivered` with no reason is exactly the happy case"*. The sentence
+> reasons about the `errors[]` field, which indeed wouldn't show up — and concludes, with no
+> basis, about the **whole payload**. T-051 (2026-07-28) had already flagged it as fragile; T-069,
+> hours later, showed the derived one got the shape wrong in two spots (`pricing` missing,
+> `conversation` present). **"Nothing to confirm" is only known after capturing** — and every
+> finding in this corpus is something nobody could have predicted by reading the doc:
+> `from_user_id`/`user_id` in `text_message.json`, `reason: "NONE"` and the absence of `metadata`
+> in `template_status.json`, the `emoji` key **absent** in `reaction_removed.json`, and now the
+> optional `pricing` on `sent`.
 
-Se um arquivo derivado voltar a nascer aqui (um tipo novo sem captura), a regra continua: quando o
-real aparecer, **substitua** o arquivo e atualize a tabela acima — não deixe os dois convivendo.
+If a derived file is ever born here again (a new type with no capture), the rule holds: when the
+real one shows up, **replace** the file and update the table above — don't let the two coexist.
 
-## Sobre os arquivos de CAPTURA real (T-026, 2026-07-26)
+## About the real CAPTURE files (T-026, 2026-07-26)
 
-O `consumer-a` capturou uma bateria de mensagens reais mandadas pelo dono do número de teste:
-texto, emoji, localização, imagem, áudio e vídeo — e, numa captura separada no mesmo dia, uma
-reação e sua remoção 20 segundos depois. Os valores sensíveis foram mascarados **por eles**, antes
-de colar no canal bilateral (`consumer-a-STATUS.local.md`, gitignored): coordenadas arredondadas,
-`id`/`sha256`/`url` de mídia substituídos por placeholder — porque a localização real aponta para a
-casa de uma pessoa, e as URLs `lookaside.fbsbx.com` são credenciais temporárias de acesso ao
-arquivo. A forma (quais chaves existem, em que nível, com que tipo) é literal.
+`consumer-a` captured a batch of real messages sent by the test number's owner: text, emoji,
+location, image, audio and video — and, in a separate capture the same day, a reaction and its
+removal 20 seconds later. Sensitive values were masked **by them**, before pasting into the
+bilateral channel (`consumer-a-STATUS.local.md`, gitignored): rounded coordinates, media
+`id`/`sha256`/`url` replaced by a placeholder — because the real location points to a person's
+home, and `lookaside.fbsbx.com` URLs are temporary file-access credentials. The shape (which keys
+exist, at what level, with what type) is literal.
 
-**`reacao_removida.json` é o arquivo mais importante do lote**: é o único caso em que o significado
-inteiro do evento está na AUSÊNCIA de uma chave, e é o único fato desta tarefa que não podia ser
-confirmado por leitura de doc — só por alguém ver a reação sumir e capturar o payload.
+**`reaction_removed.json` is the most important file in the batch**: it's the only case where the
+event's whole meaning is in the ABSENCE of a key, and the only fact from this task that couldn't
+be confirmed by reading the doc — only by someone watching the reaction disappear and capturing
+the payload.
 
-## Sobre `documento_com_legenda.json` (T-030, 2026-07-26)
+## About `document_with_caption.json` (T-030, 2026-07-26)
 
-Era o último fixture de mensagem-com-mídia ainda marcado "derivado da doc" — nenhum consumidor
-tinha mandado documento com legenda até então. O `consumer-a` capturou um do fio e colou no canal
-bilateral (`consumer-a-STATUS.local.md`, gitignored), com os mesmos mascaramentos do lote da T-026:
-`sha256`/`id`/`url` substituídos por placeholder (as URLs `lookaside.fbsbx.com` são credenciais
-temporárias de acesso ao arquivo). A forma — quais chaves existem, em que nível, com que tipo — é
-literal; `caption` e `filename` são o texto real observado.
+It was the last message-with-media fixture still marked "derived from the doc" — no consumer had
+sent a document with a caption until then. `consumer-a` captured one off the wire and pasted it
+into the bilateral channel (`consumer-a-STATUS.local.md`, gitignored), with the same masking as
+the T-026 batch: `sha256`/`id`/`url` replaced by a placeholder (`lookaside.fbsbx.com` URLs are
+temporary file-access credentials). The shape — which keys exist, at what level, with what type —
+is literal; `caption` and `filename` are the real observed text.
 
-A captura confirma a mesma estrutura que a doc já previa (`caption` e `filename` lado a lado), então
-não é um achado de formato — mas ela substitui um valor de teste fraco por um realista: o `filename`
-derivado da doc era `recibo-teste.pdf` (curto, sem hífen, sem número); o capturado é
-`515642-9741-manual-forno-gourmet-grill-rev-43.pdf`, o nome real do arquivo do cliente. Um fixture
-com nome curto nunca teria exercitado nome longo, com hífens e dígitos.
+The capture confirms the same structure the doc already predicted (`caption` and `filename` side
+by side), so it isn't a shape finding — but it replaces a weak test value with a realistic one:
+the doc-derived `filename` was `recibo-teste.pdf` (short, no hyphen, no number); the captured one
+is `515642-9741-manual-forno-gourmet-grill-rev-43.pdf`, the customer's real file name. A fixture
+with a short name would never have exercised a long one, with hyphens and digits.
 
-**Esta frase foi corrigida em 2026-07-26 (T-031) depois de sair errada uma vez.** Uma versão anterior
-deste parágrafo dizia "nenhum fixture de mensagem descreve a doc" como se fosse absoluto — o
-qualificador real, dito pelo consumer-a, era "o último derivado **que importa**", e a troca por um
-absoluto foi feita sem contar arquivo nenhum. Contando na época (T-031): dos fixtures de MENSAGEM, só
-`botao_interativo.json` continuava "derivado da doc" (`mensagem_texto.json` e `botao_de_template.json`
-tinham virado captura na mesma tarefa); `status_failed.json` ficava de fora da contagem por ser
-fixture de STATUS, não de mensagem. **A T-033 (2026-07-26) fechou os dois que restavam** — ver a
-nota própria mais abaixo — então, desde ali, nenhum fixture de MENSAGEM do corpus é derivado da doc;
-`status_delivered.json` (fixture de STATUS) foi o último de todos, e caiu na T-069 (2026-07-28).
+**This sentence was corrected on 2026-07-26 (T-031) after coming out wrong once.** An earlier
+version of this paragraph said "no message fixture describes the doc" as if it were absolute —
+the real qualifier, said by consumer-a, was "the last derived one **that matters**", and the swap
+to an absolute was made without counting a single file. Counting at the time (T-031): of the
+MESSAGE fixtures, only `interactive_button.json` was still "derived from the doc"
+(`text_message.json` and `template_button.json` had become captures in the same task);
+`status_failed.json` was left out of the count for being a STATUS fixture, not a message one.
+**T-033 (2026-07-26) closed the two that remained** — see the dedicated note further below — so,
+from then on, no MESSAGE fixture in the corpus is derived from the doc; `status_delivered.json`
+(a STATUS fixture) was the last of all, and it fell in T-069 (2026-07-28).
 
-## Sobre `mensagem_texto.json` e `botao_de_template.json` (T-031, 2026-07-26)
+## About `text_message.json` and `template_button.json` (T-031, 2026-07-26)
 
-O consumer-a capturou dois fixtures que ainda estavam "derivado da doc" e os dois trouxeram algo
-que o derivado não tinha:
+consumer-a captured two fixtures that were still "derived from the doc" and both brought
+something the derived one didn't have:
 
-**`mensagem_texto.json`** — o payload real chegou com `contacts[].user_id` e
-`messages[].from_user_id`, formato `BR.<dígitos>`, identidade de usuário. Nenhum exemplo clássico da
-doc da Meta mostra esses campos, e ninguém sabe desde quando eles existem no tráfego real. Isso não
-quebra nada hoje — `encoding/json` ignora campo desconhecido em silêncio — mas até esta tarefa o
-corpus **nunca tinha exercitado** esse caminho: um corpus que só contém campos já conhecidos não pode
-falhar por campo novo, que é exatamente o cenário para o qual ele existe. A garantia agora está
-provada por teste (`TestParseWebhookCampoDesconhecidoNaoDerrubaOParse`,
-`internal/meta/parse_test.go`), não só pelo acidente do `encoding/json`.
+**`text_message.json`** — the real payload arrived with `contacts[].user_id` and
+`messages[].from_user_id`, format `BR.<digits>`, a user identity. No classic example in Meta's doc
+shows these fields, and nobody knows since when they exist in real traffic. This breaks nothing
+today — `encoding/json` silently ignores an unknown field — but until this task the corpus **had
+never exercised** that path: a corpus that only contains already-known fields can't fail on a new
+field, which is exactly the scenario it exists for. The guarantee is now proven by test
+(`TestParseWebhookAnUnknownFieldDoesNotBringDownTheParse`, `internal/meta/parse_test.go`), not
+just by `encoding/json`'s accident.
 
-**Decisão explícita: `user_id`/`from_user_id` NÃO entram no envelope** (`Evento`, em `types.go`). É
-dado de identidade de pessoa, nenhum consumidor pediu, e o envelope só cresce — acrescentar depois é
-de graça, tirar depois é quebra de contrato. O mesmo teste que prova que o campo não derruba o parse
-também prova que ele não vaza para o envelope.
+**Explicit decision: `user_id`/`from_user_id` do NOT enter the envelope** (`Event`, in
+`types.go`). It's personal identity data, no consumer asked for it, and the envelope only grows —
+adding it later is free, removing it later breaks the contract. The same test that proves the
+field doesn't bring down the parse also proves it doesn't leak into the envelope.
 
-**`botao_de_template.json`** — o quick-reply de template real trouxe `payload` e `text` **iguais**
-(`"Falar com a gente"`). Um fixture assim passa verde mesmo se o parser ler o campo errado (os dois
-valores coincidem) — é a mesma família do "teste de vazamento cuja fixture apagava o ramo que
-vazaria" (`docs/ARMADILHAS.md`). Por isso `botao_de_template_sintetico.json` existe: mesmo formato,
-`payload` e `text` DIFERENTES de propósito. Provado por mutação: trocar
-`e.BotaoPayload = m.Button.Payload` por `m.Button.Text` em `internal/meta/parse.go` deixa
-`TestParseWebhookBotaoDeTemplateSinteticoDistinguePayloadDeTexto` vermelho e o teste do capturado
-(`TestParseWebhookBotaoDeTemplateCapturaTemPayloadIgualATexto`) continua verde — exatamente porque os
-valores do capturado são iguais.
+**`template_button.json`** — the real template quick-reply brought `payload` and `text` **equal**
+(`"Falar com a gente"`). A fixture like this passes green even if the parser reads the wrong field
+(the two values coincide) — it's the same family as the "leak test whose fixture erased the
+branch that would leak" (`docs/ARMADILHAS.md`). That's why `template_button_synthetic.json`
+exists: same shape, `payload` and `text` DIFFERENT on purpose. Proven by mutation: swapping
+`e.ButtonPayload = button.Payload` for `button.Text` in `internal/meta/parse.go` leaves
+`TestParseWebhookASyntheticTemplateButtonDistinguishesPayloadFromText` red while the capture's test
+(`TestParseWebhookATemplateButtonCaptureHasPayloadEqualToText`) stays green — exactly because the
+capture's values are equal.
 
-**Dois não-achados, verificados antes de escrever a tarefa (não supostos):** o parser não lê
-`context` (presente no payload real do botão, mas não modelado em `mensagemMeta`), então a
-mensagem original apontada por `context.id`/`context.from` não afeta nada aqui; e `type: "button"`
-já era tratado como caminho próprio antes desta tarefa (`internal/meta/parse.go`), com o comentário
-já existente dizendo que quick-reply de template não chega como `interactive.button_reply`. Nenhum
-dos dois virou achado porque nenhum dos dois divergiu do esperado.
+**Two non-findings, checked before writing the task (not assumed):** the parser doesn't read
+`context` (present in the button's real payload, but not modeled in `messageMeta`), so the
+original message pointed to by `context.id`/`context.from` doesn't affect anything here; and
+`type: "button"` was already handled as its own path before this task (`internal/meta/parse.go`),
+with a comment already saying a template quick-reply doesn't arrive as
+`interactive.button_reply`. Neither became a finding because neither diverged from what was
+expected.
 
-**Esta nota ficou desatualizada em 2026-07-26 (T-032): o parser passou a ler `context`.** O
-`consumer-a` pediu o campo — é o último que faltava para eles removerem a lib privada que existia
-só por causa do envelope incompleto. `botao_de_template.json` (acima) já carregava `context` desde a
-T-031 e nunca tinha sido lido; agora é: `context.id` vira `Evento.ResponderA` (`responder_a` no
-JSON), com o MESMO nome do campo equivalente no envio (`Pedido.ResponderA`) — razão na T-024.
-`context.from` continua de fora, e agora por decisão explícita, não por acidente: é o número do
-NEGÓCIO, não do cliente, e um campo que parece "de quem" e é "para quem" é convite a bug.
+**This note went stale on 2026-07-26 (T-032): the parser started reading `context`.**
+`consumer-a` asked for the field — it's the last thing they needed to remove the private library
+that existed only because of the incomplete envelope. `template_button.json` (above) had already
+carried `context` since T-031 and had never been read; now it is: `context.id` becomes
+`Event.ReplyTo` (`reply_to` in the JSON), with the SAME field name as the equivalent field on
+send (`Request.ReplyTo`) — reasoning in T-024. `context.from` stays out, and now by explicit
+decision, not by accident: it's the BUSINESS's number, not the customer's, and a field that looks
+like "who from" and is "who to" is an invitation to bugs.
 
-## Sobre `resposta_a_mensagem.json` (T-032, 2026-07-26)
+## About `message_reply.json` (T-032, 2026-07-26)
 
-> **A ausência de `responder_a` é o caso NORMAL — inclusive em resposta de verdade.** Observado em
-> 2026-07-26 (consumer-a, dois payloads da mesma conversa, 3 min de diferença): responder **segurando
-> a bolha** gera `context`; responder **digitando na notificação** (inline) gera payload **sem
-> `context`**. A Meta não manda vínculo nesse caso. Como responder pela notificação é o caminho mais
-> rápido no celular, a ausência é provavelmente a maioria do tráfego.
+> **The absence of `reply_to` is the NORMAL case — including in a real reply.** Observed on
+> 2026-07-26 (consumer-a, two payloads from the same conversation, 3 min apart): replying by
+> **holding the bubble** generates `context`; replying by **typing in the notification** (inline)
+> generates a payload **without `context`**. Meta doesn't send the link in that case. Since
+> replying from the notification is the fastest path on a phone, the absence is probably the
+> majority of the traffic.
 >
-> **Este fixture cobre só o caso COM citação.** Não há captura do caso inline aqui — quem for
-> escrever teste de ausência hoje usa payload sintético e deve marcá-lo como tal. Se aparecer captura
-> do inline, ela entra e esta nota vira ponteiro para o arquivo.
+> **This fixture only covers the case WITH a quote.** There's no capture of the inline case here
+> — whoever writes an absence test today should use a synthetic payload and mark it as such. If a
+> capture of the inline case shows up, it goes in and this note becomes a pointer to the file.
 
-Captura real do consumer-a: o dono respondeu citando uma mensagem anterior (segurando a bolha e
-digitando "Recebido"). O `cru` trouxe `context.from` (o número do negócio) e `context.id` (o `wamid`
-da mensagem citada) dentro de `messages[0]`. Os dois valores são DIFERENTES — o que faz este fixture
-ser também a prova da mutação obrigatória da T-032: se o parser lesse `context.from` em vez de
-`context.id`, `Evento.ResponderA` sairia com o número do negócio (`5532999990000`) em vez do `wamid`
-esperado (`wamid.TESTE001`), e o teste que compara o valor exato (não só a presença do campo) fica
-vermelho. A mesma distinção já existia, sem ter sido aproveitada, em `botao_de_template.json`
-(`context.from` = `5532999990000`, `context.id` = `wamid.TESTE013`).
+Real capture from consumer-a: the owner replied by quoting an earlier message (holding the bubble
+and typing "Recebido"). The `cru` carried `context.from` (the business's number) and `context.id`
+(the quoted message's `wamid`) inside `messages[0]`. The two values are DIFFERENT — which makes
+this fixture also the proof of T-032's mandatory mutation: if the parser read `context.from`
+instead of `context.id`, `Event.ReplyTo` would come out with the business's number
+(`5532999990000`) instead of the expected `wamid` (`wamid.TESTE001`), and the test comparing the
+exact value (not just the field's presence) goes red. The same distinction already existed,
+unused, in `template_button.json` (`context.from` = `5532999990000`, `context.id` =
+`wamid.TESTE013`).
 
-## Sobre `botao_interativo.json` e `status_failed.json` (T-033, 2026-07-26)
+## About `interactive_button.json` and `status_failed.json` (T-033, 2026-07-26)
 
-Os dois últimos fixtures de mensagem/status ainda marcados "derivado da doc" caíram na mesma
-tarefa: o consumer-a auditou os 218 payloads crus que tem gravados (contando as chaves que a Meta
-manda contra as que o nosso código lê — a mesma disciplina de "conte, não estime" desta rede) e
-achou captura real para os dois.
+The last two message/status fixtures still marked "derived from the doc" fell in the same task:
+consumer-a audited the 218 raw payloads they have recorded (counting the keys Meta sends against
+the ones our code reads — the same "count, don't estimate" discipline as this network) and found
+real captures for both.
 
-**`botao_interativo.json`** — o consumer-a tinha dito, num ciclo anterior, que esse tráfego não
-existia (mensagem interativa não-template nunca tinha sido mandada). A contagem desmentiu: existem
-**três**. O `button_reply` capturado tem `id` (`"confirmar"`) DIFERENTE de `title` (`"Confirmar"`) —
-os dois só diferem em capitalização, mas isso já basta para uma comparação de string em Go (que é
-sensível a caixa) distinguir sozinha uma leitura de campo trocada. **Por isso este fixture NÃO ganhou
-um irmão sintético** como `botao_de_template_sintetico.json` ganhou: lá o capturado tinha `payload ==
-text` byte a byte, e por isso não pegava a mutação sozinho; aqui pega. Acrescentar um sintético "por
-simetria" com o de template seria cerimônia sem garantia — a mesma pergunta de
-`docs/ARMADILHAS.md`: "este campo/arquivo compra alguma diferença de comportamento, ou só parece que
-sim porque outro parecido precisou?". A captura também trouxe `context` (não testado por este
-fixture — `resposta_a_mensagem.json`, acima, já é quem prova a leitura de `context.id`).
+**`interactive_button.json`** — consumer-a had said, in an earlier cycle, that this traffic didn't
+exist (a non-template interactive message had never been sent). The count proved otherwise: there
+are **three**. The captured `button_reply` has `id` (`"confirmar"`) DIFFERENT from `title`
+(`"Confirmar"`) — the two only differ in capitalization, but that's already enough for a Go string
+comparison (which is case-sensitive) to tell a swapped field read apart on its own. **That's why
+this fixture did NOT get a synthetic sibling** the way `template_button_synthetic.json` did: there
+the capture had `payload == text` byte for byte, so it didn't catch the mutation on its own; here
+it does. Adding a synthetic one "for symmetry" with the template one would be ceremony with no
+guarantee — the same question from `docs/ARMADILHAS.md`: "does this field/file buy any behavior
+difference, or does it just look like it should because a similar one needed it?". The capture
+also brought `context` (not tested by this fixture — `message_reply.json`, above, is already what
+proves reading `context.id`).
 
-**`status_failed.json`** — é a falha real de 2026-07-20 (OS LR-00014, `code 131026`, `"Message
-undeliverable"`) que motivou o aviso ao operador que deu origem à T-028 inteira; antes era derivado
-do exemplo genérico da doc oficial (`code 131049`, um código diferente do incidente que a tarefa
-existia para resolver). A captura confirma campo a campo o que a T-028/T-029 já modelavam: `code`,
-`title`, `message` e `error_data.details` existem, e **`title` e `message` vêm com o MESMO valor**
-(`"Message undeliverable"`) — o corte de guardar só `codigo`/`mensagem` (não os dois) continua
-certo, e `detalhes` (`"Message Undeliverable."`) continua sendo a única parte que acrescenta
-informação além do título.
+**`status_failed.json`** — it's the real failure from 2026-07-20 (ticket LR-00014, `code 131026`,
+`"Message undeliverable"`) that triggered the operator alert that gave rise to all of T-028; it
+used to be derived from the official doc's generic example (`code 131049`, a different code from
+the incident the task existed to solve). The capture confirms field by field what T-028/T-029
+already modeled: `code`, `title`, `message` and `error_data.details` exist, and **`title` and
+`message` come with the SAME value** (`"Message undeliverable"`) — the cut of keeping only
+`code`/`message` (not both) is still right, and `details` (`"Message Undeliverable."`) is still
+the only part that adds information beyond the title.
 
-**O que esta tarefa acrescentou ao PARSER, não só ao corpus:** a Meta também manda `errors[]`
-DENTRO de `messages[]` (não só em `statuses[]`), no sub_tipo `"unsupported"` — a Meta recebeu algo
-que a Cloud API não sabe representar (`code 131051`, `"Message type unknown"`, formato confirmado em
+**What this task added to the PARSER, not just the corpus:** Meta also sends `errors[]` INSIDE
+`messages[]` (not just in `statuses[]`), under the `"unsupported"` sub-type — Meta received
+something the Cloud API can't represent (`code 131051`, `"Message type unknown"`, shape confirmed
+at
 developers.facebook.com/documentation/business-messaging/whatsapp/webhooks/reference/messages/unsupported/,
-lido em 2026-07-26). Antes da T-033, `mensagemMeta` não tinha campo `Errors`, então uma mensagem
-`unsupported` chegava com `sub_tipo` e um id, e nada mais — indistinguível de "mensagem vazia" para
-o consumidor. O gateway reusa o MESMO `ErroStatus` e o MESMO campo `Evento.Erro` que o evento de
-status já usa (ver `internal/meta/types.go`), porque o formato do item de `errors[]` é idêntico nos
-dois lugares — só o SIGNIFICADO muda com o `tipo` do evento, e essa diferença está documentada no
-código e em `docs/CONTRATO-CONSUMIDOR.md`. Não há fixture de corpus para esse caso (nenhuma captura
-real chegou ainda); os testes que cobrem `sub_tipo: "unsupported"` em
-`internal/meta/parse_test.go` usam um payload sintético, com os valores do exemplo oficial da Meta
-citado acima.
+read on 2026-07-26). Before T-033, `messageMeta` had no `Errors` field, so an `unsupported`
+message arrived with a sub-type and an id, and nothing else — indistinguishable from "empty
+message" to the consumer. The gateway reuses the SAME `StatusError` and the SAME `Event.Error`
+field the status event already uses (see `internal/meta/types.go`), because the `errors[]` item's
+shape is identical in both places — only the MEANING changes with the event's type, and that
+difference is documented in the code and in `docs/CONTRATO-CONSUMIDOR.md`. There's no corpus
+fixture for this case (no real capture has arrived yet); the tests covering `sub_tipo:
+"unsupported"` in `internal/meta/parse_test.go` use a synthetic payload, with the official Meta
+example's values quoted above.
 
-## Sobre `mensagem_encaminhada_sintetica.json` (T-059, 2026-07-28)
+## About `forwarded_message_synthetic.json` (T-059, 2026-07-28)
 
-É o único fixture de mensagem do corpus que **não tem lastro nenhum em tráfego observado** — nem
-captura, nem exemplo de doc. Os dois lados foram procurados antes de escrevê-lo: nenhum dos payloads
-guardados pelos consumidores traz `forwarded` (`grep -rl forwarded testdata/corpus/` volta vazio sem
-este arquivo), e a documentação pública da Meta, procurada em 2026-07-28, **não tem mais página
-descrevendo os campos de `context`** — as páginas de referência de webhook que existem hoje não os
-mencionam. Ele descreve, portanto, o formato que o gateway **decidiu ler**, não um formato observado.
+It's the only message fixture in the corpus with **no backing at all in observed traffic** —
+neither a capture, nor a doc example. Both were searched before writing it: none of the payloads
+kept by the consumers carries `forwarded` (`grep -rl forwarded testdata/corpus/` comes back empty
+without this file), and Meta's public documentation, searched on 2026-07-28, **no longer has a
+page describing the `context` fields** — the webhook reference pages that exist today don't
+mention them. It describes, therefore, the shape the gateway **decided to read**, not an observed
+shape.
 
-**Consequência a levar a sério, e é o motivo de esta nota existir:** um consumidor que teste o
-mapeamento de encaminhamento só contra este arquivo prova que concorda com **a nossa suposição**, não
-com o que a Meta manda. É a mesma família da T-051 (`sent` sem captura, `delivered` derivado da doc),
-um grau pior. Quando aparecer captura real de mensagem encaminhada — os dois consumidores estão em
-produção recebendo, e mensagem encaminhada é comum —, ela **substitui** este arquivo, não convive com
-ele.
+**A consequence worth taking seriously, and the reason this note exists:** a consumer testing the
+forwarding mapping only against this file proves they agree with **our own assumption**, not with
+what Meta sends. It's the same family as T-051 (`sent` with no capture, `delivered` derived from
+the doc), one degree worse. When a real capture of a forwarded message shows up — both consumers
+are in production receiving traffic, and forwarded messages are common —, it **replaces** this
+file, it doesn't coexist with it.
 
-**Os dois campos vêm com valores diferentes entre si de propósito** (`forwarded: true`,
-`frequently_forwarded: false`): com os dois iguais, trocar a leitura de um pelo outro passaria verde.
-Provado por mutação (T-059): trocar `m.Context.Forwarded` por `m.Context.FrequentlyForwarded` em
-`internal/meta/parse.go` deixa este fixture VERMELHO nas duas asserções ao mesmo tempo, enquanto
-`TestParseWebhookCorrenteMarcaOsDoisCamposDeEncaminhamento` (payload sintético com os dois `true`)
-continua verde — exatamente a assimetria que justifica os dois testes existirem.
+**Both fields come with different values from each other on purpose** (`forwarded: true`,
+`frequently_forwarded: false`): with the two equal, swapping the read of one for the other would
+pass green. Proven by mutation (T-059): swapping `m.Context.Forwarded` for
+`m.Context.FrequentlyForwarded` in `internal/meta/parse.go` leaves this fixture RED on both
+assertions at once, while `TestParseWebhookAChainMessageMarksBothForwardingFields` (a synthetic
+payload with both `true`) stays green — exactly the asymmetry that justifies both tests existing.
 
-O `context` deste arquivo **não tem `id`**: encaminhar não é citar, e os dois casos são
-independentes na Meta. É por isso que o teste do corpus também exige `responder_a` ausente aqui.
+This file's `context` **has no `id`**: forwarding isn't quoting, and the two cases are independent
+on Meta's side. That's why the corpus test also requires `reply_to` to be absent here.
 
-## Sobre os três arquivos de TIPO ERRADO (T-061, 2026-07-28)
+## About the three WRONG-TYPE files (T-061, 2026-07-28)
 
-São os únicos arquivos do corpus **malformados de propósito** — e a distinção importa ao lê-los: os
-outros descrevem o que a Meta *manda*; estes descrevem o que o gateway *tem de aguentar*. Nenhum dos
-dois consumidores observou a Meta mandar tipo errado nestes campos, e nada aqui afirma que ela mande.
+They're the only files in the corpus **malformed on purpose** — and the distinction matters when
+reading them: the others describe what Meta *sends*; these describe what the gateway *has to
+withstand*. Neither consumer observed Meta sending the wrong type in these fields, and nothing
+here claims it does.
 
-**O que eles provam é uma linha só, e ela estava invertida até 2026-07-28:** `err == nil` e
-`len(evs) == 1`. Antes da T-061, um `context` (ou um `voice`) com tipo inesperado derrubava o
-`json.Unmarshal` da **mensagem inteira** — ela virava `ignorados++` e sumia da lista `eventos`, sem
-alarme e sem contador, com `200` respondido à Meta (que por isso nunca reenvia). Ou seja: um teste
-verde aqui não é "o parser leu um campo esquisito", é **"a mensagem da cliente chegou"**.
+**What they prove is a single line, and it was inverted until 2026-07-28:** `err == nil` and
+`len(evs) == 1`. Before T-061, a `context` (or a `voice`) of an unexpected type brought down the
+**whole message's** `json.Unmarshal` — it turned into `ignored++` and vanished from the `events`
+list, with no alarm and no counter, with `200` answered to Meta (which therefore never resends).
+In other words: a green test here isn't "the parser read a weird field", it's **"the customer's
+message got through"**.
 
-Os três estão separados de propósito, um caminho por arquivo: bloco inteiro ilegível
-(`context` string), campo ilegível **dentro** de um bloco legível (`id` número, `forwarded` string) e
-o gêmeo em outro nível da árvore (`voice` string, dentro de mídia). Juntar dois num arquivo só faria
-um teste vermelho não dizer qual caminho quebrou.
+The three are separated on purpose, one path per file: an entirely unreadable block (`context` as
+a string), an unreadable field **inside** a readable block (`id` a number, `forwarded` a string)
+and the twin at another level of the tree (`voice` a string, inside media). Merging two into one
+file would keep a red test from saying which path broke.
 
-**Mutação obrigatória (T-061), feita e revertida antes do commit:** voltar `mensagemMeta.Context`
-para struct plana deixa os dois primeiros vermelhos; voltar `midiaMeta.Voice` para `*bool` deixa o
-terceiro. Detalhes das quatro mutações — incluindo as duas que provam decisões que nenhum payload
-mal formado pegaria sozinho — em `docs/ARMADILHAS.md`, seção *Go / JSON*.
+**Mandatory mutation (T-061), made and reverted before the commit:** reverting `messageMeta.Context`
+to a flat struct leaves the first two red; reverting `mediaMeta.Voice` to `*bool` leaves the third
+one. Details of the four mutations — including the two that prove decisions no malformed payload
+would catch on its own — are in `docs/ARMADILHAS.md`, "Go / JSON" section.
 
-## Sobre os cinco arquivos de TIPO ERRADO por TIPO DE MENSAGEM (T-062, 2026-07-28)
+## About the five WRONG-TYPE-BY-MESSAGE-KIND files (T-062, 2026-07-28)
 
-São a continuação direta dos três acima, e a diferença entre os dois lotes é a lição da tarefa: os
-da T-061 cobrem **dois campos**; estes cobrem **uma classe**. Medido com `ParseWebhook` antes da
-T-062, um valor de tipo inesperado em **qualquer** campo de `mensagemMeta` — não só
-nos cinco que dão nome a estes arquivos — fazia a mensagem virar `ignorados++` e **sumir de
-`eventos`**. `"text":"oi"` é o caso que assusta: é o tipo mais comum de todos.
+They're the direct continuation of the three above, and the difference between the two batches is
+the task's lesson: T-061's cover **two fields**; these cover **one class**. Measured with
+`ParseWebhook` before T-062, an unexpected type value in **any** field of `messageMeta` — not
+only the five that give these files their name — turned the message into `ignored++` and made it
+**vanish from `events`**. `"text":"oi"` is the scary case: it's the most common type of all.
 
-**Cada arquivo tem DUAS mensagens, e a segunda é o que o lote da T-061 não tinha: a irmã sã.** A
-asserção que vale nos cinco é `len(evs) == 2` — a quebrada degrada e chega, a irmã chega intacta.
-Um arquivo por tipo (e não um lote só com as cinco) porque teste vermelho tem de dizer **qual** tipo
-quebrou.
+**Each file has TWO messages, and the second is what the T-061 batch didn't have: the sane
+sister.** The assertion that holds across the five is `len(evs) == 2` — the broken one degrades
+and gets through, the sister arrives intact. One file per type (not a single batch with all five)
+because a red test has to say **which** type broke.
 
-**O que estes arquivos NÃO provam, e é de propósito:** eles cobrem cinco campos, não a struct
-inteira. A
-garantia de classe não está aqui — está em dois testes de `internal/meta/parse_test.go`:
-`TestParseWebhookNenhumCampoDeTipoErradoApagaAMensagemNemAsIrmas` (varre **as chaves do próprio
-payload**, tipo por tipo, com dois mutantes cada) e
-`TestMensagemMetaIsolaTodoCampoPorConstrucao` (percorre a struct por reflexão e fica vermelho no dia
-em que alguém pendurar ali um campo que não seja `json.RawMessage`). Fixture cobre o caso que
-alguém pensou; esses dois cobrem o que ninguém escreveu ainda.
+**What these files do NOT prove, and it's on purpose:** they cover five fields, not the whole
+struct. The class-level guarantee isn't here — it's in two tests in
+`internal/meta/parse_test.go`: `TestParseWebhookNoFieldOfTheWrongTypeErasesTheMessageNorItsSiblings`
+(sweeps **the payload's own keys**, type by type, with two mutants each) and
+`TestMessageMetaIsolatesEveryFieldByConstruction` (walks the struct by reflection and goes red the
+day someone hangs a field there that isn't `json.RawMessage`). A fixture covers the case someone
+thought of; those two cover what nobody has written yet.
 
-**Uma exceção continua existindo e está escrita:** `id` de tipo inesperado **continua** apagando a
-mensagem (`TestParseWebhookIdDeTipoErradoContinuaApagandoAMensagem`). Sem wamid não há chave de
-dedup, e `42` não vira o wamid `"42"` — inventar wamid mandaria o consumidor responder a uma
-mensagem que não existe.
+**One exception still exists and is written down:** an `id` of an unexpected type **still**
+erases the message (`TestParseWebhookAnIdOfTheWrongTypeStillErasesTheMessage`). Without a wamid
+there's no dedup key, and `42` doesn't become the wamid `"42"` — inventing a wamid would make the
+consumer reply to a message that doesn't exist.
 
-## Sobre os seis arquivos de TIPO ERRADO nos NÍVEIS ACIMA da mensagem (T-068, 2026-07-28)
+## About the six WRONG-TYPE-AT-LEVELS-ABOVE-THE-MESSAGE files (T-068, 2026-07-28)
 
-Terceiro lote da mesma família, e a diferença dele para os dois anteriores é o **raio**. Os da T-061
-e da T-062 estão todos dentro de `messages[]`: o que se perdia era uma mensagem. Estes estão nos
-níveis que **contêm** a mensagem, e ali o que se perdia era o lote — medido com `ParseWebhook` antes
-da tarefa, um campo trocado por vez, com mensagem boa + irmã boa no mesmo lote:
+Third batch in the same family, and its difference from the previous two is the **radius**. T-061's
+and T-062's are all inside `messages[]`: what got lost was one message. These sit at the levels
+that **contain** the message, and there what got lost was the whole batch — measured with
+`ParseWebhook` before the task, one field swapped at a time, with a good message + good sister in
+the same batch:
 
-| Arquivo | Campo trocado | Antes da T-068 |
+| File | Field swapped | Before T-068 |
 |---|---|---|
-| `metadata_de_tipo_errado_sintetico.json` | `value.metadata` | `len(evs) = 0` — o `change` inteiro, mensagens **e** status |
-| `contacts_de_tipo_errado_sintetico.json` | `value.contacts` | `len(evs) = 0` — idem |
-| `field_de_tipo_errado_sintetico.json` | `change.field` | `len(evs) = 0` — o `change` inteiro |
-| `entry_id_de_tipo_errado_sintetico.json` | `entry.id` (`waba_id`) | o `entry` inteiro sumia (irmãs de OUTROS `entry` sobreviviam) |
-| `status_de_tipo_errado_sintetico.json` | `status.status`/`recipient_id`/`timestamp` | o status sumia (a irmã sobrevivia) |
-| `template_de_tipo_errado_sintetico.json` | `template.message_template_name`/`reason` | `len(evs) = 0` — o evento de template |
+| `metadata_wrong_type_synthetic.json` | `value.metadata` | `len(evs) = 0` — the whole `change`, messages **and** status |
+| `contacts_wrong_type_synthetic.json` | `value.contacts` | `len(evs) = 0` — same |
+| `field_wrong_type_synthetic.json` | `change.field` | `len(evs) = 0` — the whole `change` |
+| `entry_id_wrong_type_synthetic.json` | `entry.id` (`waba_id`) | the whole `entry` vanished (siblings from OTHER `entry`s survived) |
+| `status_wrong_type_synthetic.json` | `status.status`/`recipient_id`/`timestamp` | the status vanished (the sibling survived) |
+| `template_wrong_type_synthetic.json` | `template.message_template_name`/`reason` | `len(evs) = 0` — the template event |
 
-**`contacts` é o pior, e é pior que o defeito que a T-062 acabou de consertar:** um `"contacts":"x"`
-que a Meta mandasse num formato novo apagava o lote inteiro de mensagens de um cliente, calado, com
-`200` respondido à Meta — que é o Critical nº 1 de `docs/ARMADILHAS.md` com outro nome.
+**`contacts` is the worst, and worse than the defect T-062 had just fixed:** a `"contacts":"x"`
+Meta might send in a new format erased a customer's whole batch of messages, silently, with `200`
+answered to Meta — which is `docs/ARMADILHAS.md`'s Critical #1 under another name.
 
-**Dois destes arquivos afirmam mais do que "não sumiu", e é por isso que eles existem separados:**
+**Two of these files claim more than "didn't vanish", and that's why they exist separately:**
 
-- **`field_de_tipo_errado_sintetico.json` é o único que continua devolvendo `ErrParseParcial`**, de
-  propósito. `field` é o campo pelo qual o `change` é **classificado** — sem ele não dá para saber se
-  aquele `value` era um webhook de template que deixamos de modelar. As mensagens chegam (melhor
-  esforço, o `change` é lido como se fosse `messages`), e o `parse_error` do envelope diz que algo não
-  pôde ser classificado. A regra geral, herdada da T-062: **conta-se `ignorados` quando um EVENTO
-  deixa de existir, nunca quando um bloco dentro de um evento entregue se perde** — por isso
-  `metadata` e `contacts` ilegíveis NÃO contam.
-- **`entry_id_de_tipo_errado_sintetico.json` documenta uma decisão que não é do parser**, e sim da
-  guarda de isolamento: `entry.id` ilegível vira `""`, e a guarda 5b de `internal/inbound/handler.go`
-  trata `""` como **não-casado**, recusando o lote com `ALARME` e `conta_descartada`. A alternativa
-  (descartar só o `entry` e entregar o resto) foi recusada porque o corpo **cru** vai junto na
-  entrega: filtrar eventos não impediria o conteúdo daquela conta de chegar ao consumidor. Provado
-  por `TestHandlerRecusaWebhookDeContaComWabaIDIlegivel` (`internal/inbound/handler_test.go`).
+- **`field_wrong_type_synthetic.json` is the only one that still returns `ErrPartialParse`**, on
+  purpose. `field` is the field that **classifies** the `change` — without it there's no way to
+  know whether that `value` was a template webhook we stopped modeling. The messages get through
+  (best effort, the `change` is read as if it were `messages`), and the envelope's `parse_error`
+  says something couldn't be classified. The general rule, inherited from T-062: **`ignored` is
+  counted when an EVENT stops existing, never when a block inside a delivered event is lost** —
+  that's why unreadable `metadata` and `contacts` do NOT count.
+- **`entry_id_wrong_type_synthetic.json` documents a decision that isn't the parser's**, but the
+  isolation guard's: an unreadable `entry.id` becomes `""`, and guard 5b in
+  `internal/inbound/handler.go` treats `""` as **not matching**, refusing the batch with `ALARME`
+  and `conta_descartada`. The alternative (discarding just the `entry` and delivering the rest) was
+  rejected because the **raw** body travels along with the delivery: filtering events wouldn't
+  keep that account's content from reaching the consumer. Proven by
+  `TestHandlerRejectsAccountWebhookWithUnreadableWabaID` (`internal/inbound/handler_test.go`).
 
-**A garantia de CLASSE, como no lote da T-062, não está nestes arquivos** — está em
-`TestStructsDeFronteiraIsolamTodoCampoPorConstrucao` (reflexão sobre as sete structs de fronteira) e
-em `TestParseWebhookNenhumCampoDeNenhumNivelCalaOLote`, que varre **todas as chaves de todos os
-níveis do próprio payload** e exige que a mensagem-testemunha de outro `entry` sempre chegue.
+**The CLASS guarantee, like in the T-062 batch, isn't in these files** — it's in
+`TestBoundaryStructsIsolateEveryFieldByConstruction` (reflection over the seven boundary structs)
+and in `TestParseWebhookNoFieldAtAnyLevelSilencesTheBatch`, which sweeps **every key at every
+level** of the payload itself and requires the witness message from another `entry` to always get
+through.
 
-## Sobre `status_read_com_cobranca.json` (T-041, 2026-07-26)
+## About `status_read_with_billing.json` (T-041, 2026-07-26)
 
-O consumer-a pediu (2026-07-26) o campo `pricing` que a Meta manda no webhook de status — presente
-em 145 dos 148 status que eles têm gravados — porque a categoria de cobrança que ele traz é o único
-jeito de saber, na PRIMEIRA mensagem, que a Meta reclassificou um template (`UTILITY` →
-`MARKETING`, o que muda preço e regras de envio); sem ele, isso só apareceria na fatura, semanas
-depois. O trecho que eles colaram no canal bilateral era só o par `status`/`pricing`, sem envelope —
-diferente dos outros fixtures de captura deste corpus, que vieram do payload inteiro. Este arquivo
-embrulha esse trecho literal no mesmo envelope-padrão (`WABA_TESTE`/`PNID_TESTE`) dos outros
-fixtures de status, porque `TestCorpusInteiro` (`internal/meta/corpus_test.go`) exercita
-`ParseWebhook` sobre o payload inteiro, não sobre um fragmento solto.
+consumer-a asked (2026-07-26) for the `pricing` field Meta sends in the status webhook — present
+in 145 of the 148 statuses they have recorded — because the billing category it carries is the
+only way to know, in the FIRST message, that Meta reclassified a template (`UTILITY` →
+`MARKETING`, which changes price and sending rules); without it, that would only show up in the
+invoice, weeks later. The excerpt they pasted in the bilateral channel was just the
+`status`/`pricing` pair, with no envelope — unlike this corpus's other capture fixtures, which came
+from the whole payload. This file wraps that literal excerpt in the same standard envelope
+(`WABA_TESTE`/`PNID_TESTE`) as the other status fixtures, because `TestTheWholeCorpus`
+(`internal/meta/corpus_test.go`) exercises `ParseWebhook` over the whole payload, not over a loose
+fragment.
 
-**Por que o campo se chama `cobranca` no envelope, não `pricing`:** o formato da Meta morre no
-`parse.go`, como em todo o resto do envelope — é o mesmo motivo de `reacao`/`localizacao` não se
-chamarem `reaction`/`location`. Só `categoria` (de `category`) e `cobravel` (de `billable`) são
-modelados; `pricing_model` e `type` ficam de fora até alguém precisar deles.
+**Why the field is called `billing` in the envelope, not `pricing`:** Meta's shape dies in
+`parse.go`, like the rest of the envelope — it's the same reason `reacao`/`localizacao` aren't
+called `reaction`/`location` (contract keys still pending translation, out of this task's scope).
+Only `category` (from `category`) and `billable` (from `billable`) are modeled; `pricing_model`
+and `type` stay out until someone needs them.
 
-**`cobravel` é ponteiro, não `bool`** — mesma razão de `voz` (`Evento.Voz`), com consequência maior:
-aqui a diferença entre "a Meta disse que não cobra" (`false`) e "a Meta não disse nada" (ausente) é
-de DINHEIRO. Provado por mutação: trocar `Cobranca.Cobravel` de `*bool` para `bool` não deixa só um
-teste vermelho — quebra a COMPILAÇÃO de `internal/meta/corpus_test.go` e `internal/meta/parse_test.go`
-(`invalid operation: ... == nil (mismatched types bool and untyped nil)`), porque os testes exigem
-comparar o campo contra `nil` para provar que ausência e `false` produzem resultados diferentes.
+**`billable` is a pointer, not a plain `bool`** — the same reasoning as `voice` (`Event.Voice`),
+with a bigger consequence: here the difference between "Meta said it doesn't bill" (`false`) and
+"Meta said nothing" (absent) is about MONEY. Proven by mutation: changing `Billing.Billable` from
+`*bool` to `bool` doesn't just leave one test red — it breaks the COMPILATION of
+`internal/meta/corpus_test.go` and `internal/meta/parse_test.go` (`invalid operation: ... == nil
+(mismatched types bool and untyped nil)`), because the tests require comparing the field against
+`nil` to prove that absence and `false` produce different results.
 
-## Sobre `status_de_template.json` (T-043, 2026-07-26)
+## About `template_status.json` (T-043, 2026-07-26)
 
-É o primeiro fixture do corpus que **não é sobre uma mensagem nem sobre um destinatário**: é um
-webhook de CONTA (`field: "message_template_status_update"`), a Meta avisando que um template foi
-aprovado, rejeitado ou pausado. Até a T-043 esse payload chegava, o `ParseWebhook` não achava
-`messages` nem `statuses`, e o envelope saía sem evento nenhum e só com o `cru` — naquela época
-literalmente `"eventos": null` no fio, não `[]`, que foi o defeito consertado na T-067 (2026-07-28).
+It's the first fixture in the corpus that **isn't about a message or a recipient**: it's an
+ACCOUNT webhook (`field: "message_template_status_update"`), Meta announcing that a template was
+approved, rejected or paused. Until T-043 this payload arrived, `ParseWebhook` found neither
+`messages` nor `statuses`, and the envelope came out with no event at all and only the `cru` —
+back then literally `"eventos": null` on the wire, not `[]`, which was the defect fixed in T-067
+(2026-07-28).
 
-**Dois fatos do payload real não eram dedutíveis da doc, e os dois estão neste arquivo de
-propósito:**
+**Two facts from the real payload weren't deducible from the doc, and both are in this file on
+purpose:**
 
-- **`reason` vem como a string `"NONE"`** quando não há motivo — não ausente, não `null`. Quem
-  tratar como campo opcional erra. O gateway repassa `"NONE"` como veio; só a ausência REAL some do
-  JSON (`internal/meta/types.go`, `StatusDeTemplate.Motivo`).
-- **não há `metadata` nem `phone_number_id` em lugar nenhum do payload** — confirma com dado a
-  lacuna que a T-038 fechou por leitura de código: a única chave de roteamento de um webhook de
-  conta é o `waba_id` de `entry[].id`.
+- **`reason` comes as the string `"NONE"`** when there's no reason — not absent, not `null`.
+  Whoever treats it as an optional field gets it wrong. The gateway passes `"NONE"` through as it
+  came; only the REAL absence disappears from the JSON (`internal/meta/types.go`,
+  `TemplateStatus.Reason`).
+- **there's no `metadata` nor `phone_number_id` anywhere in the payload** — confirms with data the
+  gap T-038 had closed by reading the code alone: the only routing key for an account webhook is
+  the `waba_id` from `entry[].id`.
 
-**O `message_template_id` e o `message_template_name` NÃO foram trocados por valores fictícios**, ao
-contrário de `wa_id`/`from`/`recipient_id`/`wamid`/`profile.name`, que a regra do topo deste arquivo
-manda mascarar. Não é descuido: nenhum dos dois é dado pessoal (um é o id de um template no painel
-da Meta, o outro é o nome que o próprio negócio deu a ele), e o id literal tem **16 dígitos** — trocá-lo
-por um id curto de teste deixaria de exercitar o caminho que importa (ele não cabe em `int32`, e é
-por isso que `templateStatusMeta.TemplateID` é `json.RawMessage` e vira texto, nunca inteiro).
+**The `message_template_id` and the `message_template_name` were NOT swapped for fictitious
+values**, unlike `wa_id`/`from`/`recipient_id`/`wamid`/`profile.name`, which the rule at the top of
+this file requires masking. It isn't an oversight: neither is personal data (one is a template's
+id in Meta's panel, the other is the name the business itself gave it), and the literal id has
+**16 digits** — swapping it for a short test id would stop exercising the path that matters (it
+doesn't fit in `int32`, which is why `templateStatusMeta.TemplateID` is `json.RawMessage` and
+becomes text, never an integer).
 
-**O `entry.time` deste arquivo (`1769000020`) é do envelope-padrão, não da captura — e mesmo assim é
-lido.** O `value` deste webhook **não tem carimbo próprio**; o único tempo disponível está no
-`entry`, e ele entra na CHAVE do evento (`template_status:{id}:{event}:{time}`) porque o mesmo
-template pode ser `APPROVED` mais de uma vez (aprovado → editado → pendente → aprovado de novo).
-Sem o tempo na chave, a segunda aprovação seria deduplicada pelo consumidor e sumiria. Ver
-`internal/meta/parse.go`, `eventoDeStatusDeTemplate`, e o teste que prova isso
-(`TestParseWebhookStatusDeTemplateDuasAprovacoesEmInstantesDiferentesTemIdsDiferentes`).
+**This file's `entry.time` (`1769000020`) comes from the standard envelope, not the capture — and
+it's still read.** This webhook's `value` **has no timestamp of its own**; the only time available
+is in `entry`, and it enters the event's KEY (`template_status:{id}:{event}:{time}`) because the
+same template can be `APPROVED` more than once (approved → edited → pending → approved again).
+Without the time in the key, the second approval would be deduplicated by the consumer and
+vanish. See `internal/meta/parse.go`, `templateStatusEvent`, and the test that proves it
+(`TestParseWebhookTemplateStatusTwoApprovalsAtDifferentInstantsHaveDifferentIds`).
 
-## Sobre os três arquivos de `sent`/`delivered` REAIS (T-069, 2026-07-28)
+## About the three real `sent`/`delivered` files (T-069, 2026-07-28)
 
-`status_sent_com_pricing.json`, `status_sent_sem_pricing.json` e `status_delivered.json`.
+`status_sent_with_pricing.json`, `status_sent_without_pricing.json` and `status_delivered.json`.
 
-**A amostra, porque é ela que justifica os fixtures existirem.** O `consumer-a` mediu o corpus
-inteiro deles — **267 payloads guardados**, dos quais **225 são o corpo cru da Meta** (os 42
-restantes são o envelope do gateway, que carrega o cru em base64 dentro de si). Dentro dos 225:
+**The sample, because it's what justifies the fixtures existing.** `consumer-a` measured their
+whole corpus — **267 stored payloads**, of which **225 are Meta's raw body** (the remaining 42 are
+the gateway's envelope, which carries the raw body in base64 inside itself). Within the 225:
 
-| Medição | Número |
+| Measurement | Number |
 |---|---|
-| `sent` | **53** — **49 com `pricing`**, **4 sem** (~7,5%) |
-| `delivered` | **49** — **49 com `pricing`** (100%) |
-| `recipient_user_id` presente | **152** dos 225 |
-| `contacts[].user_id` presente | **203** dos 225 |
+| `sent` | **53** — **49 with `pricing`**, **4 without** (~7.5%) |
+| `delivered` | **49** — **49 with `pricing`** (100%) |
+| `recipient_user_id` present | **152** of 225 |
+| `contacts[].user_id` present | **203** of 225 |
 
-Não são três exemplos escolhidos a dedo: são três payloads de uma medição sobre o corpus inteiro, e
-**a proporção é o que diz quais formas precisam existir aqui**. "4 em 53" é a razão de haver DOIS
-fixtures de `sent`; um só teria congelado a forma comum e deixado o caso normal de fora.
+These aren't three hand-picked examples: they're three payloads from a measurement over the whole
+corpus, and **the proportion is what says which shapes need to exist here**. "4 in 53" is the
+reason there are TWO `sent` fixtures; a single one would have frozen the common shape and left the
+normal case out.
 
-### O que estes três mostram, e nenhum fixture escrito à mão mostraria
+### What these three show, and no hand-written fixture would show
 
-1. **`pricing` é OPCIONAL no `sent`.** Um `sent` sem cobrança não é payload quebrado, é rotina em
-   ~7,5% do tráfego medido. Quem for contar por categoria de cobrança precisa saber disso **antes**
-   de escrever o contador. Provado por mutação: fazer o parse exigir `pricing` deixa
-   `status_sent_sem_pricing.json` vermelho.
-2. **`recipient_user_id` existe no status, formato `BR.<dígitos>`** — e `contacts[].user_id` junto.
-   Nenhum dos dois é modelado por `statusMeta`/`contatoMeta`, e desde a T-062/T-068 isso é decisão e
-   não acidente. Estes fixtures **provam** o que antes se supunha: chave desconhecida no status não
-   derruba o parse. Provado por mutação: ligar `DisallowUnknownFields` no `Unmarshal` de `statusMeta`
-   deixa os três vermelhos.
-3. **O `sent` e o `delivered` do MESMO `wamid` vieram com o MESMO `timestamp` da Meta.** É o achado
-   mais valioso, porque a consequência é do **consumidor**: quem ordenar histórico pelo relógio do
-   emissor não separa os dois estados. Está preservado aqui de propósito — os dois arquivos
-   compartilham `wamid.TESTE042` e `timestamp` `1785072102` — e trancado por
-   `TestCorpusSentEDeliveredDoMesmoWamidTemOMesmoTimestamp`. O aviso ao consumidor está em
-   `docs/CONTRATO-CONSUMIDOR.md`; um README que só nós lemos não protege quem monta o histórico.
+1. **`pricing` is OPTIONAL on `sent`.** A `sent` with no billing isn't a broken payload, it's
+   routine in ~7.5% of the measured traffic. Whoever counts by billing category needs to know this
+   **before** writing the counter. Proven by mutation: making the parse require `pricing` leaves
+   `status_sent_without_pricing.json` red.
+2. **`recipient_user_id` exists on the status, format `BR.<digits>`** — and `contacts[].user_id`
+   alongside it. Neither is modeled by `statusMeta`/`contactMeta`, and since T-062/T-068 that's a
+   decision, not an accident. These fixtures **prove** what was previously assumed: an unknown key
+   in the status doesn't bring down the parse. Proven by mutation: turning on
+   `DisallowUnknownFields` on `statusMeta`'s `Unmarshal` leaves all three red.
+3. **The `sent` and the `delivered` of the SAME `wamid` came with the SAME `timestamp` from
+   Meta.** It's the most valuable finding, because the consequence is the **consumer's**. Whoever
+   sorts history by the sender's clock doesn't tell the two states apart. It's preserved here on
+   purpose — the two files share `wamid.TESTE042` and `timestamp` `1785072102` — and locked down by
+   `TestCorpusSentAndDeliveredOfTheSameWamidHaveTheSameTimestamp`. The warning to the consumer is
+   in `docs/CONTRATO-CONSUMIDOR.md`; a README only we read doesn't protect whoever builds history
+   from it.
 
-### Como foram mascarados
+### How they were masked
 
-As capturas vieram verbatim do `psql` do consumidor, **com número de cliente e `wamid` reais**. O
-mascaramento é **consistente** — o mesmo valor real vira sempre o mesmo valor falso, nos três
-arquivos —, porque sem isso o par `sent`→`delivered` deixaria de ser o mesmo envio e o teste de
-correlação não provaria nada:
+The captures came verbatim from the consumer's `psql`, **with a real customer number and a real
+`wamid`**. The masking is **consistent** — the same real value always becomes the same fake value,
+across the three files —, because without that the `sent`→`delivered` pair would stop being the
+same send and the correlation test wouldn't prove anything:
 
-| Campo | Virou |
+| Field | Became |
 |---|---|
 | `entry[].id` (WABA) | `WABA_TESTE` |
 | `metadata.phone_number_id` | `PNID_TESTE` |
-| `metadata.display_phone_number` | `5532999990000` (o número de negócio padrão deste corpus) |
-| `contacts[].wa_id` e `statuses[].recipient_id` | `553288888888` |
-| `contacts[].user_id` e `statuses[].recipient_user_id` | `BR.20000000000000000` |
-| `statuses[].id` (o `wamid`) | `wamid.TESTE041` (o `sent` sem pricing) e `wamid.TESTE042` (o `sent` com pricing **e** o `delivered`) |
+| `metadata.display_phone_number` | `5532999990000` (this corpus's default business number) |
+| `contacts[].wa_id` and `statuses[].recipient_id` | `553288888888` |
+| `contacts[].user_id` and `statuses[].recipient_user_id` | `BR.20000000000000000` |
+| `statuses[].id` (the `wamid`) | `wamid.TESTE041` (the `sent` without pricing) and `wamid.TESTE042` (the `sent` with pricing **and** the `delivered`) |
 
-**O `wamid` real precisava sair inteiro, e não só "trocar os dígitos que parecem número".** O wamid
-da Cloud API é `wamid.` seguido de **base64**, e esse base64 carrega o telefone do destinatário
-**em texto claro lá dentro** — `base64 -d` no que vem depois do ponto devolve o número. Um
-mascaramento que trocasse `recipient_id` e deixasse o `wamid` teria vazado o número do mesmo jeito,
-e ninguém veria olhando o arquivo. **A regra que fica: campo opaco não é campo sem conteúdo — antes
-de deixar um identificador passar por "não parece dado pessoal", decodifique-o.**
+**The real `wamid` had to come out whole, not just "swap the digits that look like a number".**
+The Cloud API's wamid is `wamid.` followed by **base64**, and that base64 carries the recipient's
+phone number **in plain text inside it** — `base64 -d` on what comes after the dot returns the
+number. A masking pass that swapped `recipient_id` and left the `wamid` would have leaked the
+number the same way, and nobody would have seen it by looking at the file. **The rule that
+stands: an opaque field is not a field with no content — before letting an identifier through as
+"doesn't look like personal data", decode it.**
 
-**Os `timestamp` NÃO foram mascarados, de propósito** (`1785073298` e `1785072102`): não identificam
-ninguém, e o segundo é literalmente o fato que a captura provou. Trocá-los por valores do
-envelope-padrão apagaria o achado nº 3.
+**The `timestamp`s were NOT masked, on purpose** (`1785073298` and `1785072102`): they identify
+nobody, and the second is literally the fact the capture proved. Swapping them for standard-envelope
+values would erase finding #3.
 
-**O bloco `conversation` não existe em nenhum dos três** — o fixture derivado da doc que este lote
-substituiu tinha um. O parser nunca leu esse bloco (`statusMeta` não tem o campo), então a diferença
-não muda comportamento; ela só mostra que um fixture pode errar a forma sem nenhum teste ficar
-vermelho.
+**The `conversation` block doesn't exist in any of the three** — the doc-derived fixture this
+batch replaced had one. The parser never read that block (`statusMeta` has no such field), so the
+difference doesn't change behavior; it only shows that a fixture can get the shape wrong with no
+test going red.
 
-> ⚠️ **`553288888888` é um destinatário NOVO neste corpus — os outros fixtures usam outro número, e
-> a divergência é deliberada.** Ao mascarar esta captura, decodificar o base64 do `wamid` real
-> mostrou que o destinatário do tráfego real era **o mesmo número** que este corpus vinha tratando
-> como fictício desde o plano 1: era o telefone pessoal do dono, não um valor inventado. **Resolvido
-> pela T-159 (2026-08-20):** todo fixture que usava esse número passou a usar `5511999990000` (a
-> convenção que `docs/CONTRATO-CONSUMIDOR.md` já usa), o mesmo padrão adotado horas antes pela T-138
-> para o mesmo tipo de vazamento. A divergência com `553288888888` continua existindo — são dois
-> valores sintéticos diferentes, um por captura de tráfego real mascarado, outro pela substituição da
-> T-159 — mas nenhum dos dois é mais o telefone real. Unificá-los, se algum dia fizer sentido, é
-> decisão fora do escopo da T-159.
+> ⚠️ **`553288888888` is a NEW recipient in this corpus — the other fixtures use a different
+> number, and the mismatch is deliberate.** While masking this capture, decoding the real
+> `wamid`'s base64 showed that the real traffic's recipient was **the same number** this corpus had
+> been treating as fictitious since stage 1: it was the owner's personal phone number, not an
+> invented value. **Resolved by T-159 (2026-08-20):** every fixture using that number switched to
+> `5511999990000` (the convention `docs/CONTRATO-CONSUMIDOR.md` already uses), the same pattern
+> adopted hours earlier by T-138 for the same kind of leak. The mismatch with `553288888888` still
+> exists — they're two different synthetic values, one from masking real traffic, the other from
+> T-159's replacement — but neither is the real phone number anymore. Unifying them, if it ever
+> makes sense, is a decision outside T-159's scope.
 
-## Sobre os quatro arquivos de `template_category_update` (T-057, 2026-07-28; T-174, 2026-08-28)
+## About the four `template_category_update` files (T-057, 2026-07-28; T-174, 2026-08-28)
 
-Três capturas — `categoria_de_template_rebaixamento.json`, `..._restauracao.json` e
-`..._sem_anterior.json` — mais `categoria_de_template_sintetico.json`. O derivado da doc que abria
-esta lista **foi apagado pela T-174**; a seção sobre os derivados, acima, explica por que ele não
-convive com as capturas.
+Three captures — `template_category_downgrade.json`, `..._restore.json` and
+`..._no_previous.json` — plus `template_category_synthetic.json`. The doc-derived file that used
+to open this list **was deleted by T-174**; the section on derived files, above, explains why it
+doesn't coexist with the captures.
 
-**Nenhum dos quatro contém telefone, `wa_id`, `wamid` ou nome de pessoa** — o `value` deste webhook
-não tem nada disso. Foi o primeiro grupo do corpus em que a regra de mascaramento do topo deste
-arquivo não teve o que mascarar, e vale dizer isso em vez de deixar o leitor conferir campo a campo.
-Nas três capturas a única troca feita na origem foi o `waba_id` por `WABA_TESTE`; o
-`message_template_id` ficou como veio, de propósito, porque é ele que prova que o par é do **mesmo**
-template.
+**None of the four contains a phone number, `wa_id`, `wamid` or a person's name** — this webhook's
+`value` has nothing like that. It was the first group in the corpus where the masking rule at the
+top of this file had nothing to mask, and it's worth saying so instead of leaving the reader to
+check field by field. In the three captures the only swap made at the source was `waba_id` for
+`WABA_TESTE`; `message_template_id` stayed as it came, on purpose, because it's what proves the
+pair is of the **same** template.
 
-**Por que o sintético continua existindo depois das capturas — e a razão MUDOU.** Ele nasceu porque
-o sample do painel trazia `previous_category: "MARKETING"` e `correct_category: "MARKETING"` — o
-**mesmo valor** —, e um parser que lesse um no lugar do outro passaria **verde**. Hoje a razão é mais
-forte: **nenhuma das três capturas traz `correct_category` ou `category_appeal_status`**, então o
-sintético é o único arquivo do corpus que ainda exercita esses dois campos. É a mesma família de
-`botao_de_template.json` (`payload == text` na captura real) e da entrada *"teste de vazamento cuja
-fixture apagava o ramo que vazaria"* de `docs/ARMADILHAS.md`.
+**Why the synthetic one still exists after the captures — and the reason CHANGED.** It was born
+because the panel's sample carried `previous_category: "MARKETING"` and `correct_category:
+"MARKETING"` — the **same value** —, and a parser reading one in place of the other would pass
+**green**. Today the reason is stronger: **none of the three captures carries `correct_category`
+or `category_appeal_status`**, so the synthetic one is the only file in the corpus that still
+exercises those two fields. It's the same family as `template_button.json` (`payload == text` in
+the real capture) and the *"leak test whose fixture erased the branch that would leak"* entry in
+`docs/ARMADILHAS.md`.
 
-*Medido, não suposto (T-057): a mutação que troca `t.Anterior` por `t.Correta` em
-`eventoDeCategoriaDeTemplate` (`internal/meta/parse.go`) deixava **só** o sintético vermelho — o
-derivado da doc continuava verde, com o `ID` do evento idêntico. Feita e revertida antes do commit.*
+*Measured, not assumed (T-057): the mutation that swaps `t.Previous` for `t.Correct` in
+`templateCategoryEvent` (`internal/meta/parse.go`) left **only** the synthetic one red — the
+doc-derived one stayed green, with the same event `ID`. Made and reverted before the commit.*
 
-**A direção CARA agora tem captura.** O sample do painel mostrava `MARKETING → UTILITY`, que
-*barateia*, e por isso o sintético foi feito com `UTILITY → MARKETING`, que **encarece cada envio**.
-A T-174 congelou as duas direções em tráfego real, do **mesmo** `message_template_id`, com ~14,9 h
-entre uma e outra — o que o sample não podia mostrar de jeito nenhum.
+**The EXPENSIVE direction now has a capture.** The panel's sample showed `MARKETING → UTILITY`,
+which *gets cheaper*, and that's why the synthetic one was made with `UTILITY → MARKETING`, which
+**makes every send more expensive**. T-174 froze both directions in real traffic, from the **same**
+`message_template_id`, ~14.9 h apart — something the sample could never show.
 
-**`category_appeal_status` só existe no sintético** (`NOT_ELIGIBLE`), e ele é repassado como
-**texto**. Um booleano derivado dele ("dá para recorrer?") obrigaria o gateway a decidir hoje o que
-fazer com um valor que a Meta só inventa amanhã. ⚠️ **Que ele não tenha vindo em nenhuma das três
-capturas é medição, não conclusão:** são três eventos de uma conta, e a doc da Meta lista o campo. O
-teste `TestCategoriaDeTemplateNenhumaCapturaRealTrouxeRecursoNemCategoriaCorreta` congela o que foi
-observado e fica vermelho no dia em que uma captura com o campo entrar — que é o dia de atualizar a
-medição e a tabela do contrato juntas, não de apagar a asserção.
+**`category_appeal_status` only exists in the synthetic one** (`NOT_ELIGIBLE`), and it's passed
+through as **text**. A boolean derived from it ("can it be appealed?") would force the gateway to
+decide today what to do with a value Meta only invents tomorrow. ⚠️ **That it hasn't shown up in
+any of the three captures is a measurement, not a conclusion:** these are three events from one
+account, and the doc lists the field. The
+`TestTemplateCategoryNoRealCaptureBroughtAppealNorCorrectCategory` test freezes what's been
+observed and goes red the day a capture with the field arrives — which is the day to update the
+measurement and the contract's table together, not to delete the assertion.
 
-**O `message_template_id` do sintético tem 16 dígitos** (`9900000000000002`), como o da captura de
-`status_de_template.json`: ele não cabe em `int32`, e é por isso que `templateCategoriaMeta.TemplateID`
-é `json.RawMessage` lido como texto, nunca inteiro. O do derivado é o `12345678` do sample, preservado
-byte a byte — congelar o sample é o que o arquivo faz.
+**The synthetic one's `message_template_id` has 16 digits** (`9900000000000002`), like the one in
+`template_status.json`'s capture: it doesn't fit in `int32`, which is why
+`templateCategoryMeta.TemplateID` is `json.RawMessage` read as text, never an integer. The derived
+one's is the sample's `12345678`, preserved byte for byte — freezing the sample is what that file
+does.
 
-## Sobre os três arquivos de webhook de CONTA da T-058 (2026-07-28)
+## About the three ACCOUNT webhook files from T-058 (2026-07-28)
 
-`qualidade_do_numero_derivado_da_doc.json`, `qualidade_do_numero_sintetico.json` e
-`alerta_de_conta_derivado_da_doc.json`.
+`number_quality_derived_from_doc.json`, `number_quality_synthetic.json` and
+`account_alert_derived_from_doc.json`.
 
-**Nenhum contém telefone de cliente, `wamid` ou nome de pessoa.** O `display_phone_number` do
-derivado é `16505551111` — o número fictício que a própria Meta usa nos samples do painel, preservado
-byte a byte; o do sintético é `5532999990000`, o número de negócio padrão deste corpus. A regra de
-mascaramento do topo deste arquivo não tem o que mascarar aqui.
+**None contains a customer phone number, `wamid` or a person's name.** The derived one's
+`display_phone_number` is `16505551111` — the fictitious number Meta itself uses in panel samples,
+preserved byte for byte; the synthetic one's is `5532999990000`, this corpus's default business
+number. The masking rule at the top of this file has nothing to mask here.
 
-### Por que a qualidade tem irmão sintético e o alerta não
+### Why quality has a synthetic sibling and the alert doesn't
 
-**É a mesma pergunta nos dois casos, e ela deu respostas diferentes** — o que é justamente o motivo
-de a pergunta valer a pena: *dois campos vizinhos deste payload têm o mesmo valor?*
+**It's the same question in both cases, and it got different answers** — which is exactly why the
+question is worth asking: *do two neighboring fields in this payload have the same value?*
 
-- **qualidade: sim.** O sample traz `current_limit: "TIER_250"` e
-  `max_daily_conversations_per_business: "TIER_250"` — **o mesmo valor**. Congelar só ele produziria
-  um corpus em que trocar a leitura de um pelo outro passa **VERDE**. *Medido: a mutação
-  `q.LimiteAtual` → `q.LimiteDiarioMaximo` em `eventoDeQualidadeDoNumero`
-  (`internal/meta/parse.go`) deixa vermelho **apenas** `qualidade_do_numero_sintetico.json`; o
-  derivado da doc continua verde, com o `ID` do evento idêntico. Feita e revertida antes do commit.*
-- **alerta: não.** `entity_type`, `entity_id`, `alert_severity`, `alert_status` e `alert_type` vêm
-  todos com valores diferentes no sample, então ele sozinho distingue leitura trocada. Acrescentar um
-  sintético "por simetria" seria cerimônia sem garantia — a mesma decisão, e a mesma pergunta, de
-  `botao_interativo.json`.
+- **quality: yes.** The sample carries `current_limit: "TIER_250"` and
+  `max_daily_conversations_per_business: "TIER_250"` — **the same value**. Freezing just that one
+  would produce a corpus where swapping the read of one for the other passes **GREEN**. *Measured:
+  the mutation `q.CurrentLimit` → `q.MaxDailyLimit` in `numberQualityEvent`
+  (`internal/meta/parse.go`) leaves **only** `number_quality_synthetic.json` red; the doc-derived
+  one stays green, with the same event `ID`. Made and reverted before the commit.*
+- **alert: no.** `entity_type`, `entity_id`, `alert_severity`, `alert_status` and `alert_type` all
+  come with different values in the sample, so it alone tells a swapped read apart. Adding a
+  synthetic one "for symmetry" would be ceremony with no guarantee — the same decision, and the
+  same question, as `interactive_button.json`.
 
-**É a terceira vez que essa pergunta rende neste corpus** (`botao_de_template.json` com
-`payload == text`; o `categoria_de_template_derivado_da_doc.json` com `previous == correct` — arquivo
-apagado pela T-174, mas o achado é o que sobrevive dele; e agora `current_limit == max_daily`). Ela é
-grátis e vale como passo fixo: **antes de congelar um payload, olhe se dois campos vizinhos têm o
-mesmo valor.**
+**It's the third time this question has paid off in this corpus** (`template_button.json` with
+`payload == text`; `template_category_derived_from_doc.json` with `previous == correct` — a file
+deleted by T-174, but the finding is what survives from it; and now `current_limit ==
+max_daily`). It's free and worth keeping as a fixed step: **before freezing a payload, check
+whether two neighboring fields have the same value.**
 
-### O sintético também congela a direção que DÓI
+### The synthetic one also freezes the direction that HURTS
 
-O sample do painel mostra `TIER_NOT_SET → TIER_250` com `event: "ONBOARDING"` — a única transição de
-cota que não preocupa ninguém. O sintético mostra `TIER_1K → TIER_50` com `event: "FLAGGED"`: um
-**rebaixamento**, que é exatamente o caso que este evento existe para avisar antes de o envio começar
-a falhar por limite. Um corpus que só tivesse o sample congelaria a boa notícia.
+The panel's sample shows `TIER_NOT_SET → TIER_250` with `event: "ONBOARDING"` — the one quota
+transition nobody worries about. The synthetic one shows `TIER_1K → TIER_50` with `event:
+"FLAGGED"`: a **downgrade**, exactly the case this event exists to warn about before sending starts
+failing on the limit. A corpus with only the sample would freeze the good news.
 
-### Os limites são TEXTO, e os fixtures provam isso
+### The limits are TEXT, and the fixtures prove it
 
-`"TIER_250"` não vira `250`, `"TIER_NOT_SET"` não vira `0` nem vazio, e `TIER_10K` existe no sintético
-para que ninguém sinta vontade de fazer aritmética com o sufixo. A Meta pode inventar um tier novo
-amanhã, e uma tabela de tradução nossa erraria do pior jeito: devolvendo um número plausível para um
-valor que ninguém verificou. Ver `QualidadeDoNumero`, em `internal/meta/types.go`.
+`"TIER_250"` doesn't become `250`, `"TIER_NOT_SET"` doesn't become `0` or empty, and `TIER_10K`
+exists in the synthetic one so nobody feels like doing arithmetic on the suffix. Meta can invent a
+new tier tomorrow, and a translation table of our own would fail in the worst way: returning a
+plausible number for a value nobody checked. See `NumberQuality`, in `internal/meta/types.go`.
 
-### `entity_id` vem NÚMERO e sai TEXTO
+### `entity_id` comes as a NUMBER and goes out as TEXT
 
-O sample manda `"entity_id": 123456` (número JSON), e o gateway o repassa como a string `"123456"` —
-mesma tolerância (e mesmo motivo) do `message_template_id`, que na captura real tem 16 dígitos e não
-cabe em `int32`. O fixture derivado já exercita esse caminho, então não há sintético para isso.
+The sample sends `"entity_id": 123456` (a JSON number), and the gateway passes it through as the
+string `"123456"` — the same tolerance (and the same reason) as `message_template_id`, which in
+the real capture has 16 digits and doesn't fit in `int32`. The derived fixture already exercises
+this path, so there's no synthetic one for it.

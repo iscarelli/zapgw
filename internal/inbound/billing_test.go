@@ -145,7 +145,7 @@ func TestCountsBillingCategoryAndOnlyTheRightKey(t *testing.T) {
 			// it doesn't charge, and absence of billing cannot turn into
 			// billing.
 			name: "real sent, service, not billable",
-			raw:  corpus(t, "status_sent_com_pricing.json"),
+			raw:  corpus(t, "status_sent_with_pricing.json"),
 			want: map[string]int{config.CounterBillingService: 1},
 		},
 		{
@@ -154,7 +154,7 @@ func TestCountsBillingCategoryAndOnlyTheRightKey(t *testing.T) {
 			// without its own key it would silently vanish from the
 			// measurement.
 			name: "real sent with no pricing goes to absent",
-			raw:  corpus(t, "status_sent_sem_pricing.json"),
+			raw:  corpus(t, "status_sent_without_pricing.json"),
 			want: map[string]int{config.CounterBillingAbsent: 1},
 		},
 		{
@@ -194,7 +194,7 @@ func TestCountsBillingCategoryAndOnlyTheRightKey(t *testing.T) {
 // 🔴 The test that stops the invoice from being multiplied by three.
 //
 // The SAME send shows up in `sent`, `delivered`, and `read`, and all three
-// can carry `pricing` — this corpus's `status_sent_com_pricing.json` and
+// can carry `pricing` — this corpus's `status_sent_with_pricing.json` and
 // `status_delivered.json` are the capture of the SAME wamid, with the SAME
 // category. If any status besides `sent` counted, the number the consumer
 // multiplies by the rate would come out up to 3x higher than reality, and
@@ -207,7 +207,7 @@ func TestOnlySentCountsBilling(t *testing.T) {
 		// Capture: same wamid and same category as the `sent` in the table above.
 		{"real delivered of the SAME wamid as sent", corpus(t, "status_delivered.json")},
 		// Capture: `read` carries its own `pricing` (`utility`, `billable:true`).
-		{"real read with pricing", corpus(t, "status_read_com_cobranca.json")},
+		{"real read with pricing", corpus(t, "status_read_with_billing.json")},
 		// `failed` has no pricing — a cheap non-regression check, because a
 		// counter that counted "every status" would send it to
 		// `cobranca_ausente`.
@@ -360,7 +360,7 @@ func (e lockingWriter) Write(p []byte) (int, error) {
 // incident.
 func TestBillingDoesNotCountWhenMetaWillRedeliver(t *testing.T) {
 	// Consumer 500 -> verdict 502 for Meta (internal/inbound/mirror.go).
-	path := deliverToCorpusHandler(t, corpus(t, "status_sent_com_pricing.json"), http.StatusInternalServerError)
+	path := deliverToCorpusHandler(t, corpus(t, "status_sent_with_pricing.json"), http.StatusInternalServerError)
 	requireBilling(t, path, map[string]int{})
 }
 
@@ -369,7 +369,7 @@ func TestBillingDoesNotCountWhenMetaWillRedeliver(t *testing.T) {
 // Counting here is mandatory, otherwise an instance with a refusing
 // consumer would have a real cost and zero measurement.
 func TestBillingCountsWhenConsumerRefusesAndMetaHears200(t *testing.T) {
-	path := deliverToCorpusHandler(t, corpus(t, "status_sent_com_pricing.json"), http.StatusBadRequest)
+	path := deliverToCorpusHandler(t, corpus(t, "status_sent_with_pricing.json"), http.StatusBadRequest)
 	requireBilling(t, path, map[string]int{config.CounterBillingService: 1})
 }
 
@@ -452,8 +452,8 @@ func TestBillingKeysOfABatchWithSeveralStatuses(t *testing.T) {
 // this behavior).
 func TestEveryBillingKeyIsInTheClosedVocabulary(t *testing.T) {
 	cases := [][]byte{
-		corpus(t, "status_sent_com_pricing.json"),
-		corpus(t, "status_sent_sem_pricing.json"),
+		corpus(t, "status_sent_with_pricing.json"),
+		corpus(t, "status_sent_without_pricing.json"),
 		syntheticCorpusStatus("sent", "wamid.V1", `{"billable":true,"category":"marketing"}`),
 		syntheticCorpusStatus("sent", "wamid.V2", `{"billable":true,"category":"utility"}`),
 		syntheticCorpusStatus("sent", "wamid.V3", `{"billable":true,"category":"authentication"}`),

@@ -1363,7 +1363,7 @@ func templateCategoryEvent(rawValue json.RawMessage, wabaID string, when int64) 
 	// AND THE ABSENT `previous_category` IS NO LONGER HYPOTHETICAL: one
 	// of the 18 events consumer `consumer-b` had stored arrived without
 	// the field, and it is frozen in
-	// testdata/corpus/categoria_de_template_sem_anterior.json (T-174,
+	// testdata/corpus/template_category_no_previous.json (T-174,
 	// 2026-08-28). Until then this degradation was a decision with no
 	// observation behind it. The empty piece stays IN THE MIDDLE of the
 	// key, between the two colons — dropping it would collapse this

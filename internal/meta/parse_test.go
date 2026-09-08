@@ -882,7 +882,7 @@ func TestParseWebhookInAMessageErrorAMalformedItemDoesNotBringDownTheEvent(t *te
 }
 
 func TestParseWebhookReadsAReaction(t *testing.T) {
-	payload := readCorpus(t, "reacao.json")
+	payload := readCorpus(t, "reaction.json")
 
 	evs, err := ParseWebhook(payload)
 	if err != nil {
@@ -918,7 +918,7 @@ func TestParseWebhookReadsAReaction(t *testing.T) {
 // second event arrived without the "emoji" key — not "", not null: the
 // key doesn't exist. See docs/ARMADILHAS.md.
 func TestParseWebhookAReactionWithoutAnEmojiIsAValidRemovalNotAParseError(t *testing.T) {
-	payload := readCorpus(t, "reacao_removida.json")
+	payload := readCorpus(t, "reaction_removed.json")
 
 	evs, err := ParseWebhook(payload)
 	if err != nil {
@@ -962,12 +962,12 @@ func TestParseWebhookAReactionWithoutATargetIsACountedParseError(t *testing.T) {
 	}
 }
 
-// localizacao.json is consumer-a's real capture (2026-07-26), with
+// location.json is consumer-a's real capture (2026-07-26), with
 // coordinates rounded on purpose (masking, not capture noise). The real
 // case is the BARE pin: WITHOUT a name/address — the old fixture, derived
 // from the doc, had both and tested the rare case. See docs/ARMADILHAS.md.
 func TestParseWebhookReadsALocation(t *testing.T) {
-	payload := readCorpus(t, "localizacao.json")
+	payload := readCorpus(t, "location.json")
 
 	evs, err := ParseWebhook(payload)
 	if err != nil {
@@ -998,7 +998,7 @@ func TestParseWebhookReadsALocation(t *testing.T) {
 // officially documented) — it's just not the common case observed in
 // T-026's capture. This payload is SYNTHETIC (not part of the corpus,
 // values invented on purpose) and exists just so the
-// name/address-present path doesn't go untested after localizacao.json
+// name/address-present path doesn't go untested after location.json
 // became the bare pin.
 func TestParseWebhookReadsALocationWithNameAndAddress(t *testing.T) {
 	payload := []byte(`{"object":"whatsapp_business_account","entry":[{"id":"WABA_TESTE","changes":[
@@ -1079,7 +1079,7 @@ func TestParseWebhookALocationWithoutAnObjectIsACountedParseError(t *testing.T) 
 // (2026-07-20): the audio already had "voice":true there, only the Voice
 // field didn't exist on Event yet.
 func TestParseWebhookVoiceTrue(t *testing.T) {
-	payload := readCorpus(t, "audio_nota_de_voz.json")
+	payload := readCorpus(t, "audio_voice_note.json")
 
 	evs, err := ParseWebhook(payload)
 	if err != nil {
@@ -1140,7 +1140,7 @@ func TestParseWebhookAnExplicitFalseVoiceDiffersFromAbsent(t *testing.T) {
 }
 
 func TestParseWebhookReadsCaptionAndFilename(t *testing.T) {
-	payload := readCorpus(t, "documento_com_legenda.json")
+	payload := readCorpus(t, "document_with_caption.json")
 
 	evs, err := ParseWebhook(payload)
 	if err != nil {
@@ -1165,7 +1165,7 @@ func TestParseWebhookReadsCaptionAndFilename(t *testing.T) {
 // guarantee ("only grows, never changes what already exists") really
 // hold.
 func TestParseWebhookDoesNotRegressTheCurrent16Fields(t *testing.T) {
-	payload := readCorpus(t, "mensagem_texto.json")
+	payload := readCorpus(t, "text_message.json")
 
 	evs, err := ParseWebhook(payload)
 	if err != nil {
@@ -1290,7 +1290,7 @@ func TestParseWebhookAnUnknownFieldDoesNotBringDownTheParse(t *testing.T) {
 // TestParseWebhookASyntheticTemplateButtonDistinguishesPayloadFromText, which
 // is the test that catches that swap.
 func TestParseWebhookATemplateButtonCaptureHasPayloadEqualToText(t *testing.T) {
-	payload := readCorpus(t, "botao_de_template.json")
+	payload := readCorpus(t, "template_button.json")
 
 	evs, err := ParseWebhook(payload)
 	if err != nil {
@@ -1318,14 +1318,14 @@ func TestParseWebhookATemplateButtonCaptureHasPayloadEqualToText(t *testing.T) {
 // --- T-032: responder_a (Meta's context.id) ---
 
 // TestParseWebhookReadsReplyTo is case (a) of T-032's Verify: a message
-// with context.id produces responder_a. resposta_a_mensagem.json is
+// with context.id produces responder_a. message_reply.json is
 // consumer-a's real capture (2026-07-26): the owner replied quoting an
 // earlier message, and the raw body brought context.from (the business's
 // number) and context.id (the quoted message's wamid) — BOTH present and
 // DIFFERENT, which makes this fixture also prove the mandatory mutation
 // (see the next test).
 func TestParseWebhookReadsReplyTo(t *testing.T) {
-	payload := readCorpus(t, "resposta_a_mensagem.json")
+	payload := readCorpus(t, "message_reply.json")
 
 	evs, err := ParseWebhook(payload)
 	if err != nil {
@@ -1346,7 +1346,7 @@ func TestParseWebhookReadsReplyTo(t *testing.T) {
 // come out "5532999990000" and this test goes red, because it compares
 // the exact VALUE, not just the field's presence.
 func TestParseWebhookReplyToReadsTheContextsIdNotItsFrom(t *testing.T) {
-	payload := readCorpus(t, "resposta_a_mensagem.json")
+	payload := readCorpus(t, "message_reply.json")
 
 	evs, err := ParseWebhook(payload)
 	if err != nil {
@@ -1834,7 +1834,7 @@ func TestParseWebhookNoFieldAtAnyLevelSilencesTheBatch(t *testing.T) {
 // profile erased the batch.
 //
 // It didn't become a corpus fixture because what it proves isn't the
-// boundary (that's contacts_de_tipo_errado_sintetico.json): it's
+// boundary (that's contacts_wrong_type_synthetic.json): it's
 // docs/ARMADILHAS.md's DEPTH rule one level below it. contactMeta is a
 // PLAIN struct on purpose — the LIST is what isolates, and each item is
 // deserialized separately —, so the price of an unreadable `profile` is
@@ -2161,7 +2161,7 @@ func TestParseWebhookANullReactionOrLocationIsStillAbsence(t *testing.T) {
 }
 
 func TestParseWebhookASyntheticTemplateButtonDistinguishesPayloadFromText(t *testing.T) {
-	payload := readCorpus(t, "botao_de_template_sintetico.json")
+	payload := readCorpus(t, "template_button_synthetic.json")
 
 	evs, err := ParseWebhook(payload)
 	if err != nil {
@@ -2949,7 +2949,7 @@ func TestParseWebhookTemplateStatusLeaksNoMessageFieldNorTheOtherWayAround(t *te
 	}
 
 	// And the other direction: a plain text message doesn't gain "template".
-	msgs, err := ParseWebhook(readCorpus(t, "mensagem_texto.json"))
+	msgs, err := ParseWebhook(readCorpus(t, "text_message.json"))
 	if err != nil || len(msgs) != 1 {
 		t.Fatalf("err=%v len=%d", err, len(msgs))
 	}

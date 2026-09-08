@@ -11,9 +11,9 @@
 // 🔴 THE DECISION THAT MAKES THE NUMBER MEAN SOMETHING: ONLY `sent` COUNTS.
 //
 // The same wamid appears in `sent`, `delivered`, and `read`, and all three can
-// carry `pricing`. This is NOT a guess: in the corpus, status_sent_com_pricing.json
+// carry `pricing`. This is NOT a guess: in the corpus, status_sent_with_pricing.json
 // and status_delivered.json are the capture of the SAME send (same wamid, same
-// timestamp, same `service` category), and status_read_com_cobranca.json is a
+// timestamp, same `service` category), and status_read_with_billing.json is a
 // `read` with its own `pricing`. Counting every status that carries a billing
 // block would multiply the measured invoice by up to THREE, and an inflated
 // number is worse than none: it looks like measurement and replaces the
