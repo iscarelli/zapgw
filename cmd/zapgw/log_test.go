@@ -77,23 +77,23 @@ func TestLogLast200InChronologicalOrder(t *testing.T) {
 	text := out.String()
 	lines := strings.Split(strings.TrimRight(text, "\n"), "\n")
 	if len(lines) == 0 {
-		t.Fatalf("saida vazia")
+		t.Fatalf("empty output")
 	}
 	data := lines[1:] // the first line is the header
 	if len(data) != 200 {
-		t.Fatalf("esperava 200 linhas de dado, vieram %d:\n%s", len(data), text)
+		t.Fatalf("expected 200 data rows, got %d:\n%s", len(data), text)
 	}
 	// 250 rows (indices 0..249): the last 200 are 50..249. The oldest of
 	// them (linha-050) has to come FIRST, the most recent (linha-249)
 	// LAST.
 	if !strings.Contains(data[0], "linha-050") {
-		t.Fatalf("primeira linha impressa deveria ser a mais antiga das ultimas 200 (linha-050):\n%s", data[0])
+		t.Fatalf("the first line printed should be the oldest of the last 200 (linha-050):\n%s", data[0])
 	}
 	if !strings.Contains(data[len(data)-1], "linha-249") {
-		t.Fatalf("ultima linha impressa deveria ser a mais recente (linha-249):\n%s", data[len(data)-1])
+		t.Fatalf("the last line printed should be the most recent (linha-249):\n%s", data[len(data)-1])
 	}
 	if strings.Contains(text, "linha-049") {
-		t.Fatalf("linha-049 nao deveria aparecer — esta fora das ultimas 200:\n%s", text)
+		t.Fatalf("linha-049 should not appear — it's outside the last 200:\n%s", text)
 	}
 }
 
@@ -143,7 +143,7 @@ waitLoop:
 		}
 		select {
 		case <-deadline:
-			t.Fatalf("follow nao pegou as duas linhas do mesmo segundo em 2s (perda silenciosa):\n%s", text)
+			t.Fatalf("follow did not pick up both same-second lines in 2s (silent loss):\n%s", text)
 		case <-time.After(5 * time.Millisecond):
 		}
 	}
@@ -155,7 +155,7 @@ waitLoop:
 			t.Fatalf("runLog: %v", err)
 		}
 	case <-time.After(2 * time.Second):
-		t.Fatal("runLog nao retornou apos o cancelamento — o teste pendurou")
+		t.Fatal("runLog did not return after cancellation — the test hung")
 	}
 }
 
@@ -168,31 +168,31 @@ func TestLogCommandOptionalFlagsWork(t *testing.T) {
 
 	// parseLogFlags receives the arguments AFTER the subcommand's
 	// name — the same convention as dispatch (`logCommand(args[1:],
-	// ...)`) and every `comando*` in this package.
+	// ...)`) and every `*Command` in this package.
 	n, slug, keepGoing, err := parseLogFlags(nil, &out)
 	if err != nil || !keepGoing {
-		t.Fatalf("sem flag nenhuma deveria funcionar: seguir=%v err=%v", keepGoing, err)
+		t.Fatalf("no flag at all should work: keepGoing=%v err=%v", keepGoing, err)
 	}
 	if n != defaultLogRows {
-		t.Fatalf("--n default = %d, queria %d", n, defaultLogRows)
+		t.Fatalf("--n default = %d, wanted %d", n, defaultLogRows)
 	}
 	if slug != "" {
-		t.Fatalf("--instancia default deveria ser vazio, veio %q", slug)
+		t.Fatalf("--instancia default should be empty, got %q", slug)
 	}
 
 	n, slug, keepGoing, err = parseLogFlags([]string{"--n", "5", "--instancia", "lojinha"}, &out)
 	if err != nil || !keepGoing {
-		t.Fatalf("--n e --instancia deveriam ser aceitos: seguir=%v err=%v", keepGoing, err)
+		t.Fatalf("--n and --instancia should be accepted: keepGoing=%v err=%v", keepGoing, err)
 	}
 	if n != 5 {
-		t.Fatalf("--n = %d, queria 5", n)
+		t.Fatalf("--n = %d, wanted 5", n)
 	}
 	if slug != "lojinha" {
-		t.Fatalf("--instancia = %q, queria \"lojinha\"", slug)
+		t.Fatalf("--instancia = %q, wanted \"lojinha\"", slug)
 	}
 
 	if _, _, _, err := parseLogFlags([]string{"--n", "0"}, &out); err == nil {
-		t.Fatal("--n 0 deveria ser recusado (nao ha 'ultimas 0 linhas')")
+		t.Fatal("--n 0 should be refused (there's no 'last 0 lines')")
 	}
 }
 
@@ -229,15 +229,15 @@ func TestRunLogHonorsInstanceAndN(t *testing.T) {
 
 	text := out.String()
 	if strings.Contains(text, "outra-") {
-		t.Fatalf("--instancia lojinha vazou linha de outra instancia:\n%s", text)
+		t.Fatalf("--instancia lojinha leaked a line from another instance:\n%s", text)
 	}
 	lines := strings.Split(strings.TrimRight(text, "\n"), "\n")
 	data := lines[1:]
 	if len(data) != 2 {
-		t.Fatalf("--n 2 deveria limitar a 2 linhas, vieram %d:\n%s", len(data), text)
+		t.Fatalf("--n 2 should limit to 2 lines, got %d:\n%s", len(data), text)
 	}
 	if !strings.Contains(text, "lojinha-3") || !strings.Contains(text, "lojinha-4") {
-		t.Fatalf("--n 2 deveria trazer as DUAS ULTIMAS (lojinha-3, lojinha-4):\n%s", text)
+		t.Fatalf("--n 2 should bring the LAST TWO (lojinha-3, lojinha-4):\n%s", text)
 	}
 }
 
@@ -272,10 +272,10 @@ func TestLogShowsTheCounterpartInTheClear(t *testing.T) {
 
 	text := out.String()
 	if !strings.Contains(text, "mensagem") || !strings.Contains(text, "consumidor guardou (200)") {
-		t.Fatalf("saida nao trouxe a linha esperada:\n%s", text)
+		t.Fatalf("the output did not carry the expected line:\n%s", text)
 	}
 	if !strings.Contains(text, sentinelNumber) {
-		t.Fatalf("a saida NAO mostrou o telefone — decisao do dono (T-094) foi mostrar:\n%s", text)
+		t.Fatalf("the output did NOT show the phone number — the owner's decision (T-094) was to show it:\n%s", text)
 	}
 }
 
@@ -309,16 +309,16 @@ func TestLogShowsDashForOldRowWithoutCounterpart(t *testing.T) {
 
 	lines := strings.Split(strings.TrimRight(out.String(), "\n"), "\n")
 	if len(lines) != 2 {
-		t.Fatalf("esperava cabecalho + 1 linha de dado, vieram %d:\n%s", len(lines), out.String())
+		t.Fatalf("expected header + 1 data row, got %d:\n%s", len(lines), out.String())
 	}
 	// THE TABLE DID NOT BREAK: the rest of the row (tipo, desfecho) stays
 	// intact next to the "—" — an empty column must not have dragged or
 	// cut the following columns.
 	if !strings.Contains(lines[1], "mensagem") || !strings.Contains(lines[1], "consumidor guardou (200)") {
-		t.Fatalf("linha antiga: o resto dos campos nao sobreviveu ao lado da contraparte vazia:\n%s", lines[1])
+		t.Fatalf("old row: the rest of the fields did not survive next to the empty counterpart:\n%s", lines[1])
 	}
 	if !strings.Contains(lines[1], "—") {
-		t.Fatalf("linha antiga sem contraparte deveria imprimir \"—\", veio:\n%s", lines[1])
+		t.Fatalf("old row with no counterpart should print \"—\", got:\n%s", lines[1])
 	}
 }
 
@@ -368,7 +368,7 @@ func TestLogFixedAlignmentBetweenInitialBlockAndFollow(t *testing.T) {
 	for !strings.Contains(out.String(), "linha-do-bloco-inicial") {
 		select {
 		case <-deadline:
-			t.Fatalf("bloco inicial nao apareceu em 2s:\n%s", out.String())
+			t.Fatalf("the initial block did not appear in 2s:\n%s", out.String())
 		case <-time.After(5 * time.Millisecond):
 		}
 	}
@@ -387,7 +387,7 @@ func TestLogFixedAlignmentBetweenInitialBlockAndFollow(t *testing.T) {
 	for !strings.Contains(out.String(), "linha-do-bloco-follow") {
 		select {
 		case <-deadline:
-			t.Fatalf("linha do follow nao apareceu em 2s:\n%s", out.String())
+			t.Fatalf("the follow's line did not appear in 2s:\n%s", out.String())
 		case <-time.After(5 * time.Millisecond):
 		}
 	}
@@ -399,13 +399,13 @@ func TestLogFixedAlignmentBetweenInitialBlockAndFollow(t *testing.T) {
 			t.Fatalf("runLog: %v", err)
 		}
 	case <-time.After(2 * time.Second):
-		t.Fatal("runLog nao retornou apos o cancelamento — o teste pendurou")
+		t.Fatal("runLog did not return after cancellation — the test hung")
 	}
 
 	text := out.String()
 	lines := strings.Split(strings.TrimRight(text, "\n"), "\n")
 	if len(lines) < 3 {
-		t.Fatalf("esperava cabecalho + bloco inicial + follow, vieram %d linhas:\n%s", len(lines), text)
+		t.Fatalf("expected header + initial block + follow, got %d lines:\n%s", len(lines), text)
 	}
 	header := lines[0]
 
@@ -419,19 +419,19 @@ func TestLogFixedAlignmentBetweenInitialBlockAndFollow(t *testing.T) {
 		}
 	}
 	if initialLine == "" || followLine == "" {
-		t.Fatalf("nao encontrei as duas linhas esperadas:\n%s", text)
+		t.Fatalf("did not find the two expected lines:\n%s", text)
 	}
 
 	headerOffset := strings.Index(header, "instance")
 	initialOffset := strings.Index(initialLine, "lojinha")
 	followOffset := strings.Index(followLine, "lojinha")
 	if headerOffset < 0 || initialOffset < 0 || followOffset < 0 {
-		t.Fatalf("nao encontrei a coluna instancia numa das linhas:\ncabecalho=%q\ninicial=%q\nfollow=%q",
+		t.Fatalf("did not find the instance column in one of the lines:\nheader=%q\ninitial=%q\nfollow=%q",
 			header, initialLine, followLine)
 	}
 	if initialOffset != headerOffset || followOffset != headerOffset {
-		t.Fatalf("colunas desalinhadas (isto e o que o tabwriter fazia): cabecalho comeca \"instancia\" em %d, "+
-			"bloco inicial comeca o slug em %d, follow comeca o slug em %d\ncabecalho=%q\ninicial=%q\nfollow=%q",
+		t.Fatalf("misaligned columns (this is what the tabwriter used to do): header starts \"instancia\" at %d, "+
+			"initial block starts the slug at %d, follow starts the slug at %d\nheader=%q\ninitial=%q\nfollow=%q",
 			headerOffset, initialOffset, followOffset, header, initialLine, followLine)
 	}
 }
@@ -449,7 +449,7 @@ func TestLogWideSlugIsNotTruncated(t *testing.T) {
 	// requires (3 to 40 characters).
 	wideSlug := "slug-" + strings.Repeat("z", 25)
 	if len(wideSlug) != 30 {
-		t.Fatalf("wideSlug tem %d caracteres, queria 30", len(wideSlug))
+		t.Fatalf("wideSlug has %d characters, wanted 30", len(wideSlug))
 	}
 	createTestLogInstance(t, store, wideSlug)
 
@@ -469,7 +469,7 @@ func TestLogWideSlugIsNotTruncated(t *testing.T) {
 
 	text := out.String()
 	if !strings.Contains(text, wideSlug) {
-		t.Fatalf("o slug de 30 caracteres foi truncado, saida:\n%s", text)
+		t.Fatalf("the 30-character slug was truncated, output:\n%s", text)
 	}
 }
 
@@ -503,7 +503,7 @@ func TestLogHeaderMatchesBodyWhenValuesFit(t *testing.T) {
 
 	lines := strings.Split(strings.TrimRight(out.String(), "\n"), "\n")
 	if len(lines) != 2 {
-		t.Fatalf("esperava cabecalho + 1 linha, vieram %d:\n%s", len(lines), out.String())
+		t.Fatalf("expected header + 1 row, got %d:\n%s", len(lines), out.String())
 	}
 	header, body := lines[0], lines[1]
 
@@ -521,14 +521,14 @@ func TestLogHeaderMatchesBodyWhenValuesFit(t *testing.T) {
 	for _, c := range cases {
 		headerOff := strings.Index(header, c.label)
 		if headerOff < 0 {
-			t.Fatalf("rotulo %q nao encontrado no cabecalho: %q", c.label, header)
+			t.Fatalf("label %q not found in the header: %q", c.label, header)
 		}
 		bodyOff := strings.Index(body, c.value)
 		if bodyOff < 0 {
-			t.Fatalf("valor %q nao encontrado no corpo: %q", c.value, body)
+			t.Fatalf("value %q not found in the body: %q", c.value, body)
 		}
 		if bodyOff != headerOff {
-			t.Fatalf("coluna %s desalinhada: cabecalho em %d, corpo em %d\ncabecalho=%q\ncorpo=%q",
+			t.Fatalf("column %s misaligned: header at %d, body at %d\nheader=%q\nbody=%q",
 				c.column, headerOff, bodyOff, header, body)
 		}
 	}
@@ -562,10 +562,10 @@ func TestLogSeparatorSurvivesWhenValueFillsTheColumn(t *testing.T) {
 	const exactType = "zzzzzzzzzz"             // 10 characters
 	const exactCounterpart = "999888777666555" // 15 characters (synthetic — not a real E.164, just fills the column)
 	if len(exactType) != logTypeWidth {
-		t.Fatalf("exactType tem %d caracteres, queria %d (logTypeWidth)", len(exactType), logTypeWidth)
+		t.Fatalf("exactType has %d characters, wanted %d (logTypeWidth)", len(exactType), logTypeWidth)
 	}
 	if len(exactCounterpart) != logCounterpartWidth {
-		t.Fatalf("exactCounterpart tem %d caracteres, queria %d (logCounterpartWidth)", len(exactCounterpart), logCounterpartWidth)
+		t.Fatalf("exactCounterpart has %d characters, wanted %d (logCounterpartWidth)", len(exactCounterpart), logCounterpartWidth)
 	}
 
 	if err := store.WriteTransit(config.TransitRecord{
@@ -585,7 +585,7 @@ func TestLogSeparatorSurvivesWhenValueFillsTheColumn(t *testing.T) {
 
 	lines := strings.Split(strings.TrimRight(out.String(), "\n"), "\n")
 	if len(lines) != 2 {
-		t.Fatalf("esperava cabecalho + 1 linha, vieram %d:\n%s", len(lines), out.String())
+		t.Fatalf("expected header + 1 row, got %d:\n%s", len(lines), out.String())
 	}
 	header, body := lines[0], lines[1]
 
@@ -615,11 +615,11 @@ func TestLogSeparatorSurvivesWhenValueFillsTheColumn(t *testing.T) {
 	// spaces) has to come before "desfecho" starts — it must not glue.
 	typeOff := strings.Index(body, exactType)
 	if typeOff < 0 {
-		t.Fatalf("tipo exato nao encontrado no corpo: %q", body)
+		t.Fatalf("exact type not found in the body: %q", body)
 	}
 	afterType := body[typeOff+len(exactType):]
 	if !strings.HasPrefix(afterType, expectedSeparator) {
-		t.Fatalf("tipo com largura exata (%d) colou na coluna seguinte, sem os 2 espacos de separador: %q",
+		t.Fatalf("type with exact width (%d) glued to the next column, with no 2-space separator: %q",
 			logTypeWidth, body)
 	}
 
@@ -627,11 +627,11 @@ func TestLogSeparatorSurvivesWhenValueFillsTheColumn(t *testing.T) {
 	// come before "direcao" starts.
 	counterpartOff := strings.Index(body, exactCounterpart)
 	if counterpartOff < 0 {
-		t.Fatalf("contraparte exata nao encontrada no corpo: %q", body)
+		t.Fatalf("exact counterpart not found in the body: %q", body)
 	}
 	afterCounterpart := body[counterpartOff+len(exactCounterpart):]
 	if !strings.HasPrefix(afterCounterpart, expectedSeparator) {
-		t.Fatalf("contraparte com largura exata (%d) colou na coluna seguinte, sem os 2 espacos de separador: %q",
+		t.Fatalf("counterpart with exact width (%d) glued to the next column, with no 2-space separator: %q",
 			logCounterpartWidth, body)
 	}
 }
@@ -658,10 +658,10 @@ func TestRunLogEndsWhenTheContextIsCancelled(t *testing.T) {
 	select {
 	case err := <-done:
 		if err != nil {
-			t.Fatalf("runLog apos Ctrl-C simulado devolveu erro (queria nil): %v", err)
+			t.Fatalf("runLog after simulated Ctrl-C returned an error (wanted nil): %v", err)
 		}
 	case <-time.After(2 * time.Second):
-		t.Fatal("runLog nao retornou apos o contexto ser cancelado — o teste pendurou")
+		t.Fatal("runLog did not return after the context was cancelled — the test hung")
 	}
 }
 
@@ -690,43 +690,43 @@ func TestLogClearInstanceRequiresConfirmEqualToTheSlug(t *testing.T) {
 
 	var out bytes.Buffer
 	if err := logCommand([]string{"clear", "--instancia", "lojinha"}, &out, fakeEnvironment(vars)); err == nil {
-		t.Fatal("sem --confirmo deveria RECUSAR")
+		t.Fatal("with no --confirmo should REFUSE")
 	}
 	out.Reset()
 	if err := logCommand([]string{"clear", "--instancia", "lojinha", "--confirmo", "outra"}, &out, fakeEnvironment(vars)); err == nil {
-		t.Fatal("--confirmo com o slug ERRADO deveria RECUSAR")
+		t.Fatal("--confirmo with the WRONG slug should REFUSE")
 	}
 
 	check := storeFromEnvironment(t, vars)
 	var remainingLojinha, remainingOther int
 	if err := check.DB().QueryRow(`SELECT count(*) FROM transito WHERE slug = ?`, "lojinha").Scan(&remainingLojinha); err != nil {
-		t.Fatalf("contar lojinha: %v", err)
+		t.Fatalf("count lojinha: %v", err)
 	}
 	if err := check.DB().QueryRow(`SELECT count(*) FROM transito WHERE slug = ?`, "outra").Scan(&remainingOther); err != nil {
-		t.Fatalf("contar outra: %v", err)
+		t.Fatalf("count outra: %v", err)
 	}
 	if remainingLojinha != 1 || remainingOther != 1 {
-		t.Fatalf("as duas recusas nao deveriam ter apagado nada: lojinha=%d outra=%d (quero 1 e 1)", remainingLojinha, remainingOther)
+		t.Fatalf("neither refusal should have deleted anything: lojinha=%d outra=%d (want 1 and 1)", remainingLojinha, remainingOther)
 	}
 
 	out.Reset()
 	if err := logCommand([]string{"clear", "--instancia", "lojinha", "--confirmo", "lojinha"}, &out, fakeEnvironment(vars)); err != nil {
-		t.Fatalf("clear com --confirmo certo: %v", err)
+		t.Fatalf("clear with the right --confirmo: %v", err)
 	}
 
 	check2 := storeFromEnvironment(t, vars)
 	var remainingLojinha2, remainingOther2 int
 	if err := check2.DB().QueryRow(`SELECT count(*) FROM transito WHERE slug = ?`, "lojinha").Scan(&remainingLojinha2); err != nil {
-		t.Fatalf("contar lojinha (2): %v", err)
+		t.Fatalf("count lojinha (2): %v", err)
 	}
 	if err := check2.DB().QueryRow(`SELECT count(*) FROM transito WHERE slug = ?`, "outra").Scan(&remainingOther2); err != nil {
-		t.Fatalf("contar outra (2): %v", err)
+		t.Fatalf("count outra (2): %v", err)
 	}
 	if remainingLojinha2 != 0 {
-		t.Fatalf("lojinha deveria estar vazia depois do clear, restaram %d", remainingLojinha2)
+		t.Fatalf("lojinha should be empty after the clear, %d remained", remainingLojinha2)
 	}
 	if remainingOther2 != 1 {
-		t.Fatalf("outra NAO deveria ter sido tocada, restaram %d (quero 1)", remainingOther2)
+		t.Fatalf("outra should NOT have been touched, %d remained (want 1)", remainingOther2)
 	}
 }
 
@@ -751,34 +751,34 @@ func TestLogClearPhoneRequiresConfirmEqualToThePhone(t *testing.T) {
 
 	var out bytes.Buffer
 	if err := logCommand([]string{"clear", "--telefone", targetNumber}, &out, fakeEnvironment(vars)); err == nil {
-		t.Fatal("sem --confirmo deveria RECUSAR")
+		t.Fatal("with no --confirmo should REFUSE")
 	}
 	out.Reset()
 	if err := logCommand([]string{"clear", "--telefone", targetNumber, "--confirmo", "5511900000000"}, &out, fakeEnvironment(vars)); err == nil {
-		t.Fatal("--confirmo com o numero ERRADO deveria RECUSAR")
+		t.Fatal("--confirmo with the WRONG number should REFUSE")
 	}
 
 	check := storeFromEnvironment(t, vars)
 	var remaining int
 	if err := check.DB().QueryRow(`SELECT count(*) FROM transito WHERE contraparte = ?`, targetNumber).Scan(&remaining); err != nil {
-		t.Fatalf("contar: %v", err)
+		t.Fatalf("count: %v", err)
 	}
 	if remaining != 1 {
-		t.Fatalf("as duas recusas nao deveriam ter apagado nada, restaram %d (quero 1)", remaining)
+		t.Fatalf("neither refusal should have deleted anything, %d remained (want 1)", remaining)
 	}
 
 	out.Reset()
 	if err := logCommand([]string{"clear", "--telefone", targetNumber, "--confirmo", targetNumber}, &out, fakeEnvironment(vars)); err != nil {
-		t.Fatalf("clear com --confirmo certo: %v", err)
+		t.Fatalf("clear with the right --confirmo: %v", err)
 	}
 
 	check2 := storeFromEnvironment(t, vars)
 	var remaining2 int
 	if err := check2.DB().QueryRow(`SELECT count(*) FROM transito WHERE contraparte = ?`, targetNumber).Scan(&remaining2); err != nil {
-		t.Fatalf("contar (2): %v", err)
+		t.Fatalf("count (2): %v", err)
 	}
 	if remaining2 != 0 {
-		t.Fatalf("deveria estar vazio depois do clear, restaram %d", remaining2)
+		t.Fatalf("should be empty after the clear, %d remained", remaining2)
 	}
 }
 
@@ -796,7 +796,7 @@ func TestLogClearPhoneRefusesWhenTwoNumbersMatchOnTheLastEight(t *testing.T) {
 	const numberA = "5511900000001" // synthetic — area code 11
 	const numberB = "5532900000001" // synthetic — area code 32, SAME last 8 digits as A
 	if meta.LastEightDigits(numberA) != meta.LastEightDigits(numberB) {
-		t.Fatalf("fixture errada: A e B deveriam compartilhar os ultimos 8 digitos (A=%q B=%q)",
+		t.Fatalf("wrong fixture: A and B should share the last 8 digits (A=%q B=%q)",
 			meta.LastEightDigits(numberA), meta.LastEightDigits(numberB))
 	}
 
@@ -820,19 +820,19 @@ func TestLogClearPhoneRefusesWhenTwoNumbersMatchOnTheLastEight(t *testing.T) {
 	// comparison.
 	err := logCommand([]string{"clear", "--telefone", numberA, "--confirmo", numberA}, &out, fakeEnvironment(vars))
 	if err == nil {
-		t.Fatal("clear --telefone deveria RECUSAR quando dois numeros distintos batem — apagaria o historico de outra pessoa")
+		t.Fatal("clear --telefone should REFUSE when two distinct numbers match — it would delete someone else's history")
 	}
 	if !strings.Contains(err.Error(), numberA) || !strings.Contains(err.Error(), numberB) {
-		t.Fatalf("a recusa deveria LISTAR os dois numeros que bateram, veio: %v", err)
+		t.Fatalf("the refusal should LIST both numbers that matched, got: %v", err)
 	}
 
 	check := storeFromEnvironment(t, vars)
 	var leftovers int
 	if err := check.DB().QueryRow(`SELECT count(*) FROM transito WHERE slug = ?`, "lojinha").Scan(&leftovers); err != nil {
-		t.Fatalf("contar transito: %v", err)
+		t.Fatalf("count transito: %v", err)
 	}
 	if leftovers != 2 {
-		t.Fatalf("a recusa deveria deixar as DUAS linhas intactas, restaram %d", leftovers)
+		t.Fatalf("the refusal should leave BOTH rows intact, %d remained", leftovers)
 	}
 }
 
@@ -853,20 +853,20 @@ func TestLogClearPhoneDeletesInAllInstancesAndCountsPerInstance(t *testing.T) {
 			Slug: "lojinha", Direction: config.DirectionInbound,
 			Counterparty: targetNumber, Type: "mensagem", Correlation: corr, Outcome: fmt.Sprintf("linha-alvo-%d", i),
 		}, time.Now()); err != nil {
-			t.Fatalf("WriteTransit alvo lojinha %d: %v", i, err)
+			t.Fatalf("WriteTransit target lojinha %d: %v", i, err)
 		}
 	}
 	if err := store.WriteTransit(config.TransitRecord{
 		Slug: "outra", Direction: config.DirectionInbound,
 		Counterparty: targetNumber, Type: "mensagem", Correlation: "alvo-3", Outcome: "linha-alvo-outra",
 	}, time.Now()); err != nil {
-		t.Fatalf("WriteTransit alvo outra: %v", err)
+		t.Fatalf("WriteTransit target outra: %v", err)
 	}
 	if err := store.WriteTransit(config.TransitRecord{
 		Slug: "lojinha", Direction: config.DirectionInbound,
 		Counterparty: otherNumber, Type: "mensagem", Correlation: "nao-alvo", Outcome: "linha-preservada",
 	}, time.Now()); err != nil {
-		t.Fatalf("WriteTransit nao-alvo: %v", err)
+		t.Fatalf("WriteTransit non-target: %v", err)
 	}
 
 	var out bytes.Buffer
@@ -875,22 +875,22 @@ func TestLogClearPhoneDeletesInAllInstancesAndCountsPerInstance(t *testing.T) {
 	}
 	text := out.String()
 	if !strings.Contains(text, "lojinha") || !strings.Contains(text, "outra") {
-		t.Fatalf("saida deveria informar a contagem POR INSTANCIA: %s", text)
+		t.Fatalf("the output should report the count PER INSTANCE: %s", text)
 	}
 
 	check := storeFromEnvironment(t, vars)
 	var remainingTarget, remainingOtherOne int
 	if err := check.DB().QueryRow(`SELECT count(*) FROM transito WHERE contraparte = ?`, targetNumber).Scan(&remainingTarget); err != nil {
-		t.Fatalf("contar alvo: %v", err)
+		t.Fatalf("count target: %v", err)
 	}
 	if err := check.DB().QueryRow(`SELECT count(*) FROM transito WHERE contraparte = ?`, otherNumber).Scan(&remainingOtherOne); err != nil {
-		t.Fatalf("contar nao-alvo: %v", err)
+		t.Fatalf("count non-target: %v", err)
 	}
 	if remainingTarget != 0 {
-		t.Fatalf("as 3 linhas do alvo deveriam ter sumido, restaram %d", remainingTarget)
+		t.Fatalf("the target's 3 rows should have disappeared, %d remained", remainingTarget)
 	}
 	if remainingOtherOne != 1 {
-		t.Fatalf("a linha do OUTRO numero nao deveria ter sido tocada, restaram %d", remainingOtherOne)
+		t.Fatalf("the OTHER number's row should not have been touched, %d remained", remainingOtherOne)
 	}
 }
 
@@ -908,21 +908,21 @@ func TestLogClearCommandRequiresExactlyOneOfTheTwo(t *testing.T) {
 
 	var out bytes.Buffer
 	if err := logCommand([]string{"clear"}, &out, fakeEnvironment(vars)); err == nil {
-		t.Fatal("nenhum dos dois deveria ser erro")
+		t.Fatal("giving neither of the two should be an error")
 	}
 	out.Reset()
 	if err := logCommand([]string{"clear", "--instancia", "lojinha", "--telefone", "5511900000000", "--confirmo", "lojinha"},
 		&out, fakeEnvironment(vars)); err == nil {
-		t.Fatal("os dois juntos deveria ser erro")
+		t.Fatal("both together should be an error")
 	}
 
 	check := storeFromEnvironment(t, vars)
 	var leftovers int
 	if err := check.DB().QueryRow(`SELECT count(*) FROM transito WHERE slug = ?`, "lojinha").Scan(&leftovers); err != nil {
-		t.Fatalf("contar transito: %v", err)
+		t.Fatalf("count transito: %v", err)
 	}
 	if leftovers != 1 {
-		t.Fatalf("nada deveria ter sido apagado, restaram %d", leftovers)
+		t.Fatalf("nothing should have been deleted, %d remained", leftovers)
 	}
 }
 
@@ -947,7 +947,7 @@ func TestLogFollowSurvivesLogClear(t *testing.T) {
 			Slug: "lojinha", Direction: config.DirectionInbound,
 			Type: "mensagem", Correlation: fmt.Sprintf("antes-%d", i), Outcome: fmt.Sprintf("antes-%d", i),
 		}, time.Now()); err != nil {
-			t.Fatalf("WriteTransit antes %d: %v", i, err)
+			t.Fatalf("WriteTransit before %d: %v", i, err)
 		}
 	}
 
@@ -966,7 +966,7 @@ func TestLogFollowSurvivesLogClear(t *testing.T) {
 	for !strings.Contains(out.String(), "antes-4") {
 		select {
 		case <-deadline:
-			t.Fatalf("bloco inicial nao apareceu em 2s:\n%s", out.String())
+			t.Fatalf("the initial block did not appear in 2s:\n%s", out.String())
 		case <-time.After(5 * time.Millisecond):
 		}
 	}
@@ -982,14 +982,14 @@ func TestLogFollowSurvivesLogClear(t *testing.T) {
 		Slug: "lojinha", Direction: config.DirectionInbound,
 		Type: "mensagem", Correlation: "depois", Outcome: "linha-depois-do-clear",
 	}, time.Now()); err != nil {
-		t.Fatalf("WriteTransit depois: %v", err)
+		t.Fatalf("WriteTransit after: %v", err)
 	}
 
 	deadline = time.After(2 * time.Second)
 	for !strings.Contains(out.String(), "linha-depois-do-clear") {
 		select {
 		case <-deadline:
-			t.Fatalf("follow ficou CEGO apos o clear — linha-depois-do-clear nao apareceu em 2s:\n%s", out.String())
+			t.Fatalf("follow went BLIND after the clear — linha-depois-do-clear did not appear in 2s:\n%s", out.String())
 		case <-time.After(5 * time.Millisecond):
 		}
 	}
@@ -1001,7 +1001,7 @@ func TestLogFollowSurvivesLogClear(t *testing.T) {
 			t.Fatalf("runLog: %v", err)
 		}
 	case <-time.After(2 * time.Second):
-		t.Fatal("runLog nao retornou apos o cancelamento — o teste pendurou")
+		t.Fatal("runLog did not return after cancellation — the test hung")
 	}
 }
 
@@ -1032,7 +1032,7 @@ func TestLogFollowDoesNotLoseANewRowAfterPartialClearThatRemovesTheMostRecent(t 
 			Slug: "lojinha", Direction: config.DirectionInbound, Counterparty: numberA,
 			Type: "mensagem", Correlation: fmt.Sprintf("a-%d", i), Outcome: fmt.Sprintf("preservada-%d", i),
 		}, time.Now()); err != nil {
-			t.Fatalf("WriteTransit preservada %d: %v", i, err)
+			t.Fatalf("WriteTransit preserved %d: %v", i, err)
 		}
 	}
 	for i := 0; i < 3; i++ {
@@ -1040,7 +1040,7 @@ func TestLogFollowDoesNotLoseANewRowAfterPartialClearThatRemovesTheMostRecent(t 
 			Slug: "lojinha", Direction: config.DirectionInbound, Counterparty: targetNumber,
 			Type: "mensagem", Correlation: fmt.Sprintf("alvo-%d", i), Outcome: fmt.Sprintf("alvo-%d", i),
 		}, time.Now()); err != nil {
-			t.Fatalf("WriteTransit alvo %d: %v", i, err)
+			t.Fatalf("WriteTransit target %d: %v", i, err)
 		}
 	}
 
@@ -1059,7 +1059,7 @@ func TestLogFollowDoesNotLoseANewRowAfterPartialClearThatRemovesTheMostRecent(t 
 	for !strings.Contains(out.String(), "alvo-2") {
 		select {
 		case <-deadline:
-			t.Fatalf("bloco inicial nao apareceu em 2s:\n%s", out.String())
+			t.Fatalf("the initial block did not appear in 2s:\n%s", out.String())
 		case <-time.After(5 * time.Millisecond):
 		}
 	}
@@ -1077,7 +1077,7 @@ func TestLogFollowDoesNotLoseANewRowAfterPartialClearThatRemovesTheMostRecent(t 
 		totalDeleted += a.Rows
 	}
 	if totalDeleted != 3 {
-		t.Fatalf("fixture errada: deveria ter apagado 3 linhas do alvo, apagou %d", totalDeleted)
+		t.Fatalf("wrong fixture: should have deleted 3 target rows, deleted %d", totalDeleted)
 	}
 
 	// the NEW row is born with rowid 8 (current max 7 + 1) — LESS than
@@ -1087,14 +1087,14 @@ func TestLogFollowDoesNotLoseANewRowAfterPartialClearThatRemovesTheMostRecent(t 
 		Slug: "lojinha", Direction: config.DirectionInbound,
 		Type: "mensagem", Correlation: "nova", Outcome: "linha-nova-apos-clear-parcial",
 	}, time.Now()); err != nil {
-		t.Fatalf("WriteTransit nova: %v", err)
+		t.Fatalf("WriteTransit new: %v", err)
 	}
 
 	deadline = time.After(2 * time.Second)
 	for !strings.Contains(out.String(), "linha-nova-apos-clear-parcial") {
 		select {
 		case <-deadline:
-			t.Fatalf("follow perdeu a linha NOVA apos um clear PARCIAL — nao apareceu em 2s:\n%s", out.String())
+			t.Fatalf("follow lost the NEW row after a PARTIAL clear — it did not appear in 2s:\n%s", out.String())
 		case <-time.After(5 * time.Millisecond):
 		}
 	}
@@ -1106,6 +1106,6 @@ func TestLogFollowDoesNotLoseANewRowAfterPartialClearThatRemovesTheMostRecent(t 
 			t.Fatalf("runLog: %v", err)
 		}
 	case <-time.After(2 * time.Second):
-		t.Fatal("runLog nao retornou apos o cancelamento — o teste pendurou")
+		t.Fatal("runLog did not return after cancellation — the test hung")
 	}
 }

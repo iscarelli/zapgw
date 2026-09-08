@@ -23,7 +23,7 @@ func TestHealthAnswersOK(t *testing.T) {
 	routes(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil).ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, quero 200", rec.Code)
+		t.Fatalf("status = %d, want 200", rec.Code)
 	}
 }
 
@@ -40,7 +40,7 @@ func TestRoutesRegistersThePerInstanceProbe(t *testing.T) {
 	routes(nil, nil, health, nil, nil, nil, nil, nil, nil, nil, nil, nil).ServeHTTP(rec, req)
 
 	if !arrived {
-		t.Fatalf("a requisicao nao chegou ao handler de saude (status = %d)", rec.Code)
+		t.Fatalf("the request did not reach the health handler (status = %d)", rec.Code)
 	}
 }
 
@@ -60,7 +60,7 @@ func TestRoutesRegistersTheTemplateCatalog(t *testing.T) {
 		rec := httptest.NewRecorder()
 		routes(nil, nil, nil, templates, nil, nil, nil, nil, nil, nil, nil, nil).ServeHTTP(rec, req)
 		if len(methods) == 0 || methods[len(methods)-1] != method {
-			t.Fatalf("%s /v1/templates nao chegou ao handler (status = %d)", method, rec.Code)
+			t.Fatalf("%s /v1/templates did not reach the handler (status = %d)", method, rec.Code)
 		}
 	}
 }
@@ -87,7 +87,7 @@ func TestRoutesRegistersTheMediaRoutes(t *testing.T) {
 		rec := httptest.NewRecorder()
 		routes(nil, nil, nil, nil, media, nil, nil, nil, nil, nil, nil, nil).ServeHTTP(rec, req)
 		if len(paths) == 0 || paths[len(paths)-1] != path {
-			t.Fatalf("%s nao chegou ao handler de midia (status = %d)", path, rec.Code)
+			t.Fatalf("%s did not reach the media handler (status = %d)", path, rec.Code)
 		}
 	}
 }
@@ -108,7 +108,7 @@ func TestRoutesRegistersThePerInstanceState(t *testing.T) {
 	routes(nil, nil, nil, nil, nil, state, nil, nil, nil, nil, nil, nil).ServeHTTP(rec, req)
 
 	if !arrived {
-		t.Fatalf("a requisicao nao chegou ao handler de estado (status = %d)", rec.Code)
+		t.Fatalf("the request did not reach the state handler (status = %d)", rec.Code)
 	}
 }
 
@@ -127,7 +127,7 @@ func TestRoutesRegistersTheReads(t *testing.T) {
 	routes(nil, nil, nil, nil, nil, nil, reads, nil, nil, nil, nil, nil).ServeHTTP(rec, req)
 
 	if !arrived {
-		t.Fatalf("a requisicao nao chegou ao handler de leituras (status = %d)", rec.Code)
+		t.Fatalf("the request did not reach the reads handler (status = %d)", rec.Code)
 	}
 }
 
@@ -145,7 +145,7 @@ func TestRoutesRegistersTheEnrollment(t *testing.T) {
 	routes(nil, nil, nil, nil, nil, nil, nil, enrollment, nil, nil, nil, nil).ServeHTTP(rec, req)
 
 	if !arrived {
-		t.Fatalf("a requisicao nao chegou ao handler de cadastro (status = %d)", rec.Code)
+		t.Fatalf("the request did not reach the enrollment handler (status = %d)", rec.Code)
 	}
 }
 
@@ -163,7 +163,7 @@ func TestRoutesRegistersTheSmokeTest(t *testing.T) {
 	routes(nil, nil, nil, nil, nil, nil, nil, nil, smoke, nil, nil, nil).ServeHTTP(rec, req)
 
 	if !arrived {
-		t.Fatalf("a requisicao nao chegou ao handler de fumaca (status = %d)", rec.Code)
+		t.Fatalf("the request did not reach the smoke handler (status = %d)", rec.Code)
 	}
 }
 
@@ -176,7 +176,7 @@ func TestRoutesRegistersThePause(t *testing.T) {
 	routes(nil, nil, nil, nil, nil, nil, nil, nil, nil, pause, nil, nil).ServeHTTP(rec, req)
 
 	if !arrived {
-		t.Fatalf("a requisicao nao chegou ao handler de pausa (status = %d)", rec.Code)
+		t.Fatalf("the request did not reach the pause handler (status = %d)", rec.Code)
 	}
 }
 
@@ -194,7 +194,7 @@ func TestRoutesRegistersTheBlock(t *testing.T) {
 		rec := httptest.NewRecorder()
 		routes(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, blocking, nil).ServeHTTP(rec, req)
 		if len(methods) == 0 || methods[len(methods)-1] != method {
-			t.Fatalf("%s /v1/bloqueios nao chegou ao handler (status = %d)", method, rec.Code)
+			t.Fatalf("%s /v1/bloqueios did not reach the handler (status = %d)", method, rec.Code)
 		}
 	}
 }
@@ -213,7 +213,7 @@ func TestRoutesRegistersTheProfile(t *testing.T) {
 		rec := httptest.NewRecorder()
 		routes(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, profile).ServeHTTP(rec, req)
 		if len(methods) == 0 || methods[len(methods)-1] != method {
-			t.Fatalf("%s /v1/perfil nao chegou ao handler (status = %d)", method, rec.Code)
+			t.Fatalf("%s /v1/perfil did not reach the handler (status = %d)", method, rec.Code)
 		}
 	}
 }
@@ -228,19 +228,19 @@ func TestHealthReturnsJSON(t *testing.T) {
 	routes(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil).ServeHTTP(rec, req)
 
 	if ct := rec.Header().Get("Content-Type"); ct != "application/json" {
-		t.Fatalf("Content-Type = %q, quero application/json", ct)
+		t.Fatalf("Content-Type = %q, want application/json", ct)
 	}
 
 	var body map[string]any
 	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
-		t.Fatalf("corpo nao desserializa como JSON: %v (corpo = %q)", err, rec.Body.String())
+		t.Fatalf("body does not deserialize as JSON: %v (body = %q)", err, rec.Body.String())
 	}
 	// NON-REGRESSION (T-025): `ok` is this gateway's public guarantee. A
 	// consumer that only reads `ok` must not break when the format gains
 	// a new field (`versao`) — that is why the assertion looks at ONLY
 	// this field, the way the least attentive consumer would look.
 	if ok, _ := body["ok"].(bool); !ok {
-		t.Fatalf(`corpo["ok"] = %#v, quero true`, body["ok"])
+		t.Fatalf(`body["ok"] = %#v, want true`, body["ok"])
 	}
 }
 
@@ -256,10 +256,10 @@ func TestHealthWithoutInjectionReturnsDevelopmentVersion(t *testing.T) {
 
 	var body healthResponse
 	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
-		t.Fatalf("corpo nao desserializa: %v (corpo = %q)", err, rec.Body.String())
+		t.Fatalf("body does not deserialize: %v (body = %q)", err, rec.Body.String())
 	}
 	if !body.OK {
-		t.Fatalf("ok = %v, quero true", body.OK)
+		t.Fatalf("ok = %v, want true", body.OK)
 	}
 	if body.Version != "desenvolvimento" {
 		t.Fatalf(`versao = %q, quero "desenvolvimento"`, body.Version)
@@ -316,7 +316,7 @@ func freeAddress(t *testing.T) string {
 	}
 	address := l.Addr().String()
 	if err := l.Close(); err != nil {
-		t.Fatalf("fechar o listener de sondagem: %v", err)
+		t.Fatalf("close the probing listener: %v", err)
 	}
 	return address
 }
@@ -338,7 +338,7 @@ func startServerAndGetHealth(t *testing.T, bin string) []byte {
 	var stderr strings.Builder
 	cmd.Stderr = &stderr
 	if err := cmd.Start(); err != nil {
-		t.Fatalf("iniciar %s: %v", bin, err)
+		t.Fatalf("start %s: %v", bin, err)
 	}
 	t.Cleanup(func() {
 		_ = cmd.Process.Kill()
@@ -368,7 +368,7 @@ func startServerAndGetHealth(t *testing.T, bin string) []byte {
 		}
 		return body
 	}
-	t.Fatalf("/v1/health em %s nao respondeu a tempo: %v\nstderr do processo:\n%s",
+	t.Fatalf("/v1/health at %s did not answer in time: %v\nprocess stderr:\n%s",
 		address, lastError, stderr.String())
 	return nil
 }
@@ -386,19 +386,19 @@ func TestVersionInjectedByLdflagsPropagatesToBothPaths(t *testing.T) {
 		t.Fatalf("%s versao: %v", bin, err)
 	}
 	if got := strings.TrimSpace(string(out)); got != injectedVersion {
-		t.Fatalf("%s versao = %q, quero %q", bin, got, injectedVersion)
+		t.Fatalf("%s versao = %q, want %q", bin, got, injectedVersion)
 	}
 
 	body := startServerAndGetHealth(t, bin)
 	var resp healthResponse
 	if err := json.Unmarshal(body, &resp); err != nil {
-		t.Fatalf("corpo do /v1/health nao desserializa: %v (%s)", err, body)
+		t.Fatalf("the /v1/health body does not deserialize: %v (%s)", err, body)
 	}
 	if !resp.OK {
-		t.Fatalf("ok = %v, quero true (corpo = %s)", resp.OK, body)
+		t.Fatalf("ok = %v, want true (body = %s)", resp.OK, body)
 	}
 	if resp.Version != injectedVersion {
-		t.Fatalf("versao no /v1/health = %q, quero %q", resp.Version, injectedVersion)
+		t.Fatalf("versao in /v1/health = %q, want %q", resp.Version, injectedVersion)
 	}
 }
 
@@ -421,7 +421,7 @@ func TestStartPeriodicPurgeSurvivesAPanicAndContinuesOnTheNextTick(t *testing.T)
 		calls++
 		switch calls {
 		case 1:
-			panic("panico de teste — primeira volta")
+			panic("test panic — first round")
 		case 2:
 			close(secondRound)
 		}
@@ -434,6 +434,6 @@ func TestStartPeriodicPurgeSurvivesAPanicAndContinuesOnTheNextTick(t *testing.T)
 	case <-secondRound:
 		// the second round happened — the panic from the first did NOT kill the loop.
 	case <-time.After(5 * time.Second):
-		t.Fatal("a segunda volta do laco nunca aconteceu depois do panico — o recover nao protegeu a goroutine")
+		t.Fatal("the second loop round never happened after the panic — recover did not protect the goroutine")
 	}
 }
