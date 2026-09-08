@@ -134,18 +134,23 @@ func isOutsideRepoAbsolutePath(pathPart string) bool {
 }
 
 // deadDocPointerExceptions is the full-path exception list T-217's Do item 5
-// (and T-234's Do item, which widens what it has to cover) asks for. Every
-// key is the EXACT matched pointer text — never a substring or a bare word.
-// Every remaining entry is a NOT A REAL POINTER: the matched text only looks
-// like a repository path. A Go subtest name embeds a fixture's basename
-// after a '/' (`TestCorpusInteiro/reacao.json`); a lesson about ANOTHER
-// project cites that project's own file structure in prose with no repo
-// prefix to mark it as external (ProxmoxVED's
-// `.github/pull_request_template.md`); a rename is documented by quoting the
-// PRE-rename name on purpose (`internal/inbound/testdata/assinatura-entrega.json`,
-// T-234's Do item (d)). None of these name a file this repository's tests
-// could ever find, by construction — widening the extension list did not
-// create these cases, it only made them visible for the first time.
+// (T-234's Do item, which widens what it has to cover, and T-238's, which
+// widens it again to bare filenames with no `:line`) asks for. Every key is
+// the EXACT matched pointer text — never a substring or a bare word. Every
+// remaining entry is a NOT A REAL POINTER: the matched text only looks like
+// a repository path. A Go subtest name embeds a fixture's basename after a
+// '/' (`TestCorpusInteiro/reacao.json`); a lesson about ANOTHER project
+// cites that project's own file structure in prose with no repo prefix to
+// mark it as external (ProxmoxVED's `.github/pull_request_template.md`); a
+// rename is documented by quoting the PRE-rename name on purpose
+// (`localizacao.json`, T-238's own worked example); a citation of this
+// WORKSPACE's own `github` repo is written as a Windows absolute path
+// (`C:\dev\github\docs\CREDENCIAIS-DE-API.md`) whose backslashes fall
+// outside docPointerPattern's character class, so only the trailing
+// basename is ever seen. None of these name a file this repository's tests
+// could ever find, by construction — widening the extension list, and later
+// the bare-filename check, did not create these cases, it only made them
+// visible for the first time.
 //
 // 🔴 There used to be a second category here, for a pointer T-234 found
 // genuinely wrong but deferred to the planner instead of fixing, because
@@ -176,10 +181,26 @@ var deadDocPointerExceptions = map[string]string{
 	"docs/guides/source-origin.md": "same ProxmoxVED/community-scripts citation as the " +
 		"pull_request_template.md entry above (docs/ARMADILHAS.md:4061) — not a path here",
 
-	"internal/inbound/testdata/assinatura-entrega.json": "intentional historical citation: " +
-		"T-228 renamed this fixture to delivery-signature.json, and docs/CHANGELOG.md:30 " +
-		"documents that rename by quoting the PRE-rename name in an old-arrow-new pair — " +
-		"T-234's Do item (d), the same category as a `.bak` filename kept as history",
+	// T-238's Do item 1: these two are the BARE (no-directory) form of the
+	// SAME sentence in docs/ARMADILHAS.md:2563 — "T-228 renamed 40 test
+	// fixtures to English (`localizacao.json` → `location.json`,
+	// `assinatura-entrega.json` → `delivery-signature.json`, …)" — a doc
+	// NARRATING the T-228 rename on purpose, quoting the PRE-rename name
+	// as the whole point of the sentence. This is the exact case T-238's
+	// own spec names as the one that stays (distinguish narrative from
+	// pointer): fixing it to the post-rename name would erase the history
+	// the sentence exists to record. The full-path form of the
+	// assinatura-entrega.json citation that used to live here (T-234's Do
+	// item (d)) cited docs/CHANGELOG.md:30, which T-238's Do item 0 now
+	// excludes from the sweep structurally — that entry is gone, not
+	// because the citation stopped existing, but because the file it
+	// lived in is no longer swept at all.
+	"localizacao.json": "docs/ARMADILHAS.md:2563 narrates the T-228 rename by quoting the " +
+		"PRE-rename name on purpose, in an old→new pair — the exact shape T-238's own spec " +
+		"names as the case that stays",
+	"assinatura-entrega.json": "same sentence, same reason as localizacao.json above " +
+		"(docs/ARMADILHAS.md:2563) — the bare form of the pre-rename name T-228 replaced " +
+		"with delivery-signature.json",
 
 	"docs/superpowers/plans/2026-07-23-fundacao-e-inbound.md:2846": "plan doc kept in the " +
 		"private zapgw-dev repository's superpowers/plans/ directory, never migrated here; " +
@@ -201,18 +222,98 @@ var deadDocPointerExceptions = map[string]string{
 	"sonda-worker/deploy.sh": "same as cf-renova-tokens.sh above — a whole directory " +
 		"(sonda-worker/) that exists only in the private repository, narrated as history",
 
-	"docs/MIGRACAO-CONTRATO-EN.pt-BR.md": "this pt-BR mirror was deliberately DELETED on " +
-		"2026-09-07 (CLAUDE.md's own decisions table records the seven mirrors cut, this " +
-		"one among them); docs/CHANGELOG.md:454 documents the mirror's creation on " +
-		"2026-08-31 and correctly names it as it existed THEN — a historical citation of a " +
-		"file retired on purpose, T-234's Do item (d)",
-	"CONTROLE-T199-AGULHA.md:1": "throwaway positive-control fixture created and deleted " +
-		"within a single test run (T-199, docs/CHANGELOG.md:514) — never meant to persist, " +
-		"the same category as a `.bak` filename kept as history",
+	// The two entries that used to sit here (docs/MIGRACAO-CONTRATO-EN.pt-BR.md
+	// and CONTROLE-T199-AGULHA.md:1) are GONE, not fixed: both citations
+	// only ever occurred in docs/CHANGELOG.md, which T-238's Do item 0 now
+	// excludes from the sweep structurally. Same reasoning as the
+	// assinatura-entrega.json cleanup above — an exception whose only
+	// citation lived in a file no longer swept is dead weight, not a
+	// finding to carry forward.
 	"testdata/corpus/categoria_de_template_derivado_da_doc.json": "docs/META-CAMPOS-DE-" +
 		"WEBHOOK.md:137 says explicitly, two paragraphs later, that \"the derived fixture " +
 		"is gone (T-174, 2026-08-28)\" — deleted on purpose once a real Meta capture " +
 		"replaced it, a historical citation of a file retired intentionally",
+
+	// --- T-238's Do item 2: widening the gate to bare filenames with no
+	// `:line` made every one of the entries below visible for the first
+	// time. None of them is a real pointer into this repository; each is
+	// checked against real data below, the same way every entry above it
+	// was.
+
+	".local.md": "a NAMING CONVENTION, not a file: docs/ARMADILHAS.md:2336, :660 and :675 and " +
+		"docs/INVENTARIO-VALORES.md:349 all cite the glob `*.local.md` for the gitignored " +
+		"per-consumer channel files this project's own doctrine says must stay uncovered " +
+		"(docs/ARMADILHAS.md:2336-2338) — the '*' is outside docPointerPattern's character " +
+		"class, so only the suffix after it is ever matched, and no concrete file named " +
+		"exactly `.local.md` is ever meant",
+	"consumer-b-STATUS.local.md": "docs/ARMADILHAS.md:3622 quotes a real `stat` command run " +
+		"against a real channel file, as evidence in a lesson about timestamp provenance — " +
+		"but that file is gitignored by the same `*.local.md` convention as the entry above, " +
+		"so it was never meant to exist in this checkout",
+	"_test.go": "a SUFFIX, not a filename: docs/ARMADILHAS.md:2532 and :4069, docs/" +
+		"INVENTARIO-STRINGS.md:13, and docs/INVENTARIO-VALORES.md:307, :340 and :341 all use " +
+		"`_test.go` (or a glob like `*_test.go`) to mean \"any Go test file\", never one " +
+		"specific file — the '*' in the glob form is outside docPointerPattern's character " +
+		"class, so only the suffix survives the match",
+	"response.json": "docs/ARMADILHAS.md:504 writes the Python method call `response.json()` " +
+		"— rejectFalseEndBoundary does not catch this false ending because '(' is not a " +
+		"letter, digit, underscore or dot, so nothing after the match signals it continues; " +
+		"the fix is this exception, not widening rejectFalseEndBoundary, because '(' really " +
+		"does end a path-shaped token everywhere else in docs/",
+
+	// This workspace's own `github` repository (distinct from zapgw-dev,
+	// which already has the `zapgw-dev:` prefix convention) has no such
+	// prefix. Two of the three citations below are written as a Windows
+	// absolute path (`C:\dev\github\docs\…`), whose backslashes fall
+	// outside docPointerPattern's character class — isOutsideRepoAbsolutePath
+	// only recognizes a leading '/', so the drive-letter form slips past it
+	// and only the trailing basename is ever matched. The third
+	// (CANAL-ENTRE-SESSOES.md, in docs/MIGRACAO-CONTRATO-EN.md:55) has no
+	// path at all, just prose ("the workspace's CANAL-ENTRE-SESSOES.md
+	// protocol") — the same third shape as the ProxmoxVED citations above,
+	// just pointing at this workspace's own sibling repo instead of a
+	// stranger's.
+	"CREDENCIAIS-DE-API.md": "docs/ARMADILHAS.md:2804 cites " +
+		"`C:\\dev\\github\\docs\\CREDENCIAIS-DE-API.md` — a file in the `github` workspace " +
+		"repo, not this one; the backslashes are outside docPointerPattern's character " +
+		"class, so only the basename after the last one is ever matched",
+	"DOCUMENTACAO.md": "docs/ARMADILHAS.md:2816 cites `C:\\dev\\github\\docs\\DOCUMENTACAO.md` " +
+		"— same workspace-repo gap as CREDENCIAIS-DE-API.md above",
+	"CANAL-ENTRE-SESSOES.md": "docs/ARMADILHAS.md:3427 cites " +
+		"`C:\\dev\\github\\docs\\CANAL-ENTRE-SESSOES.md` (same gap as the two entries above) " +
+		"and docs/MIGRACAO-CONTRATO-EN.md:55 cites the same file with no path at all, just " +
+		"prose (\"the workspace's `CANAL-ENTRE-SESSOES.md` protocol\") — the same missing-" +
+		"prefix shape the ProxmoxVED entries above already cover, for this workspace's own " +
+		"sibling repo instead of a stranger's",
+
+	"cloudflared-zapgw.service": "docs/ARMADILHAS.md:3764 names a systemd unit that runs on " +
+		"the Traefik LXC, a remote host — never part of this repository — cited in prose " +
+		"with no `host:path` prefix (CLAUDE.md authorizes the form, this sentence does not " +
+		"use it)",
+
+	"AGENTS.md": "docs/ARMADILHAS.md:4079 studies ProxmoxVED/community-scripts (the same " +
+		"third-party project as the .github/pull_request_template.md and " +
+		"docs/guides/source-origin.md entries above) and names its AGENTS.md alongside them " +
+		"— not a path in this repository",
+	"CONTRIBUTING.md": "docs/ARMADILHAS.md:4079 and :4093 name ProxmoxVED/community-scripts's " +
+		"CONTRIBUTING.md, same citation as AGENTS.md above — not a path in this repository",
+
+	// --- flagged for the planner, not fixed here ---
+
+	// T-238's Do item 1 fixed six of the seven dead pointers it found. This
+	// is the seventh, and it is a REAL bug — replacing "com" with "with"
+	// would fix it — but this implementer was explicitly told not to touch
+	// docs/CONTRATO-CONSUMIDOR.md or its .pt-BR.md mirror in this session,
+	// because another implementer holds both files concurrently. This is
+	// NOT the "known bug" category CLAUDE.md forbids (a bug left in place
+	// because fixing it was inconvenient): the fix is trivial and known,
+	// the obstacle is a same-session write conflict with another agent's
+	// task, and it is flagged in T-238's report for the planner to close
+	// once that other task lands.
+	"status_sent_com_pricing.json": "docs/CONTRATO-CONSUMIDOR.md:4886 and its .pt-BR.md " +
+		"mirror (line 4829) both name the pre-T-228 fixture; the fix is renaming it to " +
+		"status_sent_with_pricing.json, but T-238 was explicitly barred from touching either " +
+		"file this session (a concurrent implementer holds them) — flagged for the planner",
 }
 
 // rejectFalseEndBoundary reports whether the character right after a match
@@ -312,11 +413,14 @@ func (f docPointerFinding) String() string {
 
 // sweepDeadDocPointers scans every file in docFiles (paths relative to
 // root) for a docPointerPattern match, classifies each match as a PATH
-// pointer (contains '/') or a BARE pointer (no '/', only counted when it
-// carries a `:line` — an unadorned filename in prose is not a structured
-// pointer, it's just naming the file), and checks existence: a path
-// pointer is checked with os.Stat against root; a bare pointer is checked
-// against repoBasenames.
+// pointer (contains '/') or a BARE pointer (no '/'), and checks existence:
+// a path pointer is checked with os.Stat against root; a bare pointer —
+// WITH or WITHOUT a `:line` suffix, since T-238 — is checked against
+// repoBasenames. T-234 only checked a bare pointer when it carried a line
+// number, on the theory that an unadorned filename in prose was too
+// ambiguous to verify; T-238 measured that theory against real data
+// (seven dead pointers named a renamed fixture with no directory and no
+// line number) and it was wrong, so the restriction is gone.
 //
 // Returns the dead findings, plus howManyPointersSeen — the raw count of
 // EVERY pointer examined (dead or alive, exceptions and external-repo
@@ -376,17 +480,24 @@ func sweepDeadDocPointers(root string, docFiles []string, repoBasenames map[stri
 					_, statErr := os.Stat(filepath.Join(root, pathPart))
 					exists = statErr == nil
 				} else {
-					if !strings.Contains(pointer, ":") {
-						// Bare filename, no line number: not a
-						// structured pointer per the task's own format
-						// definition ("caminho/arquivo.go" e
-						// "arquivo.go:linha") — just prose naming a
-						// file, too ambiguous to verify on its own
-						// (which of possibly several same-named files
-						// under different directories is meant?).
-						howManyPointersSeen-- // doesn't count as a pointer examined
-						continue
-					}
+					// Bare filename (no directory component), with or
+					// without a `:line` suffix: T-234 only checked this
+					// shape when it carried a line number, on the theory
+					// that an unadorned filename in prose was "just
+					// naming the file, too ambiguous to verify". T-238
+					// measured that theory against real data and it was
+					// wrong — the loose form is exactly where a rename
+					// hides, because nobody expects the gate to be
+					// looking there. Checking a bare name against the
+					// basename index does NOT need a line number: the
+					// question "does a file with this exact basename
+					// exist anywhere in the tree" is answerable either
+					// way, and the ambiguity concern (which of possibly
+					// several same-named files is meant) was never about
+					// EXISTENCE, only about which directory to point at
+					// — a question this gate never answered for the
+					// `:line` form either (see "Existence is the only
+					// thing checked" below).
 					exists = repoBasenames[pathPart]
 				}
 				if !exists {
@@ -441,13 +552,14 @@ func listMarkdownDocsToSweep(root string) ([]string, error) {
 	return out, nil
 }
 
-// TestDocPointersHaveNoDeadTarget is T-217's gate, widened by T-234: every
-// pointer written in docs/*.md, for each extension in docPointerExtensions
-// (both `path/to/file.ext` and the bare `file.ext:linha` form), has to name
-// a file that actually exists in this tree, or be a declared exception / a
-// recognized external-repo citation / a structurally-recognized out-of-repo
-// absolute path. A rename that forgets the docs now fails HERE instead of
-// being found by whoever goes looking next and doesn't.
+// TestDocPointersHaveNoDeadTarget is T-217's gate, widened by T-234 and
+// again by T-238: every pointer written in docs/*.md, for each extension in
+// docPointerExtensions (both `path/to/file.ext` and the bare `file.ext` or
+// `file.ext:linha` form), has to name a file that actually exists in this
+// tree, or be a declared exception / a recognized external-repo citation /
+// a structurally-recognized out-of-repo absolute path. A rename that
+// forgets the docs now fails HERE instead of being found by whoever goes
+// looking next and doesn't.
 //
 // Fails CLOSED in two independent ways, per the task's own Do item 3:
 //   - zero markdown files enumerated, or zero recognized-extension files
@@ -460,11 +572,12 @@ func listMarkdownDocsToSweep(root string) ([]string, error) {
 //     doc rewritten as something other than prose+backticks, …), not that
 //     docs/ went clean.
 //
-// # What this gate does NOT cover — T-234's Do item, and the reason the
-// limit is written HERE rather than only in a task spec or an armadilha:
-// the whole point of this widening is that a gate's width is invisible
-// from outside it, so the boundary has to travel with the code that draws
-// it, not live in a document someone has to remember to open.
+// # What this gate does NOT cover — T-234's Do item, carried forward and
+// updated by T-238's, and the reason the limit is written HERE rather than
+// only in a task spec or an armadilha: the whole point of this widening is
+// that a gate's width is invisible from outside it, so the boundary has to
+// travel with the code that draws it, not live in a document someone has
+// to remember to open.
 //
 //   - Only the extensions in docPointerExtensions are checked. A repo file
 //     cited with an extension NOT in that list (".py", ".env.example",
@@ -477,23 +590,56 @@ func listMarkdownDocsToSweep(root string) ([]string, error) {
 //     ".py" today would flag it as dead for being outside the repo, not
 //     for being renamed, which is a worse failure mode than not checking
 //     it at all.
-//   - A bare filename with no `:line` (`zapgw.service`, `CONTRIBUTING.md`)
-//     is never checked, structurally, the same as it always was for `.go`
-//     — see the comment on the bare-pointer branch in
-//     sweepDeadDocPointers. A doc that renames such a file and never
-//     updates the bare mention of it will not be caught here.
+//   - ✅ RETIRED by T-238: a bare filename with no `:line` used to be
+//     skipped entirely, structurally, the same as it always was for `.go`
+//     — and that was the hole: seven dead pointers named a T-228-renamed
+//     fixture with no directory and no line number, measured on
+//     2026-09-08 by grepping docs/*.md for a backtick-quoted `name.json`
+//     and checking each against disk. A bare filename with a recognized extension is
+//     now checked against the basename index regardless of a `:line`
+//     suffix (see the bare-pointer branch in sweepDeadDocPointers) — the
+//     ambiguity T-234 worried about (which of possibly several
+//     same-named files is meant) was never about EXISTENCE, only about
+//     which directory to point at, a question this gate never answered
+//     for the `:line` form either (see "Existence is the only thing
+//     checked" below).
+//   - ⚠️ NEW, surfaced by the widening above: a bare filename is checked
+//     for existence ANYWHERE in the tree by basename alone, with no
+//     notion of directory — so two files that share a basename in
+//     different directories are indistinguishable to this check (the
+//     same limit the `:line` form already had, now reachable far more
+//     often since no line number is required to trigger it). It also
+//     surfaced a class of false positive the `:line` requirement used to
+//     filter out for free: a Python method call written as
+//     `response.json()` reads as a pointer to `response.json` once the
+//     trailing `()` is dropped by rejectFalseEndBoundary's own rules (see
+//     the `response.json` entry in deadDocPointerExceptions) — and a
+//     glob pattern like `*.local.md` or `*_test.go`, whose leading `*`
+//     falls outside docPointerPattern's character class, reads as a
+//     pointer to the literal basename `.local.md` or `_test.go` (see
+//     those entries in the same map). None of these are extension-list
+//     or boundary bugs to fix; each is a real string in docs/ that only
+//     LOOKS like a pointer once bare names are in scope.
 //   - A cross-repository citation is only recognized in two shapes: the
 //     `zapgw-dev:` prefix (externalRepoPrefixes) and a path that is
-//     syntactically absolute (isOutsideRepoAbsolutePath). A THIRD shape —
-//     a relative-looking path belonging to some OTHER project, cited in
-//     prose with neither marker (ProxmoxVED's own
-//     `.github/pull_request_template.md`, found while widening this gate)
-//     — is invisible to both mechanisms and can only be handled by naming
-//     it in deadDocPointerExceptions. Nothing stops a NEW such citation
-//     from silently passing as "the file doesn't exist here" would read
-//     as "dead", not as "it's someone else's repo" — the false positive
-//     it produces (a t.Fatalf naming a real, working doc) is at least
-//     loud, unlike a false negative would be.
+//     syntactically absolute with a leading '/' (isOutsideRepoAbsolutePath).
+//     Two more shapes are invisible to both and can only be handled by
+//     naming them in deadDocPointerExceptions: a relative-looking path
+//     belonging to some OTHER project, cited in prose with neither marker
+//     (ProxmoxVED's own `.github/pull_request_template.md`, `AGENTS.md`
+//     and `CONTRIBUTING.md`, found while widening this gate); and —
+//     surfaced only now that bare names are checked — a Windows absolute
+//     path to THIS WORKSPACE's own `github` sibling repo
+//     (`C:\dev\github\docs\CREDENCIAIS-DE-API.md`), whose backslashes
+//     fall outside the character class just as thoroughly as a leading
+//     '/' would be caught by isOutsideRepoAbsolutePath if it were a
+//     forward slash — so only the trailing basename is ever matched, and
+//     it is indistinguishable from a same-named file that really is
+//     missing from this repo. Nothing stops a NEW such citation from
+//     silently passing as "the file doesn't exist here" would read as
+//     "dead", not as "it's someone else's repo" — the false positive it
+//     produces (a t.Fatalf naming a real, working doc) is at least loud,
+//     unlike a false negative would be.
 //   - Existence is the only thing checked, never correctness of a line
 //     number or line range: `file.go:9999` against a 20-line file passes
 //     as long as `file.go` exists.

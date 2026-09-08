@@ -419,8 +419,8 @@ candidates for "we should".*
 `previous_category` and `correct_category` with the **same value** (`"MARKETING"`). Freezing only that one
 would have produced a corpus in which swapping the reading of one field for the other passes **GREEN** —
 measured: the mutation `t.Previous` → `t.Correct` leaves **only** the synthetic fixture
-(`categoria_de_template_sintetico.json`) red, and the doc-derived one stays green with an identical `ID`. It
-is the same family as `botao_de_template.json` (`payload == text` in the real capture), and the rule that
+(`template_category_synthetic.json`) red, and the doc-derived one stays green with an identical `ID`. It
+is the same family as `template_button.json` (`payload == text` in the real capture), and the rule that
 comes out of it is the usual one: **before freezing a payload, look at whether two neighbouring fields have
 the same value — if they do, it does not distinguish a swapped read and it needs a sibling that does.**
 
@@ -1147,7 +1147,7 @@ disappears; `template.reason`/`template.name` → `0`. **`valueMeta` is the most
 another name.**
 
 *Three mutations, done and reverted before the commit. **The third found more than it proved:** (1) returning
-`mensagemMeta.Text` to the concrete type leaves `texto_de_tipo_errado_sintetico.json` and the sweep's `text`
+`mensagemMeta.Text` to the concrete type leaves `text_wrong_type_synthetic.json` and the sweep's `text`
 sub-test red, with `len(evs)` dropping from 2 to 1, and the reflection test red naming `mensagemMeta.Text`; (2) the
 same with `Reaction` → `*reactionMeta`; (3) making `messageBlock` treat `null` as read left no test red — **it
 brought down the whole suite with a nil-dereference `panic`**, because `*p` over a `null` has nowhere to point.
@@ -2025,7 +2025,7 @@ of the documented path. **The question that generalizes: a doc example that "mat
 accepted, never that it is the USUAL path** — and a corpus that exists only to prove acceptance, having never seen
 real traffic, cannot say which branch matters more.*
 
-**A corpus with a single ONE-codepoint emoji proves nothing about MULTI-codepoint emoji.** The old `reacao.json`
+**A corpus with a single ONE-codepoint emoji proves nothing about MULTI-codepoint emoji.** The old `reaction.json`
 fixture (derived from the doc) used `"👍"` — a single codepoint. `consumer-a`'s real capture (2026-07-26) brought
 `"❤️"`, which is **two** codepoints (`U+2764` HEAVY BLACK HEART + `U+FE0F` VARIATION SELECTOR-16) — WhatsApp's most
 common emoji are exactly of that composite kind (hearts, several faces, flags), so a corpus that only tests

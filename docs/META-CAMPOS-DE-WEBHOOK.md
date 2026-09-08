@@ -139,8 +139,8 @@ Reclassification to `MARKETING` makes every send more expensive.
 
 ✅ **It showed up, and the derived fixture is gone (T-174, 2026-08-28).** The consumer `consumer-b`
 handed over three raw payloads through the channel, frozen in
-`testdata/corpus/template_category_downgrade.json`, `..._restore.json` and
-`..._no_previous.json`. **Two findings the panel sample would not have given:** the pair goes and
+`testdata/corpus/template_category_downgrade.json`, `testdata/corpus/template_category_restore.json` and
+`testdata/corpus/template_category_no_previous.json`. **Two findings the panel sample would not have given:** the pair goes and
 comes back on the **same** `message_template_id` (`UTILITY → MARKETING` and, ~14.9 h later, the way
 back), and **one of the three arrived with no `previous_category`** — which was the case handled by
 design decision, with no observation at all. ⚠️ **And none of the three brought `correct_category` or
@@ -285,7 +285,7 @@ unsynchronized clocks would decide the tiebreak in silence.
 > ⚠️ **In this sample, `current_limit` and `max_daily_conversations_per_business` have the SAME
 > value** (`"TIER_250"`). Freezing it as the only fixture would produce a corpus in which swapping
 > the reading of one field for the other passes **green** — measured. That is why the corpus also has
-> `qualidade_do_numero_sintetico.json`, with the three limits different and a **downgrade**
+> `number_quality_synthetic.json`, with the three limits different and a **downgrade**
 > (`TIER_1K → TIER_50`), which is the direction the sample does not exercise. See
 > `testdata/corpus/README.md`.
 
