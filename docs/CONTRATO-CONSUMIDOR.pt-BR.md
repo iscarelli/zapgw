@@ -253,15 +253,15 @@ relógio novo só parte quando você voltar a escrever.
 
 ### Erros
 
-| HTTP | `classe` | Quando |
+| HTTP | `class` | Quando |
 |---|---|---|
-| `400` | `permanente` | corpo não é JSON, falta `instancia`, falta um campo obrigatório, `callback_url` fora de `https`, `bundle_ca` sem certificado. A mensagem **nomeia o campo** e nunca ecoa o valor |
+| `400` | `permanent` | corpo não é JSON, falta `instancia`, falta um campo obrigatório, `callback_url` fora de `https`, `bundle_ca` sem certificado. A mensagem **nomeia o campo** e nunca ecoa o valor |
 | `401` | `config` | sem `Authorization`, ou token que ninguém reconhece |
 | `403` | `config` | o token é válido, mas essa instância **não é sua** |
 | `404` | `config` | a instância não existe mais no gateway (fale com quem te entregou o slug) |
 | `409` | `config` | **a janela de cadastro fechou**; nada foi gravado |
-| `413` | `permanente` | corpo acima do teto (**1 MiB** por default — ver *Limites conhecidos*) |
-| `503` | `retentavel` | o gateway não conseguiu falar com o próprio banco; repetir é seguro |
+| `413` | `permanent` | corpo acima do teto (**1 MiB** por default — ver *Limites conhecidos*) |
+| `503` | `retryable` | o gateway não conseguiu falar com o próprio banco; repetir é seguro |
 
 ## Provar o canal — `POST /v1/fumaca` (2026-07-28)
 
@@ -311,14 +311,14 @@ mesmo de uma prova nova (por exemplo depois de trocar o `token_envio`), pause pr
 
 ### Erros
 
-| HTTP | `classe` | Quando |
+| HTTP | `class` | Quando |
 |---|---|---|
-| `400` | `permanente` | corpo não é JSON, falta `instancia` ou `destino` |
+| `400` | `permanent` | corpo não é JSON, falta `instancia` ou `destino` |
 | `401` | `config` | sem `Authorization`, ou token que ninguém reconhece |
 | `403` | `config` | o token é válido, mas essa instância **não é sua** |
 | `404` | `config` | a instância não existe mais no gateway (fale com quem te entregou o slug) |
-| `502` | `config` \| `permanente` \| `retentavel` \| `desconhecido` | a Meta recusou o envio ou não respondeu — a instância continua PAUSADA. A mensagem diz por quê, pela mesma classificação do `POST /v1/messages` (seção *O que cada erro quer dizer*) |
-| `413` | `permanente` | corpo acima do teto (**1 MiB** por default — ver *Limites conhecidos*) |
+| `502` | `config` \| `permanent` \| `retryable` \| `unknown` | a Meta recusou o envio ou não respondeu — a instância continua PAUSADA. A mensagem diz por quê, pela mesma classificação do `POST /v1/messages` (seção *O que cada erro quer dizer*) |
+| `413` | `permanent` | corpo acima do teto (**1 MiB** por default — ver *Limites conhecidos*) |
 
 ## Pausar o canal — `POST /v1/pausa` (2026-07-28)
 
@@ -345,14 +345,14 @@ caminho para reativar.
 
 ### Erros
 
-| HTTP | `classe` | Quando |
+| HTTP | `class` | Quando |
 |---|---|---|
-| `400` | `permanente` | corpo não é JSON, ou falta `instancia` |
+| `400` | `permanent` | corpo não é JSON, ou falta `instancia` |
 | `401` | `config` | sem `Authorization`, ou token que ninguém reconhece |
 | `403` | `config` | o token é válido, mas essa instância **não é sua** |
 | `404` | `config` | a instância não existe mais no gateway (fale com quem te entregou o slug) |
-| `413` | `permanente` | corpo acima do teto (**1 MiB** por default — ver *Limites conhecidos*) |
-| `503` | `retentavel` | o gateway não conseguiu falar com o próprio banco; repetir é seguro |
+| `413` | `permanent` | corpo acima do teto (**1 MiB** por default — ver *Limites conhecidos*) |
+| `503` | `retryable` | o gateway não conseguiu falar com o próprio banco; repetir é seguro |
 
 ---
 
@@ -1677,7 +1677,7 @@ sem enviar de novo — mas só dentro da janela de retenção do registro de ide
 > ```
 >
 > **O gateway não traduz esse valor, nem para português, nem para as classes de erro do envio**
-> (`retentavel`/`permanente`/`config` — ver a seção de erros). Ele repassa o que a Meta mandou, cru.
+> (`retryable`/`permanent`/`config` — ver a seção de erros). Ele repassa o que a Meta mandou, cru.
 > Se você receber um `message_status` que não seja `held_for_quality_assessment` nem `paused`, trate
 > como "a Meta está dizendo algo que ainda não documentamos" — não como sucesso silencioso.
 >
@@ -1771,9 +1771,9 @@ o motivo exigiu bisseção manual num número de teste.
 🔴 **Correção: "a Meta não diz qual parâmetro" nunca foi conferido — o que faltava era a nossa
 leitura.** Há evidência de que ela nomeia o campo e o teto em `error_data.details` (um registro de
 18/07/2026, achado pelo consumidor por outro transporte, veio com "Button title length invalid. Min
-length: 1, Max length: 20"). Desde a T-141 o gateway lê **só** essa chave e repassa em `detalhe_meta`
+length: 1, Max length: 20"). Desde a T-141 o gateway lê **só** essa chave e repassa em `meta_detail`
 (ver a seção *"O que cada erro quer dizer"*, abaixo) — mas se a Meta ainda manda esse detalhe pelo
-caminho de hoje é questão **aberta** até medição contra produção; não trate `detalhe_meta` como
+caminho de hoje é questão **aberta** até medição contra produção; não trate `meta_detail` como
 garantido em toda recusa. Por isso o teto continua na entrada: uma guarda que valida antes de chamar a
 Meta não depende de ela mandar detalhe nenhum.
 
@@ -1799,12 +1799,12 @@ botões enviados de verdade pela instância `tenant-one`:
 
 ```
 HTTP 400
-codigo_meta  131009
-mensagem     (#131009) Parameter value is not valid
-detalhe_meta Invalid buttons count. Min allowed buttons: 1, Max allowed buttons: 3
+meta_code  131009
+message     (#131009) Parameter value is not valid
+meta_detail Invalid buttons count. Min allowed buttons: 1, Max allowed buttons: 3
 ```
 
-Este `detalhe_meta` é o repasse da T-141 (ver *"O que cada erro quer dizer"*, abaixo) funcionando pela
+Este `meta_detail` é o repasse da T-141 (ver *"O que cada erro quer dizer"*, abaixo) funcionando pela
 primeira vez contra a Meta de verdade — foi ele que revelou este limite. Diferente do teto de 20
 caracteres do vizinho acima (achado por bisseção manual), este número **veio lido no próprio texto do
 erro**.
@@ -1813,7 +1813,7 @@ erro**.
 > na entrada porque é uma constante **estrutural** do bloco que o próprio gateway monta (a lista de
 > botões do JSON que sai daqui) — não porque "todo limite deve virar validação". Um espelho da tabela
 > de limites da Meta envelheceria e passaria a mentir; a partir da T-141 você já recebe o campo e o
-> número certos em `detalhe_meta` quando a Meta recusa, o que cobre a maioria dos casos sem exigir
+> número certos em `meta_detail` quando a Meta recusa, o que cobre a maioria dos casos sem exigir
 > mais uma constante para manter em dia aqui.
 
 ### Template: header e botão
@@ -2149,8 +2149,8 @@ isso cobre, porque este projeto já confundiu as duas coisas três vezes só naq
 `tela`, e `data_exchange` sem). Nos dois, a Meta respondeu:
 
 ```
-400  codigo_meta 131009
-detalhe_meta: Parameter "flow_id" is invalid. Please check if the flow associated to
+400  meta_code 131009
+meta_detail: Parameter "flow_id" is invalid. Please check if the flow associated to
               this id belongs to your WhatsApp Business Account, and it's in a valid state.
 ```
 
@@ -2333,26 +2333,26 @@ não quebrou nada para mais ninguém.
 
 | campo | compromisso |
 |---|---|
-| `classe` | **ESTÁVEL.** É o vocabulário fechado (`retentavel`, `permanente`, `config`, `desconhecido`), e é ele que decide se você retenta |
-| `codigo_meta` | **ESTÁVEL** enquanto a Meta o mantiver — é dela, e repassamos cru |
-| `mensagem` | ❌ **NÃO É ESTÁVEL.** Texto para humano. A redação muda sem aviso e **sem bump de MAJOR** |
-| `detalhe_meta` | ❌ **NÃO É ESTÁVEL, em dobro** — é texto de terceiro, cru da Meta, e pode nem vir |
-| `subcodigo_meta` | **ESTÁVEL** enquanto a Meta o mantiver — é `error.error_subcode` dela, cru, mesmo compromisso de `codigo_meta` |
-| `explicacao_meta` | ❌ **NÃO É ESTÁVEL.** É `error.error_user_msg` (com `error.error_user_title` como prefixo, quando vem) — texto humano da Meta, pode mudar de redação ou parar de vir sem aviso |
-| `rastro_meta` | **OPACO e ESTÁVEL enquanto durar a chamada** — é o `fbtrace_id`, a ÚNICA coisa deste corpo que o suporte da Meta aceita para abrir chamado sobre uma chamada específica, e **ele NÃO VOLTA depois desta resposta**. Não decida nada por ele; **guarde-o quando um erro te importar** |
+| `class` | **ESTÁVEL.** É o vocabulário fechado (`retryable`, `permanent`, `config`, `unknown`), e é ele que decide se você retenta |
+| `meta_code` | **ESTÁVEL** enquanto a Meta o mantiver — é dela, e repassamos cru |
+| `message` | ❌ **NÃO É ESTÁVEL.** Texto para humano. A redação muda sem aviso e **sem bump de MAJOR** |
+| `meta_detail` | ❌ **NÃO É ESTÁVEL, em dobro** — é texto de terceiro, cru da Meta, e pode nem vir |
+| `meta_subcode` | **ESTÁVEL** enquanto a Meta o mantiver — é `error.error_subcode` dela, cru, mesmo compromisso de `meta_code` |
+| `meta_explanation` | ❌ **NÃO É ESTÁVEL.** É `error.error_user_msg` (com `error.error_user_title` como prefixo, quando vem) — texto humano da Meta, pode mudar de redação ou parar de vir sem aviso |
+| `meta_trace` | **OPACO e ESTÁVEL enquanto durar a chamada** — é o `fbtrace_id`, a ÚNICA coisa deste corpo que o suporte da Meta aceita para abrir chamado sobre uma chamada específica, e **ele NÃO VOLTA depois desta resposta**. Não decida nada por ele; **guarde-o quando um erro te importar** |
 
-**Decida por `classe`; quando precisar de granularidade, por `codigo_meta` ou `subcodigo_meta`. Nunca
-por frase — nem `mensagem`, nem `explicacao_meta`.**
+**Decida por `class`; quando precisar de granularidade, por `meta_code` ou `meta_subcode`. Nunca
+por frase — nem `message`, nem `meta_explanation`.**
 
 🔑 **Campo vazio aqui é DADO, não buraco — e a distinção só existe desde a T-153.** Medido pelo
-`consumer-b` em 2026-08-20: um `503 codigo_meta 2` na criação de template veio com
-`subcodigo_meta` e `explicacao_meta` **vazios**, e o `rastro_meta` presente. Isso não é o gateway
+`consumer-b` em 2026-08-20: um `503 meta_code 2` na criação de template veio com
+`meta_subcode` e `meta_explanation` **vazios**, e o `meta_trace` presente. Isso não é o gateway
 perdendo campo: é a Meta não ter mandado nem `error_subcode` nem `error_user_msg`.
 
 *Por que vale registrar:* antes da T-153 o gateway descartava esses campos, então "a Meta calou" e
 "nós comemos o campo" eram **indistinguíveis** do lado de fora. Agora um `2` genérico sem subcódigo
 significa exatamente *a Meta errou por dentro e não sabe dizer o quê* — e aí o único caminho é o
-`rastro_meta`, que é o que o suporte dela aceita.
+`meta_trace`, que é o que o suporte dela aceita.
 
 *Isto não é hipotético: em 2026-08-20 a mensagem de um erro de limite mudou de `"campo acima do limite
 de caracteres"` para `"campo acima do limite"`, porque a antiga dizia "caracteres" enquanto contava
@@ -2368,16 +2368,16 @@ prendê-la num contrato é escolher manter o texto ruim.***
 ### O que cada erro quer dizer
 
 ```jsonc
-{ "erro": { "classe": "retentavel" | "permanente" | "config" | "desconhecido",
-            "codigo_meta": 131047, "mensagem": "…", "detalhe_meta": "…" } }
+{ "error": { "class": "retryable" | "permanent" | "config" | "unknown",
+            "meta_code": 131047, "message": "…", "meta_detail": "…" } }
 ```
 
-**Decida pela `classe`, nunca pelo status HTTP.** O status é dica de transporte, não o contrato: a
-mesma classe sai em mais de um status, porque cada guarda da cadeia de envio (autenticação, vínculo
+**Decida pela `class`, nunca pelo status HTTP.** O status é dica de transporte, não o contrato: a
+mesma class sai em mais de um status, porque cada guarda da cadeia de envio (autenticação, vínculo
 com a instância, corpo do pedido, idempotência, chamada à Meta) devolve o status que faz sentido
-*naquele ponto* — não existe um status fixo por classe.
+*naquele ponto* — não existe um status fixo por class.
 
-🔴 **`detalhe_meta` (T-141, `POST /v1/messages`) é passthrough CRU do que a Meta manda em
+🔴 **`meta_detail` (T-141, `POST /v1/messages`) é passthrough CRU do que a Meta manda em
 `error.error_data.details` — leia antes de usar.** Ele só aparece (campo ausente do JSON quando não
 há detalhe, nunca `""`) quando o erro veio de uma resposta direta da Meta a este envio, e:
 
@@ -2392,28 +2392,28 @@ há detalhe, nunca `""`) quando o erro veio de uma resposta direta da Meta a est
 
 | Status | Classe | Quando acontece |
 |---|---|---|
-| `400` | `permanente` | falta o corpo, o corpo não é JSON, ou falha a validação do esquema; **ou** a Meta recusou o pedido com um erro que retry não resolveria |
-| `400` | `retentavel` | o corpo não chegou inteiro (sua conexão caiu no meio do upload). Mesmo status, classe diferente — é exatamente por isso que se decide pela `classe` |
+| `400` | `permanent` | falta o corpo, o corpo não é JSON, ou falha a validação do esquema; **ou** a Meta recusou o pedido com um erro que retry não resolveria |
+| `400` | `retryable` | o corpo não chegou inteiro (sua conexão caiu no meio do upload). Mesmo status, class diferente — é exatamente por isso que se decide pela `class` |
 | `401` | `config` | seu `Authorization` está ausente ou é inválido |
 | `403` | `config` | a instância pedida no corpo não é sua |
 | `404` | `config` | a instância pedida não existe |
-| `409` | `retentavel` | outro envio seu com a **mesma** `Idempotency-Key` está em andamento — ou uma tentativa anterior com ela terminou em `desconhecido` e a chave ficou retida (veja abaixo) |
-| `413` | `permanente` | o corpo passou do limite de tamanho aceito (**1 MiB** por default — ver *Limites conhecidos*) |
-| `422` | `permanente` | esta `Idempotency-Key` já foi usada para um pedido **diferente**. Trocar a chave é o conserto; repetir nunca vai funcionar |
+| `409` | `retryable` | outro envio seu com a **mesma** `Idempotency-Key` está em andamento — ou uma tentativa anterior com ela terminou em `unknown` e a chave ficou retida (veja abaixo) |
+| `413` | `permanent` | o corpo passou do limite de tamanho aceito (**1 MiB** por default — ver *Limites conhecidos*) |
+| `422` | `permanent` | esta `Idempotency-Key` já foi usada para um pedido **diferente**. Trocar a chave é o conserto; repetir nunca vai funcionar |
 | `502` | `config` | a configuração gravada para essa instância está inválida — a Meta recusou a credencial (token/permissão), **ou** o `phone_number_id` cadastrado tem forma inválida e o pedido nem chegou a sair. Não é o `Authorization` que você mandou, e reenviar não resolve. **Quem conserta é você**, veja abaixo |
-| `502` | `desconhecido` | o gateway não obteve uma resposta utilizável da Meta (transporte, prazo da instância estourado, ou `2xx` sem id): **não se sabe** se a mensagem saiu. Veja a seção abaixo antes de reenviar |
-| `503` | `retentavel` | o gateway não conseguiu falar com o próprio armazenamento, a instância está pausada, **esta instância do gateway não detém a liderança do par** (v0.47.0 — ver abaixo), **ou** a Meta devolveu um erro classificado como retentável (5xx, timeout, ou throttling — ver nota abaixo) |
+| `502` | `unknown` | o gateway não obteve uma resposta utilizável da Meta (transporte, prazo da instância estourado, ou `2xx` sem id): **não se sabe** se a mensagem saiu. Veja a seção abaixo antes de reenviar |
+| `503` | `retryable` | o gateway não conseguiu falar com o próprio armazenamento, a instância está pausada, **esta instância do gateway não detém a liderança do par** (v0.47.0 — ver abaixo), **ou** a Meta devolveu um erro classificado como retentável (5xx, timeout, ou throttling — ver nota abaixo) |
 
-`retentavel`: reenfileire e tente de novo mais tarde. `permanente`: **não tente de novo** — conserte
-o pedido. `desconhecido`: **não reenvie no automático** — a mesma chave vai dar `409`, e trocá-la pode
+`retryable`: reenfileire e tente de novo mais tarde. `permanent`: **não tente de novo** — conserte
+o pedido. `unknown`: **não reenvie no automático** — a mesma chave vai dar `409`, e trocá-la pode
 duplicar; leia a próxima seção.
 
-> **Como o throttling da Meta vira `retentavel`, e o limite disso (T-142):** a Meta **não documenta**
+> **Como o throttling da Meta vira `retryable`, e o limite disso (T-142):** a Meta **não documenta**
 > com que status HTTP o erro de limite de taxa chega — a página oficial de códigos de erro lista a
 > família de throttling sem coluna de status, e a API de Marketing Messages mostra um erro do mesmo
 > feitio como `400`. Por isso o gateway não confia no status para reconhecer throttling: ele reconhece
 > pelo **código de erro da Meta**, contra uma lista **nossa e conservadora** de códigos verificados na
-> documentação oficial. Um código de throttling que a Meta inventar amanhã cai em `permanente` até
+> documentação oficial. Um código de throttling que a Meta inventar amanhã cai em `permanent` até
 > alguém acrescentar essa lista — não é garantia de cobertura total, é o que está verificado hoje.
 
 
@@ -2425,7 +2425,7 @@ a primeira versão desta seção afirmava, e a correção é nossa:** o tráfego
 atende pelo VIP é **por construção** o nó que detém a liderança. Então, na prática, você quase sempre
 verá `titular: true` — o nó que **não** é titular não detém o VIP e por isso nem recebe as suas
 requisições. *A leitura útil para você é a janela curta entre o VIP migrar e a concessão ser
-adquirida: ali você pode receber `503 retentavel` e este bloco explica por quê.* **Conferir se o par
+adquirida: ali você pode receber `503 retryable` e este bloco explica por quê.* **Conferir se o par
 inteiro está protegido é obrigação de quem opera o gateway, não sua** — exige falar com cada nó pelo
 endereço próprio, o que o VIP não permite. Como todo campo desta rota, ele é **aditivo**:
 o formato só cresce.
@@ -2440,13 +2440,13 @@ o formato só cresce.
 🔵 **A `503` da liderança (v0.47.0) — o que ela é, e por que você não precisa fazer nada diferente.**
 O gateway está sendo preparado para rodar num **par ativo-passivo**. Nesse arranjo, apenas a instância
 que detém a liderança pode **enviar**; se a que te atendeu não for a titular, ela responde `503
-retentavel` com uma mensagem dizendo isso, **em vez de mandar a mensagem**.
+retryable` com uma mensagem dizendo isso, **em vez de mandar a mensagem**.
 
 **Por que isso te protege, e não te atrapalha:** o risco do par não é uma mensagem a menos — é a
 **mesma mensagem duas vezes** no celular da sua cliente, com a cota de 250/dia queimando em dobro,
 caso as duas instâncias enviem. A recusa é o lado seguro.
 
-**O que você faz:** exatamente o que já faz com qualquer `retentavel` — repita. Quando repetir, o
+**O que você faz:** exatamente o que já faz com qualquer `retryable` — repita. Quando repetir, o
 endereço já terá migrado para quem detém a liderança, e o envio sai normalmente. **Não troque a
 `Idempotency-Key`**: a mensagem não foi enviada, então repetir com a MESMA chave é o comportamento
 correto e não duplica.
@@ -2454,7 +2454,7 @@ correto e não duplica.
 *Hoje esta guarda está **desarmada** (o gateway roda em nó único), então esta resposta **não acontece**
 — ela está documentada agora para que, no dia em que o par existir, ela não chegue como surpresa. Se
 você quiser tratá-la de forma distinta das outras `503`, a mensagem do erro é reconhecível: ela diz
-"não detém a liderança do par". Mas decidir pela `classe`, como sempre, continua sendo suficiente.*
+"não detém a liderança do par". Mas decidir pela `class`, como sempre, continua sendo suficiente.*
 
 🔴 **`config` não quer dizer "espere alguém consertar", e essa é a correção mais importante desta
 tabela.** A palavra é herança de quando as credenciais eram cadastradas por quem opera o gateway.
@@ -2472,23 +2472,23 @@ nosso. Parar e esperar sem olhar a própria configuração é a reação errada 
 
 Para os erros que nascem **antes** de falar com a Meta (autenticação, vínculo com a instância, corpo
 do pedido, idempotência), a classificação é decidida por este gateway, não pela Meta, e o
-`codigo_meta` vem `0`. O `desconhecido` também nasce deste lado (`codigo_meta` `0`): por definição, a
+`meta_code` vem `0`. O `unknown` também nasce deste lado (`meta_code` `0`): por definição, a
 Meta não respondeu nada classificável. Só quando o erro **vem** da Meta (a linha `502 config`, a parte
-da `503` que é dela, e a parte da `400 permanente`) é que a classe é derivada do status HTTP que a
-Meta devolveu — e o `codigo_meta` viaja junto
+da `503` que é dela, e a parte da `400 permanent`) é que a class é derivada do status HTTP que a
+Meta devolveu — e o `meta_code` viaja junto
 para quem tiver regra própria; nós não decidimos nada por ele, porque inventar significado para código
 não verificado seria pior que não mandá-lo.
 
 ### Falhou: a sua chave volta a valer, ou não?
 
-Depende de o gateway **saber** se a mensagem foi criada do lado da Meta, e a `classe` do erro te diz
+Depende de o gateway **saber** se a mensagem foi criada do lado da Meta, e a `class` do erro te diz
 qual dos dois mundos você está. Não é a mesma pergunta que "deu erro?".
 
-- **A Meta respondeu** que não deu certo — `classe` `permanente`, `config` ou `retentavel` vinda dela
+- **A Meta respondeu** que não deu certo — `class` `permanent`, `config` ou `retryable` vinda dela
   (`400`, `502 config`, a parte da `503` que é dela): a mensagem **não** foi criada. A chave **volta a
   valer** na hora, e um retry com ela envia de verdade. Isso vale inclusive para o `5xx` da Meta: ela
   respondeu, mesmo que com erro.
-- **A Meta não respondeu nada utilizável** — `classe` `desconhecido` (`502`): transporte caiu, o prazo
+- **A Meta não respondeu nada utilizável** — `class` `unknown` (`502`): transporte caiu, o prazo
   **da instância** estourou, ou veio `2xx` **sem id**. A mensagem **pode ter saído**. A chave fica
   **retida**, e um novo envio com ela recebe `409` até o TTL expirar.
 
@@ -2497,7 +2497,7 @@ retry legítimo criar uma **segunda** mensagem no celular de um cliente real —
 idempotência inteira existe para impedir. Um `409` que exige alguém olhando custa menos que uma
 duplicata que ninguém vê.
 
-#### 🔴 O que fazer com `desconhecido` (ou com um `409` que não passa) — o procedimento inteiro
+#### 🔴 O que fazer com `unknown` (ou com um `409` que não passa) — o procedimento inteiro
 
 **Não troque a chave por uma nova só para "destravar": isso reenvia às cegas**, e é justamente o caso
 em que a mensagem pode já estar no celular de alguém. A chave fica retida até o TTL da idempotência
@@ -2509,7 +2509,7 @@ manda um evento `status` com `status: "sent"` para a sua `callback_url`, tipicam
 Procure, na sua base de eventos recebidos, um `status` com:
 
 - `para_canonico` igual ao destino daquele envio, **e**
-- `timestamp` (ou o seu instante de recebimento) dentro da janela do envio que ficou `desconhecido`.
+- `timestamp` (ou o seu instante de recebimento) dentro da janela do envio que ficou `unknown`.
 
 **Achou → a mensagem SAIU.** Grave o `wa_message_id` daquele evento como o id do seu envio (é o mesmo
 que o `200` teria devolvido) e **não repita**. O `409` para de incomodar quando o registro expirar; até
@@ -2527,7 +2527,7 @@ não é o gateway destravando por você.
 > resto: é o que transforma "não sei" em "sei".
 
 > ℹ️ **`GET /v1/estado` NÃO responde a esta pergunta, e vale dizer para você não perder tempo lá.**
-> O contador `enviadas` só sobe em envio bem-sucedido; um desfecho `desconhecido` conta em
+> O contador `enviadas` só sobe em envio bem-sucedido; um desfecho `unknown` conta em
 > `falhas_de_envio` mesmo que a mensagem tenha saído. Os contadores medem o que o **gateway** soube,
 > não o que a Meta fez.
 
@@ -2644,26 +2644,26 @@ justamente esse caso que a garantia acima resolve com uma chamada só.
 - as duas páginas falam de *"the conversation"* sem distinguir conversa individual de **grupo** — o
   comportamento em grupo **não foi conferido**, e este gateway não o afirma;
 - a mesma fonte diz *"Mark incoming messages as read within 30 days of receipt"*. Mensagem mais
-  velha que isso tende a ser recusada (`400 permanente`), e não há nada a fazer além de desistir
+  velha que isso tende a ser recusada (`400 permanent`), e não há nada a fazer além de desistir
   daquela marcação.
 
 ### Erros
 
-O mesmo corpo de erro e a mesma taxonomia do envio — **decida pela `classe`, nunca pelo status**:
+O mesmo corpo de erro e a mesma taxonomia do envio — **decida pela `class`, nunca pelo status**:
 
 | Status | Classe | Quando acontece |
 |---|---|---|
-| `400` | `permanente` | falta `instancia` ou `wamid`, o corpo não é JSON; **ou** a Meta recusou o `wamid` (ela devolve `codigo_meta` `131009` para *"Parameter value is not valid"*, o caso do wamid inválido ou velho demais) |
-| `400` | `retentavel` | o corpo não chegou inteiro (sua conexão caiu no meio) |
+| `400` | `permanent` | falta `instancia` ou `wamid`, o corpo não é JSON; **ou** a Meta recusou o `wamid` (ela devolve `meta_code` `131009` para *"Parameter value is not valid"*, o caso do wamid inválido ou velho demais) |
+| `400` | `retryable` | o corpo não chegou inteiro (sua conexão caiu no meio) |
 | `401` | `config` | seu `Authorization` está ausente ou é inválido |
 | `403` | `config` | a instância pedida não é sua |
 | `404` | `config` | a instância pedida não existe |
-| `413` | `permanente` | o corpo passou do limite de tamanho aceito (**1 MiB** por default — ver *Limites conhecidos*) |
+| `413` | `permanent` | o corpo passou do limite de tamanho aceito (**1 MiB** por default — ver *Limites conhecidos*) |
 | `502` | `config` | a credencial que o **gateway** guarda para essa instância foi recusada pela Meta, ou o `phone_number_id` cadastrado está inválido. Não é o seu token; precisa de admin |
-| `502` | `desconhecido` | o gateway não obteve resposta utilizável da Meta (transporte, prazo da instância estourado) |
-| `503` | `retentavel` | a instância está pausada, o gateway não falou com o próprio armazenamento, **ou** a Meta devolveu erro retentável (5xx, timeout, ou throttling reconhecido pelo **código** da Meta — não pelo status; ver a nota em *POST /v1/messages → Erros*) |
+| `502` | `unknown` | o gateway não obteve resposta utilizável da Meta (transporte, prazo da instância estourado) |
+| `503` | `retryable` | a instância está pausada, o gateway não falou com o próprio armazenamento, **ou** a Meta devolveu erro retentável (5xx, timeout, ou throttling reconhecido pelo **código** da Meta — não pelo status; ver a nota em *POST /v1/messages → Erros*) |
 
-⚠️ **O `desconhecido` (`502`) aqui manda o CONTRÁRIO do que manda no envio, e é a diferença que mais
+⚠️ **O `unknown` (`502`) aqui manda o CONTRÁRIO do que manda no envio, e é a diferença que mais
 importa nesta página.** No `/v1/messages`, "não sei se a Meta criou a mensagem" significa *não
 reenvie* — um retry às cegas duplicaria uma mensagem real. Aqui **não há duplicata possível**: se a
 marcação pode não ter acontecido, **repita**. A própria mensagem de erro diz isso, com essas
@@ -2706,7 +2706,7 @@ que recusam `400` numa instância de Instagram*, mais abaixo.
   "processados": [ {"telefone": "5511999990000", "wa_id": "5511999990000"} ],
   "falhas": [
     { "telefone": "5511999990001", "wa_id": "5511999990001",
-      "codigo_meta": 139001, "mensagem": "…", "detalhe_meta": "…" }
+      "meta_code": 139001, "message": "…", "meta_detail": "…" }
   ] }
 ```
 
@@ -2764,12 +2764,12 @@ fracasso têm o mesmo sintoma: silêncio. Ninguém investiga alguém que parou d
 ### Limites
 
 - **1.000 telefones por chamada** de `POST`/`DELETE` — acima disso o gateway recusa na ENTRADA
-  (`400 permanente`), dizendo quantos vieram e o máximo aceito. A Meta nem chega a ser chamada.
+  (`400 permanent`), dizendo quantos vieram e o máximo aceito. A Meta nem chega a ser chamada.
 - **64.000 usuários bloqueados no total, por conta** — limite DA META, não espelhado aqui: quem
   sabe o total é ela, e o erro chega junto do número que o estourou (`falhas[]`) ou, se a chamada
-  inteira for recusada por isso, em `erro.detalhe_meta`.
+  inteira for recusada por isso, em `error.meta_detail`.
   ⚠️ **Nunca vimos esse erro acontecer** (conferido em 2026-08-20: nenhuma ocorrência em código,
-  teste ou registro nosso). Então **não sabemos o `codigo_meta` dele** — e não vamos inventar um.
+  teste ou registro nosso). Então **não sabemos o `meta_code` dele** — e não vamos inventar um.
   Quem bater primeiro, mande o código por este canal e ele entra aqui.
 - Telefone é **CANONIZADO** como no envio — mandar sem o nono dígito não é erro, mas também não
   bloqueia o número que você pensa: o gateway insere o dígito antes de falar com a Meta.
@@ -2778,14 +2778,14 @@ fracasso têm o mesmo sintoma: silêncio. Ninguém investiga alguém que parou d
 
 | Status | Classe | Quando acontece |
 |---|---|---|
-| `400` | `permanente` | falta `instancia`, `telefones` ausente/vazio, acima de 1.000 telefones, ou o corpo não é JSON |
-| `400` | `retentavel` | o corpo não chegou inteiro (sua conexão caiu no meio) |
+| `400` | `permanent` | falta `instancia`, `telefones` ausente/vazio, acima de 1.000 telefones, ou o corpo não é JSON |
+| `400` | `retryable` | o corpo não chegou inteiro (sua conexão caiu no meio) |
 | `401` | `config` | seu `Authorization` está ausente ou é inválido |
 | `403` | `config` | a instância pedida não é sua |
 | `404` | `config` | a instância pedida não existe |
-| `503` | `retentavel` | a instância está pausada, ou o gateway não falou com o próprio armazenamento |
+| `503` | `retryable` | a instância está pausada, ou o gateway não falou com o próprio armazenamento |
 | `502` | `config` | a credencial que o **gateway** guarda para essa instância foi recusada pela Meta, ou o `phone_number_id` cadastrado está inválido |
-| `502` | `desconhecido` | o gateway não obteve resposta utilizável da Meta para a **CHAMADA INTEIRA** — nenhum número foi processado; repetir é seguro (bloquear/desbloquear não tem efeito colateral por si só) |
+| `502` | `unknown` | o gateway não obteve resposta utilizável da Meta para a **CHAMADA INTEIRA** — nenhum número foi processado; repetir é seguro (bloquear/desbloquear não tem efeito colateral por si só) |
 
 ⚠️ **Um `200` nunca é "erro" nesta rota — mesmo que TODOS os números tenham ido parar em
 `falhas[]`.** O envelope respondeu; o veredito por número está no corpo. A tabela acima descreve
@@ -2826,13 +2826,13 @@ Apto a enviar → `200`:
 ```
 
 Qualquer outro desfecho → **`503`**, com o mesmo corpo de erro do envio
-(`{"erro":{"classe":…,"codigo_meta":…,"mensagem":…}}`). O status é sempre `503` de propósito: um probe
+(`{"error":{"class":…,"meta_code":…,"message":…}}`). O status é sempre `503` de propósito: um probe
 responde **uma** pergunta — este canal está apto a enviar agora? —, e obrigar o seu monitor a aprender
 a tabela de status inteira só para decidir "vermelho ou verde" seria transformar um sinal em
-interpretação. **É a `classe` que diz o que fazer:** `config` (token recusado, `phone_number_id`
-inválido) é *chame gente, isso não se conserta sozinho*; `retentavel` é *espere* (instância pausada,
+interpretação. **É a `class` que diz o que fazer:** `config` (token recusado, `phone_number_id`
+inválido) é *chame gente, isso não se conserta sozinho*; `retryable` é *espere* (instância pausada,
 `5xx`, timeout, ou throttling da Meta reconhecido pelo **código** — não pelo status; ver a nota em
-*POST /v1/messages → Erros*); `desconhecido` é *o gateway não conseguiu falar com a Meta, então
+*POST /v1/messages → Erros*); `unknown` é *o gateway não conseguiu falar com a Meta, então
 não sabe*.
 
 **Não há cache, e isso é a funcionalidade.** Toda chamada fala com a Meta. Um probe com cache mente
@@ -3263,8 +3263,8 @@ criou**, não conveniência.
 
 ```jsonc
 // GET /v1/estado?instancia=lojinha&serie_dias=91   -> 400
-{ "erro": { "classe": "permanente",
-            "mensagem": "`serie_dias` = 91, mas este gateway guarda contador por 90 dias — a serie mais longa possivel tem 90 entradas, e as mais velhas de uma janela maior sairiam zeradas sem terem sido medidas" } }
+{ "error": { "class": "permanent",
+            "message": "`serie_dias` = 91, mas este gateway guarda contador por 90 dias — a serie mais longa possivel tem 90 entradas, e as mais velhas de uma janela maior sairiam zeradas sem terem sido medidas" } }
 ```
 
 **O teto é a própria retenção**, e a mensagem cita o número **em vigor nesta instalação** (o operador
@@ -3421,7 +3421,7 @@ falhando** — visível sem você saber nada da nossa implementação.
 continua apontando para a última resposta real — é ele que diz há quanto tempo o gateway não ouve a
 Meta.
 
-**`desconhecido` não é vocabulário novo:** é a mesma palavra da `classe` de erro do envio, com o
+**`desconhecido` não é vocabulário novo:** é a mesma palavra da `class` de erro do envio, com o
 mesmo significado — *não sabemos*. Disfarçar "não sabemos" de qualquer das outras duas é que causa
 dano.
 
@@ -3839,11 +3839,11 @@ seção, que não depende do gateway responder.
 
 | status | quando | corpo |
 |---|---|---|
-| `400` | falta o parâmetro `instancia` | `{"erro":{"classe":"permanente","mensagem":"parametro de consulta \`instancia\` e obrigatorio"}}` |
+| `400` | falta o parâmetro `instancia` | `{"error":{"class":"permanent","message":"parametro de consulta \`instancia\` e obrigatorio"}}` |
 | `401` | sem token, ou token que ninguém reconhece | o corpo de erro padrão |
-| `403` | a instância não é sua | `{"erro":{"classe":"config","mensagem":"instancia nao autorizada para este consumidor"}}` |
-| `404` | slug que não existe | `{"erro":{"classe":"config","mensagem":"instancia desconhecida"}}` |
-| `503` | o gateway não conseguiu ler o próprio banco | `{"erro":{"classe":"retentavel","mensagem":"indisponivel"}}` |
+| `403` | a instância não é sua | `{"error":{"class":"config","message":"instancia nao autorizada para este consumidor"}}` |
+| `404` | slug que não existe | `{"error":{"class":"config","message":"instancia desconhecida"}}` |
+| `503` | o gateway não conseguiu ler o próprio banco | `{"error":{"class":"retryable","message":"indisponivel"}}` |
 
 Os corpos de `400` e `403` acima são **colados de uma execução**, não digitados.
 
@@ -3926,7 +3926,7 @@ que o tirou de produção. O truncamento não dava erro nenhum, então de fora e
 verdade: o sistema consumidor concluía que o template "não existe" e a mensagem simplesmente nunca
 saía. Aqui o gateway segue a paginação da Meta **até ela acabar**, e se algum dia o catálogo não
 couber no limite de paginação dele (**50 páginas de 100**, ~5000 templates), você recebe **`502` com
-`classe: config`** e **nenhuma lista** — de propósito.
+`class: config`** e **nenhuma lista** — de propósito.
 
 **Se isso acontecer, repetir não resolve — e a única saída que está na sua mão é `&status=`.** O
 parâmetro é repassado à Meta na query (além de ser reaplicado aqui), então, **se ela o honrar**, a
@@ -4049,8 +4049,8 @@ respostas possíveis, e cada uma quer uma reação diferente da sua:
 | O que o gateway achou na releitura | O que você recebe | O que fazer |
 |---|---|---|
 | **achou o template** | **`201`**, igual ao sucesso normal, com `id`, `status` e `categoria` vindos do catálogo. O `aviso` diz que a criação terminou sem resposta e que a releitura **confirmou** que o template existe | nada. **Ele foi criado.** Só a resposta se perdeu |
-| **não achou** | **`502`**, classe `desconhecido`, e a mensagem contém a palavra **INCONCLUSIVO** | **não recrie às cegas.** Consulte `GET /v1/templates` daqui a alguns minutos e decida com o resultado |
-| **a releitura também falhou** | **`502`**, classe `desconhecido`, dizendo que a releitura também não funcionou | espere e consulte `GET /v1/templates` |
+| **não achou** | **`502`**, class `unknown`, e a mensagem contém a palavra **INCONCLUSIVO** | **não recrie às cegas.** Consulte `GET /v1/templates` daqui a alguns minutos e decida com o resultado |
+| **a releitura também falhou** | **`502`**, class `unknown`, dizendo que a releitura também não funcionou | espere e consulte `GET /v1/templates` |
 
 > 🔴 **"Não achei" NÃO significa "não foi criado", e o gateway nunca vai dizer que significa.**
 > A Meta documenta *read-after-write* para a **resposta do próprio `POST`** dessa edge — que é
@@ -4139,7 +4139,7 @@ não é o erro, é o "não sei". Por isso são três, e o campo `desfecho` os se
 |---|---|---|
 | `apagado` | `200` | o template existia e a Meta aceitou a exclusão |
 | `ja_nao_existia` | `200` | o nome **não estava** no catálogo. **Nada foi pedido à Meta** — é o que torna a retomada idempotente de verdade |
-| *(inconclusivo)* | `502`, classe `desconhecido` | a chamada saiu e **nenhum veredito voltou**. Ver abaixo |
+| *(inconclusivo)* | `502`, class `unknown` | a chamada saiu e **nenhum veredito voltou**. Ver abaixo |
 
 **Sucesso** (os dois primeiros compartilham o mesmo corpo):
 
@@ -4308,9 +4308,9 @@ Recusas que acontecem **antes** de qualquer chamada à Meta:
 
 | Status | Classe | Quando |
 |---|---|---|
-| `415` | `permanente` | o mime da parte não está na tabela acima |
-| `413` | `permanente` | acima do teto **da categoria**. A mensagem de erro diz o teto em vigor e diz que ele é do gateway |
-| `400` | `permanente` | não veio a parte `arquivo`, ou o corpo não é multipart |
+| `415` | `permanent` | o mime da parte não está na tabela acima |
+| `413` | `permanent` | acima do teto **da categoria**. A mensagem de erro diz o teto em vigor e diz que ele é do gateway |
+| `400` | `permanent` | não veio a parte `arquivo`, ou o corpo não é multipart |
 
 `401`, `403`, `404` e `503` seguem a mesma tabela do envio.
 
@@ -4336,17 +4336,17 @@ que havia duas. A escolha é sua, e a próxima seção diz por quê.
 
 #### Erros do download
 
-Mesma taxonomia do envio — **decida pela `classe`, nunca pelo status**. Esta rota fala com a Meta
+Mesma taxonomia do envio — **decida pela `class`, nunca pelo status**. Esta rota fala com a Meta
 duas vezes (descrever a mídia, depois buscar os bytes), e qualquer uma das duas pode falhar:
 
 | Status | Classe | Quando |
 |---|---|---|
-| `400` | `permanente` | `mime_do_payload` que não é um mime válido (mande o `midia_mime_payload` **exatamente** como veio no evento); **ou** o `{id}` da mídia tem forma inválida e o pedido nem saiu do gateway; **ou** a Meta recusou o id — mídia que não existe, que não é da sua conta, ou que já expirou |
+| `400` | `permanent` | `mime_do_payload` que não é um mime válido (mande o `midia_mime_payload` **exatamente** como veio no evento); **ou** o `{id}` da mídia tem forma inválida e o pedido nem saiu do gateway; **ou** a Meta recusou o id — mídia que não existe, que não é da sua conta, ou que já expirou |
 | `401` | `config` | seu `Authorization` está ausente ou é inválido |
 | `403` | `config` | a instância pedida não é sua |
 | `404` | `config` | a **instância** não existe. Repare: id de mídia inexistente **não** cai aqui, cai no `400` acima, porque quem o recusa é a Meta |
-| `502` | `desconhecido` | a Meta não devolveu um endereço utilizável para essa mídia, ou o gateway não conseguiu falar com ela |
-| `503` | `retentavel` | a instância está pausada, o gateway não leu o próprio armazenamento, **ou** a Meta devolveu erro retentável (5xx, timeout, ou throttling reconhecido pelo **código** da Meta — não pelo status; ver a nota em *POST /v1/messages → Erros*) |
+| `502` | `unknown` | a Meta não devolveu um endereço utilizável para essa mídia, ou o gateway não conseguiu falar com ela |
+| `503` | `retryable` | a instância está pausada, o gateway não leu o próprio armazenamento, **ou** a Meta devolveu erro retentável (5xx, timeout, ou throttling reconhecido pelo **código** da Meta — não pelo status; ver a nota em *POST /v1/messages → Erros*) |
 
 > ⚠️ **O erro pode chegar no meio dos bytes, e aí não há corpo de erro nenhum.** Os bytes viajam em
 > streaming: se a conexão com a Meta cair **depois** de o `200` e os cabeçalhos já terem saído, o
@@ -4404,25 +4404,25 @@ Os campos aceitos: `about` (até 139 caracteres, segundo a Meta), `description` 
 `POST /v1/media` devolveu, para trocar a foto do perfil pelo conteúdo daquele upload).
 
 ⚠️ **Este gateway não confere os tetos de caracteres nem a quantidade de sites.** Quem valida é a
-Meta, e ela **explica** o que recusou — o mesmo `explicacao_meta`/`rastro_meta` da T-153, na
+Meta, e ela **explica** o que recusou — o mesmo `meta_explanation`/`meta_trace` da T-153, na
 próxima seção. Duplicar o número aqui só criaria uma segunda fonte que divergiria da Meta no dia em
 que ela mudar o próprio limite.
 
 ### Erros
 
-Mesma taxonomia das outras rotas de instância — **decida pela `classe`, nunca pelo status**:
+Mesma taxonomia das outras rotas de instância — **decida pela `class`, nunca pelo status**:
 
 | Status | Classe | Quando |
 |---|---|---|
-| `400` | `permanente` | falta `instancia` no `GET`, falta `instancia` no corpo do `POST`, ou o corpo não é JSON |
-| `400` | `retentavel` | o corpo do `POST` não chegou inteiro (sua conexão caiu no meio) |
+| `400` | `permanent` | falta `instancia` no `GET`, falta `instancia` no corpo do `POST`, ou o corpo não é JSON |
+| `400` | `retryable` | o corpo do `POST` não chegou inteiro (sua conexão caiu no meio) |
 | `401` | `config` | seu `Authorization` está ausente ou é inválido |
 | `403` | `config` | a instância pedida não é sua |
 | `404` | `config` | a instância pedida não existe |
-| `503` | `retentavel` | a instância está pausada, ou o gateway não falou com o próprio armazenamento |
+| `503` | `retryable` | a instância está pausada, ou o gateway não falou com o próprio armazenamento |
 | `502` | `config` | a credencial que o **gateway** guarda para essa instância foi recusada pela Meta |
-| `400`/`502` | vem da Meta | a Meta recusou um campo (teto de caracteres, `vertical` desconhecido, `profile_picture_handle` que não é imagem…) — a resposta carrega `mensagem`, e quando a Meta manda, `detalhe_meta`/`explicacao_meta`/`rastro_meta` (T-141/T-153) |
-| `502` | `desconhecido` | o gateway não obteve resposta utilizável da Meta; repetir é seguro (ler e escrever perfil não têm efeito colateral por si só além do próprio campo pedido) |
+| `400`/`502` | vem da Meta | a Meta recusou um campo (teto de caracteres, `vertical` desconhecido, `profile_picture_handle` que não é imagem…) — a resposta carrega `message`, e quando a Meta manda, `meta_detail`/`meta_explanation`/`meta_trace` (T-141/T-153) |
+| `502` | `unknown` | o gateway não obteve resposta utilizável da Meta; repetir é seguro (ler e escrever perfil não têm efeito colateral por si só além do próprio campo pedido) |
 
 ✅ **VERIFICADO CONTRA A META DE VERDADE (T-157, 2026-08-20, `v0.59.0` no ar):** o identificador da
 sua instância que este endpoint da Graph API usa é `phone_number_id` — confirmado por uma chamada
@@ -4518,7 +4518,7 @@ para quem te escreveu **nas últimas 24 horas** (estendida a **7 dias** se você
 `human_agent` — este gateway não monta essa tag por você nesta fatia). No WhatsApp, fora da janela
 ainda dá para iniciar conversa com um **template** aprovado; **Instagram não tem template**, então
 fora da janela **não há o que fazer** além de esperar o cliente escrever de novo. Se o seu envio for
-recusado por causa da janela, a Meta responde com um erro `permanente` ou `config` — o gateway
+recusado por causa da janela, a Meta responde com um erro `permanent` ou `config` — o gateway
 repassa a mensagem dela tal como veio, sem inventar uma tradução que não foi conferida na fonte.
 
 ### Provar o canal — `POST /v1/fumaca` / `zapgw fumaca`
@@ -4537,7 +4537,7 @@ teste, não existe para Instagram.** No WhatsApp esse passo é um `GET` que conf
 gastar o envio de teste; para Instagram não há, **medida**, uma chamada equivalente nesse host que
 faça a mesma pergunta sem efeito colateral — inventar uma seria arriscar uma resposta que engana.
 Isso significa que, numa instância Instagram, um token revogado só é acusado **no próprio envio de
-teste** (o mesmo `erro.classe = "config"` que você já esperava, só um passo mais tarde) — nunca muda
+teste** (o mesmo `erro.class = "config"` que você já esperava, só um passo mais tarde) — nunca muda
 o que a resposta final diz, só quando a Meta é consultada.
 
 ### O que NÃO existe, e não é lacuna a perguntar sobre
@@ -4555,7 +4555,7 @@ o que a resposta final diz, só quando a Meta é consultada.
 ### Rotas que recusam `400` numa instância de Instagram (T-111)
 
 Seis rotas usam um campo que só existe numa instância **WhatsApp** — `phone_number_id` ou
-`waba_id` — e por isso **recusam com `400`, classe `config`**, numa instância Instagram, antes de
+`waba_id` — e por isso **recusam com `400`, class `config`**, numa instância Instagram, antes de
 tentar qualquer coisa com a Meta. A mensagem sempre nomeia o tipo recusado:
 
 | Rota | Por que não se aplica ao Instagram |
@@ -4925,7 +4925,7 @@ respondeu".
   **Meta** manda no webhook **e** para o corpo que **você** manda em `POST /v1/messages`,
   `/v1/cadastro`, `/v1/leituras`, `/v1/templates`, `/v1/fumaca`, `/v1/pausa` e `/v1/bloqueios`
   (`POST`/`DELETE`). Acima dele a resposta
-  é `413` classe `permanente`, e repetir nunca resolve — encolha o pedido.
+  é `413` class `permanent`, e repetir nunca resolve — encolha o pedido.
   **Mídia não usa este teto**: o upload tem tetos por categoria (a tabela em *Subir bytes*), que são
   maiores.
   🔴 **No sentido de ENTRADA o `413` custa mensagem.** O gateway responde `413` à Meta e **não
