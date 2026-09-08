@@ -215,7 +215,7 @@ func TestSignatureSeparatesTimestampFromBodyWithoutAmbiguity(t *testing.T) {
 }
 
 // TestFrozenSignatureVector checks the implementation against the
-// fixture versioned at testdata/assinatura-entrega.json.
+// fixture versioned at testdata/delivery-signature.json.
 //
 // WHY A VECTOR, and not just the formula in prose: the gateway will be
 // consumed by systems in OTHER languages (the first one is Python). Whoever
@@ -234,7 +234,7 @@ func TestSignatureSeparatesTimestampFromBodyWithoutAmbiguity(t *testing.T) {
 // field in the envelope doesn't break this test, which is exactly what's
 // wanted: it exists to pin down the COMPUTATION, not the format.
 func TestFrozenSignatureVector(t *testing.T) {
-	rawBody, err := os.ReadFile(filepath.Join("testdata", "assinatura-entrega.json"))
+	rawBody, err := os.ReadFile(filepath.Join("testdata", "delivery-signature.json"))
 	if err != nil {
 		t.Fatalf("ler o vetor: %v", err)
 	}

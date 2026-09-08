@@ -159,7 +159,7 @@ const (
 	// reason is written there and is worth repeating here because it's what
 	// makes these numbers mean money: the SAME wamid shows up in `sent`,
 	// `delivered` and `read`, and all three can carry `pricing` (measured:
-	// the corpus pair status_sent_com_pricing.json /
+	// the corpus pair status_sent_with_pricing.json /
 	// status_delivered.json shares wamid and timestamp). Counting every
 	// status that carries `pricing` would multiply the invoice by up to
 	// three — exactly the defect the comment on CounterReadsMarked, right
@@ -203,7 +203,7 @@ const (
 	// NOT AN ERROR, A NORMAL CASE — measured by consumer-a across 267 real
 	// payloads (T-069): 4 of 53 raw `sent` came without the block (~7.5%),
 	// while all 49 `delivered` came with it. See
-	// testdata/corpus/status_sent_sem_pricing.json.
+	// testdata/corpus/status_sent_without_pricing.json.
 	//
 	// IT EXISTS SO THE BLIND SPOT IS A NUMBER, NOT SILENCE. Without this
 	// key, ~7.5% of volume simply wouldn't show up anywhere and the

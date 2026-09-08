@@ -49,7 +49,7 @@ const (
 // CORROBORATED BY A REAL CAPTURE, not just by doc (T-026, consumer-a,
 // 2026-07-26): the owner reacted and undid the SAME reaction 20s later, and
 // the second event arrived without the "emoji" key — not "", not null: the
-// key doesn't exist (testdata/corpus/reacao_removida.json). Independent
+// key doesn't exist (testdata/corpus/reaction_removed.json). Independent
 // corroboration that already existed: consumer-a's
 // `_processar_reacao`, in production since 2026-07-20, already treated the
 // absence of "emoji" as removal before any conversation between the two
@@ -60,7 +60,7 @@ const (
 // messageEvent, in parse.go: Event.ID uses m.ID (the event), Target uses
 // m.Reaction.MessageID (the target). The two are NEVER the same value in
 // the real capture. And the observed emoji ("❤️") is TWO codepoints
-// (U+2764 + U+FE0F, variation selector) — testdata/corpus/reacao.json uses
+// (U+2764 + U+FE0F, variation selector) — testdata/corpus/reaction.json uses
 // this exact emoji because a single-codepoint fixture wouldn't exercise
 // this path.
 type Reaction struct {
@@ -78,7 +78,7 @@ type Reaction struct {
 //
 // CORROBORATED BY A REAL CAPTURE (T-026, consumer-a, 2026-07-26): the bare
 // pin — WITHOUT "name" and WITHOUT "address" — is the case OBSERVED as
-// common (testdata/corpus/localizacao.json); the earlier fixture, derived
+// common (testdata/corpus/location.json); the earlier fixture, derived
 // from the doc, carried both and tested the rare case (the doc shows an
 // example of a venue pin, which Meta also accepts, but isn't what most
 // users send when sharing location through the app).
@@ -571,7 +571,7 @@ type Event struct {
 	// (backend/app/whatsapp/inbound.py:236, before any conversation
 	// between the two projects), and T-026's real capture (2026-07-26)
 	// actually brought "voice": true in the payload
-	// (testdata/corpus/audio_nota_de_voz.json).
+	// (testdata/corpus/audio_voice_note.json).
 	Voice *bool `json:"voice,omitempty"`
 
 	// Caption and Filename come from image/video/document.caption and

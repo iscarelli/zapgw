@@ -13,7 +13,7 @@ const corpusDir = "../../testdata/corpus"
 
 // What each corpus file has to produce.
 var corpusExpectations = map[string]func(*testing.T, []Event, error){
-	"mensagem_texto.json": func(t *testing.T, evs []Event, err error) {
+	"text_message.json": func(t *testing.T, evs []Event, err error) {
 		// consumer-a's real capture (2026-07-26, T-031): "from_user_id" (on
 		// the message) and "contacts[].user_id" (format "BR.<digits>")
 		// arrived over the wire and are NOT in the doc's classic examples.
@@ -34,13 +34,13 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 				evs[0].FromRaw, evs[0].FromCanonical)
 		}
 	},
-	"botao_de_template.json": func(t *testing.T, evs []Event, err error) {
+	"template_button.json": func(t *testing.T, evs []Event, err error) {
 		// consumer-a's real capture (2026-07-26, T-031): a real TEMPLATE
 		// quick-reply, tapped on the device. payload and text came EQUAL
 		// ("Falar com a gente") — which is exactly why this fixture ALONE
 		// doesn't prove the parser reads the right field (swapped payload
 		// and text would produce the SAME result here). The proof for
-		// that is botao_de_template_sintetico.json, below.
+		// that is template_button_synthetic.json, below.
 		if err != nil || len(evs) != 1 {
 			t.Fatalf("err=%v len=%d", err, len(evs))
 		}
@@ -53,13 +53,13 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 		// T-032: this fixture has carried "context" since T-031 (from and
 		// id are DIFFERENT: "5532999990000" versus "wamid.TESTE013"),
 		// without ever having been read. Independent proof of the same
-		// guarantee as resposta_a_mensagem.json — reading context.from
+		// guarantee as message_reply.json — reading context.from
 		// instead of context.id here would also leave this test red.
 		if evs[0].ReplyTo != "wamid.TESTE013" {
 			t.Errorf("ReplyTo = %q, want wamid.TESTE013 (the context's id, not the from)", evs[0].ReplyTo)
 		}
 	},
-	"resposta_a_mensagem.json": func(t *testing.T, evs []Event, err error) {
+	"message_reply.json": func(t *testing.T, evs []Event, err error) {
 		// consumer-a's real capture (2026-07-26, T-032): a text message
 		// replying to (quoting) another. context.from ("5532999990000")
 		// and context.id ("wamid.TESTE001") are DIFFERENT on purpose —
@@ -76,13 +76,13 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 			t.Errorf("Text = %q, want \"Recebido\"", evs[0].Text)
 		}
 	},
-	"mensagem_encaminhada_sintetica.json": func(t *testing.T, evs []Event, err error) {
+	"forwarded_message_synthetic.json": func(t *testing.T, evs []Event, err error) {
 		// SYNTHETIC on purpose (T-059, 2026-07-28): no real capture of
 		// these fields exists — `grep -rl forwarded testdata/corpus/`
 		// found nothing before this file. The two fields come with
 		// DIFFERENT values FROM EACH OTHER (forwarded:true,
 		// frequently_forwarded:false) for the SAME reason
-		// botao_de_template_sintetico.json exists: with both equal,
+		// template_button_synthetic.json exists: with both equal,
 		// reading one field in place of the other would pass GREEN.
 		if err != nil || len(evs) != 1 {
 			t.Fatalf("err=%v len=%d, want nil and 1", err, len(evs))
@@ -109,7 +109,7 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 	// len(evs) == 1`. An `err != nil` here is not a test detail — it's
 	// the `ignorados++` that made the customer's message vanish, with a
 	// 200 to Meta and no delivery to the consumer.
-	"context_de_tipo_errado_sintetico.json": func(t *testing.T, evs []Event, err error) {
+	"context_wrong_type_synthetic.json": func(t *testing.T, evs []Event, err error) {
 		// "context" came as a STRING where an OBJECT is expected.
 		if err != nil || len(evs) != 1 {
 			t.Fatalf("err=%v len=%d, want nil and 1 — an unreadable context must NOT take the message down", err, len(evs))
@@ -129,7 +129,7 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 				evs[0].Forwarded, evs[0].FrequentlyForwarded)
 		}
 	},
-	"context_com_campo_de_tipo_errado_sintetico.json": func(t *testing.T, evs []Event, err error) {
+	"context_field_wrong_type_synthetic.json": func(t *testing.T, evs []Event, err error) {
 		// "context" is an object, but INSIDE it "id" came as a NUMBER
 		// where a string is expected and "forwarded" came as a STRING
 		// where a bool is expected. This is the case the sibling file
@@ -153,7 +153,7 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 			t.Errorf("Forwarded = true — \"sim\" is not a boolean and must not become one")
 		}
 	},
-	"audio_voice_de_tipo_errado_sintetico.json": func(t *testing.T, evs []Event, err error) {
+	"audio_voice_wrong_type_synthetic.json": func(t *testing.T, evs []Event, err error) {
 		// "context"'s twin in the SAME defect, since plan 1: "voice"
 		// came as a STRING where a bool is expected, inside a media
 		// block that goes through no isolation at all.
@@ -189,7 +189,7 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 	// One file per type, and not a single batch with all five: a red
 	// test has to say WHICH type broke (the same reason T-061's three
 	// files exist).
-	"texto_de_tipo_errado_sintetico.json": func(t *testing.T, evs []Event, err error) {
+	"text_wrong_type_synthetic.json": func(t *testing.T, evs []Event, err error) {
 		// `"text":"oi"` — a string where an object is expected. It's the
 		// scary case: text is the most common type of all, and an
 		// unexpectedly-shaped text used to erase the system's most
@@ -213,7 +213,7 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 			t.Errorf("the sibling's Text = %q — tolerating the unreadable must not turn into stopping reading", evs[1].Text)
 		}
 	},
-	"audio_de_tipo_errado_sintetico.json": func(t *testing.T, evs []Event, err error) {
+	"audio_wrong_type_synthetic.json": func(t *testing.T, evs []Event, err error) {
 		// `"audio":"MEDIA_TESTE10"` — the WHOLE media block with the
 		// wrong type, one level above the "voice" T-061 closed.
 		if err != nil || len(evs) != 2 {
@@ -236,7 +236,7 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 			t.Errorf("the sibling's Voice = %v, want true", evs[1].Voice)
 		}
 	},
-	"interativo_de_tipo_errado_sintetico.json": func(t *testing.T, evs []Event, err error) {
+	"interactive_wrong_type_synthetic.json": func(t *testing.T, evs []Event, err error) {
 		if err != nil || len(evs) != 2 {
 			t.Fatalf("err=%v len=%d, want nil and 2", err, len(evs))
 		}
@@ -251,7 +251,7 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 			t.Errorf("sibling: ButtonPayload=%q ButtonText=%q", evs[1].ButtonPayload, evs[1].ButtonText)
 		}
 	},
-	"reacao_de_tipo_errado_sintetico.json": func(t *testing.T, evs []Event, err error) {
+	"reaction_wrong_type_synthetic.json": func(t *testing.T, evs []Event, err error) {
 		// The case that forced the distinction between an ABSENT block
 		// and an UNREADABLE block (see messageEvent): the "reaction
 		// without a target is malformed" guard still holds — and is
@@ -274,7 +274,7 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 			t.Errorf("sibling: Reaction = %+v", evs[1].Reaction)
 		}
 	},
-	"botao_de_tipo_errado_sintetico.json": func(t *testing.T, evs []Event, err error) {
+	"button_wrong_type_synthetic.json": func(t *testing.T, evs []Event, err error) {
 		if err != nil || len(evs) != 2 {
 			t.Fatalf("err=%v len=%d, want nil and 2", err, len(evs))
 		}
@@ -285,7 +285,7 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 			t.Errorf("ButtonPayload=%q Text=%q, want both empty", evs[0].ButtonPayload, evs[0].Text)
 		}
 		// payload and text DIFFERENT in the sibling, for the same reason
-		// botao_de_template_sintetico.json exists.
+		// template_button_synthetic.json exists.
 		if evs[1].ButtonPayload != "PAYLOAD_INTERNO_7C1" || evs[1].ButtonText != "Falar com a gente" {
 			t.Errorf("sibling: ButtonPayload=%q ButtonText=%q", evs[1].ButtonPayload, evs[1].ButtonText)
 		}
@@ -303,7 +303,7 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 	// The healthy sibling comes in the SAME batch in all of them, like
 	// T-062's five: it's what separates "the parser tolerated it" from
 	// "the parser stopped reading".
-	"metadata_de_tipo_errado_sintetico.json": func(t *testing.T, evs []Event, err error) {
+	"metadata_wrong_type_synthetic.json": func(t *testing.T, evs []Event, err error) {
 		// `"metadata":"PNID_TESTE"` — a string where an object is
 		// expected. Measured before T-068: len(evs) = 0. `metadata`
 		// sits at a level (valueMeta) that carries ALL the messages and
@@ -322,7 +322,7 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 		// The block degrades whole: "PNID_TESTE" sits right there,
 		// readable in plain sight, and still doesn't become
 		// phone_number_id (the same rule as
-		// audio_de_tipo_errado_sintetico.json).
+		// audio_wrong_type_synthetic.json).
 		for i, e := range evs {
 			if e.PhoneNumberID != "" {
 				t.Errorf("evs[%d].PhoneNumberID = %q, want empty — a block that couldn't be read doesn't exist", i, e.PhoneNumberID)
@@ -333,7 +333,7 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 			t.Errorf("ContactName = %q — the unreadable metadata took contacts down with it", evs[0].ContactName)
 		}
 	},
-	"contacts_de_tipo_errado_sintetico.json": func(t *testing.T, evs []Event, err error) {
+	"contacts_wrong_type_synthetic.json": func(t *testing.T, evs []Event, err error) {
 		// `"contacts":"Fulana de Teste"` — the most expensive of the
 		// five measured cases, and the reason this task exists: a
 		// contacts of a new shape erased a customer's WHOLE message
@@ -357,7 +357,7 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 			t.Errorf("PhoneNumberID = %q — the unreadable contacts took metadata down with it", evs[0].PhoneNumberID)
 		}
 	},
-	"field_de_tipo_errado_sintetico.json": func(t *testing.T, evs []Event, err error) {
+	"field_wrong_type_synthetic.json": func(t *testing.T, evs []Event, err error) {
 		// `"field":42` on the FIRST change; the second is healthy.
 		// Measured before T-068: len(evs) = 0 — the whole change died.
 		//
@@ -380,7 +380,7 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 			t.Errorf("evs[1] = %q/%q", evs[1].WaMessageID, evs[1].Text)
 		}
 	},
-	"entry_id_de_tipo_errado_sintetico.json": func(t *testing.T, evs []Event, err error) {
+	"entry_id_wrong_type_synthetic.json": func(t *testing.T, evs []Event, err error) {
 		// `"id":42` on the FIRST entry (the waba_id), with a SECOND
 		// healthy entry — which is how Meta batches different accounts
 		// in the same call. Measured before T-068: the whole entry
@@ -403,7 +403,7 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 				evs[1].WaMessageID, evs[1].WabaID)
 		}
 	},
-	"status_de_tipo_errado_sintetico.json": func(t *testing.T, evs []Event, err error) {
+	"status_wrong_type_synthetic.json": func(t *testing.T, evs []Event, err error) {
 		// messageMeta's direct sibling, in the SAME loop, and the most
 		// embarrassing of the five: an unexpectedly-shaped `status`,
 		// `recipient_id`, and `timestamp` erased the whole status event.
@@ -426,7 +426,7 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 			t.Errorf("evs[1] = %q/%q — the sibling status has to arrive intact", evs[1].WaMessageID, evs[1].Status)
 		}
 	},
-	"template_de_tipo_errado_sintetico.json": func(t *testing.T, evs []Event, err error) {
+	"template_wrong_type_synthetic.json": func(t *testing.T, evs []Event, err error) {
 		// `"message_template_name":42` and `"reason":{...}` — the second
 		// change is healthy. Measured before T-068: len(evs) = 0, i.e.
 		// the reclassification warning T-043 exists to give vanished
@@ -454,10 +454,10 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 			t.Errorf("evs[1].Template = %+v — the healthy sibling of the same batch", evs[1].Template)
 		}
 	},
-	"botao_de_template_sintetico.json": func(t *testing.T, evs []Event, err error) {
+	"template_button_synthetic.json": func(t *testing.T, evs []Event, err error) {
 		// Synthetic, on purpose (T-031): payload and text DIFFERENT —
 		// "PAYLOAD_INTERNO_9F3" versus "Falar com a gente". The real
-		// capture (botao_de_template.json) has both equal, so it alone
+		// capture (template_button.json) has both equal, so it alone
 		// doesn't catch a swapped field read (see the comment further up
 		// and the "A leak test passes GREEN when the fixture erases the
 		// branch that would leak" family in docs/ARMADILHAS.md). This fixture is what
@@ -473,7 +473,7 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 			t.Errorf("ButtonText = %q, want \"Falar com a gente\"", evs[0].ButtonText)
 		}
 	},
-	"botao_interativo.json": func(t *testing.T, evs []Event, err error) {
+	"interactive_button.json": func(t *testing.T, evs []Event, err error) {
 		if err != nil || len(evs) != 1 {
 			t.Fatalf("err=%v len=%d", err, len(evs))
 		}
@@ -483,7 +483,7 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 		// distinguish a swapped field read on its own (Go's string
 		// comparison is case-sensitive). That's why this fixture does
 		// NOT need a synthetic sibling like
-		// botao_de_template_sintetico.json needed.
+		// template_button_synthetic.json needed.
 		if evs[0].ButtonPayload != "confirmar" {
 			t.Errorf("ButtonPayload = %q, want \"confirmar\" (the id, not the title)", evs[0].ButtonPayload)
 		}
@@ -494,7 +494,7 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 			t.Fatalf("ButtonPayload == ButtonText — they lost the ability to catch a swapped field read")
 		}
 	},
-	"audio_nota_de_voz.json": func(t *testing.T, evs []Event, err error) {
+	"audio_voice_note.json": func(t *testing.T, evs []Event, err error) {
 		if err != nil || len(evs) != 1 {
 			t.Fatalf("err=%v len=%d", err, len(evs))
 		}
@@ -521,7 +521,7 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 	// (TestCorpusSentAndDeliveredOfTheSameWamidHaveTheSameTimestamp) would stop
 	// making sense. The TIMESTAMPS are Meta's real ones, on purpose: they
 	// identify no one and are the fact the capture proved.
-	"status_sent_sem_pricing.json": func(t *testing.T, evs []Event, err error) {
+	"status_sent_without_pricing.json": func(t *testing.T, evs []Event, err error) {
 		// The finding a hand-written fixture would never have: `pricing`
 		// is OPTIONAL on `sent` — 4 of 53 raw `sent` came without the
 		// block (~7.5%). A `sent` without billing is NOT an error, it's
@@ -560,7 +560,7 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 			t.Errorf("Timestamp = %d, want 1785073298 (Meta's real timestamp)", evs[0].Timestamp)
 		}
 	},
-	"status_sent_com_pricing.json": func(t *testing.T, evs []Event, err error) {
+	"status_sent_with_pricing.json": func(t *testing.T, evs []Event, err error) {
 		// The common shape: 49 of 53 raw `sent` came WITH `pricing`.
 		// It's this file's pairing with the one above that makes
 		// "optional" a proven assertion instead of a sentence in the
@@ -576,7 +576,7 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 		}
 		// `service` and `billable:false` are this capture's REAL values,
 		// and both differ from the only billing fixture that existed
-		// (status_read_com_cobranca.json: `utility` and `billable:true`)
+		// (status_read_with_billing.json: `utility` and `billable:true`)
 		// — swapping the read of one field for the other no longer
 		// slips by unnoticed.
 		if evs[0].Billing.Category != "service" {
@@ -611,7 +611,7 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 		}
 		// The "no pricing -> absent Billing" non-regression this file
 		// carried until T-041 MOVED ADDRESS, and didn't vanish: it now
-		// lives in status_sent_sem_pricing.json and in
+		// lives in status_sent_without_pricing.json and in
 		// status_failed.json, both backed by a capture. Here Meta sent
 		// `pricing`, and it has to arrive.
 		if evs[0].Billing == nil {
@@ -655,7 +655,7 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 			t.Errorf("Billing = %+v, want nil — this status has no pricing", evs[0].Billing)
 		}
 	},
-	"status_read_com_cobranca.json": func(t *testing.T, evs []Event, err error) {
+	"status_read_with_billing.json": func(t *testing.T, evs []Event, err error) {
 		if err != nil || len(evs) != 1 {
 			t.Fatalf("err=%v len=%d, want nil and 1", err, len(evs))
 		}
@@ -674,7 +674,7 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 			t.Errorf("Billable = %v, want a *bool pointing to true", evs[0].Billing.Billable)
 		}
 	},
-	"status_de_template.json": func(t *testing.T, evs []Event, err error) {
+	"template_status.json": func(t *testing.T, evs []Event, err error) {
 		// consumer-a's real (partial) capture (2026-07-26, T-043): the
 		// `change` is literal, one of the 21 samples they'd kept on
 		// disk since before the migration; the `entry` (id/time) is
@@ -737,7 +737,7 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 	// `correct_category` in place of `previous_category`. The three
 	// captures cannot do that job — real traffic brought NEITHER
 	// `correct_category` NOR `category_appeal_status` in any of them.
-	"categoria_de_template_rebaixamento.json": func(t *testing.T, evs []Event, err error) {
+	"template_category_downgrade.json": func(t *testing.T, evs []Event, err error) {
 		// REAL CAPTURE, ceded by consumer `consumer-b` on 2026-08-28
 		// through the channel, whole and unreformatted; the only edit at
 		// origin was the `waba_id` becoming WABA_TESTE. `entry.time`
@@ -796,7 +796,7 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 			t.Errorf("WabaID = %q", e.WabaID)
 		}
 	},
-	"categoria_de_template_restauracao.json": func(t *testing.T, evs []Event, err error) {
+	"template_category_restore.json": func(t *testing.T, evs []Event, err error) {
 		// REAL CAPTURE (same origin and same day as the file above).
 		// `entry.time` 1787305767 = 2026-08-21 09:49:27 UTC (06:49:27
 		// -03), ~14,9 h after the demotion — the SAME
@@ -833,7 +833,7 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 			t.Errorf("WabaID = %q", e.WabaID)
 		}
 	},
-	"categoria_de_template_sem_anterior.json": func(t *testing.T, evs []Event, err error) {
+	"template_category_no_previous.json": func(t *testing.T, evs []Event, err error) {
 		// REAL CAPTURE, and the one that changes what we KNOW instead of
 		// what we test: it arrives WITHOUT `previous_category`. One in
 		// the 18 events the consumer had stored; the other seventeen
@@ -876,7 +876,7 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 			t.Errorf("WabaID = %q", e.WabaID)
 		}
 	},
-	"categoria_de_template_sintetico.json": func(t *testing.T, evs []Event, err error) {
+	"template_category_synthetic.json": func(t *testing.T, evs []Event, err error) {
 		// SYNTHETIC (T-057): the FOUR category fields come with values
 		// DIFFERENT from each other — previous UTILITY, new MARKETING,
 		// correct AUTHENTICATION —, which the dashboard's sample doesn't
@@ -913,7 +913,7 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 		if c.AppealStatus != "NOT_ELIGIBLE" {
 			t.Errorf("AppealStatus = %q, want NOT_ELIGIBLE as it came", c.AppealStatus)
 		}
-		// A 16-digit message_template_id, like status_de_template.json's:
+		// A 16-digit message_template_id, like template_status.json's:
 		// doesn't fit in an int32, which is why it's read as TEXT.
 		if evs[0].ID != "template_categoria:9900000000000002:UTILITY:MARKETING:1769000072" {
 			t.Errorf("ID = %q", evs[0].ID)
@@ -925,7 +925,7 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 	// (severity). The rest of the account fields the App receives still
 	// have no model, and that's WRITTEN into the contract — see
 	// TestParseWebhookAnotherAccountFieldStaysOnlyInTheRawBody.
-	"qualidade_do_numero_derivado_da_doc.json": func(t *testing.T, evs []Event, err error) {
+	"number_quality_derived_from_doc.json": func(t *testing.T, evs []Event, err error) {
 		// DERIVED FROM THE DOC: the dashboard's *Test* button sample
 		// (2026-07-28), frozen byte for byte. `16505551111` is Meta's own
 		// fictitious number, preserved from the sample — it's no one's
@@ -970,7 +970,7 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 			t.Errorf("WabaID = %q", e.WabaID)
 		}
 	},
-	"qualidade_do_numero_sintetico.json": func(t *testing.T, evs []Event, err error) {
+	"number_quality_synthetic.json": func(t *testing.T, evs []Event, err error) {
 		// SYNTHETIC (T-058): in the dashboard's sample `current_limit`
 		// and `max_daily_conversations_per_business` come with the SAME
 		// value ("TIER_250"), so there swapping the read of one for the
@@ -1004,7 +1004,7 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 			t.Errorf("State = %q, want FLAGGED", q.State)
 		}
 	},
-	"alerta_de_conta_derivado_da_doc.json": func(t *testing.T, evs []Event, err error) {
+	"account_alert_derived_from_doc.json": func(t *testing.T, evs []Event, err error) {
 		// DERIVED FROM THE DOC: the dashboard's *Test* button sample
 		// (2026-07-28). Has NO synthetic sibling, and the absence is a
 		// decision: the four fields that enter the key already come with
@@ -1013,7 +1013,7 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 		// alone catches a swapped field read. Adding a synthetic one
 		// "for symmetry" with the quality one would be ceremony with no
 		// guarantee — the same decision (and the same question) as
-		// botao_interativo.json.
+		// interactive_button.json.
 		if err != nil || len(evs) != 1 {
 			t.Fatalf("err=%v len=%d, want nil and 1", err, len(evs))
 		}
@@ -1058,7 +1058,7 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 			t.Errorf("WabaID = %q", e.WabaID)
 		}
 	},
-	"corpo_null.json": func(t *testing.T, evs []Event, err error) {
+	"body_null.json": func(t *testing.T, evs []Event, err error) {
 		if err == nil {
 			t.Fatal("null body passed without an error")
 		}
@@ -1066,7 +1066,7 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 			t.Fatalf("len(evs) = %d, want 0", len(evs))
 		}
 	},
-	"reacao.json": func(t *testing.T, evs []Event, err error) {
+	"reaction.json": func(t *testing.T, evs []Event, err error) {
 		if err != nil || len(evs) != 1 {
 			t.Fatalf("err=%v len=%d, want nil and 1", err, len(evs))
 		}
@@ -1089,7 +1089,7 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 			t.Errorf("Target = %q", evs[0].Reaction.Target)
 		}
 	},
-	"reacao_removida.json": func(t *testing.T, evs []Event, err error) {
+	"reaction_removed.json": func(t *testing.T, evs []Event, err error) {
 		// An emoji ABSENT from Meta's payload is REMOVAL, not
 		// malformation — it cannot become ErrPartialParse.
 		if err != nil || len(evs) != 1 {
@@ -1105,7 +1105,7 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 			t.Errorf("Target = %q", evs[0].Reaction.Target)
 		}
 	},
-	"localizacao.json": func(t *testing.T, evs []Event, err error) {
+	"location.json": func(t *testing.T, evs []Event, err error) {
 		if err != nil || len(evs) != 1 {
 			t.Fatalf("err=%v len=%d", err, len(evs))
 		}
@@ -1130,7 +1130,7 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 			t.Errorf("Address = %q, want empty — Meta did not send an address in this capture", evs[0].Location.Address)
 		}
 	},
-	"documento_com_legenda.json": func(t *testing.T, evs []Event, err error) {
+	"document_with_caption.json": func(t *testing.T, evs []Event, err error) {
 		if err != nil || len(evs) != 1 {
 			t.Fatalf("err=%v len=%d", err, len(evs))
 		}
@@ -1147,7 +1147,7 @@ var corpusExpectations = map[string]func(*testing.T, []Event, error){
 			t.Errorf("Filename = %q", evs[0].Filename)
 		}
 	},
-	"imagem.json": func(t *testing.T, evs []Event, err error) {
+	"image.json": func(t *testing.T, evs []Event, err error) {
 		if err != nil || len(evs) != 1 {
 			t.Fatalf("err=%v len=%d", err, len(evs))
 		}
@@ -1246,7 +1246,7 @@ func corpusEvents(t *testing.T, name string) []Event {
 // starts colliding with `sent` in the consumer's dedup and one of the two
 // vanishes.
 func TestCorpusSentAndDeliveredOfTheSameWamidHaveTheSameTimestamp(t *testing.T) {
-	sent := corpusEvents(t, "status_sent_com_pricing.json")[0]
+	sent := corpusEvents(t, "status_sent_with_pricing.json")[0]
 	delivered := corpusEvents(t, "status_delivered.json")[0]
 
 	if sent.WaMessageID != delivered.WaMessageID {
@@ -1279,8 +1279,8 @@ func TestCorpusSentAndDeliveredOfTheSameWamidHaveTheSameTimestamp(t *testing.T) 
 // went without it until a capture existed, which is the usual asymmetry.
 func TestCorpusARealStatusDoesNotLeakRecipientUserIDIntoTheEnvelope(t *testing.T) {
 	for _, name := range []string{
-		"status_sent_sem_pricing.json",
-		"status_sent_com_pricing.json",
+		"status_sent_without_pricing.json",
+		"status_sent_with_pricing.json",
 		"status_delivered.json",
 	} {
 		ev := corpusEvents(t, name)[0]
@@ -1312,8 +1312,8 @@ func TestCorpusARealStatusDoesNotLeakRecipientUserIDIntoTheEnvelope(t *testing.T
 //
 // The two captures were ceded by consumer `consumer-b` on 2026-08-28.
 func TestTemplateCategoryTheRealPairThereAndBackHasDifferentKeys(t *testing.T) {
-	downgrade := corpusEvents(t, "categoria_de_template_rebaixamento.json")[0]
-	restore := corpusEvents(t, "categoria_de_template_restauracao.json")[0]
+	downgrade := corpusEvents(t, "template_category_downgrade.json")[0]
+	restore := corpusEvents(t, "template_category_restore.json")[0]
 
 	// Without this the test proves nothing: two DIFFERENT templates
 	// would trivially have different keys.
@@ -1367,7 +1367,7 @@ func TestTemplateCategoryTheRealPairThereAndBackHasDifferentKeys(t *testing.T) {
 // that never reaches the consumer is a family sending at the higher price
 // with nobody's clock started.
 func TestTemplateCategoryWithoutPreviousCategoryStillBecomesAnEvent(t *testing.T) {
-	ev := corpusEvents(t, "categoria_de_template_sem_anterior.json")[0]
+	ev := corpusEvents(t, "template_category_no_previous.json")[0]
 
 	if ev.Type != EventTypeTemplateCategory {
 		t.Fatalf("Type = %q, want template_categoria", ev.Type)
@@ -1393,9 +1393,9 @@ func TestTemplateCategoryWithoutPreviousCategoryStillBecomesAnEvent(t *testing.T
 	// And it does not collide with the pair above, which is the same
 	// guarantee looked at from the other side.
 	for _, neighbor := range []string{
-		"categoria_de_template_rebaixamento.json",
-		"categoria_de_template_restauracao.json",
-		"categoria_de_template_sintetico.json",
+		"template_category_downgrade.json",
+		"template_category_restore.json",
+		"template_category_synthetic.json",
 	} {
 		if another := corpusEvents(t, neighbor)[0]; another.ID == ev.ID {
 			t.Errorf("the key without a direction collided with %s (%q)", neighbor, ev.ID)
@@ -1414,16 +1414,16 @@ func TestTemplateCategoryWithoutPreviousCategoryStillBecomesAnEvent(t *testing.T
 // is the whole reason a derived fixture is not a capture.
 //
 // THIS TEST IS NOT A GUARD AGAINST THE FIELDS: they stay modelled, and
-// `categoria_de_template_sintetico.json` keeps exercising them. It is a
+// `template_category_synthetic.json` keeps exercising them. It is a
 // dated MEASUREMENT — three captures, one account, 2026-08-28 — that
 // turns red the day a capture with either field is frozen here. When
 // that day comes, the right move is to update this test and the
 // contract's table together, not to delete the assertion.
 func TestTemplateCategoryNoRealCaptureBroughtAppealNorCorrectCategory(t *testing.T) {
 	captures := []string{
-		"categoria_de_template_rebaixamento.json",
-		"categoria_de_template_restauracao.json",
-		"categoria_de_template_sem_anterior.json",
+		"template_category_downgrade.json",
+		"template_category_restore.json",
+		"template_category_no_previous.json",
 	}
 	seenIDs := make(map[string]string, len(captures))
 	for _, name := range captures {
