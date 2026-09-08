@@ -1,24 +1,26 @@
-# /etc/profile.d/zapgw.sh — faz `zapgw` funcionar tambem para quem entra por `pct`.
-# Ver docs/ARMADILHAS.md, "`command not found` dentro do CT nao quer dizer que o
-# binario nao esta la". Instalado em 2026-07-29.
+# /etc/profile.d/zapgw.sh — makes `zapgw` work also for whoever enters via `pct`.
+# See docs/ARMADILHAS.md, "`command not found` inside the CT does not mean the
+# binary isn't there". Installed on 2026-07-29.
 #
-# O PROBLEMA QUE ELE RESOLVE, e sao dois com sintomas diferentes:
-#   1. `pct enter` / `pct exec` dao PATH=/sbin:/bin:/usr/sbin:/usr/bin — sem
-#      /usr/local/bin, que e onde o deploy.sh instala o binario. Sintoma:
-#      `command not found`, que manda procurar deploy quebrado.
-#   2. shell interativo nao herda o env do systemd, entao faltam ZAPGW_BANCO e
-#      ZAPGW_CHAVE_CIFRA. Sintoma: o menu abre e diz `resumo indisponivel:`,
-#      e todo subcomando falha ao abrir o banco.
+# THE PROBLEM IT SOLVES, and there are two, with different symptoms:
+#   1. `pct enter` / `pct exec` give PATH=/sbin:/bin:/usr/sbin:/usr/bin — without
+#      /usr/local/bin, which is where deploy.sh installs the binary. Symptom:
+#      `command not found`, which sends you looking for a broken deploy.
+#   2. an interactive shell does not inherit systemd's env, so ZAPGW_BANCO and
+#      ZAPGW_CHAVE_CIFRA are missing. Symptom: the menu opens and prints
+#      `summary unavailable:`, and every subcommand fails to open the database.
 #
-# POR QUE UMA FUNCAO, e nao so um PATH: so o PATH consertaria (1) e deixaria (2)
-# de pe — trocar um erro claro por um erro obscuro e pior que nao consertar.
+# WHY A FUNCTION, and not just a PATH: a PATH alone would fix (1) and leave (2)
+# standing — trading a clear error for an obscure one is worse than not fixing it.
 #
-# POR QUE O CORPO E `( ... )` E NAO `{ ... }`: a subshell mantem o env — inclusive
-# ZAPGW_CHAVE_CIFRA — vivo so durante a chamada. Com chaves, a chave de cifra
-# ficaria no ambiente do shell e seria herdada por todo processo iniciado dali,
-# legivel em /proc/<pid>/environ. Uma conveniencia nao paga com o segredo.
+# WHY THE BODY IS `( ... )` AND NOT `{ ... }`: the subshell keeps the env —
+# including ZAPGW_CHAVE_CIFRA — alive only for the duration of the call. With
+# braces, the encryption key would stay in the shell's environment and would be
+# inherited by every process started from there, readable in /proc/<pid>/environ.
+# A convenience is not worth paying for with the secret.
 #
-# `zapgw` sozinho, num terminal, abre o menu — a funcao preserva stdin/stdout.
+# `zapgw` alone, in a terminal, opens the menu — the function preserves
+# stdin/stdout.
 zapgw() (
 	set -a
 	. /etc/zapgw/env

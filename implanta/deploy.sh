@@ -1,98 +1,104 @@
 #!/usr/bin/env bash
 #
-# deploy.sh — compila, envia, troca e VERIFICA o zapgw no container de destino.
+# deploy.sh — builds, ships, swaps and VERIFIES zapgw on the target container.
 #
-# A razao de existir deste script nao e "copiar um binario": e ABORTAR quando o
-# binario novo nao responde. Sem o passo do /v1/health, um binario quebrado sobe
-# e o gateway fica fora do ar sem ninguem saber — a Meta simplesmente para de
-# entregar, e do lado de fora e indistinguivel de "nao chegou mensagem".
+# The reason this script exists is not "copy a binary": it is to ABORT when
+# the new binary does not respond. Without the /v1/health step, a broken
+# binary goes up and the gateway is off the air without anyone knowing — Meta
+# simply stops delivering, and from the outside it's indistinguishable from
+# "no message arrived".
 #
-# E ABORTAR TAMBEM quando o binario responde, mas NAO E O QUE ESTE DEPLOY
-# CONSTRUIU (T-184). A versao entra por `-ldflags "-X main.version=..."`, e o
-# linker Go ignora EM SILENCIO um simbolo que nao existe: renomeie a variavel no
-# codigo e o build continua saindo 0, so que o binario responde
-# "desenvolvimento". Medido com controle positivo em 2026-08-30. Sem a conferencia
-# abaixo, esse deploy termina VERDE publicando um gateway que nao sabe que versao
-# e — e a partir dai todo diagnostico de producao se apoia num numero errado.
+# It also ABORTS when the binary responds, but is NOT WHAT THIS DEPLOY
+# BUILT (T-184). The version comes in via `-ldflags "-X main.version=..."`,
+# and the Go linker SILENTLY ignores a symbol that doesn't exist: rename the
+# variable in the code and the build keeps exiting 0, except the binary
+# responds "development". Measured with a positive control on 2026-08-30.
+# Without the check below, that deploy ends up GREEN while publishing a
+# gateway that doesn't know its own version — and from there on every
+# production diagnosis leans on a wrong number.
 #
-# Ele NAO copia /etc/zapgw/env e NAO toca em ZAPGW_CHAVE_CIFRA. A chave mora so
-# no CT; copia-la seria criar uma segunda copia para vazar.
+# It does NOT copy /etc/zapgw/env and does NOT touch ZAPGW_CHAVE_CIFRA. The
+# key lives only on the CT; copying it would be creating a second copy to leak.
 #
-# Ele TAMBEM instala /etc/profile.d/zapgw.sh (T-090), que e o que faz o comando
-# `zapgw` funcionar para quem entra por `pct enter`/`pct exec` — sem ele, CT
-# novo (ou reconstruido) nasce com `command not found`. Esse passo NAO entra no
-# caminho de reversao e falhar nele nao aborta o deploy — mas fica visivel
-# (ALARME no stdout), nunca engolido.
+# It ALSO installs /etc/profile.d/zapgw.sh (T-090), which is what makes the
+# `zapgw` command work for whoever enters via `pct enter`/`pct exec` —
+# without it, a new (or rebuilt) CT is born with `command not found`. This
+# step is NOT part of the rollback path and failing it does not abort the
+# deploy — but it never fails silently either (an ALARM on stdout, never
+# swallowed).
 #
-# Uso:
-#   ZAPGW_DEPLOY_HOST=usuario@no ZAPGW_DEPLOY_VMID=100 \
-#   ZAPGW_DEPLOY_SAUDE=http://<ip-interno-do-gateway>:8080/v1/health \
+# Usage:
+#   ZAPGW_DEPLOY_HOST=user@node ZAPGW_DEPLOY_VMID=100 \
+#   ZAPGW_DEPLOY_SAUDE=http://<gateway-internal-ip>:8080/v1/health \
 #   implanta/deploy.sh
 #
-# OBRIGATORIAS — nao tem default, e a ausencia de default e a propria protecao:
-#   ZAPGW_DEPLOY_VMID      id numerico do container no Proxmox
-#   ZAPGW_DEPLOY_HOST      destino SSH do no que hospeda o container
-#   ZAPGW_DEPLOY_SAUDE     URL do /v1/health, alcancavel A PARTIR do no
+# REQUIRED — no default, and the absence of a default IS the protection:
+#   ZAPGW_DEPLOY_VMID      numeric id of the container on Proxmox
+#   ZAPGW_DEPLOY_HOST      SSH destination of the node that hosts the container
+#   ZAPGW_DEPLOY_SAUDE     URL of /v1/health, reachable FROM the node
 #
-# Opcionais:
-#   ZAPGW_DEPLOY_CHAVE     (vazio) — chave SSH. Vazio deixa o ssh resolver como
-#                          resolveria em qualquer outro comando (agente,
-#                          ~/.ssh/config, chave padrao).
+# Optional:
+#   ZAPGW_DEPLOY_CHAVE     (empty) — SSH key. Empty lets ssh resolve it the
+#                          same way it would for any other command (agent,
+#                          ~/.ssh/config, default key).
 #   ZAPGW_DEPLOY_ESPERA_S  30
-#   ZAPGW_DEPLOY_BINARIO   (vazio) — caminho de um binario JA compilado, para
-#                          pular o build. Existe para provar a reversao com um
-#                          binario propositalmente quebrado sem sujar o repo.
-#                          Com ele NAO ha versao de build para comparar, entao a
-#                          conferencia de versao e PULADA (dita em voz alta, nao
-#                          calada) — justamente para nao invalidar essa
-#                          ferramenta, cujo binario diverge de proposito.
+#   ZAPGW_DEPLOY_BINARIO   (empty) — path to an ALREADY-built binary, to skip
+#                          the build. Exists to prove the rollback with a
+#                          deliberately broken binary without dirtying the
+#                          repo. With it there is NO build version to compare
+#                          against, so the version check is SKIPPED (said out
+#                          loud, never silently) — precisely so as not to
+#                          invalidate this tool, whose binary diverges on
+#                          purpose.
 #
-# Saida: 0 deploy ok; 1 deploy falhou e FOI REVERTIDO — ou o /v1/health nao
-# respondeu, ou respondeu uma versao diferente da que foi construida; 2 deploy
-# falhou e a reversao NAO restaurou a saude — precisa de gente agora; 3
-# configuracao obrigatoria ausente — NADA foi feito e nenhuma rede foi tocada.
+# Exit: 0 deploy ok; 1 deploy failed and WAS ROLLED BACK — either /v1/health
+# did not respond, or it responded with a version different from what was
+# built; 2 deploy failed and the rollback did NOT restore health — needs a
+# human now; 3 required configuration missing — NOTHING was done and no
+# network was touched.
 
 set -euo pipefail
 
 passo() { printf '\n== %s\n' "$*"; }
-erro() { printf 'ERRO: %s\n' "$*" >&2; }
+erro() { printf 'ERROR: %s\n' "$*" >&2; }
 
-# --------------------------------------------------- configuracao obrigatoria
+# --------------------------------------------------------- required config
 #
-# Ate 2026-08-30 estas variaveis tinham default apontando para o no, o container
-# e o IP de UMA casa. Num repositorio publico um default assim nao e so um
-# endereco vazado: e um script que, rodado por quem nao leu, tenta implantar num
-# host que nao e dele. Entao a falta PARA o script aqui — antes do build e antes
-# de qualquer ssh —, dizendo o NOME da variavel e o FORMATO esperado, porque
-# "faltou variavel" sozinho nao diz o que escrever.
+# Until 2026-08-30 these variables had a default pointing at the node, the
+# container and the IP of ONE house. In a public repository a default like
+# that isn't just a leaked address: it's a script that, run by someone who
+# didn't read it, tries to deploy to a host that isn't theirs. So the absence
+# STOPS the script here — before the build and before any ssh —, naming the
+# variable and the expected FORMAT, because "missing variable" alone doesn't
+# say what to write.
 faltando=0
-exigir() { # $1 nome  $2 formato esperado  $3 exemplo
+exigir() { # $1 name  $2 expected format  $3 example
 	if [ -z "${!1:-}" ]; then
-		erro "falta a variavel de ambiente $1 — $2"
-		erro "       exemplo: $1=$3"
+		erro "missing environment variable $1 — $2"
+		erro "       example: $1=$3"
 		faltando=1
 	fi
 }
 
 exigir ZAPGW_DEPLOY_VMID \
-	"id NUMERICO do container no Proxmox (o mesmo que o \`pct\` usa)" \
+	"NUMERIC id of the container on Proxmox (the same one \`pct\` uses)" \
 	"100"
 exigir ZAPGW_DEPLOY_HOST \
-	"destino SSH do no que hospeda o container, no formato usuario@host" \
-	"deploy@no-proxmox.exemplo.internal"
+	"SSH destination of the node that hosts the container, in user@host format" \
+	"deploy@proxmox-node.example.internal"
 exigir ZAPGW_DEPLOY_SAUDE \
-	"URL do /v1/health do gateway, alcancavel A PARTIR do no (nao do seu terminal)" \
-	"http://<ip-interno-do-gateway>:8080/v1/health"
+	"URL of the gateway's /v1/health, reachable FROM the node (not from your terminal)" \
+	"http://<gateway-internal-ip>:8080/v1/health"
 
 if [ "$faltando" -ne 0 ]; then
-	erro "nada foi feito: o deploy para antes de tocar em rede."
+	erro "nothing was done: the deploy stops before touching the network."
 	exit 3
 fi
 
 case ${ZAPGW_DEPLOY_VMID} in
 *[!0-9]*)
-	erro "ZAPGW_DEPLOY_VMID=${ZAPGW_DEPLOY_VMID} nao e um id numerico de container"
-	erro "nada foi feito: o deploy para antes de tocar em rede."
+	erro "ZAPGW_DEPLOY_VMID=${ZAPGW_DEPLOY_VMID} is not a numeric container id"
+	erro "nothing was done: the deploy stops before touching the network."
 	exit 3
 	;;
 esac
@@ -104,9 +110,9 @@ CHAVE=${ZAPGW_DEPLOY_CHAVE:-}
 ESPERA=${ZAPGW_DEPLOY_ESPERA_S:-30}
 BIN_PRONTO=${ZAPGW_DEPLOY_BINARIO:-}
 
-# Opcoes comuns a ssh e scp. O `-i` so entra se houver chave declarada: o
-# default anterior nomeava a chave de UMA maquina, e nao servia a mais ninguem.
-# Sem ela, o ssh resolve a chave como faria em qualquer outro comando.
+# Options common to ssh and scp. The `-i` only enters if a key was declared:
+# the earlier default named ONE machine's key, and served no one else.
+# Without it, ssh resolves the key the same way it would for any other command.
 SSH_OPCOES=(-o BatchMode=yes -o ConnectTimeout=10)
 if [ -n "$CHAVE" ]; then
 	SSH_OPCOES+=(-i "$CHAVE")
@@ -123,22 +129,22 @@ RAIZ=$(cd "$(dirname "$0")/.." && pwd)
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
 
-# O que a reversao tem para desfazer. Declarados aqui, e nao so onde sao
-# preenchidos, porque reverter() le os dois e com "set -u" uma falha antes da
-# troca derrubaria o proprio caminho de reversao.
+# What the rollback has to undo. Declared here, not only where they get
+# filled, because reverter() reads both and with "set -u" a failure before
+# the swap would take down the rollback path itself.
 UNIT_SALVA=
 BIN_SALVO=
 
 remoto() { ssh "${SSH_OPCOES[@]}" "$HOST" "$1"; }
 
-# ct roda UM comando dentro do CT. O comando nao pode conter aspas simples: ele
-# viaja dentro de um par delas ate o pct exec.
+# ct runs ONE command inside the CT. The command cannot contain single quotes:
+# it travels inside a pair of them all the way to pct exec.
 ct() { remoto "sudo /usr/sbin/pct exec $VMID -- /bin/sh -c '$1'"; }
 
-# esperar_saude pergunta pelo /v1/health de DENTRO da rede (do no Proxmox, nao
-# do CT): responder no loopback nao prova que o Traefik consegue chegar. Um
-# unico ssh faz o laco inteiro — 30 conexoes seriam mais lentas que o proprio
-# limite que estamos medindo.
+# esperar_saude asks for /v1/health FROM INSIDE the network (from the Proxmox
+# node, not the CT): responding on loopback doesn't prove Traefik can reach it.
+# A single ssh does the whole loop — 30 connections would be slower than the
+# very limit we're measuring.
 esperar_saude() {
 	ssh "${SSH_OPCOES[@]}" "$HOST" \
 		bash -s "$URL_SAUDE" "$ESPERA" <<-'FIM'
@@ -160,11 +166,11 @@ esperar_saude() {
 	FIM
 }
 
-# extrair_versao_do_corpo imprime o valor do campo "versao" do JSON que o
-# /v1/health devolveu, e retorna 1 (sem imprimir nada) quando o campo NAO esta
-# la. Esse retorno e a fronteira entre "a versao esta errada" e "nao consegui
-# ler a versao" — as duas outras funcoes daqui se apoiam nele para nao
-# confundir uma coisa com a outra.
+# extrair_versao_do_corpo prints the value of the "versao" field of the JSON
+# /v1/health returned, and returns 1 (printing nothing) when the field is NOT
+# there. That return is the boundary between "the version is wrong" and
+# "I couldn't read the version" — the other two functions here rely on it so
+# as not to confuse one with the other.
 extrair_versao_do_corpo() {
 	local linha valor
 	linha=$(printf '%s' "$1" | grep -o '"versao":"[^"]*"' || true)
@@ -174,194 +180,198 @@ extrair_versao_do_corpo() {
 	printf '%s\n' "$valor"
 }
 
-# imprimir_versao_do_corpo imprime uma linha BEM visivel com a versao que o
-# gateway respondeu — a prova de que subiu o binario CERTO nao pode ficar
-# escondida dentro do JSON cru (T-025: em 2026-07-25 um binario com contrato
-# novo subiu enquanto a tag mais recente era outra, e so alguem lembrando disso
-# evitou uma investigacao contra a coisa errada).
+# imprimir_versao_do_corpo prints a VERY visible line with the version the
+# gateway responded with — the proof that the RIGHT binary went up cannot stay
+# hidden inside the raw JSON (T-025: on 2026-07-25 a binary with a new
+# contract went up while the latest tag was another one, and only someone
+# remembering that avoided an investigation against the wrong thing).
 #
-# Ela so IMPRIME, nunca retorna erro, e e usada onde NAO ha o que comparar: no
-# probe DEPOIS da reversao, onde a versao que responde e a do binario ANTERIOR
-# e portanto diverge de VERSAO_DO_BUILD por construcao. Comparar ali acusaria
-# falha justamente no caminho que acabou de salvar o gateway.
+# It only PRINTS, never returns an error, and is used where there's NOTHING
+# to compare against: in the probe AFTER the rollback, where the version that
+# responds is the PREVIOUS binary's and therefore diverges from
+# VERSAO_DO_BUILD by construction. Comparing there would flag a failure
+# exactly on the path that just saved the gateway.
 imprimir_versao_do_corpo() {
 	local valor
 	if valor=$(extrair_versao_do_corpo "$1"); then
-		echo "VERSAO: $valor"
+		echo "VERSION: $valor"
 	else
-		echo "VERSAO: desconhecida — este binario e anterior a T-025 e o /v1/health nao tem o campo \"versao\" (isso nao aborta o deploy)"
+		echo "VERSION: unknown — this binary predates T-025 and /v1/health has no \"versao\" field (this does not abort the deploy)"
 	fi
 }
 
-# conferir_versao compara o que o gateway RESPONDEU com o que este deploy
-# CONSTRUIU, e devolve TRES desfechos diferentes — a distincao e o ponto da
-# funcao, nao um detalhe dela (T-184):
+# conferir_versao compares what the gateway RESPONDED with what this deploy
+# BUILT, and returns THREE different outcomes — the distinction is the whole
+# point of the function, not a detail of it (T-184):
 #
-#   0  bateu — segue o deploy.
-#   1  DIVERGIU — o binario publicado nao e o que foi construido. Aborta e
-#      reverte. Acontece de verdade quando o `-X main.version=...` do build erra
-#      o simbolo: o linker Go ignora em silencio e o binario sobe respondendo
-#      "desenvolvimento", com build verde e push verde.
-#   2  NAO DEU PARA CONFERIR — e isso NAO E FALHA. Duas causas legitimas: o
-#      binario e anterior a T-025 e nao tem o campo "versao"; ou o deploy usou
-#      ZAPGW_DEPLOY_BINARIO e nao ha versao de build para comparar.
+#   0  matched — the deploy proceeds.
+#   1  DIVERGED — the published binary is not the one that was built. Aborts
+#      and rolls back. This really happens when the build's
+#      `-X main.version=...` gets the symbol wrong: the Go linker silently
+#      ignores it and the binary comes up responding "desenvolvimento", with a
+#      green build and a green push.
+#   2  COULD NOT CHECK — and this is NOT a failure. Two legitimate causes:
+#      the binary predates T-025 and has no "versao" field; or the deploy used
+#      ZAPGW_DEPLOY_BINARIO and there's no build version to compare against.
 #
-# Tratar (2) como (1) transformaria este script num monitor que grita sem saber,
-# e tratar (1) como (2) e o defeito que a T-184 veio corrigir. Por isso os tres
-# saem separados daqui, e quem chama decide — nenhuma delas silencia:
-# todas imprimem.
+# Treating (2) as (1) would turn this script into a monitor that screams
+# without knowing, and treating (1) as (2) is the defect T-184 came to fix.
+# That's why the three come out separate here, and the caller decides — none
+# of them stays silent: all of them print.
 conferir_versao() {
 	local corpo=$1 esperada=$2 respondida
 	if [ -z "$esperada" ]; then
-		echo "VERSAO: nao conferida — o deploy usou ZAPGW_DEPLOY_BINARIO (build pulado), entao nao ha versao de build para comparar (isso nao aborta o deploy)"
+		echo "VERSION: not checked — the deploy used ZAPGW_DEPLOY_BINARIO (build skipped), so there is no build version to compare against (this does not abort the deploy)"
 		return 2
 	fi
 	if ! respondida=$(extrair_versao_do_corpo "$corpo"); then
-		echo "VERSAO: nao conferida — este binario e anterior a T-025 e o /v1/health nao tem o campo \"versao\" (isso nao aborta o deploy)"
+		echo "VERSION: not checked — this binary predates T-025 and /v1/health has no \"versao\" field (this does not abort the deploy)"
 		return 2
 	fi
 	if [ "$respondida" = "$esperada" ]; then
-		echo "VERSAO CONFERE: $respondida (igual a construida)"
+		echo "VERSION MATCHES: $respondida (same as built)"
 		return 0
 	fi
-	erro "VERSAO DIVERGE: construida=$esperada respondida=$respondida"
+	erro "VERSION DIVERGES: built=$esperada responded=$respondida"
 	return 1
 }
 
-# avisos_nome_obsoleto le o journal do arranque e mostra, so' no caminho de
-# SUCESSO, as linhas que internal/config/env_alias.go:WarnOldEnvVar emite
-# quando uma variavel ZAPGW_* com nome antigo (PT) foi usada em vez do nome
-# novo (EN) — T-216. E' o unico jeito do operador descobrir que precisa
-# migrar /etc/zapgw/env sem entrar no CT a mao: o caminho de FALHA ja despeja
-# o journal inteiro de proposito e nao muda aqui.
+# avisos_nome_obsoleto reads the startup journal and shows, only on the
+# SUCCESS path, the lines that internal/config/env_alias.go:WarnOldEnvVar
+# emits when a ZAPGW_* variable with the old (PT) name was used instead of
+# the new (EN) one — T-216. It's the only way the operator finds out they
+# need to migrate /etc/zapgw/env without entering the CT by hand: the FAILURE
+# path already dumps the whole journal on purpose and doesn't change here.
 #
-# Filtra pela mesma substring que o log emite ("esta obsoleta -- use"), nunca
-# o journal inteiro: despejo vira ruido, e ruido treina a ignorar a saida do
-# deploy — que e' onde mora a prova de versao (T-184).
+# Filters by the same substring the log emits ("esta obsoleta -- use"), never
+# the whole journal: a dump becomes noise, and noise trains people to ignore
+# the deploy's output — which is where the version proof lives (T-184).
 #
-# Tres saidas, e elas tem de ser DISTINGUIVEIS (a mesma exigencia da T-184
-# para a conferencia de versao): havia aviso -> mostra as linhas; nao havia
-# -> diz que nao havia; nao deu para ler o journal -> diz isso, nunca "nao
-# havia". Silencio nao pode virar "estava limpo".
+# Three outcomes, and they have to be DISTINGUISHABLE (the same requirement
+# T-184 set for the version check): there was a warning -> shows the lines;
+# there wasn't -> says there wasn't; couldn't read the journal -> says so,
+# never "there wasn't". Silence must never turn into "it was clean".
 avisos_nome_obsoleto() {
 	local jornal avisos
 	if ! jornal=$(ct "journalctl -u zapgw -n 200 --no-pager" 2>&1); then
-		erro "NAO CONSEGUI LER o journal para conferir nomes de variavel obsoletos"
+		erro "COULD NOT READ the journal to check for deprecated variable names"
 		return
 	fi
 	avisos=$(printf '%s\n' "$jornal" | grep -F 'esta obsoleta -- use' || true)
 	if [ -n "$avisos" ]; then
-		echo "AVISO: variavel(is) de ambiente com nome obsoleto em uso no arranque:"
+		echo "WARNING: environment variable(s) with a deprecated name in use at startup:"
 		printf '%s\n' "$avisos" | sed 's/^/  /'
 	else
-		echo "nenhuma variavel com nome obsoleto em uso"
+		echo "no variable with a deprecated name in use"
 	fi
 }
 
-# reverter desfaz a troca e devolve o servico ao binario anterior.
+# reverter undoes the swap and returns the service to the previous binary.
 #
-# O reset-failed nao e enfeite: com Restart=always, um binario que morre na hora
-# estoura o StartLimitBurst em segundos e o systemd passa a RECUSAR o start
-# ("start request repeated too quickly"). Sem limpar o estado, o restart da
-# reversao falha calado e o gateway fica fora do ar justamente no caminho que
-# existe para evita-lo.
+# reset-failed is not decoration: with Restart=always, a binary that dies
+# instantly blows through StartLimitBurst in seconds and systemd starts
+# REFUSING to start it ("start request repeated too quickly"). Without
+# clearing the state, the rollback's restart fails silently and the gateway
+# is off the air exactly on the path that exists to prevent it.
 reverter() {
-	passo "REVERTENDO"
+	passo "ROLLING BACK"
 	if [ -n "$UNIT_SALVA" ]; then
 		ct "mv -f $UNIT_ANTERIOR $UNIT"
 		ct "systemctl daemon-reload"
-		echo "unit anterior restaurada"
+		echo "previous unit restored"
 	fi
 	if [ -n "$BIN_SALVO" ]; then
 		ct "mv -f $ANTERIOR $DESTINO"
-		echo "binario anterior restaurado: $(ct "sha256sum $DESTINO")"
+		echo "previous binary restored: $(ct "sha256sum $DESTINO")"
 	else
-		erro "ALARME: nao havia binario anterior para restaurar (primeira instalacao)."
-		erro "ALARME: parando o servico para nao deixar laco de restart. Acao humana necessaria."
+		erro "ALARM: there was no previous binary to restore (first install)."
+		erro "ALARM: stopping the service to avoid a restart loop. Human action needed."
 		ct "systemctl stop zapgw" || true
 		return
 	fi
 	ct "systemctl reset-failed zapgw" || true
-	ct "systemctl restart zapgw" || erro "o restart da reversao falhou"
+	ct "systemctl restart zapgw" || erro "the rollback's restart failed"
 }
 
-# ---------------------------------------------------------------- checagens
+# ---------------------------------------------------------------- checks
 
-passo "checando acesso a $HOST e ao CT $VMID"
+passo "checking access to $HOST and to CT $VMID"
 remoto "sudo /usr/sbin/pct status $VMID" | grep -q "status: running" ||
-	{ erro "CT $VMID nao esta running"; exit 1; }
+	{ erro "CT $VMID is not running"; exit 1; }
 echo "CT $VMID running"
 
-# ---------------------------------------------------------------- binario
+# ---------------------------------------------------------------- binary
 
-# Vazia quer dizer "este deploy nao construiu nada, entao nao ha com o que
-# comparar a versao que o gateway responder". Declarada aqui, e nao so onde e
-# preenchida, porque com "set -u" o caminho do binario pronto derrubaria a
-# conferencia la embaixo.
+# Empty means "this deploy did not build anything, so there's nothing to
+# compare against the version the gateway responds with". Declared here, not
+# only where it's filled, because with "set -u" the ready-binary path would
+# take down the check further below.
 VERSAO_DO_BUILD=
 
 if [ -n "$BIN_PRONTO" ]; then
-	passo "USANDO BINARIO PRONTO (build pulado): $BIN_PRONTO"
-	[ -f "$BIN_PRONTO" ] || { erro "binario nao existe: $BIN_PRONTO"; exit 1; }
+	passo "USING A READY BINARY (build skipped): $BIN_PRONTO"
+	[ -f "$BIN_PRONTO" ] || { erro "binary does not exist: $BIN_PRONTO"; exit 1; }
 	cp "$BIN_PRONTO" "$TMP/zapgw"
 else
-	# A versao vem do arquivo VERSION, e SO daqui — nunca digitada a mao no
-	# deploy. Ela entra por -ldflags, nunca lida de disco pelo binario em
-	# tempo de execucao (T-025): o VERSION nao vai para o CT, e um binario
-	# que lesse versao de arquivo mentiria exatamente quando importa
-	# (arquivo velho ao lado de binario novo — o incidente que abriu a T-025).
+	# The version comes from the VERSION file, and ONLY from there — never
+	# typed by hand into the deploy. It enters via -ldflags, never read from
+	# disk by the binary at runtime (T-025): VERSION does not go to the CT,
+	# and a binary that read the version from a file would lie exactly when
+	# it matters (an old file next to a new binary — the incident that
+	# opened T-025).
 	VERSAO_DO_BUILD=$(cat "$RAIZ/VERSION")
-	passo "compilando (CGO_ENABLED=0 GOOS=linux GOARCH=amd64), versao $VERSAO_DO_BUILD"
+	passo "building (CGO_ENABLED=0 GOOS=linux GOARCH=amd64), version $VERSAO_DO_BUILD"
 	(cd "$RAIZ" && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
 		-ldflags "-X main.version=$VERSAO_DO_BUILD" \
 		-o "$TMP/zapgw" ./cmd/zapgw)
 fi
 echo "local: $(sha256sum "$TMP/zapgw")"
 
-# ---------------------------------------------------------------- envio
+# ---------------------------------------------------------------- upload
 
-passo "enviando para o no e empurrando para o CT como $NOVO"
+passo "sending to the node and pushing into the CT as $NOVO"
 scp "${SSH_OPCOES[@]}" -q "$TMP/zapgw" "$HOST:/tmp/zapgw.envio.$$"
 remoto "sudo /usr/sbin/pct push $VMID /tmp/zapgw.envio.$$ $NOVO --perms 0755 --user 0 --group 0"
 remoto "rm -f /tmp/zapgw.envio.$$"
-echo "no CT: $(ct "sha256sum $NOVO")"
+echo "in the CT: $(ct "sha256sum $NOVO")"
 
-# ---------------------------------------------------------------- perfil
+# ---------------------------------------------------------------- profile
 
-# T-090: /etc/profile.d/zapgw.sh e o que faz `zapgw` funcionar tambem para quem
-# entra por `pct enter`/`pct exec` (docs/ARMADILHAS.md, "`command not found`
-# dentro do CT nao quer dizer que o binario nao esta la").
-# Isto NAO entra no caminho de reversao: nao e o binario, e falhar aqui nao
-# justifica reverter um deploy saudavel. Mas tambem nao pode falhar CALADO por
-# causa do "set -e" do topo do script — por isso cada passo e guardado com
-# "||"/"if" e imprime ALARME antes de seguir, em vez de abortar o deploy
-# inteiro ou engolir o erro.
-passo "instalando /etc/profile.d/zapgw.sh"
+# T-090: /etc/profile.d/zapgw.sh is what makes `zapgw` work also for whoever
+# enters via `pct enter`/`pct exec` (docs/ARMADILHAS.md, "`command not found`
+# inside the CT does not mean the binary isn't there").
+# This is NOT part of the rollback path: it isn't the binary, and failing
+# here doesn't justify rolling back a healthy deploy. But it also can't fail
+# SILENTLY because of the "set -e" at the top of the script — so each step is
+# guarded with "||"/"if" and prints an ALARM before continuing, instead of
+# aborting the whole deploy or swallowing the error.
+passo "installing /etc/profile.d/zapgw.sh"
 if scp "${SSH_OPCOES[@]}" -q "$RAIZ/implanta/profile-zapgw.sh" "$HOST:/tmp/zapgw.profile.$$" &&
 	remoto "sudo /usr/sbin/pct push $VMID /tmp/zapgw.profile.$$ /etc/profile.d/zapgw.sh --perms 0644 --user 0 --group 0"; then
-	echo "perfil instalado: $(ct "sha256sum /etc/profile.d/zapgw.sh")"
+	echo "profile installed: $(ct "sha256sum /etc/profile.d/zapgw.sh")"
 else
-	erro "ALARME: falha ao instalar /etc/profile.d/zapgw.sh — quem entrar por pct pode continuar sem o comando zapgw. Deploy segue."
+	erro "ALARM: failed to install /etc/profile.d/zapgw.sh — whoever enters via pct may end up without the zapgw command. Deploy continues."
 fi
 remoto "rm -f /tmp/zapgw.profile.$$" || true
 
-# pct enter/exec nao le profile.d (e shell interativo, nao de login) — por isso
-# o /root/.bashrc precisa dar source nele. Idempotente: so acrescenta se a
-# linha ainda nao existir.
+# pct enter/exec does not read profile.d (it's an interactive shell, not a
+# login one) — that's why /root/.bashrc needs to source it. Idempotent: only
+# appends if the line isn't already there.
 ct "grep -qF /etc/profile.d/zapgw.sh /root/.bashrc 2>/dev/null || echo . /etc/profile.d/zapgw.sh >> /root/.bashrc" ||
-	erro "ALARME: falha ao garantir o source de /etc/profile.d/zapgw.sh em /root/.bashrc. Deploy segue."
+	erro "ALARM: failed to ensure /etc/profile.d/zapgw.sh is sourced in /root/.bashrc. Deploy continues."
 
 # ---------------------------------------------------------------- snapshot
 
-passo "snapshot $SNAP do CT $VMID"
-# Snapshot de mesmo nome ja existe depois do primeiro deploy; o pct recusa sem
-# apagar antes. Falhar aqui e de proposito: sem ponto de retorno, nao troca.
+passo "snapshot $SNAP of CT $VMID"
+# A snapshot with the same name already exists after the first deploy; pct
+# refuses without deleting it first. Failing here is on purpose: without a
+# point of return, no swap happens.
 remoto "sudo /usr/sbin/pct delsnapshot $VMID $SNAP" >/dev/null 2>&1 || true
 remoto "sudo /usr/sbin/pct snapshot $VMID $SNAP"
 
 # ---------------------------------------------------------------- unit
 
-passo "instalando a unit do systemd"
+passo "installing the systemd unit"
 UNIT_SALVA=
 if ct "test -f $UNIT"; then
 	ct "cp -a $UNIT $UNIT_ANTERIOR"
@@ -372,60 +382,61 @@ remoto "sudo /usr/sbin/pct push $VMID /tmp/zapgw.service.$$ $UNIT --perms 0644 -
 remoto "rm -f /tmp/zapgw.service.$$"
 ct "systemctl daemon-reload"
 
-# ---------------------------------------------------------------- troca
+# ---------------------------------------------------------------- swap
 
-passo "troca atomica do binario"
+passo "atomic binary swap"
 BIN_SALVO=
 if ct "test -f $DESTINO"; then
 	ct "mv -f $DESTINO $ANTERIOR"
 	BIN_SALVO=sim
 fi
 ct "mv -f $NOVO $DESTINO"
-echo "em producao agora: $(ct "sha256sum $DESTINO")"
+echo "in production now: $(ct "sha256sum $DESTINO")"
 
-passo "reiniciando o servico"
+passo "restarting the service"
 ct "systemctl reset-failed zapgw" || true
 ct "systemctl enable zapgw" >/dev/null
 ct "systemctl restart zapgw"
 
-# ---------------------------------------------------------------- veredito
+# ---------------------------------------------------------------- verdict
 
-passo "esperando $URL_SAUDE responder (ate ${ESPERA}s)"
+passo "waiting for $URL_SAUDE to respond (up to ${ESPERA}s)"
 if corpo=$(esperar_saude); then
-	echo "SAUDE OK: $corpo"
+	echo "HEALTH OK: $corpo"
 
-	# Responder nao basta: tem de ser o binario QUE ESTE DEPLOY CONSTRUIU.
-	# O "|| veredito=$?" e obrigatorio — sem ele o "set -e" do topo mataria o
-	# script no retorno 1, pulando a reversao que e justamente o ponto.
+	# Responding isn't enough: it has to be the binary THIS DEPLOY BUILT.
+	# The "|| veredito=$?" is required — without it the "set -e" at the top
+	# would kill the script on return 1, skipping the rollback, which is
+	# exactly the point.
 	veredito=0
 	conferir_versao "$corpo" "$VERSAO_DO_BUILD" || veredito=$?
 
 	if [ "$veredito" -ne 1 ]; then
 		avisos_nome_obsoleto
-		passo "DEPLOY CONCLUIDO"
+		passo "DEPLOY COMPLETE"
 		ct "systemctl is-active zapgw"
 		exit 0
 	fi
 
-	erro "o gateway respondeu, mas NAO e o binario que este deploy construiu."
-	erro "revertendo: publicar um binario que nao sabe a propria versao envenena"
-	erro "todo diagnostico futuro, e faz isso com o deploy pintado de verde."
+	erro "the gateway responded, but it is NOT the binary this deploy built."
+	erro "rolling back: publishing a binary that does not know its own version poisons"
+	erro "every future diagnosis, and it does so with the deploy painted green."
 else
-	erro "o /v1/health NAO respondeu em ${ESPERA}s"
+	erro "/v1/health did NOT respond within ${ESPERA}s"
 	ct "systemctl status zapgw --no-pager -l" 2>&1 | tail -20 || true
 	ct "journalctl -u zapgw -n 20 --no-pager" 2>&1 | tail -20 || true
 fi
 
 reverter
 
-passo "conferindo se o binario anterior voltou a responder"
+passo "checking whether the previous binary is responding again"
 if corpo=$(esperar_saude); then
-	echo "SAUDE OK (binario anterior): $corpo"
+	echo "HEALTH OK (previous binary): $corpo"
 	imprimir_versao_do_corpo "$corpo"
-	erro "DEPLOY REVERTIDO — o binario novo foi recusado. Nada ficou em producao."
+	erro "DEPLOY ROLLED BACK — the new binary was rejected. Nothing stayed in production."
 	exit 1
 fi
 
-erro "ALARME: a reversao rodou e o /v1/health continua mudo. O gateway esta FORA."
-erro "ALARME: snapshot $SNAP do CT $VMID esta disponivel para rollback manual."
+erro "ALARM: the rollback ran and /v1/health is still silent. The gateway is DOWN."
+erro "ALARM: snapshot $SNAP of CT $VMID is available for a manual rollback."
 exit 2

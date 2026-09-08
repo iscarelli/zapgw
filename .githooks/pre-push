@@ -67,32 +67,32 @@ zero="0000000000000000000000000000000000000000"
 
 falha_fechada() {
     echo "" >&2
-    echo "BLOQUEADO (.githooks/pre-push): $1" >&2
+    echo "BLOCKED (.githooks/pre-push): $1" >&2
     echo "" >&2
-    echo "Este hook existe para impedir que um telefone ou nome real saiam desta" >&2
-    echo "maquina — mesmo dentro de um commit que um commit POSTERIOR no mesmo" >&2
-    echo "push apaga de novo. A arvore final limpa nao basta: o repositorio e'" >&2
-    echo "publico e o historico nao e' reescrito." >&2
+    echo "This hook exists to keep a real phone number or a real name from" >&2
+    echo "leaving this machine — even inside a commit that a LATER commit in" >&2
+    echo "the same push deletes again. A clean final tree is not enough: the" >&2
+    echo "repository is public and the history is not rewritten." >&2
     echo "" >&2
-    echo "'git push --no-verify' e' a UNICA coisa que desliga esta garantia." >&2
-    echo "Use-o sabendo que voce esta DESLIGANDO o portao, nao pulando um teste lento." >&2
+    echo "'git push --no-verify' is the ONLY thing that turns this guarantee off." >&2
+    echo "Use it knowing you are TURNING OFF the gate, not skipping a slow test." >&2
     exit 1
 }
 
 if ! command -v go >/dev/null 2>&1; then
-    falha_fechada "o binario 'go' nao esta no PATH — nao consegui verificar o intervalo sendo empurrado."
+    falha_fechada "the 'go' binary is not in PATH — could not verify the interval being pushed."
 fi
 
-# Resolve a raiz do repo para rodar 'go test' a partir dela, independente de
-# onde o hook foi invocado.
-repo_root=$(git rev-parse --show-toplevel) || falha_fechada "nao consegui localizar a raiz do repositorio."
+# Resolves the repo root to run 'go test' from it, regardless of where the
+# hook was invoked from.
+repo_root=$(git rev-parse --show-toplevel) || falha_fechada "could not locate the repository root."
 
-# Le do stdin do proprio hook: uma linha por ref sendo empurrada, no formato
-# "<ref-local> <sha-local> <ref-remota> <sha-remota>" (protocolo do git).
+# Reads from the hook's own stdin: one line per ref being pushed, in the
+# format "<local-ref> <local-sha> <remote-ref> <remote-sha>" (git's protocol).
 while read -r local_ref local_sha remote_ref remote_sha; do
     [ -z "${local_ref:-}" ] && continue
 
-    # Apagando uma ref remota (push --delete): nada esta sendo introduzido.
+    # Deleting a remote ref (push --delete): nothing is being introduced.
     if [ "$local_sha" = "$zero" ]; then
         continue
     fi
@@ -100,14 +100,14 @@ while read -r local_ref local_sha remote_ref remote_sha; do
     export ZAPGW_PREPUSH_OLD_SHA="$remote_sha"
     export ZAPGW_PREPUSH_NEW_SHA="$local_sha"
 
-    # stdin < /dev/null: 'go test' nao deveria ler stdin, mas herdar o mesmo
-    # stdin que o 'read' acima esta consumindo linha a linha e' o jeito
-    # classico de um comando dentro do loop roubar as linhas seguintes.
+    # stdin < /dev/null: 'go test' shouldn't read stdin, but inheriting the
+    # same stdin the 'read' above is consuming line by line is the classic
+    # way for a command inside the loop to steal the following lines.
     if ! (cd "$repo_root" && go test ./internal/config/ -run TestPrePushGate -v < /dev/null); then
         if [ "$remote_sha" = "$zero" ]; then
-            falha_fechada "a ref nova '$local_ref' (primeiro push, sem base no remoto) introduz dado pessoal fora de algum portao — veja a saida do teste acima para o commit e o arquivo."
+            falha_fechada "the new ref '$local_ref' (first push, no base on the remote) introduces personal data past a gate — see the test output above for the commit and the file."
         fi
-        falha_fechada "o intervalo $remote_sha..$local_sha (ref '$local_ref') introduz dado pessoal fora de algum portao — veja a saida do teste acima para o commit e o arquivo."
+        falha_fechada "the interval $remote_sha..$local_sha (ref '$local_ref') introduces personal data past a gate — see the test output above for the commit and the file."
     fi
 done
 
