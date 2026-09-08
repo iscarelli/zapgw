@@ -300,27 +300,6 @@ Verify:  Para cada uma das quatro familias, cole no relatorio a prova contra o c
          E liste, uma a uma, as ocorrencias que voce DEIXOU e em qual dos casos (b)/(c) cada uma cai.
          `CGO_ENABLED=0 go build ./... && go test ./...` (so' garantia; nada de codigo muda).
 
-## [ ] T-230  Rename the Portuguese directories and script names
-After:   T-229
-Why:     `cmd/grafo-falso/`, `implanta/` e `implanta/valida-lideranca.sh` sao os ultimos nomes
-         portugueses da arvore. Nome de diretorio aparece em toda listagem do repositorio publico.
-🔥 O PERIGO E' O MESMO DA T-220: `main` != IMPLANTADO, e aqui tem chamador FORA do repositorio.
-         `~/.zapgw/deploy-zapgw.sh` (na maquina do dono, fora do repo) le `implanta/deploy.sh`.
-         Renomear `implanta/` sem atualizar esse script quebra o deploy na proxima execucao, calado.
-Files:   cmd/grafo-falso/ -> cmd/fakegraph/, implanta/ -> deploy/,
-         implanta/valida-lideranca.sh -> check-leadership.sh, e TODO referenciador
-Do:      1. VARRA os referenciadores ANTES de renomear e liste-os no relatorio:
-            `grep -rn "implanta/|grafo-falso|valida-lideranca" -E .`
-            (inclua `.go`, `.md`, `.sh`, `.yml`, `.service`)
-         2. `git mv` os diretorios e o script.
-         3. Atualize cada referenciador encontrado no passo 1.
-         4. 🙋 PARE e diga no relatorio: `~/.zapgw/deploy-zapgw.sh` e a unit no CT 125 estao FORA do
-            repositorio e sao do planner. Nao tente alcanca-los.
-Verify:  CGO_ENABLED=0 go build ./... && go test ./... && gofmt -l cmd internal
-         E a varredura do passo 1 rodada de novo vem vazia, fora de `docs/CHANGELOG.md`, que e'
-         historico e cita o nome antigo de proposito.
-
-
 ## [ ] T-238  Close the doc-pointer gate's bare-filename hole — seven dead pointers are hiding in it
 After:   T-230
 Why:     A T-234 alargou o portao para alem de `.go` e ele achou dois ponteiros mortos. Bom. Mas ele
@@ -338,7 +317,16 @@ Why:     A T-234 alargou o portao para alem de `.go` e ele achou dois ponteiros 
          pela qual escrever o limite dentro do teste vale tanto quanto o teste.
 Files:   internal/config/doc_pointers_test.go, docs/ARMADILHAS.md, docs/META-CAMPOS-DE-WEBHOOK.md,
          e qualquer outro doc que a varredura acusar
-Do:      1. Primeiro CONSERTE os sete, um a um. Confirme o destino com `ls` antes de escrever, nunca
+Do:      0. 🔴 PRIMEIRO, E E' O QUE DESTRAVA O `main`: exclua `docs/CHANGELOG.md` da varredura, por
+            ESTRUTURA, do mesmo jeito que `docs/TASKS.md` ja e' excluido em
+            `docsFilesExcludedFromTheSweep` — com a razao escrita ao lado.
+            **A razao:** changelog e' REGISTRO. Ele cita `implanta/deploy.sh` em quatro linhas porque
+            aquele caminho era verdade no dia em que a entrada foi escrita; a T-230 renomeou o
+            diretorio para `deploy/`. Consertar o registro seria inventar historia, e acrescentar uma
+            excecao a cada rename faz a lista crescer para sempre. Excluir o arquivo inteiro, uma vez,
+            com a razao, e' a regra certa — e e' a que ja vale para o `docs/TASKS.md`.
+            Isto e' decisao do planner, ja tomada; voce implementa.
+         1. Depois CONSERTE os sete, um a um. Confirme o destino com `ls` antes de escrever, nunca
             por parecenca. Use `git log --follow` se precisar achar para onde o arquivo foi.
             🔴 **Cuidado com o caso legitimo:** um doc que NARRA o rename cita o nome velho de
             proposito (`docs/ARMADILHAS.md` tem uma entrada de 2026-09-07 escrita exatamente assim:

@@ -4,6 +4,20 @@ One line per version shipped, in the same commit as the bump. The entry states t
 
 ## Unreleased
 
+- **T-230 — Rename the Portuguese directories and script names** — `cmd/grafo-falso/` →
+  `cmd/fakegraph/`, `implanta/` → `deploy/`, `valida-lideranca.sh` → `check-leadership.sh`, all by
+  `git mv`, plus the binary's own log prefix. The referencer sweep ran BEFORE the rename, which is
+  the whole guarantee: the inverse order breaks silently and only surfaces the next time somebody
+  runs the script. It updated the T-235 coupling gate too — that gate reads the scripts **by path**,
+  so renaming the directory without touching it would have made it answer *could not verify*; the
+  positive control's synthetic tree needed the same fix or the control would have broken against the
+  corrected logic. Left alone on purpose: citations of the **private** repo's `implanta/` (which was
+  not renamed) and a few verbatim historical quotes reproducing output from before the rename.
+  The owner's out-of-repo wrapper `~/.zapgw/deploy-zapgw.sh` was updated by the planner in the same
+  movement — three lines, with the line pointing at the **old private repo** deliberately untouched.
+  _Completed 2026-09-08 03:52._
+
+
 - **T-236 — Fix the two dead doc pointers the widened gate found, and DELETE their exemptions** —
   the point was never the two edits: it was that both had been parked in
   `deadDocPointerExceptions` marked `KNOWN PRE-EXISTING BUG` so the gate would go green. An
