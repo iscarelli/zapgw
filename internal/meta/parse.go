@@ -20,7 +20,7 @@ import (
 // JSON. In Go, json.Unmarshal of "null" into a map leaves the map nil and
 // does NOT return an error — the following code, which assumes data,
 // carries on thinking it has some.
-var ErrBodyNotObject = errors.New("meta: corpo nao e um objeto JSON")
+var ErrBodyNotObject = errors.New("meta: body is not a JSON object")
 
 // ErrPartialParse: the body was read, but part of it couldn't be
 // interpreted.
@@ -214,7 +214,7 @@ type contactMeta struct {
 // Each block is read by messageBlock (end of this file), which
 // degrades the BLOCK when the format isn't what we know how to read. The
 // cost is observable and is documented in docs/CONTRATO-CONSUMIDOR.md,
-// "Mudanças que quebram".
+// "Breaking changes".
 type messageMeta struct {
 	// Identity. They're strings on Meta's side, and are read with
 	// messageBlock[string] — a STRICT read on purpose: a `"id":42` does

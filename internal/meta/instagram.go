@@ -55,12 +55,12 @@ import (
 // didn't send a message_id.
 //
 // THE SAME trap (and the same RETRYABLE class, see docs/ARMADILHAS.md,
-// "Meta / WhatsApp Cloud API": "Um `200` da Meta NÃO prova que veio id") as
-// ErrResponseWithoutID (client.go) — its OWN sentinel because the FIELD
+// "Meta / WhatsApp Cloud API": "A `200` from Meta does NOT prove an id came
+// back") as ErrResponseWithoutID (client.go) — its OWN sentinel because the FIELD
 // is different (`messages[0].id` on WhatsApp; `message_id` at the root, on
 // Instagram), and an `errors.Is` that confused the two would hide which API
 // answered wrong.
-var ErrResponseWithoutMessageID = errors.New("meta: resposta 2xx do Instagram sem message_id")
+var ErrResponseWithoutMessageID = errors.New("meta: Instagram 2xx response without a message_id")
 
 // ErrUnmodeledItems: T-106. The `messaging[]` item was READ successfully
 // — it's a LEGITIMATE Meta payload — but this slice (T-097, text messages
@@ -450,18 +450,18 @@ func (c *Client) SendInstagramMessage(
 	}
 	raw, err := json.Marshal(body)
 	if err != nil {
-		return SendResponse{}, fmt.Errorf("meta: montar corpo: %w", err)
+		return SendResponse{}, fmt.Errorf("meta: build body: %w", err)
 	}
 
 	// `base`, NEVER `c.base` — see the function's comment, above.
 	target, err := url.JoinPath(base, igID, "messages")
 	if err != nil {
-		return SendResponse{}, fmt.Errorf("meta: montar url: %w", err)
+		return SendResponse{}, fmt.Errorf("meta: build url: %w", err)
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, target, bytes.NewReader(raw))
 	if err != nil {
-		return SendResponse{}, fmt.Errorf("meta: montar requisicao: %w", err)
+		return SendResponse{}, fmt.Errorf("meta: build request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+token)
@@ -470,13 +470,13 @@ func (c *Client) SendInstagramMessage(
 	if err != nil {
 		// We do NOT interpolate the error: *url.Error carries the full
 		// URL, which here carries the ig_id. Same rule as SendMessage.
-		return SendResponse{}, fmt.Errorf("meta: falha de transporte ao enviar (instagram): %w", errWithoutDetail(err))
+		return SendResponse{}, fmt.Errorf("meta: transport failure while sending (instagram): %w", errWithoutDetail(err))
 	}
 	defer resp.Body.Close()
 
 	rawResponse, err := io.ReadAll(io.LimitReader(resp.Body, responseBodyCap))
 	if err != nil {
-		return SendResponse{}, fmt.Errorf("meta: ler resposta: %w", errWithoutDetail(err))
+		return SendResponse{}, fmt.Errorf("meta: read response: %w", errWithoutDetail(err))
 	}
 
 	if metaError := ClassifyResponse(resp.StatusCode, rawResponse); metaError != nil {
@@ -494,7 +494,7 @@ func instagramSendResponse(raw []byte) (SendResponse, error) {
 		MessageID string `json:"message_id"`
 	}
 	if err := json.Unmarshal(raw, &envelope); err != nil {
-		return SendResponse{}, fmt.Errorf("%w: corpo nao entendido", ErrResponseWithoutMessageID)
+		return SendResponse{}, fmt.Errorf("%w: body not understood", ErrResponseWithoutMessageID)
 	}
 	// Trim BEFORE deciding, same rule as sendResponse: an id made of
 	// only spaces is as useless as an empty one.
@@ -557,7 +557,7 @@ func instagramSendResponse(raw []byte) (SendResponse, error) {
 // serve (that was EXACTLY T-104's defect: SendInstagramMessage used
 // `c.base` until that task).
 //
-// 🔴 The NAME stayed "Renovacao" for HISTORICAL reasons (T-098 created it
+// 🔴 The NAME stayed "Renewal" for HISTORICAL reasons (T-098 created it
 // just for RenewInstagramToken), but the VALUE is generic — the host's
 // root, not one endpoint's. T-104 reused this SAME constant for
 // SendInstagramMessage instead of creating a second one with a
@@ -575,12 +575,12 @@ const DefaultInstagramRenewalBase = "https://graph.instagram.com"
 
 // ErrRenewalWithoutAccessToken: Meta answered the renewal with 2xx but didn't
 // send an `access_token` — the SAME trap and the SAME class (RETRYABLE —
-// see docs/ARMADILHAS.md, "Meta / WhatsApp Cloud API": "Um `200` da Meta
-// NÃO prova que veio id") as this package's two siblings,
+// see docs/ARMADILHAS.md, "Meta / WhatsApp Cloud API": "A `200` from Meta
+// does NOT prove an id came back") as this package's two siblings,
 // ErrResponseWithoutID (client.go) and ErrResponseWithoutMessageID (above). Its OWN
 // sentinel because the FIELD is different once again (`access_token` at the
 // root, here).
-var ErrRenewalWithoutAccessToken = errors.New("meta: resposta 2xx da renovacao do instagram sem access_token")
+var ErrRenewalWithoutAccessToken = errors.New("meta: Instagram renewal 2xx response without an access_token")
 
 // RenewInstagramToken requests a new long-lived token starting from a
 // token that's STILL valid. It does NOT decide WHEN to renew nor validate
@@ -607,7 +607,7 @@ var ErrRenewalWithoutAccessToken = errors.New("meta: resposta 2xx da renovacao d
 func (c *Client) RenewInstagramToken(ctx context.Context, renewalBase, currentToken string) (string, error) {
 	target, err := url.Parse(strings.TrimRight(renewalBase, "/") + "/refresh_access_token")
 	if err != nil {
-		return "", fmt.Errorf("meta: montar url de renovacao: %w", err)
+		return "", fmt.Errorf("meta: build renewal url: %w", err)
 	}
 	target.RawQuery = url.Values{
 		"grant_type":   {"ig_refresh_token"},
@@ -616,7 +616,7 @@ func (c *Client) RenewInstagramToken(ctx context.Context, renewalBase, currentTo
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, target.String(), nil)
 	if err != nil {
-		return "", fmt.Errorf("meta: montar requisicao de renovacao: %w", err)
+		return "", fmt.Errorf("meta: build renewal request: %w", err)
 	}
 
 	resp, err := c.http.Do(req)
@@ -625,13 +625,13 @@ func (c *Client) RenewInstagramToken(ctx context.Context, renewalBase, currentTo
 		// URL, which here carries the CURRENT token in the query string
 		// (see the comment above). Same rule as
 		// SendMessage/SendInstagramMessage.
-		return "", fmt.Errorf("meta: falha de transporte ao renovar o token do instagram: %w", errWithoutDetail(err))
+		return "", fmt.Errorf("meta: transport failure while renewing the instagram token: %w", errWithoutDetail(err))
 	}
 	defer resp.Body.Close()
 
 	raw, err := io.ReadAll(io.LimitReader(resp.Body, responseBodyCap))
 	if err != nil {
-		return "", fmt.Errorf("meta: ler resposta da renovacao: %w", errWithoutDetail(err))
+		return "", fmt.Errorf("meta: read renewal response: %w", errWithoutDetail(err))
 	}
 
 	if metaError := ClassifyResponse(resp.StatusCode, raw); metaError != nil {
@@ -642,7 +642,7 @@ func (c *Client) RenewInstagramToken(ctx context.Context, renewalBase, currentTo
 		AccessToken string `json:"access_token"`
 	}
 	if err := json.Unmarshal(raw, &envelope); err != nil {
-		return "", fmt.Errorf("%w: corpo nao entendido", ErrRenewalWithoutAccessToken)
+		return "", fmt.Errorf("%w: body not understood", ErrRenewalWithoutAccessToken)
 	}
 	// Trim BEFORE deciding, same rule as this package's two send
 	// responses: a token made of only spaces is as useless as an empty

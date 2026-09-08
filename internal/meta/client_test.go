@@ -26,7 +26,7 @@ func TestSendMessageReturnsMetasID(t *testing.T) {
 		t.Fatalf("SendMessage: %v", err)
 	}
 	if resp.ID != "wamid.ENVIADO" {
-		t.Fatalf("id = %q, quero wamid.ENVIADO", resp.ID)
+		t.Fatalf("id = %q, want wamid.ENVIADO", resp.ID)
 	}
 }
 
@@ -48,7 +48,7 @@ func TestSendMessageRefuses200WithoutAnID(t *testing.T) {
 		`{"messages":"nao e lista"}`,
 		`null`,
 		``,
-		`nao e json`,
+		`not json`,
 	}
 
 	for _, body := range cases {
@@ -61,14 +61,14 @@ func TestSendMessageRefuses200WithoutAnID(t *testing.T) {
 		srv.Close()
 
 		if err == nil {
-			t.Errorf("corpo %q devolveu SUCESSO com id %q", body, resp.ID)
+			t.Errorf("body %q returned SUCCESS with id %q", body, resp.ID)
 			continue
 		}
 		if !errors.Is(err, ErrResponseWithoutID) {
-			t.Errorf("corpo %q: erro = %v, quero ErrResponseWithoutID", body, err)
+			t.Errorf("body %q: err = %v, want ErrResponseWithoutID", body, err)
 		}
 		if resp.ID != "" {
-			t.Errorf("corpo %q devolveu id %q junto com erro", body, resp.ID)
+			t.Errorf("body %q returned id %q together with an error", body, resp.ID)
 		}
 	}
 }
@@ -85,13 +85,13 @@ func TestSendMessageClassifiesMetasError(t *testing.T) {
 
 	var me *MetaError
 	if !errors.As(err, &me) {
-		t.Fatalf("erro = %v, quero *MetaError", err)
+		t.Fatalf("err = %v, want *MetaError", err)
 	}
 	if me.Class != ClassPermanent {
-		t.Errorf("Class = %q, quero permanente", me.Class)
+		t.Errorf("Class = %q, want permanent", me.Class)
 	}
 	if me.MetaCode != 100 {
-		t.Errorf("MetaCode = %d, quero 100", me.MetaCode)
+		t.Errorf("MetaCode = %d, want 100", me.MetaCode)
 	}
 }
 
@@ -115,10 +115,10 @@ func TestSendMessageSendsTheTokenInTheHeaderAndNeverInTheURL(t *testing.T) {
 		t.Errorf("Authorization = %q", authorization)
 	}
 	if strings.Contains(requestedURL, "token-secreto") {
-		t.Fatalf("o token apareceu na URL: %s", requestedURL)
+		t.Fatalf("the token showed up in the URL: %s", requestedURL)
 	}
 	if !strings.Contains(requestedURL, "PNID1") {
-		t.Errorf("a URL nao traz o phone_number_id: %s", requestedURL)
+		t.Errorf("the URL doesn't carry the phone_number_id: %s", requestedURL)
 	}
 }
 
@@ -132,7 +132,7 @@ func TestSendMessageHonorsTheContext(t *testing.T) {
 	cancel()
 
 	if _, err := testClient(srv).SendMessage(ctx, "PNID1", "t", map[string]any{}); err == nil {
-		t.Fatal("contexto cancelado nao interrompeu a chamada")
+		t.Fatal("canceled context did not interrupt the call")
 	}
 }
 
@@ -156,10 +156,10 @@ func TestSendMessageRefusesABlankID(t *testing.T) {
 		srv.Close()
 
 		if err == nil {
-			t.Errorf("corpo %q devolveu SUCESSO com id %q", body, resp.ID)
+			t.Errorf("body %q returned SUCCESS with id %q", body, resp.ID)
 		}
 		if resp.ID != "" {
-			t.Errorf("corpo %q devolveu id %q junto com erro", body, resp.ID)
+			t.Errorf("body %q returned id %q together with an error", body, resp.ID)
 		}
 	}
 }
@@ -176,7 +176,7 @@ func TestSendMessageTrimsTheIDBeforeReturning(t *testing.T) {
 		t.Fatalf("SendMessage: %v", err)
 	}
 	if resp.ID != "wamid.COM_ESPACO" {
-		t.Fatalf("id = %q — os espacos das pontas foram propagados", resp.ID)
+		t.Fatalf("id = %q — the leading/trailing spaces were propagated", resp.ID)
 	}
 }
 
@@ -195,7 +195,7 @@ func TestSendMessageOnlyAcceptsTheIDInMessagesZero(t *testing.T) {
 		context.Background(), "PNID1", "token", map[string]any{})
 
 	if err == nil {
-		t.Fatalf("aceitou um id que nao estava em messages[0]: %q", resp.ID)
+		t.Fatalf("accepted an id that wasn't in messages[0]: %q", resp.ID)
 	}
 	if resp.ID != "" {
 		t.Fatalf("id = %q", resp.ID)
@@ -218,11 +218,11 @@ func TestSendMessageRefusesAPhoneNumberIDThatWouldEscape(t *testing.T) {
 		_, err := testClient(srv).SendMessage(
 			context.Background(), dirty, "token", map[string]any{})
 		if !errors.Is(err, ErrInvalidPhoneNumberID) {
-			t.Errorf("id %q: erro = %v, quero ErrInvalidPhoneNumberID", dirty, err)
+			t.Errorf("id %q: err = %v, want ErrInvalidPhoneNumberID", dirty, err)
 		}
 	}
 	if called {
-		t.Fatal("o cliente CHAMOU a rede com um phone_number_id invalido")
+		t.Fatal("the client CALLED the network with an invalid phone_number_id")
 	}
 }
 
@@ -235,7 +235,7 @@ func TestSendMessageAcceptsANormalPhoneNumberID(t *testing.T) {
 	for _, good := range []string{"123456789012345", "PNID_1", "pnid-abc"} {
 		if _, err := testClient(srv).SendMessage(
 			context.Background(), good, "token", map[string]any{}); err != nil {
-			t.Errorf("id valido %q recusado: %v", good, err)
+			t.Errorf("valid id %q refused: %v", good, err)
 		}
 	}
 }
@@ -263,7 +263,7 @@ func TestSendMessageAnAbsentMessageStatusStaysEmptyNotAccepted(t *testing.T) {
 		t.Fatalf("SendMessage: %v", err)
 	}
 	if resp.MessageStatus != "" {
-		t.Fatalf("MessageStatus = %q, quero \"\" (ausente) — nao \"accepted\" inventado", resp.MessageStatus)
+		t.Fatalf("MessageStatus = %q, want \"\" (absent) — not an invented \"accepted\"", resp.MessageStatus)
 	}
 }
 
@@ -285,7 +285,7 @@ func TestSendMessageReturnsTheRawMessageStatus(t *testing.T) {
 			t.Fatalf("status %q: SendMessage: %v", status, err)
 		}
 		if resp.MessageStatus != status {
-			t.Errorf("status %q: MessageStatus = %q, quero o valor cru de volta", status, resp.MessageStatus)
+			t.Errorf("status %q: MessageStatus = %q, want the raw value back", status, resp.MessageStatus)
 		}
 	}
 }

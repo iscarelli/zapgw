@@ -84,17 +84,17 @@ func (c *Client) MarkAsRead(ctx context.Context, phoneNumberID, token, wamid str
 
 	raw, err := json.Marshal(body)
 	if err != nil {
-		return fmt.Errorf("meta: montar corpo da leitura: %w", err)
+		return fmt.Errorf("meta: build read body: %w", err)
 	}
 
 	target, err := url.JoinPath(c.base, phoneNumberID, "messages")
 	if err != nil {
-		return fmt.Errorf("meta: montar url: %w", err)
+		return fmt.Errorf("meta: build url: %w", err)
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, target, bytes.NewReader(raw))
 	if err != nil {
-		return fmt.Errorf("meta: montar requisicao: %w", err)
+		return fmt.Errorf("meta: build request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 	// The token goes in the HEADER, never in the URL: a token in a query
@@ -105,13 +105,13 @@ func (c *Client) MarkAsRead(ctx context.Context, phoneNumberID, token, wamid str
 	if err != nil {
 		// We do NOT interpolate the error: *url.Error carries the full URL,
 		// and it carries the client's phone_number_id.
-		return fmt.Errorf("meta: falha de transporte ao marcar como lida: %w", errWithoutDetail(err))
+		return fmt.Errorf("meta: transport failure while marking as read: %w", errWithoutDetail(err))
 	}
 	defer resp.Body.Close()
 
 	rawResponse, err := io.ReadAll(io.LimitReader(resp.Body, responseBodyCap))
 	if err != nil {
-		return fmt.Errorf("meta: ler resposta: %w", errWithoutDetail(err))
+		return fmt.Errorf("meta: read response: %w", errWithoutDetail(err))
 	}
 
 	// ClassifyResponse reads ONLY error.message and error.code — never the

@@ -19,7 +19,7 @@ func TestCanonicalizeInsertsTheNinthDigitWhenItIsMissing(t *testing.T) {
 
 	for _, c := range cases {
 		if got := Canonicalize(c.input); got != c.want {
-			t.Errorf("Canonicalize(%q) = %q, quero %q", c.input, got, c.want)
+			t.Errorf("Canonicalize(%q) = %q, want %q", c.input, got, c.want)
 		}
 	}
 }
@@ -38,7 +38,7 @@ func TestCanonicalizeDoesNotTouchALandline(t *testing.T) {
 
 	for _, input := range cases {
 		if got := Canonicalize(input); got != input {
-			t.Errorf("Canonicalize(%q) = %q — fixo nao pode ganhar o 9", input, got)
+			t.Errorf("Canonicalize(%q) = %q — landline can't gain the 9", input, got)
 		}
 	}
 }
@@ -52,7 +52,7 @@ func TestCanonicalizeStripsFormatting(t *testing.T) {
 
 	for _, c := range cases {
 		if got := Canonicalize(c.input); got != c.want {
-			t.Errorf("Canonicalize(%q) = %q, quero %q", c.input, got, c.want)
+			t.Errorf("Canonicalize(%q) = %q, want %q", c.input, got, c.want)
 		}
 	}
 }
@@ -70,7 +70,7 @@ func TestCanonicalizeDoesNotInventForAForeignOrEmptyNumber(t *testing.T) {
 
 	for _, c := range cases {
 		if got := Canonicalize(c.input); got != c.want {
-			t.Errorf("Canonicalize(%q) = %q, quero %q", c.input, got, c.want)
+			t.Errorf("Canonicalize(%q) = %q, want %q", c.input, got, c.want)
 		}
 	}
 }
@@ -92,7 +92,7 @@ func TestLastEightDigitsIgnores55DDDAndTheNinthDigit(t *testing.T) {
 	}
 	for _, g := range spellings {
 		if got := LastEightDigits(g); got != want {
-			t.Errorf("LastEightDigits(%q) = %q, quero %q", g, got, want)
+			t.Errorf("LastEightDigits(%q) = %q, want %q", g, got, want)
 		}
 	}
 }
@@ -104,7 +104,7 @@ func TestLastEightDigitsOfAShortNumberReturnsEmpty(t *testing.T) {
 	cases := []string{"", "1234567", "abc"}
 	for _, c := range cases {
 		if got := LastEightDigits(c); got != "" {
-			t.Errorf("LastEightDigits(%q) = %q, quero vazio", c, got)
+			t.Errorf("LastEightDigits(%q) = %q, want empty", c, got)
 		}
 	}
 }

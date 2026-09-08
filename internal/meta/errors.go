@@ -79,7 +79,7 @@ type MetaError struct {
 }
 
 func (e *MetaError) Error() string {
-	return fmt.Sprintf("meta: %s (codigo %d): %s", e.Class, e.MetaCode, e.Message)
+	return fmt.Sprintf("meta: %s (code %d): %s", e.Class, e.MetaCode, e.Message)
 }
 
 // ClassifyResponse returns nil for success, or the classified error.

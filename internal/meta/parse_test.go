@@ -34,15 +34,15 @@ func TestParseWebhookReadsATextMessage(t *testing.T) {
 
 	evs, err := ParseWebhook(payload)
 	if err != nil {
-		t.Fatalf("erro inesperado: %v", err)
+		t.Fatalf("unexpected error: %v", err)
 	}
 	if len(evs) != 1 {
-		t.Fatalf("len(evs) = %d, quero 1", len(evs))
+		t.Fatalf("len(evs) = %d, want 1", len(evs))
 	}
 
 	e := evs[0]
 	if e.Type != EventTypeMessage {
-		t.Errorf("Type = %q, quero %q", e.Type, EventTypeMessage)
+		t.Errorf("Type = %q, want %q", e.Type, EventTypeMessage)
 	}
 	if e.WaMessageID != "wamid.AAA" {
 		t.Errorf("WaMessageID = %q", e.WaMessageID)
@@ -57,15 +57,15 @@ func TestParseWebhookReadsATextMessage(t *testing.T) {
 		t.Errorf("Text = %q", e.Text)
 	}
 	if e.ID != "msg:wamid.AAA" {
-		t.Errorf("ID = %q, quero msg:wamid.AAA", e.ID)
+		t.Errorf("ID = %q, want msg:wamid.AAA", e.ID)
 	}
 	// The TWO forms of the phone number, and that's what makes the
 	// consumer's `==` correct by construction in any language.
 	if e.FromRaw != "551199990000" {
-		t.Errorf("FromRaw = %q, quero o valor EXATO que a Meta mandou", e.FromRaw)
+		t.Errorf("FromRaw = %q, want the EXACT value Meta sent", e.FromRaw)
 	}
 	if e.FromCanonical != "5511999990000" {
-		t.Errorf("FromCanonical = %q, quero 5511999990000", e.FromCanonical)
+		t.Errorf("FromCanonical = %q, want 5511999990000", e.FromCanonical)
 	}
 	if e.ContactName != "Maria" {
 		t.Errorf("ContactName = %q", e.ContactName)
@@ -88,16 +88,16 @@ func TestParseWebhookReadsATemplateButtonAsTypeButton(t *testing.T) {
 
 	evs, err := ParseWebhook(payload)
 	if err != nil {
-		t.Fatalf("erro inesperado: %v", err)
+		t.Fatalf("unexpected error: %v", err)
 	}
 	if len(evs) != 1 {
-		t.Fatalf("len(evs) = %d, quero 1", len(evs))
+		t.Fatalf("len(evs) = %d, want 1", len(evs))
 	}
 	if evs[0].ButtonPayload != "CONFIRMAR_123" {
-		t.Errorf("ButtonPayload = %q, quero CONFIRMAR_123", evs[0].ButtonPayload)
+		t.Errorf("ButtonPayload = %q, want CONFIRMAR_123", evs[0].ButtonPayload)
 	}
 	if evs[0].ButtonText != "Confirmar" {
-		t.Errorf("ButtonText = %q, quero Confirmar", evs[0].ButtonText)
+		t.Errorf("ButtonText = %q, want Confirmar", evs[0].ButtonText)
 	}
 }
 
@@ -114,13 +114,13 @@ func TestParseWebhookReadsAnInteractiveButton(t *testing.T) {
 
 	evs, err := ParseWebhook(payload)
 	if err != nil {
-		t.Fatalf("erro inesperado: %v", err)
+		t.Fatalf("unexpected error: %v", err)
 	}
 	if evs[0].ButtonPayload != "CANCELAR_123" {
-		t.Errorf("ButtonPayload = %q, quero CANCELAR_123", evs[0].ButtonPayload)
+		t.Errorf("ButtonPayload = %q, want CANCELAR_123", evs[0].ButtonPayload)
 	}
 	if evs[0].ButtonText != "Cancelar" {
-		t.Errorf("ButtonText = %q, quero Cancelar", evs[0].ButtonText)
+		t.Errorf("ButtonText = %q, want Cancelar", evs[0].ButtonText)
 	}
 }
 
@@ -138,13 +138,13 @@ func TestParseWebhookReadsMediaWithThePayloadsMime(t *testing.T) {
 
 	evs, err := ParseWebhook(payload)
 	if err != nil {
-		t.Fatalf("erro inesperado: %v", err)
+		t.Fatalf("unexpected error: %v", err)
 	}
 	if evs[0].MediaID != "MEDIA1" {
 		t.Errorf("MediaID = %q", evs[0].MediaID)
 	}
 	if evs[0].MediaMimePayload != "audio/ogg; codecs=opus" {
-		t.Errorf("MediaMimePayload = %q — o parametro codecs NAO pode ser cortado", evs[0].MediaMimePayload)
+		t.Errorf("MediaMimePayload = %q — the codecs parameter must NOT be cut", evs[0].MediaMimePayload)
 	}
 }
 
@@ -161,22 +161,22 @@ func TestParseWebhookRefusesABodyThatIsNotAnObject(t *testing.T) {
 		func() {
 			defer func() {
 				if r := recover(); r != nil {
-					t.Fatalf("panico com corpo %q: %v", c, r)
+					t.Fatalf("panic with body %q: %v", c, r)
 				}
 			}()
 			evs, err := ParseWebhook([]byte(c))
 			if err == nil {
-				t.Fatalf("corpo %q devia dar erro, veio nil (evs=%v)", c, evs)
+				t.Fatalf("body %q should have errored, got nil (evs=%v)", c, evs)
 			}
 			if len(evs) != 0 {
-				t.Fatalf("corpo %q devolveu %d eventos, quero 0", c, len(evs))
+				t.Fatalf("body %q returned %d events, want 0", c, len(evs))
 			}
 		}()
 	}
 	// The `null` case has its own error, so the log can say WHAT came in.
 	_, err := ParseWebhook([]byte(`null`))
 	if !errors.Is(err, ErrBodyNotObject) {
-		t.Fatalf("erro para null = %v, quero ErrBodyNotObject", err)
+		t.Fatalf("err for null = %v, want ErrBodyNotObject", err)
 	}
 }
 
@@ -195,13 +195,13 @@ func TestParseWebhookIgnoresAnUnknownEventWithoutBringingDownTheOthers(t *testin
 
 	evs, err := ParseWebhook(payload)
 	if err != nil {
-		t.Fatalf("erro inesperado: %v", err)
+		t.Fatalf("unexpected error: %v", err)
 	}
 	if len(evs) != 2 {
-		t.Fatalf("len(evs) = %d, quero 2 — o desconhecido tambem chega, so sem campos ricos", len(evs))
+		t.Fatalf("len(evs) = %d, want 2 — the unknown one also arrives, just without the rich fields", len(evs))
 	}
 	if evs[1].Text != "oi" {
-		t.Errorf("a mensagem DEPOIS do evento desconhecido se perdeu: %+v", evs[1])
+		t.Errorf("the message AFTER the unknown event was lost: %+v", evs[1])
 	}
 }
 
@@ -225,7 +225,7 @@ func TestParseWebhookIsolatesAMalformedEntryFromItsSiblings(t *testing.T) {
 	evs, err := ParseWebhook(payload)
 
 	if len(evs) != 1 {
-		t.Fatalf("len(evs) = %d, quero 1 — a mensagem da conta BOA foi descartada junto com a RUIM", len(evs))
+		t.Fatalf("len(evs) = %d, want 1 — the GOOD account's message was discarded together with the BAD one", len(evs))
 	}
 	if evs[0].Text != "sobrevivi" {
 		t.Errorf("Text = %q", evs[0].Text)
@@ -234,7 +234,7 @@ func TestParseWebhookIsolatesAMalformedEntryFromItsSiblings(t *testing.T) {
 		t.Errorf("WabaID = %q", evs[0].WabaID)
 	}
 	if !errors.Is(err, ErrPartialParse) {
-		t.Errorf("err = %v, quero ErrPartialParse — o item ignorado tem de ser SINALIZADO, nao sumir calado", err)
+		t.Errorf("err = %v, want ErrPartialParse — the ignored item has to be FLAGGED, not vanish silently", err)
 	}
 }
 
@@ -249,10 +249,10 @@ func TestParseWebhookIsolatesAMalformedChangeFromItsSiblings(t *testing.T) {
 	evs, err := ParseWebhook(payload)
 
 	if len(evs) != 1 {
-		t.Fatalf("len(evs) = %d, quero 1 — a change boa foi descartada com a ruim", len(evs))
+		t.Fatalf("len(evs) = %d, want 1 — the good change was discarded with the bad one", len(evs))
 	}
 	if !errors.Is(err, ErrPartialParse) {
-		t.Errorf("err = %v, quero ErrPartialParse", err)
+		t.Errorf("err = %v, want ErrPartialParse", err)
 	}
 }
 
@@ -265,10 +265,10 @@ func TestParseWebhookWithNoIgnoredItemReturnsNoError(t *testing.T) {
 
 	evs, err := ParseWebhook(payload)
 	if err != nil {
-		t.Fatalf("err = %v, quero nil", err)
+		t.Fatalf("err = %v, want nil", err)
 	}
 	if len(evs) != 1 {
-		t.Fatalf("len(evs) = %d, quero 1", len(evs))
+		t.Fatalf("len(evs) = %d, want 1", len(evs))
 	}
 }
 
@@ -289,29 +289,29 @@ func TestParseWebhookUsesACompositeKeyInTheStatus(t *testing.T) {
 	for _, s := range []string{"sent", "delivered", "read"} {
 		evs, err := ParseWebhook(build(s))
 		if err != nil {
-			t.Fatalf("erro inesperado em %q: %v", s, err)
+			t.Fatalf("unexpected error in %q: %v", s, err)
 		}
 		if len(evs) != 1 {
-			t.Fatalf("len(evs) = %d para %q, quero 1", len(evs), s)
+			t.Fatalf("len(evs) = %d for %q, want 1", len(evs), s)
 		}
 		e := evs[0]
 		if e.Type != EventTypeStatus {
-			t.Errorf("Type = %q, quero %q", e.Type, EventTypeStatus)
+			t.Errorf("Type = %q, want %q", e.Type, EventTypeStatus)
 		}
 		if e.Status != s {
-			t.Errorf("Status = %q, quero %q", e.Status, s)
+			t.Errorf("Status = %q, want %q", e.Status, s)
 		}
 		want := "status:wamid.XYZ:" + s
 		if e.ID != want {
-			t.Errorf("ID = %q, quero %q", e.ID, want)
+			t.Errorf("ID = %q, want %q", e.ID, want)
 		}
 		if seenIDs[e.ID] {
-			t.Fatalf("ID %q repetido — a chave composta nao esta distinguindo os status", e.ID)
+			t.Fatalf("ID %q repeated — the composite key isn't distinguishing the statuses", e.ID)
 		}
 		seenIDs[e.ID] = true
 	}
 	if len(seenIDs) != 3 {
-		t.Fatalf("ids distintos = %d, quero 3", len(seenIDs))
+		t.Fatalf("distinct ids = %d, want 3", len(seenIDs))
 	}
 }
 
@@ -324,10 +324,10 @@ func TestParseWebhookGivesBothFormsOfTheRecipientInTheStatus(t *testing.T) {
 
 	evs, _ := ParseWebhook(payload)
 	if evs[0].ToRaw != "551199990000" {
-		t.Errorf("ToRaw = %q, quero o valor EXATO da Meta", evs[0].ToRaw)
+		t.Errorf("ToRaw = %q, want the EXACT value from Meta", evs[0].ToRaw)
 	}
 	if evs[0].ToCanonical != "5511999990000" {
-		t.Errorf("ToCanonical = %q, quero 5511999990000", evs[0].ToCanonical)
+		t.Errorf("ToCanonical = %q, want 5511999990000", evs[0].ToCanonical)
 	}
 }
 
@@ -342,10 +342,10 @@ func TestParseWebhookReadsAMessageAndAStatusInTheSamePayload(t *testing.T) {
 
 	evs, err := ParseWebhook(payload)
 	if err != nil {
-		t.Fatalf("erro inesperado: %v", err)
+		t.Fatalf("unexpected error: %v", err)
 	}
 	if len(evs) != 2 {
-		t.Fatalf("len(evs) = %d, quero 2", len(evs))
+		t.Fatalf("len(evs) = %d, want 2", len(evs))
 	}
 }
 
@@ -368,13 +368,13 @@ func TestParseWebhookEmitsNoEventWithoutMetasId(t *testing.T) {
 	evs, err := ParseWebhook(payload)
 
 	if len(evs) != 1 {
-		t.Fatalf("len(evs) = %d, quero 1 — mensagem sem id nao pode virar evento", len(evs))
+		t.Fatalf("len(evs) = %d, want 1 — a message without an id must not become an event", len(evs))
 	}
 	if evs[0].ID != "msg:wamid.BOA" {
 		t.Errorf("ID = %q", evs[0].ID)
 	}
 	if !errors.Is(err, ErrPartialParse) {
-		t.Errorf("err = %v, quero ErrPartialParse — o descarte tem de ser SINALIZADO", err)
+		t.Errorf("err = %v, want ErrPartialParse — the discard has to be FLAGGED", err)
 	}
 }
 
@@ -389,13 +389,13 @@ func TestParseWebhookEmitsNoStatusWithoutMetasId(t *testing.T) {
 	evs, err := ParseWebhook(payload)
 
 	if len(evs) != 1 {
-		t.Fatalf("len(evs) = %d, quero 1 — status sem id daria a chave composta \"status::sent\"", len(evs))
+		t.Fatalf("len(evs) = %d, want 1 — a status without an id would give the composite key \"status::sent\"", len(evs))
 	}
 	if evs[0].ID != "status:wamid.S:delivered" {
 		t.Errorf("ID = %q", evs[0].ID)
 	}
 	if !errors.Is(err, ErrPartialParse) {
-		t.Errorf("err = %v, quero ErrPartialParse", err)
+		t.Errorf("err = %v, want ErrPartialParse", err)
 	}
 }
 
@@ -417,20 +417,20 @@ func TestParseWebhookAFailedStatusWithAnErrorProducesCodeAndMessage(t *testing.T
 
 	evs, err := ParseWebhook(payload)
 	if err != nil {
-		t.Fatalf("erro inesperado: %v", err)
+		t.Fatalf("unexpected error: %v", err)
 	}
 	if len(evs) != 1 {
-		t.Fatalf("len(evs) = %d, quero 1", len(evs))
+		t.Fatalf("len(evs) = %d, want 1", len(evs))
 	}
 	e := evs[0]
 	if e.Status != "failed" {
-		t.Fatalf("Status = %q, quero failed", e.Status)
+		t.Fatalf("Status = %q, want failed", e.Status)
 	}
 	if e.Error == nil {
 		t.Fatal("Error == nil — status failed com errors[] tem de produzir StatusError")
 	}
 	if e.Error.Code != 131026 {
-		t.Errorf("Error.Code = %d, quero 131026", e.Error.Code)
+		t.Errorf("Error.Code = %d, want 131026", e.Error.Code)
 	}
 	if e.Error.Message != "Message undeliverable" {
 		t.Errorf("Error.Message = %q", e.Error.Message)
@@ -445,10 +445,10 @@ func TestParseWebhookAFailedStatusWithErrorDataProducesDetails(t *testing.T) {
 
 	evs, err := ParseWebhook(payload)
 	if err != nil {
-		t.Fatalf("erro inesperado: %v", err)
+		t.Fatalf("unexpected error: %v", err)
 	}
 	if len(evs) != 1 {
-		t.Fatalf("len(evs) = %d, quero 1", len(evs))
+		t.Fatalf("len(evs) = %d, want 1", len(evs))
 	}
 	e := evs[0]
 	if e.Error == nil {
@@ -456,7 +456,7 @@ func TestParseWebhookAFailedStatusWithErrorDataProducesDetails(t *testing.T) {
 	}
 	want := "Message Undeliverable."
 	if e.Error.Details != want {
-		t.Errorf("Error.Details = %q, quero %q", e.Error.Details, want)
+		t.Errorf("Error.Details = %q, want %q", e.Error.Details, want)
 	}
 }
 
@@ -475,20 +475,20 @@ func TestParseWebhookAFailedStatusWithoutErrorDataDoesNotBringDownCodeAndMessage
 
 	evs, err := ParseWebhook(payload)
 	if err != nil {
-		t.Fatalf("erro inesperado: %v", err)
+		t.Fatalf("unexpected error: %v", err)
 	}
 	if len(evs) != 1 {
-		t.Fatalf("len(evs) = %d, quero 1", len(evs))
+		t.Fatalf("len(evs) = %d, want 1", len(evs))
 	}
 	e := evs[0]
 	if e.Error == nil {
-		t.Fatal("Error == nil — ausencia de error_data nao pode derrubar codigo/mensagem")
+		t.Fatal("Error == nil — absence of error_data must not take code/message down")
 	}
 	if e.Error.Code != 131049 || e.Error.Message != "titulo sem error_data" {
-		t.Errorf("Error = %+v, quero Code/Message intactos mesmo sem error_data", e.Error)
+		t.Errorf("Error = %+v, want Code/Message intact even without error_data", e.Error)
 	}
 	if e.Error.Details != "" {
-		t.Errorf("Details = %q, quero vazio — error_data nao veio no payload", e.Error.Details)
+		t.Errorf("Details = %q, want empty — error_data did not come in the payload", e.Error.Details)
 	}
 }
 
@@ -504,20 +504,20 @@ func TestParseWebhookAFailedStatusWithErrorDataButNoDetailsDoesNotBreak(t *testi
 
 	evs, err := ParseWebhook(payload)
 	if err != nil {
-		t.Fatalf("erro inesperado: %v", err)
+		t.Fatalf("unexpected error: %v", err)
 	}
 	if len(evs) != 1 {
-		t.Fatalf("len(evs) = %d, quero 1", len(evs))
+		t.Fatalf("len(evs) = %d, want 1", len(evs))
 	}
 	e := evs[0]
 	if e.Error == nil {
 		t.Fatal("Error == nil")
 	}
 	if e.Error.Code != 131049 || e.Error.Message != "titulo" {
-		t.Errorf("Error = %+v, quero Code/Message intactos", e.Error)
+		t.Errorf("Error = %+v, want Code/Message intact", e.Error)
 	}
 	if e.Error.Details != "" {
-		t.Errorf("Details = %q, quero vazio — error_data sem \"details\"", e.Error.Details)
+		t.Errorf("Details = %q, want empty — error_data without \"details\"", e.Error.Details)
 	}
 }
 
@@ -535,13 +535,13 @@ func TestParseWebhookAFailedStatusWithoutErrorsDoesNotInventCodeZero(t *testing.
 
 	evs, err := ParseWebhook(payload)
 	if err != nil {
-		t.Fatalf("erro inesperado: %v", err)
+		t.Fatalf("unexpected error: %v", err)
 	}
 	if len(evs) != 1 {
-		t.Fatalf("len(evs) = %d, quero 1", len(evs))
+		t.Fatalf("len(evs) = %d, want 1", len(evs))
 	}
 	if evs[0].Error != nil {
-		t.Errorf("Error = %+v, quero nil — failed sem errors[] nao pode inventar motivo", evs[0].Error)
+		t.Errorf("Error = %+v, want nil — failed without errors[] must not invent a reason", evs[0].Error)
 	}
 }
 
@@ -561,16 +561,16 @@ func TestParseWebhookAStatusWithTwoErrorsKeepsOnlyTheFirst(t *testing.T) {
 
 	evs, err := ParseWebhook(payload)
 	if err != nil {
-		t.Fatalf("erro inesperado: %v", err)
+		t.Fatalf("unexpected error: %v", err)
 	}
 	if len(evs) != 1 {
-		t.Fatalf("len(evs) = %d, quero 1", len(evs))
+		t.Fatalf("len(evs) = %d, want 1", len(evs))
 	}
 	if evs[0].Error == nil {
 		t.Fatal("Error == nil")
 	}
 	if evs[0].Error.Code != 131049 || evs[0].Error.Message != "primeiro erro" {
-		t.Errorf("Error = %+v, quero o PRIMEIRO item (131049, \"primeiro erro\")", evs[0].Error)
+		t.Errorf("Error = %+v, want the FIRST item (131049, \"primeiro erro\")", evs[0].Error)
 	}
 }
 
@@ -590,17 +590,17 @@ func TestParseWebhookInAStatusErrorAMalformedItemDoesNotBringDownTheEvent(t *tes
 
 	evs, err := ParseWebhook(payload)
 	if err != nil {
-		t.Fatalf("erro inesperado: %v — item de erro malformado nao pode virar ErrPartialParse do EVENTO", err)
+		t.Fatalf("unexpected error: %v — a malformed error item must not become ErrPartialParse for the EVENT", err)
 	}
 	if len(evs) != 1 {
-		t.Fatalf("len(evs) = %d, quero 1 — o status sobrevive ao erro malformado", len(evs))
+		t.Fatalf("len(evs) = %d, want 1 — the status survives the malformed error", len(evs))
 	}
 	e := evs[0]
 	if e.ID != "status:wamid.F:failed" || e.Status != "failed" || e.ToRaw != "551199990000" {
-		t.Errorf("evento base corrompido pelo item de erro malformado: %+v", e)
+		t.Errorf("base event corrupted by the malformed error item: %+v", e)
 	}
 	if e.Error != nil {
-		t.Errorf("Error = %+v, quero nil — o item nao pode ser interpretado", e.Error)
+		t.Errorf("Error = %+v, want nil — the item cannot be interpreted", e.Error)
 	}
 }
 
@@ -623,20 +623,20 @@ func TestParseWebhookAStatusWithPricingProducesBilling(t *testing.T) {
 
 	evs, err := ParseWebhook(payload)
 	if err != nil {
-		t.Fatalf("erro inesperado: %v", err)
+		t.Fatalf("unexpected error: %v", err)
 	}
 	if len(evs) != 1 {
-		t.Fatalf("len(evs) = %d, quero 1", len(evs))
+		t.Fatalf("len(evs) = %d, want 1", len(evs))
 	}
 	e := evs[0]
 	if e.Billing == nil {
 		t.Fatal("Billing == nil — status com pricing tem de produzir Billing")
 	}
 	if e.Billing.Category != "utility" {
-		t.Errorf("Category = %q, quero utility", e.Billing.Category)
+		t.Errorf("Category = %q, want utility", e.Billing.Category)
 	}
 	if e.Billing.Billable == nil || !*e.Billing.Billable {
-		t.Errorf("Billable = %v, quero um *bool apontando para true", e.Billing.Billable)
+		t.Errorf("Billable = %v, want a *bool pointing to true", e.Billing.Billable)
 	}
 }
 
@@ -656,20 +656,20 @@ func TestParseWebhookStatusPricingBillableFalseDiffersFromAbsent(t *testing.T) {
 
 	evs, err := ParseWebhook(payload)
 	if err != nil {
-		t.Fatalf("erro inesperado: %v", err)
+		t.Fatalf("unexpected error: %v", err)
 	}
 	if len(evs) != 1 {
-		t.Fatalf("len(evs) = %d, quero 1", len(evs))
+		t.Fatalf("len(evs) = %d, want 1", len(evs))
 	}
 	e := evs[0]
 	if e.Billing == nil {
 		t.Fatal("Billing == nil — pricing veio, so billable e false")
 	}
 	if e.Billing.Billable == nil {
-		t.Fatal("Billable == nil, quero um *bool apontando para false (explicito, nao ausente)")
+		t.Fatal("Billable == nil, want a *bool pointing to false (explicit, not absent)")
 	}
 	if *e.Billing.Billable != false {
-		t.Errorf("Billable = %v, quero false", *e.Billing.Billable)
+		t.Errorf("Billable = %v, want false", *e.Billing.Billable)
 	}
 }
 
@@ -685,13 +685,13 @@ func TestParseWebhookAStatusWithoutPricingGetsNoBilling(t *testing.T) {
 
 	evs, err := ParseWebhook(payload)
 	if err != nil {
-		t.Fatalf("erro inesperado: %v", err)
+		t.Fatalf("unexpected error: %v", err)
 	}
 	if len(evs) != 1 {
-		t.Fatalf("len(evs) = %d, quero 1", len(evs))
+		t.Fatalf("len(evs) = %d, want 1", len(evs))
 	}
 	if evs[0].Billing != nil {
-		t.Errorf("Billing = %+v, quero nil — status sem pricing nao pode inventar cobranca", evs[0].Billing)
+		t.Errorf("Billing = %+v, want nil — a status without pricing must not invent billing", evs[0].Billing)
 	}
 }
 
@@ -708,13 +708,13 @@ func TestParseWebhookAStatusWithNullPricingGetsNoBilling(t *testing.T) {
 
 	evs, err := ParseWebhook(payload)
 	if err != nil {
-		t.Fatalf("erro inesperado: %v", err)
+		t.Fatalf("unexpected error: %v", err)
 	}
 	if len(evs) != 1 {
-		t.Fatalf("len(evs) = %d, quero 1", len(evs))
+		t.Fatalf("len(evs) = %d, want 1", len(evs))
 	}
 	if evs[0].Billing != nil {
-		t.Errorf("Billing = %+v, quero nil — pricing:null e ausencia, nao uma cobranca zerada", evs[0].Billing)
+		t.Errorf("Billing = %+v, want nil — pricing:null is absence, not a zeroed billing", evs[0].Billing)
 	}
 }
 
@@ -733,17 +733,17 @@ func TestParseWebhookAMalformedStatusPricingDoesNotBringDownTheEvent(t *testing.
 
 	evs, err := ParseWebhook(payload)
 	if err != nil {
-		t.Fatalf("erro inesperado: %v — pricing malformado nao pode virar ErrPartialParse do EVENTO", err)
+		t.Fatalf("unexpected error: %v — malformed pricing must not become ErrPartialParse for the EVENT", err)
 	}
 	if len(evs) != 1 {
-		t.Fatalf("len(evs) = %d, quero 1 — o status sobrevive ao pricing malformado", len(evs))
+		t.Fatalf("len(evs) = %d, want 1 — the status survives the malformed pricing", len(evs))
 	}
 	e := evs[0]
 	if e.ID != "status:wamid.P5:sent" || e.Status != "sent" || e.ToRaw != "551199990000" {
 		t.Errorf("evento base corrompido pelo pricing malformado: %+v", e)
 	}
 	if e.Billing != nil {
-		t.Errorf("Billing = %+v, quero nil — o pricing nao pode ser interpretado", e.Billing)
+		t.Errorf("Billing = %+v, want nil — the pricing cannot be interpreted", e.Billing)
 	}
 }
 
@@ -780,23 +780,23 @@ func TestParseWebhookAnUnsupportedMessageWithAnErrorProducesCodeAndMessage(t *te
 
 	evs, err := ParseWebhook(payload)
 	if err != nil {
-		t.Fatalf("erro inesperado: %v", err)
+		t.Fatalf("unexpected error: %v", err)
 	}
 	if len(evs) != 1 {
-		t.Fatalf("len(evs) = %d, quero 1", len(evs))
+		t.Fatalf("len(evs) = %d, want 1", len(evs))
 	}
 	e := evs[0]
 	if e.SubType != "unsupported" {
-		t.Fatalf("SubType = %q, quero unsupported", e.SubType)
+		t.Fatalf("SubType = %q, want unsupported", e.SubType)
 	}
 	if e.Error == nil {
-		t.Fatal("Error == nil — mensagem unsupported com errors[] tem de produzir StatusError")
+		t.Fatal("Error == nil — an unsupported message with errors[] has to produce a StatusError")
 	}
 	if e.Error.Code != 131051 {
-		t.Errorf("Error.Code = %d, quero 131051", e.Error.Code)
+		t.Errorf("Error.Code = %d, want 131051", e.Error.Code)
 	}
 	if e.Error.Message != "Message type unknown" {
-		t.Errorf("Error.Message = %q, quero \"Message type unknown\"", e.Error.Message)
+		t.Errorf("Error.Message = %q, want \"Message type unknown\"", e.Error.Message)
 	}
 	if e.Error.Details != "Message type is currently not supported." {
 		t.Errorf("Error.Details = %q", e.Error.Details)
@@ -816,20 +816,20 @@ func TestParseWebhookANormalMessageGetsNoError(t *testing.T) {
 
 	evs, err := ParseWebhook(payload)
 	if err != nil {
-		t.Fatalf("erro inesperado: %v", err)
+		t.Fatalf("unexpected error: %v", err)
 	}
 	if len(evs) != 1 {
-		t.Fatalf("len(evs) = %d, quero 1", len(evs))
+		t.Fatalf("len(evs) = %d, want 1", len(evs))
 	}
 	if evs[0].Error != nil {
-		t.Errorf("Error = %+v, quero nil — mensagem sem errors[] nao pode ganhar motivo", evs[0].Error)
+		t.Errorf("Error = %+v, want nil — a message without errors[] must not gain a reason", evs[0].Error)
 	}
 	b, err := json.Marshal(evs[0])
 	if err != nil {
 		t.Fatalf("Marshal: %v", err)
 	}
 	if strings.Contains(string(b), "erro") {
-		t.Errorf("\"erro\" apareceu no JSON de uma mensagem sem errors[]: %s", b)
+		t.Errorf("\"erro\" showed up in the JSON of a message without errors[]: %s", b)
 	}
 }
 
@@ -844,13 +844,13 @@ func TestParseWebhookAnUnsupportedMessageWithoutErrorsDoesNotInventCodeZero(t *t
 
 	evs, err := ParseWebhook(payload)
 	if err != nil {
-		t.Fatalf("erro inesperado: %v", err)
+		t.Fatalf("unexpected error: %v", err)
 	}
 	if len(evs) != 1 {
-		t.Fatalf("len(evs) = %d, quero 1", len(evs))
+		t.Fatalf("len(evs) = %d, want 1", len(evs))
 	}
 	if evs[0].Error != nil {
-		t.Errorf("Error = %+v, quero nil — unsupported sem errors[] nao pode inventar motivo", evs[0].Error)
+		t.Errorf("Error = %+v, want nil — unsupported without errors[] must not invent a reason", evs[0].Error)
 	}
 }
 
@@ -867,17 +867,17 @@ func TestParseWebhookInAMessageErrorAMalformedItemDoesNotBringDownTheEvent(t *te
 
 	evs, err := ParseWebhook(payload)
 	if err != nil {
-		t.Fatalf("erro inesperado: %v — item de erro malformado nao pode virar ErrPartialParse do EVENTO", err)
+		t.Fatalf("unexpected error: %v — a malformed error item must not become ErrPartialParse for the EVENT", err)
 	}
 	if len(evs) != 1 {
-		t.Fatalf("len(evs) = %d, quero 1 — a mensagem sobrevive ao erro malformado", len(evs))
+		t.Fatalf("len(evs) = %d, want 1 — the message survives the malformed error", len(evs))
 	}
 	e := evs[0]
 	if e.ID != "msg:wamid.UNSUPPORTED3" || e.SubType != "unsupported" {
-		t.Errorf("evento base corrompido pelo item de erro malformado: %+v", e)
+		t.Errorf("base event corrupted by the malformed error item: %+v", e)
 	}
 	if e.Error != nil {
-		t.Errorf("Error = %+v, quero nil — o item nao pode ser interpretado", e.Error)
+		t.Errorf("Error = %+v, want nil — the item cannot be interpreted", e.Error)
 	}
 }
 
@@ -886,10 +886,10 @@ func TestParseWebhookReadsAReaction(t *testing.T) {
 
 	evs, err := ParseWebhook(payload)
 	if err != nil {
-		t.Fatalf("erro inesperado: %v", err)
+		t.Fatalf("unexpected error: %v", err)
 	}
 	if len(evs) != 1 {
-		t.Fatalf("len(evs) = %d, quero 1", len(evs))
+		t.Fatalf("len(evs) = %d, want 1", len(evs))
 	}
 	e := evs[0]
 	if e.Reaction == nil {
@@ -899,10 +899,10 @@ func TestParseWebhookReadsAReaction(t *testing.T) {
 	// capture (2026-07-26) — see docs/ARMADILHAS.md. A single-codepoint
 	// emoji wouldn't prove the variation selector survives the parser.
 	if e.Reaction.Emoji != "❤️" {
-		t.Errorf("Emoji = %q, quero ❤️", e.Reaction.Emoji)
+		t.Errorf("Emoji = %q, want ❤️", e.Reaction.Emoji)
 	}
 	if e.Reaction.Target != "wamid.TESTE001" {
-		t.Errorf("Target = %q, quero wamid.TESTE001", e.Reaction.Target)
+		t.Errorf("Target = %q, want wamid.TESTE001", e.Reaction.Target)
 	}
 }
 
@@ -922,20 +922,20 @@ func TestParseWebhookAReactionWithoutAnEmojiIsAValidRemovalNotAParseError(t *tes
 
 	evs, err := ParseWebhook(payload)
 	if err != nil {
-		t.Fatalf("erro inesperado (reacao sem emoji NAO e malformada): %v", err)
+		t.Fatalf("unexpected error (a reaction without an emoji is NOT malformed): %v", err)
 	}
 	if len(evs) != 1 {
-		t.Fatalf("len(evs) = %d, quero 1", len(evs))
+		t.Fatalf("len(evs) = %d, want 1", len(evs))
 	}
 	e := evs[0]
 	if e.Reaction == nil {
-		t.Fatal("Reaction == nil — remocao tambem e um evento, so sem emoji")
+		t.Fatal("Reaction == nil — removal is also an event, just without an emoji")
 	}
 	if e.Reaction.Emoji != "" {
-		t.Errorf("Emoji = %q, quero vazio (remocao)", e.Reaction.Emoji)
+		t.Errorf("Emoji = %q, want empty (removal)", e.Reaction.Emoji)
 	}
 	if e.Reaction.Target != "wamid.TESTE001" {
-		t.Errorf("Target = %q, quero wamid.TESTE001", e.Reaction.Target)
+		t.Errorf("Target = %q, want wamid.TESTE001", e.Reaction.Target)
 	}
 }
 
@@ -952,13 +952,13 @@ func TestParseWebhookAReactionWithoutATargetIsACountedParseError(t *testing.T) {
 
 	evs, err := ParseWebhook(payload)
 	if len(evs) != 1 {
-		t.Fatalf("len(evs) = %d, quero 1 — reacao sem alvo (message_id) e malformada, e a mensagem irma sobrevive", len(evs))
+		t.Fatalf("len(evs) = %d, want 1 — a reaction without a target (message_id) is malformed, and the sibling message survives", len(evs))
 	}
 	if evs[0].Reaction != nil {
-		t.Errorf("a mensagem que sobreviveu nao devia ter Reaction: %+v", evs[0].Reaction)
+		t.Errorf("the message that survived should not have a Reaction: %+v", evs[0].Reaction)
 	}
 	if !errors.Is(err, ErrPartialParse) {
-		t.Errorf("err = %v, quero ErrPartialParse", err)
+		t.Errorf("err = %v, want ErrPartialParse", err)
 	}
 }
 
@@ -971,10 +971,10 @@ func TestParseWebhookReadsALocation(t *testing.T) {
 
 	evs, err := ParseWebhook(payload)
 	if err != nil {
-		t.Fatalf("erro inesperado: %v", err)
+		t.Fatalf("unexpected error: %v", err)
 	}
 	if len(evs) != 1 {
-		t.Fatalf("len(evs) = %d, quero 1", len(evs))
+		t.Fatalf("len(evs) = %d, want 1", len(evs))
 	}
 	e := evs[0]
 	if e.Location == nil {
@@ -987,10 +987,10 @@ func TestParseWebhookReadsALocation(t *testing.T) {
 		t.Errorf("Longitude = %v", e.Location.Longitude)
 	}
 	if e.Location.Name != "" {
-		t.Errorf("Name = %q, quero vazio — a captura real nao trouxe nome", e.Location.Name)
+		t.Errorf("Name = %q, want empty — the real capture did not bring a name", e.Location.Name)
 	}
 	if e.Location.Address != "" {
-		t.Errorf("Address = %q, quero vazio — a captura real nao trouxe endereco", e.Location.Address)
+		t.Errorf("Address = %q, want empty — the real capture did not bring an address", e.Location.Address)
 	}
 }
 
@@ -1009,10 +1009,10 @@ func TestParseWebhookReadsALocationWithNameAndAddress(t *testing.T) {
 
 	evs, err := ParseWebhook(payload)
 	if err != nil {
-		t.Fatalf("erro inesperado: %v", err)
+		t.Fatalf("unexpected error: %v", err)
 	}
 	if len(evs) != 1 {
-		t.Fatalf("len(evs) = %d, quero 1", len(evs))
+		t.Fatalf("len(evs) = %d, want 1", len(evs))
 	}
 	e := evs[0]
 	if e.Location == nil {
@@ -1045,10 +1045,10 @@ func TestLocationSerializesZeroLatitudeLongitudeWithoutOmitting(t *testing.T) {
 		t.Fatalf("Unmarshal: %v", err)
 	}
 	if _, ok := got["latitude"]; !ok {
-		t.Fatal("latitude 0 sumiu do JSON — omitempty apagaria o meridiano de Greenwich")
+		t.Fatal("latitude 0 vanished from the JSON — omitempty would erase the Greenwich meridian")
 	}
 	if _, ok := got["longitude"]; !ok {
-		t.Fatal("longitude 0 sumiu do JSON — omitempty apagaria o equador")
+		t.Fatal("longitude 0 vanished from the JSON — omitempty would erase the equator")
 	}
 }
 
@@ -1065,13 +1065,13 @@ func TestParseWebhookALocationWithoutAnObjectIsACountedParseError(t *testing.T) 
 
 	evs, err := ParseWebhook(payload)
 	if len(evs) != 1 {
-		t.Fatalf("len(evs) = %d, quero 1 — localizacao sem o objeto e malformada, e a mensagem irma sobrevive", len(evs))
+		t.Fatalf("len(evs) = %d, want 1 — a location without the object is malformed, and the sibling message survives", len(evs))
 	}
 	if evs[0].Location != nil {
-		t.Errorf("a mensagem que sobreviveu nao devia ter Location: %+v", evs[0].Location)
+		t.Errorf("the message that survived should not have a Location: %+v", evs[0].Location)
 	}
 	if !errors.Is(err, ErrPartialParse) {
-		t.Errorf("err = %v, quero ErrPartialParse", err)
+		t.Errorf("err = %v, want ErrPartialParse", err)
 	}
 }
 
@@ -1083,13 +1083,13 @@ func TestParseWebhookVoiceTrue(t *testing.T) {
 
 	evs, err := ParseWebhook(payload)
 	if err != nil {
-		t.Fatalf("erro inesperado: %v", err)
+		t.Fatalf("unexpected error: %v", err)
 	}
 	if len(evs) != 1 {
-		t.Fatalf("len(evs) = %d, quero 1", len(evs))
+		t.Fatalf("len(evs) = %d, want 1", len(evs))
 	}
 	if evs[0].Voice == nil || !*evs[0].Voice {
-		t.Fatalf("Voice = %v, quero um *bool apontando para true", evs[0].Voice)
+		t.Fatalf("Voice = %v, want a *bool pointing to true", evs[0].Voice)
 	}
 }
 
@@ -1106,13 +1106,13 @@ func TestParseWebhookAnAbsentVoiceDoesNotBecomeFalseByDefault(t *testing.T) {
 
 	evs, err := ParseWebhook(payload)
 	if err != nil {
-		t.Fatalf("erro inesperado: %v", err)
+		t.Fatalf("unexpected error: %v", err)
 	}
 	if len(evs) != 1 {
-		t.Fatalf("len(evs) = %d, quero 1", len(evs))
+		t.Fatalf("len(evs) = %d, want 1", len(evs))
 	}
 	if evs[0].Voice != nil {
-		t.Fatalf("Voice = %v, quero nil (ausente) — audio sem campo \"voice\" NAO pode virar false por default", *evs[0].Voice)
+		t.Fatalf("Voice = %v, want nil (absent) — an audio without a \"voice\" must NOT become false by default", *evs[0].Voice)
 	}
 }
 
@@ -1126,16 +1126,16 @@ func TestParseWebhookAnExplicitFalseVoiceDiffersFromAbsent(t *testing.T) {
 
 	evs, err := ParseWebhook(payload)
 	if err != nil {
-		t.Fatalf("erro inesperado: %v", err)
+		t.Fatalf("unexpected error: %v", err)
 	}
 	if len(evs) != 1 {
-		t.Fatalf("len(evs) = %d, quero 1", len(evs))
+		t.Fatalf("len(evs) = %d, want 1", len(evs))
 	}
 	if evs[0].Voice == nil {
-		t.Fatal("Voice == nil, quero um *bool apontando para false (explicito, nao ausente)")
+		t.Fatal("Voice == nil, want a *bool pointing to false (explicit, not absent)")
 	}
 	if *evs[0].Voice != false {
-		t.Errorf("Voice = %v, quero false", *evs[0].Voice)
+		t.Errorf("Voice = %v, want false", *evs[0].Voice)
 	}
 }
 
@@ -1144,16 +1144,16 @@ func TestParseWebhookReadsCaptionAndFilename(t *testing.T) {
 
 	evs, err := ParseWebhook(payload)
 	if err != nil {
-		t.Fatalf("erro inesperado: %v", err)
+		t.Fatalf("unexpected error: %v", err)
 	}
 	if len(evs) != 1 {
-		t.Fatalf("len(evs) = %d, quero 1", len(evs))
+		t.Fatalf("len(evs) = %d, want 1", len(evs))
 	}
 	if evs[0].Caption != "PDF teste" {
-		t.Errorf("Caption = %q, quero \"PDF teste\"", evs[0].Caption)
+		t.Errorf("Caption = %q, want \"PDF teste\"", evs[0].Caption)
 	}
 	if evs[0].Filename != "515642-9741-manual-forno-gourmet-grill-rev-43.pdf" {
-		t.Errorf("Filename = %q, quero o nome real (longo, com hifens e numeros)", evs[0].Filename)
+		t.Errorf("Filename = %q, want the real name (long, with hyphens and numbers)", evs[0].Filename)
 	}
 }
 
@@ -1169,10 +1169,10 @@ func TestParseWebhookDoesNotRegressTheCurrent16Fields(t *testing.T) {
 
 	evs, err := ParseWebhook(payload)
 	if err != nil {
-		t.Fatalf("erro inesperado: %v", err)
+		t.Fatalf("unexpected error: %v", err)
 	}
 	if len(evs) != 1 {
-		t.Fatalf("len(evs) = %d, quero 1", len(evs))
+		t.Fatalf("len(evs) = %d, want 1", len(evs))
 	}
 
 	b, err := json.Marshal(evs[0])
@@ -1199,7 +1199,7 @@ func TestParseWebhookDoesNotRegressTheCurrent16Fields(t *testing.T) {
 	}
 	for k, v := range want {
 		if got[k] != v {
-			t.Errorf("campo %q = %v, quero %v", k, got[k], v)
+			t.Errorf("field %q = %v, want %v", k, got[k], v)
 		}
 	}
 
@@ -1212,11 +1212,11 @@ func TestParseWebhookDoesNotRegressTheCurrent16Fields(t *testing.T) {
 	}
 	for _, field := range mustNotAppear {
 		if _, exists := got[field]; exists {
-			t.Errorf("campo %q apareceu no JSON de uma mensagem de texto simples — omitempty quebrado", field)
+			t.Errorf("field %q showed up in the JSON of a plain text message — omitempty broken", field)
 		}
 	}
 	if len(got) != len(want) {
-		t.Errorf("total de chaves no JSON = %d, quero %d — algum campo extra vazando", len(got), len(want))
+		t.Errorf("total keys in the JSON = %d, want %d — some extra field leaking", len(got), len(want))
 	}
 }
 
@@ -1251,20 +1251,20 @@ func TestParseWebhookAnUnknownFieldDoesNotBringDownTheParse(t *testing.T) {
 
 	evs, err := ParseWebhook(payload)
 	if err != nil {
-		t.Fatalf("erro inesperado: %v — campo desconhecido nao pode virar erro de parse", err)
+		t.Fatalf("unexpected error: %v — an unknown field must not become a parse error", err)
 	}
 	if len(evs) != 1 {
-		t.Fatalf("len(evs) = %d, quero 1", len(evs))
+		t.Fatalf("len(evs) = %d, want 1", len(evs))
 	}
 	e := evs[0]
 	if e.Text != "oi" {
-		t.Errorf("Text = %q — o campo conhecido ao lado do desconhecido se perdeu", e.Text)
+		t.Errorf("Text = %q — the known field next to the unknown one was lost", e.Text)
 	}
 	if e.FromRaw != "551199990000" || e.FromCanonical != "5511999990000" {
 		t.Errorf("FromRaw=%q FromCanonical=%q", e.FromRaw, e.FromCanonical)
 	}
 	if e.ContactName != "Maria" {
-		t.Errorf("ContactName = %q — o casamento por wa_id quebrou junto com o campo novo", e.ContactName)
+		t.Errorf("ContactName = %q — the wa_id match broke together with the new field", e.ContactName)
 	}
 
 	// Do NOT add user_id/from_user_id to the envelope (T-031's decision):
@@ -1276,7 +1276,7 @@ func TestParseWebhookAnUnknownFieldDoesNotBringDownTheParse(t *testing.T) {
 	}
 	for _, forbidden := range []string{"user_id", "from_user_id", "BR.", "campo_que_a_meta_ainda_nao_criou"} {
 		if strings.Contains(string(b), forbidden) {
-			t.Errorf("envelope vazou %q: %s", forbidden, b)
+			t.Errorf("envelope leaked %q: %s", forbidden, b)
 		}
 	}
 }
@@ -1294,17 +1294,17 @@ func TestParseWebhookATemplateButtonCaptureHasPayloadEqualToText(t *testing.T) {
 
 	evs, err := ParseWebhook(payload)
 	if err != nil {
-		t.Fatalf("erro inesperado: %v", err)
+		t.Fatalf("unexpected error: %v", err)
 	}
 	if len(evs) != 1 {
-		t.Fatalf("len(evs) = %d, quero 1", len(evs))
+		t.Fatalf("len(evs) = %d, want 1", len(evs))
 	}
 	if evs[0].ButtonPayload != "Falar com a gente" {
 		t.Errorf("ButtonPayload = %q", evs[0].ButtonPayload)
 	}
 	if evs[0].ButtonPayload != evs[0].ButtonText {
-		t.Errorf("ButtonPayload (%q) != ButtonText (%q) — a captura real tem os dois IGUAIS; "+
-			"se isto mudou, o corpus_test.go precisa ser revisto", evs[0].ButtonPayload, evs[0].ButtonText)
+		t.Errorf("ButtonPayload (%q) != ButtonText (%q) — the real capture has both EQUAL; "+
+			"if this changed, corpus_test.go needs to be revisited", evs[0].ButtonPayload, evs[0].ButtonText)
 	}
 }
 
@@ -1329,13 +1329,13 @@ func TestParseWebhookReadsReplyTo(t *testing.T) {
 
 	evs, err := ParseWebhook(payload)
 	if err != nil {
-		t.Fatalf("erro inesperado: %v", err)
+		t.Fatalf("unexpected error: %v", err)
 	}
 	if len(evs) != 1 {
-		t.Fatalf("len(evs) = %d, quero 1", len(evs))
+		t.Fatalf("len(evs) = %d, want 1", len(evs))
 	}
 	if evs[0].ReplyTo != "wamid.TESTE001" {
-		t.Errorf("ReplyTo = %q, quero wamid.TESTE001 (o id do CONTEXT, nao o from)", evs[0].ReplyTo)
+		t.Errorf("ReplyTo = %q, want wamid.TESTE001 (the CONTEXT's id, not the from)", evs[0].ReplyTo)
 	}
 }
 
@@ -1350,16 +1350,16 @@ func TestParseWebhookReplyToReadsTheContextsIdNotItsFrom(t *testing.T) {
 
 	evs, err := ParseWebhook(payload)
 	if err != nil {
-		t.Fatalf("erro inesperado: %v", err)
+		t.Fatalf("unexpected error: %v", err)
 	}
 	if len(evs) != 1 {
-		t.Fatalf("len(evs) = %d, quero 1", len(evs))
+		t.Fatalf("len(evs) = %d, want 1", len(evs))
 	}
 	if evs[0].ReplyTo == "5532999990000" {
-		t.Fatalf("ReplyTo = %q — leu context.FROM (o numero do negocio), nao context.id", evs[0].ReplyTo)
+		t.Fatalf("ReplyTo = %q — read context.FROM (the business's number), not context.id", evs[0].ReplyTo)
 	}
 	if evs[0].ReplyTo != "wamid.TESTE001" {
-		t.Errorf("ReplyTo = %q, quero wamid.TESTE001", evs[0].ReplyTo)
+		t.Errorf("ReplyTo = %q, want wamid.TESTE001", evs[0].ReplyTo)
 	}
 }
 
@@ -1373,13 +1373,13 @@ func TestParseWebhookWithoutContextGetsNoReplyTo(t *testing.T) {
 
 	evs, err := ParseWebhook(payload)
 	if err != nil {
-		t.Fatalf("erro inesperado: %v", err)
+		t.Fatalf("unexpected error: %v", err)
 	}
 	if len(evs) != 1 {
-		t.Fatalf("len(evs) = %d, quero 1", len(evs))
+		t.Fatalf("len(evs) = %d, want 1", len(evs))
 	}
 	if evs[0].ReplyTo != "" {
-		t.Errorf("ReplyTo = %q, quero vazio — mensagem sem context nao pode ganhar o campo", evs[0].ReplyTo)
+		t.Errorf("ReplyTo = %q, want empty — a message without context must not gain the field", evs[0].ReplyTo)
 	}
 
 	b, err := json.Marshal(evs[0])
@@ -1387,7 +1387,7 @@ func TestParseWebhookWithoutContextGetsNoReplyTo(t *testing.T) {
 		t.Fatalf("Marshal: %v", err)
 	}
 	if strings.Contains(string(b), "responder_a") {
-		t.Errorf("responder_a apareceu no JSON sem context: %s", b)
+		t.Errorf("responder_a showed up in the JSON without context: %s", b)
 	}
 }
 
@@ -1403,13 +1403,13 @@ func TestParseWebhookAContextWithoutAnIdDoesNotInventReplyTo(t *testing.T) {
 
 	evs, err := ParseWebhook(payload)
 	if err != nil {
-		t.Fatalf("erro inesperado: %v", err)
+		t.Fatalf("unexpected error: %v", err)
 	}
 	if len(evs) != 1 {
-		t.Fatalf("len(evs) = %d, quero 1", len(evs))
+		t.Fatalf("len(evs) = %d, want 1", len(evs))
 	}
 	if evs[0].ReplyTo != "" {
-		t.Errorf("ReplyTo = %q, quero vazio — context sem id nao pode inventar valor", evs[0].ReplyTo)
+		t.Errorf("ReplyTo = %q, want empty — context without an id must not invent a value", evs[0].ReplyTo)
 	}
 }
 
@@ -1434,16 +1434,16 @@ func TestParseWebhookAChainMessageMarksBothForwardingFields(t *testing.T) {
 
 	evs, err := ParseWebhook(payload)
 	if err != nil {
-		t.Fatalf("erro inesperado: %v", err)
+		t.Fatalf("unexpected error: %v", err)
 	}
 	if len(evs) != 1 {
-		t.Fatalf("len(evs) = %d, quero 1", len(evs))
+		t.Fatalf("len(evs) = %d, want 1", len(evs))
 	}
 	if !evs[0].Forwarded {
-		t.Errorf("Forwarded = false, quero true")
+		t.Errorf("Forwarded = false, want true")
 	}
 	if !evs[0].FrequentlyForwarded {
-		t.Errorf("FrequentlyForwarded = false, quero true — e o sinal de corrente, a razao desta tarefa existir")
+		t.Errorf("FrequentlyForwarded = false, want true — e o sinal de corrente, a razao desta tarefa existir")
 	}
 }
 
@@ -1467,24 +1467,24 @@ func TestParseWebhookANonForwardedReplyGetsNoForwardingKeys(t *testing.T) {
 
 	evs, err := ParseWebhook(payload)
 	if err != nil {
-		t.Fatalf("erro inesperado: %v", err)
+		t.Fatalf("unexpected error: %v", err)
 	}
 	if len(evs) != 1 {
-		t.Fatalf("len(evs) = %d, quero 1", len(evs))
+		t.Fatalf("len(evs) = %d, want 1", len(evs))
 	}
 	if evs[0].Forwarded || evs[0].FrequentlyForwarded {
-		t.Errorf("Forwarded=%v FrequentlyForwarded=%v, quero os dois false",
+		t.Errorf("Forwarded=%v FrequentlyForwarded=%v, want both false",
 			evs[0].Forwarded, evs[0].FrequentlyForwarded)
 	}
 	if evs[0].ReplyTo != "wamid.TESTE001" {
-		t.Errorf("ReplyTo = %q — os campos novos nao podem atrapalhar a leitura do id", evs[0].ReplyTo)
+		t.Errorf("ReplyTo = %q — the new fields must not get in the way of reading the id", evs[0].ReplyTo)
 	}
 	b, err := json.Marshal(evs[0])
 	if err != nil {
 		t.Fatalf("Marshal: %v", err)
 	}
 	if strings.Contains(string(b), "encaminhada") {
-		t.Errorf("\"encaminhada\" apareceu no JSON de uma mensagem nao encaminhada: %s", b)
+		t.Errorf("\"encaminhada\" showed up in the JSON of a message that was not forwarded: %s", b)
 	}
 }
 
@@ -1511,26 +1511,26 @@ func TestParseWebhookAContextOfTheWrongTypeDeliversTheMessageWithoutCountingIgno
 
 	evs, err := ParseWebhook(payload)
 	if errors.Is(err, ErrPartialParse) {
-		t.Fatalf("err = %v — a mensagem foi contada como ignorada; era exatamente isso que a fazia sumir", err)
+		t.Fatalf("err = %v — the message was counted as ignored; that was exactly what made it vanish", err)
 	}
 	if err != nil {
-		t.Fatalf("erro inesperado: %v", err)
+		t.Fatalf("unexpected error: %v", err)
 	}
 	if len(evs) != 2 {
-		t.Fatalf("len(evs) = %d, quero 2 — a mensagem com context ilegivel tem de ser ENTREGUE", len(evs))
+		t.Fatalf("len(evs) = %d, want 2 — the message with unreadable context has to be DELIVERED", len(evs))
 	}
 	if evs[0].Text != "Recebido" {
-		t.Errorf("Text = %q — a mensagem tem de chegar inteira, so sem o bloco", evs[0].Text)
+		t.Errorf("Text = %q — the message has to arrive whole, just without the block", evs[0].Text)
 	}
 	if evs[0].ReplyTo != "" {
-		t.Errorf("ReplyTo = %q, quero vazio — o bloco ilegivel nao pode ser adivinhado", evs[0].ReplyTo)
+		t.Errorf("ReplyTo = %q, want empty — an unreadable block must not be guessed at", evs[0].ReplyTo)
 	}
 	if evs[0].Forwarded || evs[0].FrequentlyForwarded {
-		t.Errorf("Forwarded=%v FrequentlyForwarded=%v, quero os dois false",
+		t.Errorf("Forwarded=%v FrequentlyForwarded=%v, want both false",
 			evs[0].Forwarded, evs[0].FrequentlyForwarded)
 	}
 	if evs[1].ReplyTo != "wamid.TESTE001" {
-		t.Errorf("ReplyTo = %q na mensagem de tipo CERTO — tolerar o ilegivel nao pode virar parar de ler",
+		t.Errorf("ReplyTo = %q on the message of the RIGHT type — tolerating the unreadable must not turn into stopping reading",
 			evs[1].ReplyTo)
 	}
 }
@@ -1554,19 +1554,19 @@ func TestParseWebhookAFieldOfTheWrongTypeInsideContextDoesNotBringDownTheMessage
 
 	evs, err := ParseWebhook(payload)
 	if err != nil {
-		t.Fatalf("erro inesperado: %v", err)
+		t.Fatalf("unexpected error: %v", err)
 	}
 	if len(evs) != 1 {
-		t.Fatalf("len(evs) = %d, quero 1", len(evs))
+		t.Fatalf("len(evs) = %d, want 1", len(evs))
 	}
 	if evs[0].Text != "Recebido" {
 		t.Errorf("Text = %q", evs[0].Text)
 	}
 	if evs[0].ReplyTo != "" {
-		t.Errorf("ReplyTo = %q, quero vazio — 42 nao e um wamid", evs[0].ReplyTo)
+		t.Errorf("ReplyTo = %q, want empty — 42 is not a wamid", evs[0].ReplyTo)
 	}
 	if evs[0].Forwarded {
-		t.Errorf("Forwarded = true — \"sim\" nao e um booleano e nao pode virar um")
+		t.Errorf("Forwarded = true — \"sim\" is not a boolean and must not become one")
 	}
 }
 
@@ -1593,16 +1593,16 @@ func TestParseWebhookAnUnreadableContextDiscardsTheWHOLEBlockNotJustTheBadField(
 
 	evs, err := ParseWebhook(payload)
 	if err != nil {
-		t.Fatalf("erro inesperado: %v", err)
+		t.Fatalf("unexpected error: %v", err)
 	}
 	if len(evs) != 1 {
-		t.Fatalf("len(evs) = %d, quero 1", len(evs))
+		t.Fatalf("len(evs) = %d, want 1", len(evs))
 	}
 	if evs[0].Text != "Recebido" {
-		t.Errorf("Text = %q — a mensagem continua sendo o que nao se perde", evs[0].Text)
+		t.Errorf("Text = %q — the message keeps being what doesn't get lost", evs[0].Text)
 	}
 	if evs[0].ReplyTo != "" {
-		t.Errorf("ReplyTo = %q, quero vazio — o bloco degrada inteiro, nao campo a campo", evs[0].ReplyTo)
+		t.Errorf("ReplyTo = %q, want empty — the block degrades whole, not field by field", evs[0].ReplyTo)
 	}
 }
 
@@ -1621,22 +1621,22 @@ func TestParseWebhookAVoiceOfTheWrongTypeDeliversTheAudioWithVoiceAbsent(t *test
 
 	evs, err := ParseWebhook(payload)
 	if errors.Is(err, ErrPartialParse) {
-		t.Fatalf("err = %v — o audio foi contado como ignorado por causa de UM campo", err)
+		t.Fatalf("err = %v — the audio was counted as ignored because of ONE field", err)
 	}
 	if err != nil {
-		t.Fatalf("erro inesperado: %v", err)
+		t.Fatalf("unexpected error: %v", err)
 	}
 	if len(evs) != 1 {
-		t.Fatalf("len(evs) = %d, quero 1", len(evs))
+		t.Fatalf("len(evs) = %d, want 1", len(evs))
 	}
 	if evs[0].MediaID != "MEDIA_Z" {
-		t.Errorf("MediaID = %q — o resto do bloco de midia tem de sobreviver", evs[0].MediaID)
+		t.Errorf("MediaID = %q — the rest of the media block has to survive", evs[0].MediaID)
 	}
 	if evs[0].MediaMimePayload != "audio/ogg; codecs=opus" {
-		t.Errorf("MediaMimePayload = %q — o parametro codecs se perdeu", evs[0].MediaMimePayload)
+		t.Errorf("MediaMimePayload = %q — the codecs parameter was lost", evs[0].MediaMimePayload)
 	}
 	if evs[0].Voice != nil {
-		t.Errorf("Voice = %v, quero nil — \"sim\" nao e booleano, e \"nao sei\" e a unica resposta honesta", *evs[0].Voice)
+		t.Errorf("Voice = %v, want nil — \"sim\" is not a boolean, and \"nao sei\" is the only honest answer", *evs[0].Voice)
 	}
 }
 
@@ -1654,13 +1654,13 @@ func TestParseWebhookANullVoiceDoesNotBecomeFalse(t *testing.T) {
 
 	evs, err := ParseWebhook(payload)
 	if err != nil {
-		t.Fatalf("erro inesperado: %v", err)
+		t.Fatalf("unexpected error: %v", err)
 	}
 	if len(evs) != 1 {
-		t.Fatalf("len(evs) = %d, quero 1", len(evs))
+		t.Fatalf("len(evs) = %d, want 1", len(evs))
 	}
 	if evs[0].Voice != nil {
-		t.Fatalf("Voice = %v, quero nil — null e ausencia, nao \"voice: false\"", *evs[0].Voice)
+		t.Fatalf("Voice = %v, want nil — null is absence, not \"voice: false\"", *evs[0].Voice)
 	}
 }
 
@@ -1680,15 +1680,15 @@ func TestParseWebhookANullVoiceDoesNotBecomeFalse(t *testing.T) {
 func TestMessageMetaIsolatesEveryFieldByConstruction(t *testing.T) {
 	kind := reflect.TypeOf(messageMeta{})
 	if kind.NumField() == 0 {
-		t.Fatal("messageMeta sem campos — a guarda nao verificou NADA")
+		t.Fatal("messageMeta without fields — the guard checked NOTHING")
 	}
 	payload := reflect.TypeOf(json.RawMessage(nil))
 	for i := 0; i < kind.NumField(); i++ {
 		field := kind.Field(i)
 		if field.Type != payload {
-			t.Errorf("messageMeta.%s e %s, quero json.RawMessage — um campo que o "+
-				"encoding/json possa RECUSAR aqui derruba o Unmarshal da mensagem "+
-				"INTEIRA, e ela some de `eventos` (ver o comentario do tipo)",
+			t.Errorf("messageMeta.%s is %s, want json.RawMessage — a field the "+
+				"encoding/json could REJECT here brings down the Unmarshal of the WHOLE "+
+				"message, and it disappears from `eventos` (see the type's comment)",
 				field.Name, field.Type)
 		}
 	}
@@ -1728,15 +1728,15 @@ func TestBoundaryStructsIsolateEveryFieldByConstruction(t *testing.T) {
 		kind := reflect.TypeOf(sample)
 		t.Run(kind.Name(), func(t *testing.T) {
 			if kind.NumField() == 0 {
-				t.Fatalf("%s sem campos — a guarda nao verificou NADA", kind.Name())
+				t.Fatalf("%s without fields — the guard checked NOTHING", kind.Name())
 			}
 			for i := 0; i < kind.NumField(); i++ {
 				field := kind.Field(i)
 				if field.Type != payload {
-					t.Errorf("%s.%s e %s, quero json.RawMessage — um campo que o "+
-						"encoding/json possa RECUSAR aqui derruba o Unmarshal de %s "+
-						"INTEIRO, e com ele tudo que estava dentro (ver o comentario "+
-						"das structs de fronteira, em parse.go)",
+					t.Errorf("%s.%s is %s, want json.RawMessage — a field the "+
+						"encoding/json could REJECT here brings down the Unmarshal of the WHOLE %s "+
+						", and with it everything that was inside (see the comment "+
+						"on the boundary structs, in parse.go)",
 						kind.Name(), field.Name, field.Type, kind.Name())
 				}
 			}
@@ -1780,7 +1780,7 @@ const twoEntryBatch = `{"object":"whatsapp_business_account","entry":[
 func TestParseWebhookNoFieldAtAnyLevelSilencesTheBatch(t *testing.T) {
 	var payload any
 	if err := json.Unmarshal([]byte(twoEntryBatch), &payload); err != nil {
-		t.Fatalf("o proprio lote de teste nao e' JSON valido: %v", err)
+		t.Fatalf("the test batch itself is not valid JSON: %v", err)
 	}
 
 	// `"x"` covers "a string came where an object/list/bool/number is
@@ -1791,7 +1791,7 @@ func TestParseWebhookNoFieldAtAnyLevelSilencesTheBatch(t *testing.T) {
 
 	paths := jsonPaths(payload, "")
 	if len(paths) == 0 {
-		t.Fatal("nenhum caminho para mutar — a guarda nao verificou NADA")
+		t.Fatal("no path to mutate — the guard checked NOTHING")
 	}
 	// TWO EXCEPTIONS, and both are "you swapped the container that HOLDS
 	// the witness", not "the parser silenced the batch":
@@ -1810,7 +1810,7 @@ func TestParseWebhookNoFieldAtAnyLevelSilencesTheBatch(t *testing.T) {
 			seen++
 			corrupted := withPathSwapped(t, twoEntryBatch, path, mutant)
 			evs, err := ParseWebhook([]byte(corrupted))
-			_ = err // ErrPartialParse e' legitimo aqui: perder um item e' o preco; calar o lote nao e'
+			_ = err // ErrPartialParse is legitimate here: losing an item is the price; silencing the whole batch is not
 			found := false
 			for _, e := range evs {
 				if e.WaMessageID == "wamid.TESTEMUNHA" && e.Text == "Testemunha" {
@@ -1818,13 +1818,13 @@ func TestParseWebhookNoFieldAtAnyLevelSilencesTheBatch(t *testing.T) {
 				}
 			}
 			if !found {
-				t.Errorf("%s=%s: a testemunha do OUTRO entry sumiu (len(evs)=%d, err=%v)",
+				t.Errorf("%s=%s: the witness from the OTHER entry vanished (len(evs)=%d, err=%v)",
 					path, mutant, len(evs), err)
 			}
 		}
 	}
 	if seen == 0 {
-		t.Fatal("nenhuma mutacao foi aplicada — a guarda nao verificou NADA")
+		t.Fatal("no mutation was applied — the guard checked NOTHING")
 	}
 	t.Logf("%d mutacoes aplicadas em %d caminhos do payload", seen, len(paths))
 }
@@ -1850,13 +1850,13 @@ func TestParseWebhookAnUnreadableProfileCostsOnlyThatContact(t *testing.T) {
 
 	evs, err := ParseWebhook(payload)
 	if err != nil || len(evs) != 2 {
-		t.Fatalf("err=%v len=%d, quero nil e 2 — um perfil ilegivel nao pode apagar mensagem nenhuma", err, len(evs))
+		t.Fatalf("err=%v len=%d, want nil and 2 — an unreadable profile must not erase any message", err, len(evs))
 	}
 	if evs[0].ContactName != "" {
-		t.Errorf("ContactName = %q, quero vazio — \"Fulana\" esta legivel a olho nu no bloco e ainda assim nao se adivinha", evs[0].ContactName)
+		t.Errorf("ContactName = %q, want empty — \"Fulana\" is readable to the naked eye in the block and still isn't guessed at", evs[0].ContactName)
 	}
 	if evs[1].ContactName != "Sicrana" {
-		t.Errorf("ContactName da irma = %q, quero Sicrana — o contato ilegivel levou junto o vizinho", evs[1].ContactName)
+		t.Errorf("the sibling's ContactName = %q, want Sicrana — the unreadable contact took its neighbor down with it", evs[1].ContactName)
 	}
 }
 
@@ -1881,10 +1881,10 @@ func TestParseWebhookAnEntryOfTheWrongTypeDoesNotPanicAndCountsIgnored(t *testin
 	} {
 		evs, err := ParseWebhook([]byte(payload))
 		if !errors.Is(err, ErrPartialParse) {
-			t.Errorf("%s: err = %v, quero ErrPartialParse", payload, err)
+			t.Errorf("%s: err = %v, want ErrPartialParse", payload, err)
 		}
 		if len(evs) != 0 {
-			t.Errorf("%s: len(evs) = %d, quero 0", payload, len(evs))
+			t.Errorf("%s: len(evs) = %d, want 0", payload, len(evs))
 		}
 	}
 }
@@ -1941,14 +1941,14 @@ func withPathSwapped(t *testing.T, document, path, value string) string {
 			}
 			var n int
 			if _, err := fmt.Sscanf(name[openIdx:], "[%d]", &n); err != nil {
-				t.Fatalf("indice ilegivel em %q", part)
+				t.Fatalf("unreadable index in %q", part)
 			}
 			indexes = append([]int{n}, indexes...)
 			name = name[:openIdx]
 		}
 		object, ok := cur.(map[string]any)
 		if !ok {
-			t.Fatalf("caminho %q: %q nao e' objeto", path, strings.Join(parts[:i], "."))
+			t.Fatalf("path %q: %q is not an object", path, strings.Join(parts[:i], "."))
 		}
 		if i == len(parts)-1 && len(indexes) == 0 {
 			object[name] = raw
@@ -1958,7 +1958,7 @@ func withPathSwapped(t *testing.T, document, path, value string) string {
 		for _, n := range indexes {
 			list, ok := cur.([]any)
 			if !ok || n >= len(list) {
-				t.Fatalf("caminho %q: indice %d fora de uma lista", path, n)
+				t.Fatalf("path %q: index %d out of a list", path, n)
 			}
 			cur = list[n]
 		}
@@ -2038,7 +2038,7 @@ func TestParseWebhookNoFieldOfTheWrongTypeErasesTheMessageNorItsSiblings(t *test
 		t.Run(kind, func(t *testing.T) {
 			var fields map[string]json.RawMessage
 			if err := json.Unmarshal([]byte(messagesOfEachType[kind]), &fields); err != nil {
-				t.Fatalf("fixture do tipo %s nao e' objeto JSON: %v", kind, err)
+				t.Fatalf("fixture of type %s is not a JSON object: %v", kind, err)
 			}
 			keys := make([]string, 0, len(fields))
 			for key := range fields {
@@ -2048,7 +2048,7 @@ func TestParseWebhookNoFieldOfTheWrongTypeErasesTheMessageNorItsSiblings(t *test
 			}
 			sort.Strings(keys)
 			if len(keys) == 0 {
-				t.Fatal("nenhuma chave para mutar — a guarda nao verificou NADA")
+				t.Fatal("no key to mutate — the guard checked NOTHING")
 			}
 
 			for _, key := range keys {
@@ -2056,20 +2056,20 @@ func TestParseWebhookNoFieldOfTheWrongTypeErasesTheMessageNorItsSiblings(t *test
 					broken := withFieldSwapped(t, fields, key, mutant)
 					evs, err := ParseWebhook(batchOfTwo(broken, healthySibling))
 					if err != nil {
-						t.Errorf("%s/%s=%s: err = %v — a mensagem foi contada como ignorada, "+
-							"que e' exatamente o que a fazia sumir", kind, key, mutant, err)
+						t.Errorf("%s/%s=%s: err = %v — the message was counted as ignored, "+
+							"which is exactly what made it vanish", kind, key, mutant, err)
 						continue
 					}
 					if len(evs) != 2 {
-						t.Errorf("%s/%s=%s: len(evs) = %d, quero 2", kind, key, mutant, len(evs))
+						t.Errorf("%s/%s=%s: len(evs) = %d, want 2", kind, key, mutant, len(evs))
 						continue
 					}
 					if evs[0].WaMessageID != "wamid.MUT" {
-						t.Errorf("%s/%s=%s: evs[0].WaMessageID = %q, quero wamid.MUT",
+						t.Errorf("%s/%s=%s: evs[0].WaMessageID = %q, want wamid.MUT",
 							kind, key, mutant, evs[0].WaMessageID)
 					}
 					if evs[1].WaMessageID != "wamid.IRMA" || evs[1].Text != "Irma sa" {
-						t.Errorf("%s/%s=%s: a irma sa chegou como %q/%q",
+						t.Errorf("%s/%s=%s: the healthy sibling arrived as %q/%q",
 							kind, key, mutant, evs[1].WaMessageID, evs[1].Text)
 					}
 				}
@@ -2113,13 +2113,13 @@ func TestParseWebhookAnIdOfTheWrongTypeStillErasesTheMessage(t *testing.T) {
 
 	evs, err := ParseWebhook(batchOfTwo(broken, healthySibling))
 	if !errors.Is(err, ErrPartialParse) {
-		t.Fatalf("err = %v, quero ErrPartialParse — a mensagem sem id tem de ser CONTADA", err)
+		t.Fatalf("err = %v, want ErrPartialParse — a message without an id has to be COUNTED", err)
 	}
 	if len(evs) != 1 {
-		t.Fatalf("len(evs) = %d, quero 1 — so a irma sa", len(evs))
+		t.Fatalf("len(evs) = %d, want 1 — only the healthy sibling", len(evs))
 	}
 	if evs[0].WaMessageID != "wamid.IRMA" {
-		t.Errorf("WaMessageID = %q, quero wamid.IRMA", evs[0].WaMessageID)
+		t.Errorf("WaMessageID = %q, want wamid.IRMA", evs[0].WaMessageID)
 	}
 }
 
@@ -2151,10 +2151,10 @@ func TestParseWebhookANullReactionOrLocationIsStillAbsence(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			evs, err := ParseWebhook(batchOfTwo(broken, healthySibling))
 			if !errors.Is(err, ErrPartialParse) {
-				t.Fatalf("err = %v, quero ErrPartialParse — null e' a Meta dizendo que nao ha bloco", err)
+				t.Fatalf("err = %v, want ErrPartialParse — null is Meta saying there's no block", err)
 			}
 			if len(evs) != 1 || evs[0].WaMessageID != "wamid.IRMA" {
-				t.Fatalf("len(evs) = %d, evs[0] = %q — quero so a irma sa", len(evs), evs[0].WaMessageID)
+				t.Fatalf("len(evs) = %d, evs[0] = %q — want only the healthy sibling", len(evs), evs[0].WaMessageID)
 			}
 		})
 	}
@@ -2165,20 +2165,20 @@ func TestParseWebhookASyntheticTemplateButtonDistinguishesPayloadFromText(t *tes
 
 	evs, err := ParseWebhook(payload)
 	if err != nil {
-		t.Fatalf("erro inesperado: %v", err)
+		t.Fatalf("unexpected error: %v", err)
 	}
 	if len(evs) != 1 {
-		t.Fatalf("len(evs) = %d, quero 1", len(evs))
+		t.Fatalf("len(evs) = %d, want 1", len(evs))
 	}
 	if evs[0].ButtonPayload != "PAYLOAD_INTERNO_9F3" {
-		t.Errorf("ButtonPayload = %q, quero PAYLOAD_INTERNO_9F3", evs[0].ButtonPayload)
+		t.Errorf("ButtonPayload = %q, want PAYLOAD_INTERNO_9F3", evs[0].ButtonPayload)
 	}
 	if evs[0].ButtonText != "Falar com a gente" {
-		t.Errorf("ButtonText = %q, quero \"Falar com a gente\"", evs[0].ButtonText)
+		t.Errorf("ButtonText = %q, want \"Falar com a gente\"", evs[0].ButtonText)
 	}
 	if evs[0].ButtonPayload == evs[0].ButtonText {
-		t.Fatalf("ButtonPayload == ButtonText — o fixture sintetico perdeu a razao de existir " +
-			"se os dois valores coincidirem")
+		t.Fatalf("ButtonPayload == ButtonText — the synthetic fixture lost its reason to exist " +
+			"if the two values coincide")
 	}
 }
 
@@ -2198,10 +2198,10 @@ func TestAccountWabaIDsInPayloadReadsAnAccountChange(t *testing.T) {
 
 	ids := AccountWabaIDsInPayload(payload)
 	if len(ids) != 1 {
-		t.Fatalf("len(ids) = %d, quero 1", len(ids))
+		t.Fatalf("len(ids) = %d, want 1", len(ids))
 	}
 	if ids[0] != "WABA_TESTE" {
-		t.Errorf("ids[0] = %q, quero WABA_TESTE", ids[0])
+		t.Errorf("ids[0] = %q, want WABA_TESTE", ids[0])
 	}
 }
 
@@ -2211,7 +2211,7 @@ func TestAccountWabaIDsInPayloadReadsAnAccountChange(t *testing.T) {
 func TestAccountWabaIDsInPayloadIgnoresAMessage(t *testing.T) {
 	ids := AccountWabaIDsInPayload(testAccountPayload())
 	if len(ids) != 0 {
-		t.Fatalf("ids = %v, quero nenhum — o change e' field:\"messages\"", ids)
+		t.Fatalf("ids = %v, want none — the change is field:\"messages\"", ids)
 	}
 }
 
@@ -2229,10 +2229,10 @@ func TestAccountWabaIDsInPayloadMixesMessageAndAccount(t *testing.T) {
 
 	ids := AccountWabaIDsInPayload(payload)
 	if len(ids) != 1 {
-		t.Fatalf("len(ids) = %d, quero 1 — so a mudanca de CONTA conta", len(ids))
+		t.Fatalf("len(ids) = %d, want 1 — only the ACCOUNT change counts", len(ids))
 	}
 	if ids[0] != "WABA_OUTRA" {
-		t.Errorf("ids[0] = %q, quero WABA_OUTRA", ids[0])
+		t.Errorf("ids[0] = %q, want WABA_OUTRA", ids[0])
 	}
 }
 
@@ -2241,7 +2241,7 @@ func TestAccountWabaIDsInPayloadMixesMessageAndAccount(t *testing.T) {
 func TestAccountWabaIDsInPayloadAnInvalidBodyDoesNotPanic(t *testing.T) {
 	for _, c := range []string{`null`, `42`, `[]`, `"texto"`, `true`, `{`} {
 		if ids := AccountWabaIDsInPayload([]byte(c)); ids != nil {
-			t.Errorf("corpo %q: ids = %v, quero nil", c, ids)
+			t.Errorf("body %q: ids = %v, want nil", c, ids)
 		}
 	}
 }
@@ -2281,18 +2281,18 @@ func templateStatusPayload(stamp, event string) []byte {
 func TestParseWebhookTemplateStatusTwoApprovalsAtDifferentInstantsHaveDifferentIds(t *testing.T) {
 	first, err := ParseWebhook(templateStatusPayload("1769000020", "APPROVED"))
 	if err != nil {
-		t.Fatalf("erro inesperado: %v", err)
+		t.Fatalf("unexpected error: %v", err)
 	}
 	second, err := ParseWebhook(templateStatusPayload("1769999999", "APPROVED"))
 	if err != nil {
-		t.Fatalf("erro inesperado: %v", err)
+		t.Fatalf("unexpected error: %v", err)
 	}
 	if len(first) != 1 || len(second) != 1 {
-		t.Fatalf("len = %d e %d, quero 1 e 1", len(first), len(second))
+		t.Fatalf("len = %d and %d, want 1 and 1", len(first), len(second))
 	}
 	if first[0].ID == second[0].ID {
-		t.Fatalf("os dois ids sao %q — a segunda aprovacao do MESMO template seria "+
-			"deduplicada e sumiria no consumidor", first[0].ID)
+		t.Fatalf("the two ids are %q — the SAME template's second approval would be "+
+			"deduplicated and vanish for the consumer", first[0].ID)
 	}
 	// The other side of the same coin: repeating the SAME event at the
 	// SAME instant (Meta's legitimate redelivery, or a malicious resend)
@@ -2300,10 +2300,10 @@ func TestParseWebhookTemplateStatusTwoApprovalsAtDifferentInstantsHaveDifferentI
 	// dedup.
 	duplicate, err := ParseWebhook(templateStatusPayload("1769000020", "APPROVED"))
 	if err != nil {
-		t.Fatalf("erro inesperado: %v", err)
+		t.Fatalf("unexpected error: %v", err)
 	}
 	if duplicate[0].ID != first[0].ID {
-		t.Errorf("reentrega do mesmo evento deu id %q, quero %q — a chave tem de ser DETERMINISTICA",
+		t.Errorf("redelivery of the same event gave id %q, want %q — the key has to be DETERMINISTIC",
 			duplicate[0].ID, first[0].ID)
 	}
 }
@@ -2317,7 +2317,7 @@ func TestParseWebhookTemplateStatusReasonNONEAndAbsenceAreDifferentThings(t *tes
 		t.Fatalf("err=%v len=%d", err, len(withNONE))
 	}
 	if withNONE[0].Template.Reason != "NONE" {
-		t.Errorf("Reason = %q, quero a string NONE — a Meta a manda literalmente",
+		t.Errorf("Reason = %q, want the string NONE — Meta sends it literally",
 			withNONE[0].Template.Reason)
 	}
 
@@ -2328,17 +2328,17 @@ func TestParseWebhookTemplateStatusReasonNONEAndAbsenceAreDifferentThings(t *tes
 	    "message_template_category":"UTILITY"}}]}]}`)
 	evs, err := ParseWebhook(withoutReason)
 	if err != nil || len(evs) != 1 {
-		t.Fatalf("err=%v len=%d — reason ausente nao e payload malformado", err, len(evs))
+		t.Fatalf("err=%v len=%d — an absent reason is not a malformed payload", err, len(evs))
 	}
 	if evs[0].Template.Reason != "" {
-		t.Errorf("Reason = %q, quero vazio — a Meta nao mandou o campo", evs[0].Template.Reason)
+		t.Errorf("Reason = %q, want empty — Meta did not send the field", evs[0].Template.Reason)
 	}
 	b, err := json.Marshal(evs[0])
 	if err != nil {
 		t.Fatalf("Marshal: %v", err)
 	}
 	if strings.Contains(string(b), "motivo") {
-		t.Errorf("a chave \"motivo\" apareceu num evento sem reason: %s", b)
+		t.Errorf("a chave \"motivo\" showed up on an event without a reason: %s", b)
 	}
 }
 
@@ -2359,10 +2359,10 @@ func TestParseWebhookTemplateStatusWithoutAnIdOrWithoutAnEventCountsAsIgnored(t 
 
 		evs, err := ParseWebhook(payload)
 		if len(evs) != 0 {
-			t.Errorf("%s: len(evs) = %d, quero 0", name, len(evs))
+			t.Errorf("%s: len(evs) = %d, want 0", name, len(evs))
 		}
 		if !errors.Is(err, ErrPartialParse) {
-			t.Errorf("%s: err = %v, quero ErrPartialParse — descartar em silencio e o que nao pode", name, err)
+			t.Errorf("%s: err = %v, want ErrPartialParse — discarding silently is what must not happen", name, err)
 		}
 	}
 }
@@ -2393,27 +2393,27 @@ func TestParseWebhookTemplateStatusTouchesNeitherMessageNorStatus(t *testing.T) 
 
 	before, err := ParseWebhook(onlyMessageAndStatus)
 	if err != nil {
-		t.Fatalf("erro inesperado: %v", err)
+		t.Fatalf("unexpected error: %v", err)
 	}
 	after, err := ParseWebhook(withTemplateToo)
 	if err != nil {
-		t.Fatalf("erro inesperado: %v", err)
+		t.Fatalf("unexpected error: %v", err)
 	}
 	if len(before) != 2 {
-		t.Fatalf("len(antes) = %d, quero 2 (mensagem + status)", len(before))
+		t.Fatalf("len(before) = %d, want 2 (message + status)", len(before))
 	}
 	if len(after) != 3 {
-		t.Fatalf("len(depois) = %d, quero 3 (mensagem + status + template)", len(after))
+		t.Fatalf("len(after) = %d, want 3 (message + status + template)", len(after))
 	}
 	for i := range before {
 		a, _ := json.Marshal(before[i])
 		d, _ := json.Marshal(after[i])
 		if string(a) != string(d) {
-			t.Errorf("evento %d mudou byte a byte com o template no lote:\nantes:  %s\ndepois: %s", i, a, d)
+			t.Errorf("event %d changed byte for byte along with the template in the batch:\nbefore: %s\nafter:  %s", i, a, d)
 		}
 	}
 	if after[2].Type != EventTypeTemplateStatus {
-		t.Errorf("o terceiro evento e %q, quero template_status", after[2].Type)
+		t.Errorf("the third event is %q, want template_status", after[2].Type)
 	}
 }
 
@@ -2436,10 +2436,10 @@ func TestParseWebhookAnotherAccountFieldStaysOnlyInTheRawBody(t *testing.T) {
 
 	evs, err := ParseWebhook(payload)
 	if err != nil {
-		t.Fatalf("erro inesperado: %v — campo de conta desconhecido nao e parse parcial", err)
+		t.Fatalf("unexpected error: %v — an unknown account field is not a partial parse", err)
 	}
 	if len(evs) != 0 {
-		t.Fatalf("len(evs) = %d, quero 0 — campo de conta sem modelo nao vira evento", len(evs))
+		t.Fatalf("len(evs) = %d, want 0 — an unmodeled account field does not become an event", len(evs))
 	}
 }
 
@@ -2478,10 +2478,10 @@ func TestParseWebhookTemplateCategoryTwoTransitionsHaveDifferentIds(t *testing.T
 		t.Helper()
 		evs, err := ParseWebhook(payload)
 		if err != nil {
-			t.Fatalf("erro inesperado: %v", err)
+			t.Fatalf("unexpected error: %v", err)
 		}
 		if len(evs) != 1 {
-			t.Fatalf("len(evs) = %d, quero 1", len(evs))
+			t.Fatalf("len(evs) = %d, want 1", len(evs))
 		}
 		return evs[0].ID
 	}
@@ -2489,18 +2489,18 @@ func TestParseWebhookTemplateCategoryTwoTransitionsHaveDifferentIds(t *testing.T
 	there := idOf(templateCategoryPayload("1769000070", "UTILITY", "MARKETING"))
 	back := idOf(templateCategoryPayload("1769000070", "MARKETING", "UTILITY"))
 	if there == back {
-		t.Errorf("ida e volta tem o mesmo id %q — sem a TRANSICAO na chave, encarecer e baratear viram o mesmo evento", there)
+		t.Errorf("round trip has the same id %q — without the TRANSITION in the key, getting pricier and getting cheaper become the same event", there)
 	}
 
 	again := idOf(templateCategoryPayload("1769999999", "UTILITY", "MARKETING"))
 	if again == there {
-		t.Errorf("as duas UTILITY->MARKETING tem o mesmo id %q — sem o TEMPO na chave, a segunda reclassificacao "+
-			"seria deduplicada e o consumidor nunca saberia que ha uma janela de recurso aberta", there)
+		t.Errorf("the two UTILITY->MARKETING have the same id %q — without the TIME in the key, the second reclassification "+
+			"would be deduplicated and the consumer would never know there's an open appeal window", there)
 	}
 
 	redelivery := idOf(templateCategoryPayload("1769000070", "UTILITY", "MARKETING"))
 	if redelivery != there {
-		t.Errorf("reentrega do mesmo evento deu id %q, quero %q — a chave tem de ser DETERMINISTICA",
+		t.Errorf("redelivery of the same event gave id %q, want %q — the key has to be DETERMINISTIC",
 			redelivery, there)
 	}
 }
@@ -2524,10 +2524,10 @@ func TestParseWebhookTemplateCategoryWithoutAnIdOrWithoutANewCategoryCountsAsIgn
 
 		evs, err := ParseWebhook(payload)
 		if len(evs) != 0 {
-			t.Errorf("%s: len(evs) = %d, quero 0", name, len(evs))
+			t.Errorf("%s: len(evs) = %d, want 0", name, len(evs))
 		}
 		if !errors.Is(err, ErrPartialParse) {
-			t.Errorf("%s: err = %v, quero ErrPartialParse — descartar em silencio e o que nao pode", name, err)
+			t.Errorf("%s: err = %v, want ErrPartialParse — discarding silently is what must not happen", name, err)
 		}
 	}
 }
@@ -2545,23 +2545,23 @@ func TestParseWebhookTemplateCategoryAnUnreadableFieldDoesNotBringDownTheEvent(t
 
 	evs, err := ParseWebhook(payload)
 	if err != nil || len(evs) != 1 {
-		t.Fatalf("err=%v len=%d, quero nil e 1 — campo ilegivel nao pode apagar o aviso de reclassificacao", err, len(evs))
+		t.Fatalf("err=%v len=%d, want nil and 1 — an unreadable field must not erase the reclassification warning", err, len(evs))
 	}
 	c := evs[0].TemplateCategory
 	if c == nil {
 		t.Fatal("TemplateCategory == nil")
 	}
 	if c.NewCategory != "MARKETING" || c.AppealStatus != "ELIGIBLE" {
-		t.Errorf("NewCategory=%q AppealStatus=%q — o que decide tem de sobreviver",
+		t.Errorf("NewCategory=%q AppealStatus=%q — what decides has to survive",
 			c.NewCategory, c.AppealStatus)
 	}
 	// 42 does NOT become "42": a block that couldn't be read doesn't exist.
 	if c.PreviousCategory != "" || c.Name != "" {
-		t.Errorf("PreviousCategory=%q Name=%q, quero os dois vazios — bloco ilegivel nao se adivinha",
+		t.Errorf("PreviousCategory=%q Name=%q, want both empty — an unreadable block isn't guessed at",
 			c.PreviousCategory, c.Name)
 	}
 	if evs[0].ID != "template_categoria:12345678::MARKETING:1769000070" {
-		t.Errorf("ID = %q — a chave sai com o pedaco ilegivel vazio, e nao inventado", evs[0].ID)
+		t.Errorf("ID = %q — the key comes out with the unreadable piece empty, never invented", evs[0].ID)
 	}
 }
 
@@ -2578,14 +2578,14 @@ func TestParseWebhookTheTwoTemplateEventsDoNotMix(t *testing.T) {
 		t.Fatalf("err=%v len=%d", err, len(category))
 	}
 	if category[0].Template != nil {
-		t.Errorf("Template = %+v num evento de categoria, quero nil", category[0].Template)
+		t.Errorf("Template = %+v on a category event, want nil", category[0].Template)
 	}
 	b, err := json.Marshal(category[0])
 	if err != nil {
 		t.Fatalf("Marshal: %v", err)
 	}
 	if strings.Contains(string(b), `"template":`) {
-		t.Errorf("a chave \"template\" apareceu num evento de categoria: %s", b)
+		t.Errorf("the \"template\" key showed up on a category event: %s", b)
 	}
 
 	status, err := ParseWebhook(templateStatusPayload("1769000020", "APPROVED"))
@@ -2593,14 +2593,14 @@ func TestParseWebhookTheTwoTemplateEventsDoNotMix(t *testing.T) {
 		t.Fatalf("err=%v len=%d", err, len(status))
 	}
 	if status[0].TemplateCategory != nil {
-		t.Errorf("TemplateCategory = %+v num evento de status, quero nil", status[0].TemplateCategory)
+		t.Errorf("TemplateCategory = %+v on a status event, want nil", status[0].TemplateCategory)
 	}
 	b, err = json.Marshal(status[0])
 	if err != nil {
 		t.Fatalf("Marshal: %v", err)
 	}
 	if strings.Contains(string(b), "template_categoria") {
-		t.Errorf("a chave \"template_categoria\" apareceu num evento de status: %s", b)
+		t.Errorf("the \"template_categoria\" key showed up on a status event: %s", b)
 	}
 }
 
@@ -2612,11 +2612,11 @@ func TestAccountWabaIDsInPayloadStillSeesATemplateCategoryThatBecameAnEvent(t *t
 
 	evs, err := ParseWebhook(payload)
 	if err != nil || len(evs) != 1 {
-		t.Fatalf("err=%v len=%d, quero nil e 1", err, len(evs))
+		t.Fatalf("err=%v len=%d, want nil and 1", err, len(evs))
 	}
 	ids := AccountWabaIDsInPayload(payload)
 	if len(ids) != 1 || ids[0] != "WABA1" {
-		t.Fatalf("ids = %v, quero [WABA1] — a guarda de isolamento da T-038 parou de ver este webhook", ids)
+		t.Fatalf("ids = %v, want [WABA1] — the T-038 isolation guard stopped seeing this webhook", ids)
 	}
 }
 
@@ -2637,10 +2637,10 @@ func TestParseWebhookQualityAndAlertRepeatValuesAndNeedTheTimeInTheKey(t *testin
 		t.Helper()
 		evs, err := ParseWebhook(payload)
 		if err != nil {
-			t.Fatalf("erro inesperado: %v", err)
+			t.Fatalf("unexpected error: %v", err)
 		}
 		if len(evs) != 1 {
-			t.Fatalf("len(evs) = %d, quero 1", len(evs))
+			t.Fatalf("len(evs) = %d, want 1", len(evs))
 		}
 		return evs[0].ID
 	}
@@ -2650,11 +2650,11 @@ func TestParseWebhookQualityAndAlertRepeatValuesAndNeedTheTimeInTheKey(t *testin
 	first := idOf(accountPayloadWithValue(fieldNumberQuality, flagged, "1769000080"))
 	second := idOf(accountPayloadWithValue(fieldNumberQuality, flagged, "1769999999"))
 	if first == second {
-		t.Errorf("dois FLAGGED do mesmo numero tem o mesmo id %q — o segundo rebaixamento seria "+
-			"deduplicado e ninguem saberia que a cota caiu de novo", first)
+		t.Errorf("two FLAGGED events for the same number have the same id %q — the second downgrade would be "+
+			"deduplicated and no one would know the quota dropped again", first)
 	}
 	if duplicate := idOf(accountPayloadWithValue(fieldNumberQuality, flagged, "1769000080")); duplicate != first {
-		t.Errorf("reentrega deu id %q, quero %q — a chave tem de ser DETERMINISTICA", duplicate, first)
+		t.Errorf("redelivery gave id %q, want %q — the key has to be DETERMINISTIC", duplicate, first)
 	}
 
 	// The other half, and it's the argument for the severity in the key:
@@ -2666,8 +2666,8 @@ func TestParseWebhookQualityAndAlertRepeatValuesAndNeedTheTimeInTheKey(t *testin
 	light := idOf(accountPayloadWithValue(fieldAccountAlert, informational, "1769000084"))
 	heavy := idOf(accountPayloadWithValue(fieldAccountAlert, severe, "1769000084"))
 	if light == heavy {
-		t.Errorf("o alerta informativo e o CRITICAL tem o mesmo id %q — a escalada seria deduplicada "+
-			"contra o aviso original, e ela e a unica das duas que exige acao", light)
+		t.Errorf("the informational alert and the CRITICAL one have the same id %q — the escalation would be deduplicated "+
+			"against the original warning, and it's the only one of the two that demands action", light)
 	}
 }
 
@@ -2678,21 +2678,21 @@ func TestParseWebhookQualityAndAlertRepeatValuesAndNeedTheTimeInTheKey(t *testin
 // See keyDistinguishesSomething, in parse.go.
 func TestParseWebhookQualityAndAlertAreOnlyRefusedWhenNothingDistinguishes(t *testing.T) {
 	refused := map[string][2]string{
-		"qualidade sem nada":  {fieldNumberQuality, `{"max_daily_conversations_per_business":"TIER_250"}`},
-		"qualidade vazia":     {fieldNumberQuality, `{}`},
-		"qualidade nula":      {fieldNumberQuality, `null`},
-		"qualidade nao-bloco": {fieldNumberQuality, `"TIER_250"`},
-		"alerta so descricao": {fieldAccountAlert, `{"alert_description":"texto livre"}`},
-		"alerta vazio":        {fieldAccountAlert, `{}`},
-		"alerta nulo":         {fieldAccountAlert, `null`},
+		"quality with nothing":          {fieldNumberQuality, `{"max_daily_conversations_per_business":"TIER_250"}`},
+		"empty quality":                 {fieldNumberQuality, `{}`},
+		"null quality":                  {fieldNumberQuality, `null`},
+		"non-block quality":             {fieldNumberQuality, `"TIER_250"`},
+		"alert with only a description": {fieldAccountAlert, `{"alert_description":"texto livre"}`},
+		"empty alert":                   {fieldAccountAlert, `{}`},
+		"null alert":                    {fieldAccountAlert, `null`},
 	}
 	for name, tc := range refused {
 		evs, err := ParseWebhook(accountPayloadWithValue(tc[0], tc[1], "1769000080"))
 		if len(evs) != 0 {
-			t.Errorf("%s: len(evs) = %d, quero 0", name, len(evs))
+			t.Errorf("%s: len(evs) = %d, want 0", name, len(evs))
 		}
 		if !errors.Is(err, ErrPartialParse) {
-			t.Errorf("%s: err = %v, quero ErrPartialParse — descartar em silencio e o que nao pode", name, err)
+			t.Errorf("%s: err = %v, want ErrPartialParse — discarding silently is what must not happen", name, err)
 		}
 	}
 
@@ -2706,10 +2706,10 @@ func TestParseWebhookQualityAndAlertAreOnlyRefusedWhenNothingDistinguishes(t *te
 	for name, tc := range accepted {
 		evs, err := ParseWebhook(accountPayloadWithValue(tc[0], tc[1], "1769000080"))
 		if err != nil {
-			t.Errorf("%s: err = %v, quero nil", name, err)
+			t.Errorf("%s: err = %v, want nil", name, err)
 		}
 		if len(evs) != 1 {
-			t.Fatalf("%s: len(evs) = %d, quero 1 — recusar isto perderia o unico campo que decide", name, len(evs))
+			t.Fatalf("%s: len(evs) = %d, want 1 — refusing this would lose the only field that decides", name, len(evs))
 		}
 	}
 }
@@ -2721,36 +2721,36 @@ func TestParseWebhookQualityAndAlertAnUnreadableFieldDoesNotBringDownTheEvent(t 
 		`{"display_phone_number":{"a":1},"event":"FLAGGED","old_limit":42,"current_limit":"TIER_50"}`,
 		"1769000080"))
 	if err != nil || len(evs) != 1 {
-		t.Fatalf("err=%v len=%d, quero nil e 1 — campo ilegivel nao pode apagar o aviso de rebaixamento", err, len(evs))
+		t.Fatalf("err=%v len=%d, want nil and 1 — an unreadable field must not erase the downgrade warning", err, len(evs))
 	}
 	q := evs[0].NumberQuality
 	if q == nil {
 		t.Fatal("NumberQuality == nil")
 	}
 	if q.State != "FLAGGED" || q.CurrentLimit != "TIER_50" {
-		t.Errorf("State=%q CurrentLimit=%q — o que decide tem de sobreviver", q.State, q.CurrentLimit)
+		t.Errorf("State=%q CurrentLimit=%q — what decides has to survive", q.State, q.CurrentLimit)
 	}
 	// 42 does NOT become "42" in a limit: an invented tier is worse than
 	// an absent tier, because whoever reads it believes it.
 	if q.PreviousLimit != "" || q.DisplayNumber != "" {
-		t.Errorf("PreviousLimit=%q DisplayNumber=%q, quero os dois vazios", q.PreviousLimit, q.DisplayNumber)
+		t.Errorf("PreviousLimit=%q DisplayNumber=%q, want both empty", q.PreviousLimit, q.DisplayNumber)
 	}
 
 	evs, err = ParseWebhook(accountPayloadWithValue(fieldAccountAlert,
 		`{"entity_type":["WABA"],"entity_id":123456,"alert_severity":"CRITICAL","alert_description":{"x":1}}`,
 		"1769000084"))
 	if err != nil || len(evs) != 1 {
-		t.Fatalf("err=%v len=%d, quero nil e 1", err, len(evs))
+		t.Fatalf("err=%v len=%d, want nil and 1", err, len(evs))
 	}
 	a := evs[0].AccountAlert
 	if a == nil {
 		t.Fatal("AccountAlert == nil")
 	}
 	if a.Severity != "CRITICAL" || a.EntityID != "123456" {
-		t.Errorf("Severity=%q EntityID=%q — o que decide tem de sobreviver", a.Severity, a.EntityID)
+		t.Errorf("Severity=%q EntityID=%q — what decides has to survive", a.Severity, a.EntityID)
 	}
 	if a.EntityType != "" || a.Description != "" {
-		t.Errorf("EntityType=%q Description=%q, quero os dois vazios", a.EntityType, a.Description)
+		t.Errorf("EntityType=%q Description=%q, want both empty", a.EntityType, a.Description)
 	}
 }
 
@@ -2762,7 +2762,7 @@ func TestParseWebhookTheFourAccountEventsDoNotMix(t *testing.T) {
 	cases := []struct {
 		name    string
 		payload []byte
-		block   string // a chave JSON que TEM de aparecer
+		block   string // the JSON key that HAS to show up
 	}{
 		{"template_status", templateStatusPayload("1769000020", "APPROVED"), `"template":`},
 		{"template_categoria", templateCategoryPayload("1769000070", "UTILITY", "MARKETING"), `"template_category":`},
@@ -2784,14 +2784,14 @@ func TestParseWebhookTheFourAccountEventsDoNotMix(t *testing.T) {
 		}
 		output := string(b)
 		if !strings.Contains(output, c.block) {
-			t.Errorf("%s: o bloco %s nao apareceu: %s", c.name, c.block, output)
+			t.Errorf("%s: the %s block did not show up: %s", c.name, c.block, output)
 		}
 		for _, another := range blocks {
 			if another == c.block {
 				continue
 			}
 			if strings.Contains(output, another) {
-				t.Errorf("%s: o bloco %s vazou para um evento que nao e dele: %s", c.name, another, output)
+				t.Errorf("%s: the %s block leaked into an event it doesn't belong to: %s", c.name, another, output)
 			}
 		}
 	}
@@ -2808,11 +2808,11 @@ func TestAccountWabaIDsInPayloadStillSeesQualityAndAlert(t *testing.T) {
 	} {
 		evs, err := ParseWebhook(payload)
 		if err != nil || len(evs) != 1 {
-			t.Fatalf("%s: err=%v len=%d, quero nil e 1", name, err, len(evs))
+			t.Fatalf("%s: err=%v len=%d, want nil and 1", name, err, len(evs))
 		}
 		ids := AccountWabaIDsInPayload(payload)
 		if len(ids) != 1 || ids[0] != "WABA1" {
-			t.Fatalf("%s: ids = %v, quero [WABA1] — a guarda de isolamento parou de ver este webhook", name, ids)
+			t.Fatalf("%s: ids = %v, want [WABA1] — the isolation guard stopped seeing this webhook", name, ids)
 		}
 	}
 }
@@ -2827,11 +2827,11 @@ func TestAccountWabaIDsInPayloadStillSeesATemplateStatusThatBecameAnEvent(t *tes
 
 	evs, err := ParseWebhook(payload)
 	if err != nil || len(evs) != 1 {
-		t.Fatalf("err=%v len=%d, quero nil e 1", err, len(evs))
+		t.Fatalf("err=%v len=%d, want nil and 1", err, len(evs))
 	}
 	ids := AccountWabaIDsInPayload(payload)
 	if len(ids) != 1 || ids[0] != "WABA1" {
-		t.Fatalf("ids = %v, quero [WABA1] — a guarda de isolamento da T-038 parou de ver este webhook", ids)
+		t.Fatalf("ids = %v, want [WABA1] — the T-038 isolation guard stopped seeing this webhook", ids)
 	}
 }
 
@@ -2851,10 +2851,10 @@ func TestParseWebhookAnEntryTimeOfUnexpectedTypeDoesNotBringDownTheBatch(t *test
 
 		evs, err := ParseWebhook(payload)
 		if err != nil {
-			t.Errorf("time=%s: erro inesperado: %v", stamp, err)
+			t.Errorf("time=%s: unexpected error: %v", stamp, err)
 		}
 		if len(evs) != 1 || evs[0].ID != "msg:wamid.SOBREVIVE" {
-			t.Fatalf("time=%s: a mensagem do lote se perdeu por causa do carimbo do entry: %+v", stamp, evs)
+			t.Fatalf("time=%s: the batch's message was lost because of the entry's timestamp: %+v", stamp, evs)
 		}
 	}
 }
@@ -2870,7 +2870,7 @@ func TestParseWebhookTemplateStatusToleratesTheTime(t *testing.T) {
 		t.Fatalf("err=%v len=%d", err, len(quoted))
 	}
 	if quoted[0].Timestamp != 1769000020 {
-		t.Errorf("Timestamp = %d, quero 1769000020 — o carimbo entre aspas se perdeu", quoted[0].Timestamp)
+		t.Errorf("Timestamp = %d, want 1769000020 — the quoted timestamp was lost", quoted[0].Timestamp)
 	}
 
 	withoutTime := []byte(`{"object":"whatsapp_business_account","entry":[{"id":"WABA1","changes":[
@@ -2878,10 +2878,10 @@ func TestParseWebhookTemplateStatusToleratesTheTime(t *testing.T) {
 	    "event":"APPROVED","message_template_id":1384121316897444}}]}]}`)
 	evs, err := ParseWebhook(withoutTime)
 	if err != nil || len(evs) != 1 {
-		t.Fatalf("err=%v len=%d — entry sem time nao pode APAGAR o evento", err, len(evs))
+		t.Fatalf("err=%v len=%d — an entry without a time must not ERASE the event", err, len(evs))
 	}
 	if evs[0].ID != "template_status:1384121316897444:APPROVED:0" {
-		t.Errorf("ID = %q, quero o sufixo :0", evs[0].ID)
+		t.Errorf("ID = %q, want the :0 suffix", evs[0].ID)
 	}
 }
 
@@ -2904,7 +2904,7 @@ func TestParseWebhookTemplateStatusAnIdAsNumberOrTextGivesTheSameKey(t *testing.
 		t.Fatalf("err=%v len=%d", err, len(text))
 	}
 	if number[0].ID != text[0].ID {
-		t.Errorf("ids diferentes para o mesmo evento: %q e %q", number[0].ID, text[0].ID)
+		t.Errorf("different ids for the same event: %q and %q", number[0].ID, text[0].ID)
 	}
 }
 
@@ -2940,11 +2940,11 @@ func TestParseWebhookTemplateStatusLeaksNoMessageFieldNorTheOtherWayAround(t *te
 		},
 	}
 	if len(got) != len(want) {
-		t.Errorf("o evento de template tem %d chaves, quero %d: %s", len(got), len(want), b)
+		t.Errorf("the template event has %d keys, want %d: %s", len(got), len(want), b)
 	}
 	for k, v := range want {
 		if !reflect.DeepEqual(got[k], v) {
-			t.Errorf("%s = %#v, quero %#v", k, got[k], v)
+			t.Errorf("%s = %#v, want %#v", k, got[k], v)
 		}
 	}
 
@@ -2958,6 +2958,6 @@ func TestParseWebhookTemplateStatusLeaksNoMessageFieldNorTheOtherWayAround(t *te
 		t.Fatalf("Marshal: %v", err)
 	}
 	if strings.Contains(string(m), "template") {
-		t.Errorf("\"template\" apareceu numa mensagem de texto: %s", m)
+		t.Errorf("\"template\" showed up in a text message: %s", m)
 	}
 }

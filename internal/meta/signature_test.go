@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-const testSecret = "segredo-de-teste-nao-e-real"
+const testSecret = "test-secret-not-real"
 
 func sign(t *testing.T, payload []byte, secret string) string {
 	t.Helper()
@@ -20,7 +20,7 @@ func TestSignatureValidAcceptsACorrectSignature(t *testing.T) {
 	payload := []byte(`{"object":"whatsapp_business_account"}`)
 
 	if !SignatureValid(payload, sign(t, payload, testSecret), testSecret) {
-		t.Fatal("assinatura correta foi recusada")
+		t.Fatal("the correct signature was refused")
 	}
 }
 
@@ -29,21 +29,21 @@ func TestSignatureValidRefusesAnAlteredBody(t *testing.T) {
 	header := sign(t, payload, testSecret)
 
 	if SignatureValid([]byte(`{"object":"outra_coisa"}`), header, testSecret) {
-		t.Fatal("corpo alterado passou na verificacao")
+		t.Fatal("the altered body passed verification")
 	}
 }
 
 func TestSignatureValidRefusesTheWrongSecret(t *testing.T) {
 	payload := []byte(`{"a":1}`)
 
-	if SignatureValid(payload, sign(t, payload, "outro-segredo"), testSecret) {
-		t.Fatal("segredo errado passou na verificacao")
+	if SignatureValid(payload, sign(t, payload, "another-secret"), testSecret) {
+		t.Fatal("the wrong secret passed verification")
 	}
 }
 
 func TestSignatureValidRefusesAnAbsentHeader(t *testing.T) {
 	if SignatureValid([]byte(`{"a":1}`), "", testSecret) {
-		t.Fatal("header vazio passou na verificacao")
+		t.Fatal("the empty header passed verification")
 	}
 }
 
@@ -53,7 +53,7 @@ func TestSignatureValidRefusesAHeaderWithoutThePrefix(t *testing.T) {
 	withoutPrefix := withPrefix[len("sha256="):]
 
 	if SignatureValid(payload, withoutPrefix, testSecret) {
-		t.Fatal("header sem o prefixo sha256= passou na verificacao")
+		t.Fatal("the header without the sha256= prefix passed verification")
 	}
 }
 
@@ -75,11 +75,11 @@ func TestSignatureValidRefusesANonASCIIHeaderWithoutPanicking(t *testing.T) {
 		func() {
 			defer func() {
 				if r := recover(); r != nil {
-					t.Fatalf("panico com header %q: %v", header, r)
+					t.Fatalf("panic with header %q: %v", header, r)
 				}
 			}()
 			if SignatureValid([]byte(`{"a":1}`), header, testSecret) {
-				t.Fatalf("header nao-ASCII %q passou na verificacao", header)
+				t.Fatalf("non-ASCII header %q passed verification", header)
 			}
 		}()
 	}
@@ -88,6 +88,6 @@ func TestSignatureValidRefusesANonASCIIHeaderWithoutPanicking(t *testing.T) {
 func TestSignatureValidRefusesHexOfTheWrongLength(t *testing.T) {
 	// Valid hex, wrong size: hmac.Equal returns false without leaking timing.
 	if SignatureValid([]byte(`{"a":1}`), "sha256=abcd", testSecret) {
-		t.Fatal("hex curto passou na verificacao")
+		t.Fatal("short hex passed verification")
 	}
 }

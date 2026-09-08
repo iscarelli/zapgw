@@ -17,7 +17,7 @@ import (
 //
 // Mutable state under a mutex because httptest.Server serves each request
 // in its own goroutine — this project already paid a Critical for a raw
-// counter in a shared handler (docs/ARMADILHAS.md, "Go / concorrência").
+// counter in a shared handler (docs/ARMADILHAS.md, "Go / concurrency").
 type fakeTemplateGraph struct {
 	mu sync.Mutex
 
@@ -111,7 +111,7 @@ func TestListTemplatesBringsEachItemsId(t *testing.T) {
 		t.Fatalf("ListTemplates: %v", err)
 	}
 	if len(list) != 1 || list[0].ID != "id-de-lembrete_consulta" {
-		t.Fatalf("lista = %+v, queria o id do item", list)
+		t.Fatalf("list = %+v, wanted the item's id", list)
 	}
 }
 
@@ -130,10 +130,10 @@ func TestListTemplatesWithoutAnIdKeepsReadingTheCatalog(t *testing.T) {
 
 	list, err := testClient(srv).ListTemplates(context.Background(), "WABA1", "token", "")
 	if err != nil {
-		t.Fatalf("ListTemplates: %v — item sem `id` nao pode derrubar a leitura do catalogo", err)
+		t.Fatalf("ListTemplates: %v — an item without `id` must not take the catalog read down", err)
 	}
 	if len(list) != 1 || list[0].Name != "lembrete_consulta" || list[0].ID != "" {
-		t.Fatalf("lista = %+v, queria o template com id vazio", list)
+		t.Fatalf("list = %+v, wanted the template with an empty id", list)
 	}
 }
 
@@ -155,13 +155,13 @@ func TestListTemplatesBringsTheRejectionReasonWhenMetaSendsIt(t *testing.T) {
 		t.Fatalf("ListTemplates: %v", err)
 	}
 	if len(list) != 2 {
-		t.Fatalf("len(lista) = %d, quero 2", len(list))
+		t.Fatalf("len(list) = %d, want 2", len(list))
 	}
 	if list[0].Reason != "INCORRECT_CATEGORY" {
-		t.Errorf("Reason = %q, quero INCORRECT_CATEGORY", list[0].Reason)
+		t.Errorf("Reason = %q, want INCORRECT_CATEGORY", list[0].Reason)
 	}
 	if list[1].Reason != "NONE" {
-		t.Errorf("Reason = %q, quero a string NONE — a Meta a manda literalmente, nao e ausencia", list[1].Reason)
+		t.Errorf("Reason = %q, want the string NONE — Meta sends it literally, it is not absence", list[1].Reason)
 	}
 }
 
@@ -177,17 +177,17 @@ func TestListTemplatesWithoutRejectedReasonShowsNoReasonInTheJSON(t *testing.T) 
 
 	list, err := testClient(srv).ListTemplates(context.Background(), "WABA1", "token", "")
 	if err != nil {
-		t.Fatalf("ListTemplates: %v — item sem rejected_reason nao pode derrubar a leitura do catalogo", err)
+		t.Fatalf("ListTemplates: %v — an item without rejected_reason must not take the catalog read down", err)
 	}
 	if len(list) != 1 || list[0].Reason != "" {
-		t.Fatalf("lista = %+v, queria motivo vazio", list)
+		t.Fatalf("list = %+v, wanted an empty reason", list)
 	}
 	b, err := json.Marshal(list[0])
 	if err != nil {
 		t.Fatalf("Marshal: %v", err)
 	}
 	if strings.Contains(string(b), "motivo") {
-		t.Errorf("a chave \"motivo\" apareceu num item sem rejected_reason: %s", b)
+		t.Errorf("the \"motivo\" key showed up on an item without rejected_reason: %s", b)
 	}
 }
 
@@ -210,24 +210,24 @@ func TestListTemplatesJoinsEveryPage(t *testing.T) {
 		t.Fatalf("ListTemplates: %v", err)
 	}
 	if len(list) != 6 {
-		t.Fatalf("templates = %d, quero 6 — pagina que para na primeira e o truncamento em 25 com outro numero", len(list))
+		t.Fatalf("templates = %d, want 6 — a page that stops at the first is the 25-item truncation with another number", len(list))
 	}
 	for i, want := range []string{"t1", "t2", "t3", "t4", "t5", "t6"} {
 		if list[i].Name != want {
-			t.Errorf("lista[%d].Name = %q, quero %q", i, list[i].Name, want)
+			t.Errorf("list[%d].Name = %q, want %q", i, list[i].Name, want)
 		}
 	}
 	if list[0].Category != "UTILITY" || list[0].Language != "pt_BR" || list[0].Status != "APPROVED" {
-		t.Errorf("campos do primeiro item = %+v", list[0])
+		t.Errorf("first item's fields = %+v", list[0])
 	}
 	var components []map[string]any
 	if err := json.Unmarshal(list[0].Components, &components); err != nil {
-		t.Errorf("componentes nao viajaram: %v (%s)", err, list[0].Components)
+		t.Errorf("components did not travel: %v (%s)", err, list[0].Components)
 	}
 
 	urls, _ := g.seen()
 	if len(urls) != 3 {
-		t.Errorf("paginas buscadas = %d, quero 3", len(urls))
+		t.Errorf("pages fetched = %d, want 3", len(urls))
 	}
 }
 
@@ -241,15 +241,15 @@ func TestListTemplatesBlowingTheCapGivesAnErrorNotAPartialList(t *testing.T) {
 
 	list, err := testClient(srv).ListTemplates(context.Background(), "WABA1", "token", "")
 	if !errors.Is(err, ErrIncompleteCatalog) {
-		t.Fatalf("err = %v, quero ErrIncompleteCatalog", err)
+		t.Fatalf("err = %v, want ErrIncompleteCatalog", err)
 	}
 	if list != nil {
-		t.Fatalf("devolveu %d templates junto com o erro — lista parcial e a armadilha, nao o conserto", len(list))
+		t.Fatalf("returned %d templates together with the error — a partial list is the trap, not the fix", len(list))
 	}
 
 	urls, _ := g.seen()
 	if len(urls) != pageCap {
-		t.Errorf("paginas buscadas = %d, quero %d (o maxBytes)", len(urls), pageCap)
+		t.Errorf("pages fetched = %d, want %d (the maxBytes)", len(urls), pageCap)
 	}
 }
 
@@ -272,11 +272,11 @@ func TestListTemplatesFiltersByStatusEvenIfMetaIgnoresIt(t *testing.T) {
 		t.Fatalf("ListTemplates: %v", err)
 	}
 	if len(list) != 2 {
-		t.Fatalf("templates = %d, quero 2 (so os APPROVED); veio %+v", len(list), list)
+		t.Fatalf("templates = %d, want 2 (APPROVED only); got %+v", len(list), list)
 	}
 	for _, tpl := range list {
 		if tpl.Status != "APPROVED" {
-			t.Errorf("template %q com status %q escapou do filtro", tpl.Name, tpl.Status)
+			t.Errorf("template %q with status %q escaped the filter", tpl.Name, tpl.Status)
 		}
 	}
 
@@ -284,16 +284,16 @@ func TestListTemplatesFiltersByStatusEvenIfMetaIgnoresIt(t *testing.T) {
 	// pulling the whole catalog every time.
 	urls, authorizations := g.seen()
 	if !strings.Contains(urls[0], "status=APPROVED") {
-		t.Errorf("a primeira URL nao levou o filtro: %q", urls[0])
+		t.Errorf("the first URL did not carry the filter: %q", urls[0])
 	}
 	if !strings.Contains(urls[0], "limit=") {
-		t.Errorf("a primeira URL nao pediu limite de pagina: %q", urls[0])
+		t.Errorf("the first URL did not request a page limit: %q", urls[0])
 	}
 	// The token goes in the HEADER, never in the URL: a token in a query
 	// string leaks into proxy, server, and CDN logs.
 	for i, u := range urls {
 		if strings.Contains(u, "token") {
-			t.Errorf("url[%d] carrega o token: %q", i, u)
+			t.Errorf("url[%d] carries the token: %q", i, u)
 		}
 	}
 	if authorizations[0] != "Bearer token" {
@@ -313,15 +313,15 @@ func TestListTemplatesRefusesANextFromAnotherOrigin(t *testing.T) {
 
 	list, err := testClient(srv).ListTemplates(context.Background(), "WABA1", "token", "")
 	if !errors.Is(err, ErrPageFromAnotherOrigin) {
-		t.Fatalf("err = %v, quero ErrPageFromAnotherOrigin", err)
+		t.Fatalf("err = %v, want ErrPageFromAnotherOrigin", err)
 	}
 	if list != nil {
-		t.Errorf("devolveu lista parcial junto com o erro: %d itens", len(list))
+		t.Errorf("returned a partial list together with the error: %d items", len(list))
 	}
 	// The rejected URL does NOT go into the message: it can carry a
 	// credential in the query, and this text goes up to the log.
 	if strings.Contains(err.Error(), "exemplo-invasor") {
-		t.Errorf("a mensagem de erro carrega a URL recusada: %v", err)
+		t.Errorf("the error message carries the rejected URL: %v", err)
 	}
 }
 
@@ -345,7 +345,7 @@ func TestListTemplatesRefusesAMalformedItemInsteadOfSkipping(t *testing.T) {
 
 		list, err := testClient(srv).ListTemplates(context.Background(), "WABA1", "token", "")
 		if err == nil {
-			t.Errorf("item %s passou como catalogo bom: %+v", item, list)
+			t.Errorf("item %s passed as a good catalog: %+v", item, list)
 		}
 		// T-115 (5): "there was an error" and "there was THIS error" are
 		// different claims. ErrCatalogNotUnderstood's three siblings
@@ -356,10 +356,10 @@ func TestListTemplatesRefusesAMalformedItemInsteadOfSkipping(t *testing.T) {
 		// 503/retryable (see the handler test that exercises that
 		// branch, TestTemplatesListReturns503RetryableWhenTheCatalogIsNotUnderstood).
 		if !errors.Is(err, ErrCatalogNotUnderstood) {
-			t.Errorf("item %s: erro = %v, quero ErrCatalogNotUnderstood", item, err)
+			t.Errorf("item %s: err = %v, want ErrCatalogNotUnderstood", item, err)
 		}
 		if list != nil {
-			t.Errorf("item %s devolveu lista de %d itens junto com o erro", item, len(list))
+			t.Errorf("item %s returned a list of %d items together with the error", item, len(list))
 		}
 	}
 }
@@ -374,11 +374,11 @@ func TestListTemplatesRefusesAnInvalidWabaID(t *testing.T) {
 	for _, id := range []string{"", "../me", "WABA 1", "WABA/1"} {
 		_, err := testClient(srv).ListTemplates(context.Background(), id, "token", "")
 		if !errors.Is(err, ErrInvalidWabaID) {
-			t.Errorf("waba_id %q: err = %v, quero ErrInvalidWabaID", id, err)
+			t.Errorf("waba_id %q: err = %v, want ErrInvalidWabaID", id, err)
 		}
 	}
 	if urls, _ := g.seen(); len(urls) != 0 {
-		t.Errorf("falou %d vez(es) com a Meta com waba_id invalido", len(urls))
+		t.Errorf("talked to Meta %d time(s) with an invalid waba_id", len(urls))
 	}
 }
 
@@ -405,10 +405,10 @@ func TestListTemplatesClassifiesTheResponse(t *testing.T) {
 
 		var me *MetaError
 		if !errors.As(err, &me) {
-			t.Fatalf("status %d: err = %v, quero *MetaError", c.status, err)
+			t.Fatalf("status %d: err = %v, want *MetaError", c.status, err)
 		}
 		if me.Class != c.class_ {
-			t.Errorf("status %d: classe = %q, quero %q", c.status, me.Class, c.class_)
+			t.Errorf("status %d: class = %q, want %q", c.status, me.Class, c.class_)
 		}
 	}
 }
@@ -437,20 +437,20 @@ func TestCreateTemplateReturnsMetasIDAndStatus(t *testing.T) {
 		t.Fatalf("CreateTemplate: %v", err)
 	}
 	if created.ID != "1234" {
-		t.Errorf("ID = %q, quero 1234", created.ID)
+		t.Errorf("ID = %q, want 1234", created.ID)
 	}
 	// The status comes from META, not from a constant of ours: if it
 	// ever answers something else, the consumer has to see what it
 	// said.
 	if created.Status != "PENDING" {
-		t.Errorf("Status = %q, quero PENDING", created.Status)
+		t.Errorf("Status = %q, want PENDING", created.Status)
 	}
 
 	mu.Lock()
 	defer mu.Unlock()
 	var body map[string]json.RawMessage
 	if err := json.Unmarshal(received, &body); err != nil {
-		t.Fatalf("corpo enviado a Meta nao e JSON: %v (%s)", err, received)
+		t.Fatalf("body sent to Meta is not JSON: %v (%s)", err, received)
 	}
 	for key, want := range map[string]string{
 		"name":       `"lembrete_consulta"`,
@@ -459,7 +459,7 @@ func TestCreateTemplateReturnsMetasIDAndStatus(t *testing.T) {
 		"components": `[{"type":"BODY","text":"oi"}]`,
 	} {
 		if string(body[key]) != want {
-			t.Errorf("corpo[%q] = %s, quero %s", key, body[key], want)
+			t.Errorf("body[%q] = %s, want %s", key, body[key], want)
 		}
 	}
 	if authorization != "Bearer token" {
@@ -471,7 +471,7 @@ func TestCreateTemplateReturnsMetasIDAndStatus(t *testing.T) {
 // sending (ErrResponseWithoutID), in different clothes. Returning an empty id
 // as success makes the consumer store a record that LOOKS created.
 func TestCreateTemplateRefuses2xxWithoutAnID(t *testing.T) {
-	cases := []string{`{}`, `{"id":""}`, `{"id":"   "}`, `{"id":123}`, `null`, ``, `nao e json`}
+	cases := []string{`{}`, `{"id":""}`, `{"id":"   "}`, `{"id":123}`, `null`, ``, `not json`}
 	for _, body := range cases {
 		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			_, _ = w.Write([]byte(body))
@@ -484,7 +484,7 @@ func TestCreateTemplateRefuses2xxWithoutAnID(t *testing.T) {
 		srv.Close()
 
 		if !errors.Is(err, ErrTemplateWithoutID) {
-			t.Errorf("corpo %q: err = %v, quero ErrTemplateWithoutID (criado = %+v)", body, err, created)
+			t.Errorf("body %q: err = %v, want ErrTemplateWithoutID (created = %+v)", body, err, created)
 		}
 	}
 }
@@ -501,13 +501,13 @@ func TestCreateTemplateClassifiesMetasRejection(t *testing.T) {
 	})
 	var me *MetaError
 	if !errors.As(err, &me) {
-		t.Fatalf("err = %v, quero *MetaError", err)
+		t.Fatalf("err = %v, want *MetaError", err)
 	}
 	if me.Class != ClassPermanent {
-		t.Errorf("classe = %q, quero %q", me.Class, ClassPermanent)
+		t.Errorf("class = %q, want %q", me.Class, ClassPermanent)
 	}
 	if me.MetaCode != 100 {
-		t.Errorf("codigo_meta = %d, quero 100", me.MetaCode)
+		t.Errorf("meta_code = %d, want 100", me.MetaCode)
 	}
 }
 
@@ -541,19 +541,19 @@ func TestDeleteTemplateSendsDeleteWithTheNameInTheQueryAndTheTokenInTheHeader(t 
 	mu.Lock()
 	defer mu.Unlock()
 	if method != http.MethodDelete {
-		t.Errorf("metodo = %q, quero DELETE", method)
+		t.Errorf("method = %q, want DELETE", method)
 	}
 	if !strings.HasSuffix(path, "/WABA1/message_templates") {
-		t.Errorf("caminho = %q", path)
+		t.Errorf("path = %q", path)
 	}
 	if lookup != "name=promo_julho" {
-		t.Errorf("query = %q, quero name=promo_julho (nunca hsm_id nem hsm_ids)", lookup)
+		t.Errorf("query = %q, want name=promo_julho (never hsm_id or hsm_ids)", lookup)
 	}
 	if authorization != "Bearer token" {
 		t.Errorf("Authorization = %q", authorization)
 	}
 	if strings.Contains(lookup, "token") {
-		t.Errorf("o token viajou na query: %q", lookup)
+		t.Errorf("the token traveled in the query: %q", lookup)
 	}
 }
 
@@ -566,7 +566,7 @@ func TestDeleteTemplateSendsDeleteWithTheNameInTheQueryAndTheTokenInTheHeader(t 
 // (docs/ARMADILHAS.md, "Go / JSON"): they become a zeroed struct, which is
 // exactly why Success is a POINTER.
 func TestDeleteTemplateRefuses2xxWithoutSuccessTrue(t *testing.T) {
-	cases := []string{`{}`, `{"success":false}`, `null`, ``, `nao e json`, `{"success":"true"}`}
+	cases := []string{`{}`, `{"success":false}`, `null`, ``, `not json`, `{"success":"true"}`}
 	for _, body := range cases {
 		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			_, _ = w.Write([]byte(body))
@@ -576,7 +576,7 @@ func TestDeleteTemplateRefuses2xxWithoutSuccessTrue(t *testing.T) {
 		srv.Close()
 
 		if !errors.Is(err, ErrDeletionNotConfirmed) {
-			t.Errorf("corpo %q: err = %v, quero ErrDeletionNotConfirmed", body, err)
+			t.Errorf("body %q: err = %v, want ErrDeletionNotConfirmed", body, err)
 		}
 	}
 }
@@ -589,7 +589,7 @@ func TestDeleteTemplateAcceptsSuccessTrue(t *testing.T) {
 
 	if err := testClient(srv).DeleteTemplate(context.Background(),
 		"WABA1", "token", "promo_julho"); err != nil {
-		t.Errorf("DeleteTemplate com success:true: %v", err)
+		t.Errorf("DeleteTemplate with success:true: %v", err)
 	}
 }
 
@@ -603,13 +603,13 @@ func TestDeleteTemplateClassifiesMetasRejection(t *testing.T) {
 	err := testClient(srv).DeleteTemplate(context.Background(), "WABA1", "token", "promo_julho")
 	var me *MetaError
 	if !errors.As(err, &me) {
-		t.Fatalf("err = %v, quero *MetaError", err)
+		t.Fatalf("err = %v, want *MetaError", err)
 	}
 	if me.Class != ClassPermanent {
-		t.Errorf("classe = %q, quero %q", me.Class, ClassPermanent)
+		t.Errorf("class = %q, want %q", me.Class, ClassPermanent)
 	}
 	if me.MetaCode != 100 {
-		t.Errorf("codigo_meta = %d, quero 100", me.MetaCode)
+		t.Errorf("meta_code = %d, want 100", me.MetaCode)
 	}
 }
 
@@ -625,10 +625,10 @@ func TestDeleteTemplateRefusesAnInvalidWabaID(t *testing.T) {
 
 	err := testClient(srv).DeleteTemplate(context.Background(), "../me", "token", "promo_julho")
 	if !errors.Is(err, ErrInvalidWabaID) {
-		t.Fatalf("err = %v, quero ErrInvalidWabaID", err)
+		t.Fatalf("err = %v, want ErrInvalidWabaID", err)
 	}
 	if called {
-		t.Errorf("falou com a Meta com waba_id invalido")
+		t.Errorf("talked to Meta with an invalid waba_id")
 	}
 }
 
@@ -643,9 +643,9 @@ func TestCreateTemplateRefusesAnInvalidWabaID(t *testing.T) {
 		Name: "n", Category: "UTILITY", Language: "pt_BR", Components: json.RawMessage(`[]`),
 	})
 	if !errors.Is(err, ErrInvalidWabaID) {
-		t.Fatalf("err = %v, quero ErrInvalidWabaID", err)
+		t.Fatalf("err = %v, want ErrInvalidWabaID", err)
 	}
 	if called {
-		t.Errorf("falou com a Meta com waba_id invalido")
+		t.Errorf("talked to Meta with an invalid waba_id")
 	}
 }

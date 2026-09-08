@@ -36,24 +36,24 @@ func TestObserveNumberAsksForTheFieldsCheckedAgainstTheSource(t *testing.T) {
 		t.Fatalf("ObserveNumber: %v", err)
 	}
 	if len(*urls) != 1 {
-		t.Fatalf("chamadas = %d, quero 1", len(*urls))
+		t.Fatalf("calls = %d, want 1", len(*urls))
 	}
 	url := (*urls)[0]
 	for _, field := range []string{"quality_rating", "whatsapp_business_manager_messaging_limit"} {
 		if !strings.Contains(url, field) {
-			t.Errorf("a URL %q nao pede %q", url, field)
+			t.Errorf("the URL %q does not request %q", url, field)
 		}
 	}
 	// THE DEPRECATED NAME CANNOT COME BACK. Meta wrote, on the messaging
 	// limits page: "The messaging_limit_tier field ... has been deprecated.
 	// Request the whatsapp_business_manager_messaging_limit field instead."
 	if strings.Contains(url, "messaging_limit_tier") {
-		t.Errorf("a URL %q pede `messaging_limit_tier`, que a Meta DEPRECOU", url)
+		t.Errorf("the URL %q requests `messaging_limit_tier`, which Meta DEPRECATED", url)
 	}
 	// The token goes in the HEADER, never in the URL: a query string leaks
 	// into proxy, server, and CDN logs.
 	if strings.Contains(url, "token-secreto") {
-		t.Errorf("o token vazou para a URL: %q", url)
+		t.Errorf("the token leaked into the URL: %q", url)
 	}
 	if (*authorizations)[0] != "Bearer token-secreto" {
 		t.Errorf("Authorization = %q", (*authorizations)[0])
@@ -74,13 +74,13 @@ func TestObserveNumberKeepsTheLITERALValues(t *testing.T) {
 		t.Fatalf("ObserveNumber: %v", err)
 	}
 	if obs.Limit != "TIER_250" {
-		t.Errorf("Limit = %q, quero o LITERAL %q — nunca 250, nunca traduzido", obs.Limit, "TIER_250")
+		t.Errorf("Limit = %q, want the LITERAL %q — never 250, never translated", obs.Limit, "TIER_250")
 	}
 	if obs.Quality != "GREEN" {
-		t.Errorf("Quality = %q, quero o LITERAL %q — nunca numero, nunca booleano", obs.Quality, "GREEN")
+		t.Errorf("Quality = %q, want the LITERAL %q — never a number, never a boolean", obs.Quality, "GREEN")
 	}
 	if obs.Empty() {
-		t.Error("Empty() = true com os dois campos preenchidos")
+		t.Error("Empty() = true with both fields filled in")
 	}
 }
 
@@ -97,10 +97,10 @@ func TestObserveNumberLosesONLYTheUnreadableField(t *testing.T) {
 		t.Fatalf("ObserveNumber: %v", err)
 	}
 	if obs.Limit != "TIER_1K" {
-		t.Errorf("Limit = %q, quero TIER_1K — um campo ilegivel nao pode derrubar o outro", obs.Limit)
+		t.Errorf("Limit = %q, want TIER_1K — an unreadable field must not take the other one down", obs.Limit)
 	}
 	if obs.Quality != "" {
-		t.Errorf("Quality = %q, quero \"\" — valor que nao da para ler vira ausencia, nunca invencao", obs.Quality)
+		t.Errorf("Quality = %q, want \"\" — a value that cannot be read becomes absence, never invention", obs.Quality)
 	}
 }
 
@@ -115,7 +115,7 @@ func TestObserveNumberWithoutTheFieldsIsEmpty(t *testing.T) {
 		t.Fatalf("ObserveNumber: %v", err)
 	}
 	if !obs.Empty() {
-		t.Errorf("obs = %+v, quero vazia", obs)
+		t.Errorf("obs = %+v, want empty", obs)
 	}
 }
 
@@ -128,10 +128,10 @@ func TestObserveNumberReturnsAClassifiedError(t *testing.T) {
 	_, err := c.ObserveNumber(context.Background(), "PNID1", "t")
 	var me *MetaError
 	if !errors.As(err, &me) {
-		t.Fatalf("err = %v, quero *MetaError", err)
+		t.Fatalf("err = %v, want *MetaError", err)
 	}
 	if me.Class != ClassConfig {
-		t.Errorf("classe = %q, quero %q", me.Class, ClassConfig)
+		t.Errorf("class = %q, want %q", me.Class, ClassConfig)
 	}
 }
 
@@ -143,9 +143,9 @@ func TestObserveNumberRefusesAnInvalidPhoneNumberID(t *testing.T) {
 
 	_, err := c.ObserveNumber(context.Background(), "../../me", "t")
 	if !errors.Is(err, ErrInvalidPhoneNumberID) {
-		t.Fatalf("err = %v, quero ErrInvalidPhoneNumberID", err)
+		t.Fatalf("err = %v, want ErrInvalidPhoneNumberID", err)
 	}
 	if len(*urls) != 0 {
-		t.Errorf("a chamada SAIU mesmo com id invalido: %v", *urls)
+		t.Errorf("the call WENT OUT even with an invalid id: %v", *urls)
 	}
 }

@@ -42,12 +42,12 @@ var (
 	// the id's SHAPE (preventing `../` from escaping the Graph API's
 	// version prefix), which applies equally to phone_number_id and to
 	// waba_id.
-	ErrInvalidProfileNode = errors.New("meta: identificador do perfil com forma invalida")
+	ErrInvalidProfileNode = errors.New("meta: profile identifier has an invalid shape")
 
 	// ErrProfileNotUnderstood: the GET response doesn't have the minimum
 	// expected shape (missing `data` envelope, or the item isn't a JSON
 	// object).
-	ErrProfileNotUnderstood = errors.New("meta: perfil do negocio nao entendido")
+	ErrProfileNotUnderstood = errors.New("meta: business profile not understood")
 )
 
 // profileFields is the GET's `fields=`. Without it Meta can return a
@@ -110,14 +110,14 @@ func (c *Client) ReadProfile(ctx context.Context, node, token string) (Profile, 
 	}
 	target, err := url.JoinPath(c.base, node, "whatsapp_business_profile")
 	if err != nil {
-		return Profile{}, fmt.Errorf("meta: montar url: %w", err)
+		return Profile{}, fmt.Errorf("meta: build url: %w", err)
 	}
 	q := url.Values{}
 	q.Set("fields", profileFields)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, target+"?"+q.Encode(), nil)
 	if err != nil {
-		return Profile{}, fmt.Errorf("meta: montar requisicao: %w", err)
+		return Profile{}, fmt.Errorf("meta: build request: %w", err)
 	}
 	// The token goes in the HEADER, never in the URL: a token in a query
 	// string leaks into proxy, server, and CDN logs.
@@ -125,13 +125,13 @@ func (c *Client) ReadProfile(ctx context.Context, node, token string) (Profile, 
 
 	resp, err := c.http.Do(req)
 	if err != nil {
-		return Profile{}, fmt.Errorf("meta: falha de transporte ao ler o perfil: %w", errWithoutDetail(err))
+		return Profile{}, fmt.Errorf("meta: transport failure while reading the profile: %w", errWithoutDetail(err))
 	}
 	defer resp.Body.Close()
 
 	raw, err := io.ReadAll(io.LimitReader(resp.Body, responseBodyCap))
 	if err != nil {
-		return Profile{}, fmt.Errorf("meta: ler resposta: %w", errWithoutDetail(err))
+		return Profile{}, fmt.Errorf("meta: read response: %w", errWithoutDetail(err))
 	}
 	if metaError := ClassifyResponse(resp.StatusCode, raw); metaError != nil {
 		return Profile{}, metaError
@@ -151,7 +151,7 @@ func profileFromResponse(raw []byte) (Profile, error) {
 		Data []json.RawMessage `json:"data"`
 	}
 	if err := json.Unmarshal(raw, &envelope); err != nil {
-		return Profile{}, fmt.Errorf("%w: corpo nao entendido", ErrProfileNotUnderstood)
+		return Profile{}, fmt.Errorf("%w: body not understood", ErrProfileNotUnderstood)
 	}
 	// NOT VERIFIED AGAINST THE SOURCE that `data` always carries exactly
 	// one item — only that it's the envelope's documented format. An empty
@@ -163,11 +163,11 @@ func profileFromResponse(raw []byte) (Profile, error) {
 	}
 	var fields map[string]json.RawMessage
 	if err := json.Unmarshal(envelope.Data[0], &fields); err != nil || fields == nil {
-		return Profile{}, fmt.Errorf("%w: item nao e um objeto JSON", ErrProfileNotUnderstood)
+		return Profile{}, fmt.Errorf("%w: item is not a JSON object", ErrProfileNotUnderstood)
 	}
 	websites, err := textList(fields["websites"])
 	if err != nil {
-		return Profile{}, fmt.Errorf("%w: campo websites nao e uma lista", ErrProfileNotUnderstood)
+		return Profile{}, fmt.Errorf("%w: websites field is not a list", ErrProfileNotUnderstood)
 	}
 	return Profile{
 		About:             textOf(fields["about"]),
@@ -200,7 +200,7 @@ func textList(raw json.RawMessage) ([]string, error) {
 // THE BODY IS BUILT BY EMBEDDING THE STRUCT, not by a map written by hand
 // field by field (unlike CreateTemplate, in templates.go): each pointer's
 // `omitempty` in ProfilePatch already does, by itself, the same thing a list
-// of `if campo != nil { corpo[...] = *campo }` would do, and a hand-written
+// of `if field != nil { body[...] = *field }` would do, and a hand-written
 // list is one more copy of the field list to forget to keep in sync the day
 // Meta gains a new field.
 func (c *Client) WriteProfile(ctx context.Context, node, token string, p ProfilePatch) error {
@@ -214,17 +214,17 @@ func (c *Client) WriteProfile(ctx context.Context, node, token string, p Profile
 	}{MessagingProduct: "whatsapp", ProfilePatch: p}
 	raw, err := json.Marshal(bodyForMeta)
 	if err != nil {
-		return fmt.Errorf("meta: montar corpo do perfil: %w", err)
+		return fmt.Errorf("meta: build profile body: %w", err)
 	}
 
 	target, err := url.JoinPath(c.base, node, "whatsapp_business_profile")
 	if err != nil {
-		return fmt.Errorf("meta: montar url: %w", err)
+		return fmt.Errorf("meta: build url: %w", err)
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, target, bytes.NewReader(raw))
 	if err != nil {
-		return fmt.Errorf("meta: montar requisicao: %w", err)
+		return fmt.Errorf("meta: build request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 	// The token goes in the HEADER, never in the URL: a token in a query
@@ -233,13 +233,13 @@ func (c *Client) WriteProfile(ctx context.Context, node, token string, p Profile
 
 	resp, err := c.http.Do(req)
 	if err != nil {
-		return fmt.Errorf("meta: falha de transporte ao escrever o perfil: %w", errWithoutDetail(err))
+		return fmt.Errorf("meta: transport failure while writing the profile: %w", errWithoutDetail(err))
 	}
 	defer resp.Body.Close()
 
 	rawResponse, err := io.ReadAll(io.LimitReader(resp.Body, responseBodyCap))
 	if err != nil {
-		return fmt.Errorf("meta: ler resposta: %w", errWithoutDetail(err))
+		return fmt.Errorf("meta: read response: %w", errWithoutDetail(err))
 	}
 	if metaError := ClassifyResponse(resp.StatusCode, rawResponse); metaError != nil {
 		return metaError

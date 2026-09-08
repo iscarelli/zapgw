@@ -52,13 +52,13 @@ func TestSendInstagramMessageUsesTheParametersBaseNeverCBase(t *testing.T) {
 
 	resp, err := c.SendInstagramMessage(context.Background(), srv.URL, "IGID1", "token", "IGSID1", "oi")
 	if err != nil {
-		t.Fatalf("SendInstagramMessage: %v (c.base=%q base=%q) — a chamada foi para o host ERRADO", err, "http://127.0.0.1:1", srv.URL)
+		t.Fatalf("SendInstagramMessage: %v (c.base=%q base=%q) — the call went to the WRONG host", err, "http://127.0.0.1:1", srv.URL)
 	}
 	if resp.ID != "IG-TESTE-1" {
-		t.Errorf("id = %q, quero IG-TESTE-1", resp.ID)
+		t.Errorf("id = %q, want IG-TESTE-1", resp.ID)
 	}
 	if requestedPath != "/IGID1/messages" {
-		t.Errorf("caminho = %q, quero /IGID1/messages", requestedPath)
+		t.Errorf("path = %q, want /IGID1/messages", requestedPath)
 	}
 }
 
@@ -88,13 +88,13 @@ func TestSendInstagramMessageNeverCallsTheServerOfCBase(t *testing.T) {
 		t.Fatalf("SendInstagramMessage: %v", err)
 	}
 	if baseCalled {
-		t.Error("o servidor de c.base foi chamado — SendInstagramMessage regrediu para c.base")
+		t.Error("the c.base server was called — SendInstagramMessage regressed to c.base")
 	}
 	if !calledParam {
-		t.Error("o servidor de `base` (o parametro) NUNCA foi chamado")
+		t.Error("the `base` server (the parameter) was NEVER called")
 	}
 	if resp.ID != "IG-TESTE-2" {
-		t.Errorf("id = %q, quero IG-TESTE-2 (o que o servidor de `base` devolveu)", resp.ID)
+		t.Errorf("id = %q, want IG-TESTE-2 (what the `base` server returned)", resp.ID)
 	}
 }
 
@@ -119,7 +119,7 @@ func TestSendInstagramMessageBuildsTheExactRequest(t *testing.T) {
 	}
 
 	if method != http.MethodPost {
-		t.Errorf("metodo = %q, quero POST", method)
+		t.Errorf("method = %q, want POST", method)
 	}
 	if authorization != "Bearer token-secreto" {
 		t.Errorf("Authorization = %q", authorization)
@@ -133,13 +133,13 @@ func TestSendInstagramMessageBuildsTheExactRequest(t *testing.T) {
 		} `json:"message"`
 	}
 	if err := json.Unmarshal(body, &sent); err != nil {
-		t.Fatalf("corpo enviado nao e JSON: %s", body)
+		t.Fatalf("body sent is not JSON: %s", body)
 	}
 	if sent.Recipient.ID != "IGSID1" || sent.Message.Text != "oi, tudo bem?" {
-		t.Errorf("corpo = %s", body)
+		t.Errorf("body = %s", body)
 	}
 	if strings.Contains(string(body), "messaging_product") {
-		t.Errorf("corpo tem campo de WHATSAPP: %s", body)
+		t.Errorf("body has a WHATSAPP field: %s", body)
 	}
 }
 
@@ -159,11 +159,11 @@ func TestSendInstagramMessageRefusesAnIgIDThatWouldEscape(t *testing.T) {
 		_, err := testClient(srv).SendInstagramMessage(
 			context.Background(), srv.URL, dirty, "token", "IGSID1", "oi")
 		if err == nil {
-			t.Errorf("ig_id %q: aceito sem erro", dirty)
+			t.Errorf("ig_id %q: accepted without an error", dirty)
 		}
 	}
 	if called {
-		t.Fatal("o cliente CHAMOU a rede com um ig_id invalido")
+		t.Fatal("the client CALLED the network with an invalid ig_id")
 	}
 }
 
@@ -183,7 +183,7 @@ func TestSendInstagramMessageRefuses200WithoutAnID(t *testing.T) {
 		`{"recipient_id":"IGSID1","message_id":123}`,
 		`null`,
 		``,
-		`nao e json`,
+		`not json`,
 	}
 
 	for _, body := range cases {
@@ -196,14 +196,14 @@ func TestSendInstagramMessageRefuses200WithoutAnID(t *testing.T) {
 		srv.Close()
 
 		if err == nil {
-			t.Errorf("corpo %q devolveu SUCESSO com id %q", body, resp.ID)
+			t.Errorf("body %q returned SUCCESS with id %q", body, resp.ID)
 			continue
 		}
 		if !errors.Is(err, ErrResponseWithoutMessageID) {
-			t.Errorf("corpo %q: erro = %v, quero ErrResponseWithoutMessageID", body, err)
+			t.Errorf("body %q: err = %v, want ErrResponseWithoutMessageID", body, err)
 		}
 		if resp.ID != "" {
-			t.Errorf("corpo %q devolveu id %q junto com erro", body, resp.ID)
+			t.Errorf("body %q returned id %q together with an error", body, resp.ID)
 		}
 	}
 }
@@ -270,8 +270,8 @@ func TestIsEchoAgreesWithSenderEqualToTheEntryID(t *testing.T) {
 		item     string
 		wantEcho bool
 	}{
-		{"mensagem de cliente", testCustomerMessageItem(customerIGSID, igID, "IGMID.CLI1", "oi"), false},
-		{"eco", testEchoItem(igID, customerIGSID, "IGMID.ECO1", "resposta"), true},
+		{"customer message", testCustomerMessageItem(customerIGSID, igID, "IGMID.CLI1", "oi"), false},
+		{"echo", testEchoItem(igID, customerIGSID, "IGMID.ECO1", "resposta"), true},
 	}
 
 	for _, c := range cases {
@@ -288,7 +288,7 @@ func TestIsEchoAgreesWithSenderEqualToTheEntryID(t *testing.T) {
 			}
 			entries, _ := messageBlock[[]json.RawMessage](env.Entry)
 			if len(entries) != 1 {
-				t.Fatalf("entradas = %d, quero 1", len(entries))
+				t.Fatalf("entries = %d, want 1", len(entries))
 			}
 			var ent instagramEntryMeta
 			if err := json.Unmarshal(entries[0], &ent); err != nil {
@@ -298,15 +298,15 @@ func TestIsEchoAgreesWithSenderEqualToTheEntryID(t *testing.T) {
 
 			items, _ := messageBlock[[]json.RawMessage](ent.Messaging)
 			if len(items) != 1 {
-				t.Fatalf("itens de messaging = %d, quero 1", len(items))
+				t.Fatalf("messaging items = %d, want 1", len(items))
 			}
 			var m messagingItemMeta
 			if err := json.Unmarshal(items[0], &m); err != nil {
-				t.Fatalf("item de messaging: %v", err)
+				t.Fatalf("messaging item: %v", err)
 			}
 			msg, msgState := messageBlock[instagramMessageBodyMeta](m.Message)
 			if msgState != blockRead {
-				t.Fatalf("message: estado = %v", msgState)
+				t.Fatalf("message: state = %v", msgState)
 			}
 			sender, _ := messageBlock[instagramParticipantMeta](m.Sender)
 
@@ -316,14 +316,14 @@ func TestIsEchoAgreesWithSenderEqualToTheEntryID(t *testing.T) {
 			echoBySenderEqualsEntry := sender.ID == entryID
 
 			if echoByIsEcho != c.wantEcho {
-				t.Fatalf("is_echo = %v, quero %v", echoByIsEcho, c.wantEcho)
+				t.Fatalf("is_echo = %v, want %v", echoByIsEcho, c.wantEcho)
 			}
 			if echoBySenderEqualsEntry != c.wantEcho {
-				t.Fatalf("sender.id==entry.id = %v, quero %v", echoBySenderEqualsEntry, c.wantEcho)
+				t.Fatalf("sender.id==entry.id = %v, want %v", echoBySenderEqualsEntry, c.wantEcho)
 			}
 			if echoByIsEcho != echoBySenderEqualsEntry {
-				t.Errorf("os dois criterios DIVERGIRAM neste payload: is_echo=%v, sender.id==entry.id=%v — "+
-					"isso e' sinal de que a Meta mudou algo no formato; ver o comentario desta funcao",
+				t.Errorf("the two criteria DIVERGED on this payload: is_echo=%v, sender.id==entry.id=%v — "+
+					"that's a sign Meta changed something in the format; see this function's comment",
 					echoByIsEcho, echoBySenderEqualsEntry)
 			}
 		})
@@ -346,10 +346,10 @@ func TestParseInstagramWebhookAnEchoDoesNotBecomeAnEvent(t *testing.T) {
 	evs, err := ParseInstagramWebhook(payload)
 
 	if len(evs) != 0 {
-		t.Fatalf("eventos = %d, quero 0 (eco nao pode virar evento modelado): %+v", len(evs), evs)
+		t.Fatalf("events = %d, want 0 (an echo must not become a modeled event): %+v", len(evs), evs)
 	}
 	if err != nil {
-		t.Errorf("err = %v, quero nil (eco e SILENCIOSO — T-106)", err)
+		t.Errorf("err = %v, want nil (the echo is SILENT — T-106)", err)
 	}
 }
 
@@ -369,17 +369,17 @@ func TestParseInstagramWebhookFiltersTheEchoAndKeepsTheCustomersMessage(t *testi
 	evs, err := ParseInstagramWebhook(payload)
 
 	if len(evs) != 1 {
-		t.Fatalf("eventos = %d, quero 1 (so a mensagem do cliente): %+v", len(evs), evs)
+		t.Fatalf("events = %d, want 1 (only the customer's message): %+v", len(evs), evs)
 	}
 	ev := evs[0]
 	if ev.Type != EventTypeMessage {
-		t.Errorf("Type = %q, quero %q", ev.Type, EventTypeMessage)
+		t.Errorf("Type = %q, want %q", ev.Type, EventTypeMessage)
 	}
 	if ev.WaMessageID != "IGMID.CLIENTE1" {
-		t.Errorf("WaMessageID = %q, quero IGMID.CLIENTE1 (o eco IGMID.ECO1 nao pode aparecer)", ev.WaMessageID)
+		t.Errorf("WaMessageID = %q, want IGMID.CLIENTE1 (the echo IGMID.ECO1 must not show up)", ev.WaMessageID)
 	}
 	if ev.FromCanonical != "IGSID_CLIENTE_SINTETICO" {
-		t.Errorf("FromCanonical = %q, quero o IGSID do CLIENTE, nunca o IGID do negocio", ev.FromCanonical)
+		t.Errorf("FromCanonical = %q, want the CUSTOMER's IGSID, never the business's IGID", ev.FromCanonical)
 	}
 	if ev.Text != "oi, preciso de ajuda" {
 		t.Errorf("Text = %q", ev.Text)
@@ -388,7 +388,7 @@ func TestParseInstagramWebhookFiltersTheEchoAndKeepsTheCustomersMessage(t *testi
 	// successfully and the echo doesn't count anywhere, so err has to be
 	// nil.
 	if err != nil {
-		t.Errorf("err = %v, quero nil (eco filtrado e SILENCIOSO — T-106)", err)
+		t.Errorf("err = %v, want nil (the filtered echo is SILENT — T-106)", err)
 	}
 }
 
@@ -410,10 +410,10 @@ func TestParseInstagramWebhookABatchOfEchoesOnlyGivesNilErrAndNoEvents(t *testin
 	evs, err := ParseInstagramWebhook(payload)
 
 	if err != nil {
-		t.Errorf("err = %v, quero nil", err)
+		t.Errorf("err = %v, want nil", err)
 	}
 	if len(evs) != 0 {
-		t.Errorf("eventos = %d, quero 0", len(evs))
+		t.Errorf("events = %d, want 0", len(evs))
 	}
 }
 
@@ -438,14 +438,14 @@ func TestParseInstagramWebhookAnItemWithoutMessageDoesNotLieThatItCouldNotBeRead
 	evs, err := ParseInstagramWebhook(payload)
 
 	if len(evs) != 0 {
-		t.Fatalf("eventos = %d, quero 0: %+v", len(evs), evs)
+		t.Fatalf("events = %d, want 0: %+v", len(evs), evs)
 	}
 	if errors.Is(err, ErrPartialParse) {
-		t.Errorf("err = %v — um item SEM message (recibo/postback/reacao) foi LIDO, "+
-			"nunca pode virar ErrPartialParse ('nao pode ser lida')", err)
+		t.Errorf("err = %v — an item WITHOUT message (receipt/postback/reaction) was READ, "+
+			"it can never become ErrPartialParse ('nao pode ser lida')", err)
 	}
 	if err != nil && !errors.Is(err, ErrUnmodeledItems) {
-		t.Errorf("err = %v, se produzir sinal tem de ser ErrUnmodeledItems", err)
+		t.Errorf("err = %v, if it produces a signal it has to be ErrUnmodeledItems", err)
 	}
 }
 
@@ -463,16 +463,16 @@ func TestParseInstagramWebhookAnUnreadableItemIsStillErrPartialParse(t *testing.
 	evs, err := ParseInstagramWebhook(payload)
 
 	if len(evs) != 0 {
-		t.Fatalf("eventos = %d, quero 0: %+v", len(evs), evs)
+		t.Fatalf("events = %d, want 0: %+v", len(evs), evs)
 	}
 	if !errors.Is(err, ErrPartialParse) {
-		t.Fatalf("err = %v, quero ErrPartialParse (message ilegivel de verdade)", err)
+		t.Fatalf("err = %v, want ErrPartialParse (a genuinely unreadable message)", err)
 	}
 	if !strings.Contains(err.Error(), ErrPartialParse.Error()) {
-		t.Errorf("err = %v, o TEXTO de ErrPartialParse mudou sem ninguem notar (constante: %q)", err, ErrPartialParse.Error())
+		t.Errorf("err = %v, ErrPartialParse's TEXT changed without anyone noticing (constant: %q)", err, ErrPartialParse.Error())
 	}
 	if errors.Is(err, ErrUnmodeledItems) {
-		t.Errorf("err = %v, um item ilegivel nao pode contar como ErrUnmodeledItems tambem", err)
+		t.Errorf("err = %v, an unreadable item must not also count as ErrUnmodeledItems", err)
 	}
 }
 
@@ -492,16 +492,16 @@ func TestParseInstagramWebhookAMixedBatchKeepsTheGoodAndReportsTheUnreadable(t *
 	evs, err := ParseInstagramWebhook(payload)
 
 	if len(evs) != 1 {
-		t.Fatalf("eventos = %d, quero 1 (so a mensagem boa; eco e ilegivel nao viram Event): %+v", len(evs), evs)
+		t.Fatalf("events = %d, want 1 (only the good message; echo and unreadable do not become Events): %+v", len(evs), evs)
 	}
 	if evs[0].WaMessageID != "IGMID.BOA1" {
-		t.Errorf("WaMessageID = %q, quero IGMID.BOA1", evs[0].WaMessageID)
+		t.Errorf("WaMessageID = %q, want IGMID.BOA1", evs[0].WaMessageID)
 	}
 	if !errors.Is(err, ErrPartialParse) {
-		t.Fatalf("err = %v, quero um erro que envolve ErrPartialParse (o item ilegivel)", err)
+		t.Fatalf("err = %v, want an error that wraps ErrPartialParse (the unreadable item)", err)
 	}
 	if errors.Is(err, ErrUnmodeledItems) {
-		t.Errorf("err = %v, este lote nao tem item nao-modelado, so ilegivel — o eco e silencioso", err)
+		t.Errorf("err = %v, this batch has no not-modeled item, only unreadable — the echo is silent", err)
 	}
 }
 
@@ -528,12 +528,12 @@ func TestParseInstagramWebhookAMessageWithoutIsEchoBehavesAsBefore(t *testing.T)
 	evs, err := ParseInstagramWebhook(payload)
 
 	if err != nil {
-		t.Fatalf("err = %v, quero nil (nenhum item ignorado)", err)
+		t.Fatalf("err = %v, want nil (no item ignored)", err)
 	}
 	if len(evs) != 1 {
-		t.Fatalf("eventos = %d, quero 1: %+v", len(evs), evs)
+		t.Fatalf("events = %d, want 1: %+v", len(evs), evs)
 	}
 	if evs[0].WaMessageID != "IGMID.NORMAL1" || evs[0].Text != "mensagem normal" {
-		t.Errorf("evento = %+v", evs[0])
+		t.Errorf("event = %+v", evs[0])
 	}
 }

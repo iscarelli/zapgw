@@ -32,7 +32,7 @@ func TestMarkAsReadWithoutTypingSendsTheUsualBody(t *testing.T) {
 
 	const want = `{"message_id":"wamid.TESTE-DIGITANDO","messaging_product":"whatsapp","status":"read"}`
 	if receivedBody != want {
-		t.Fatalf("corpo = %s\nquero  = %s\n(digitando=false NAO pode mudar o corpo de uma chamada ja em producao)",
+		t.Fatalf("body = %s\nwant  = %s\n(digitando=false must NOT change the body of a call already in production)",
 			receivedBody, want)
 	}
 }
@@ -59,6 +59,6 @@ func TestMarkAsReadWithTypingAddsTheIndicator(t *testing.T) {
 
 	const want = `{"message_id":"wamid.TESTE-DIGITANDO","messaging_product":"whatsapp","status":"read","typing_indicator":{"type":"text"}}`
 	if receivedBody != want {
-		t.Fatalf("corpo = %s\nquero  = %s", receivedBody, want)
+		t.Fatalf("body = %s\nwant  = %s", receivedBody, want)
 	}
 }

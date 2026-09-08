@@ -119,25 +119,25 @@ func (c *Client) ObserveNumber(ctx context.Context, phoneNumberID, token string)
 	}
 	target, err := url.JoinPath(c.base, phoneNumberID)
 	if err != nil {
-		return NumberObservation{}, fmt.Errorf("meta: montar url: %w", err)
+		return NumberObservation{}, fmt.Errorf("meta: build url: %w", err)
 	}
 	target += "?" + url.Values{"fields": {numberFields}}.Encode()
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, target, nil)
 	if err != nil {
-		return NumberObservation{}, fmt.Errorf("meta: montar requisicao: %w", err)
+		return NumberObservation{}, fmt.Errorf("meta: build request: %w", err)
 	}
 	req.Header.Set("Authorization", "Bearer "+token)
 
 	resp, err := c.http.Do(req)
 	if err != nil {
-		return NumberObservation{}, fmt.Errorf("meta: falha de transporte ao observar o numero: %w", errWithoutDetail(err))
+		return NumberObservation{}, fmt.Errorf("meta: transport failure while observing the number: %w", errWithoutDetail(err))
 	}
 	defer resp.Body.Close()
 
 	raw, err := io.ReadAll(io.LimitReader(resp.Body, responseBodyCap))
 	if err != nil {
-		return NumberObservation{}, fmt.Errorf("meta: ler resposta: %w", errWithoutDetail(err))
+		return NumberObservation{}, fmt.Errorf("meta: read response: %w", errWithoutDetail(err))
 	}
 	if metaError := ClassifyResponse(resp.StatusCode, raw); metaError != nil {
 		return NumberObservation{}, metaError

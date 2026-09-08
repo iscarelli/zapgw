@@ -24,25 +24,25 @@ func TestClassifyUsesTheHTTPStatusAsTheBase(t *testing.T) {
 		want   ErrorClass
 		why    string
 	}{
-		{http.StatusInternalServerError, ClassRetryable, "5xx da Meta: o problema e dela, tentar de novo resolve"},
+		{http.StatusInternalServerError, ClassRetryable, "5xx from Meta: the problem is theirs, retrying resolves it"},
 		{http.StatusBadGateway, ClassRetryable, "idem"},
 		{http.StatusServiceUnavailable, ClassRetryable, "idem"},
 		{http.StatusGatewayTimeout, ClassRetryable, "idem"},
-		{http.StatusTooManyRequests, ClassRetryable, "limite de taxa: esperar e tentar de novo E a solucao"},
-		{http.StatusUnauthorized, ClassConfig, "token errado ou expirado: so gente conserta"},
-		{http.StatusForbidden, ClassConfig, "sem permissao: so gente conserta"},
-		{http.StatusBadRequest, ClassPermanent, "corpo errado: reenviar repete o mesmo erro"},
-		{http.StatusNotFound, ClassPermanent, "recurso inexistente"},
+		{http.StatusTooManyRequests, ClassRetryable, "rate limit: waiting and retrying IS the solution"},
+		{http.StatusUnauthorized, ClassConfig, "wrong or expired token: only a person fixes it"},
+		{http.StatusForbidden, ClassConfig, "no permission: only a person fixes it"},
+		{http.StatusBadRequest, ClassPermanent, "wrong body: resending repeats the same error"},
+		{http.StatusNotFound, ClassPermanent, "nonexistent resource"},
 		{http.StatusUnprocessableEntity, ClassPermanent, "idem"},
 	}
 
 	for _, c := range cases {
 		e := ClassifyResponse(c.status, []byte(`{}`))
 		if e == nil {
-			t.Fatalf("status %d nao produziu erro", c.status)
+			t.Fatalf("status %d did not produce an error", c.status)
 		}
 		if e.Class != c.want {
-			t.Errorf("status %d -> %q, quero %q (%s)", c.status, e.Class, c.want, c.why)
+			t.Errorf("status %d -> %q, want %q (%s)", c.status, e.Class, c.want, c.why)
 		}
 	}
 }
@@ -50,7 +50,7 @@ func TestClassifyUsesTheHTTPStatusAsTheBase(t *testing.T) {
 func TestClassifyDoesNotInventAnErrorForSuccess(t *testing.T) {
 	for _, status := range []int{200, 201, 202, 204} {
 		if e := ClassifyResponse(status, []byte(`{}`)); e != nil {
-			t.Errorf("status %d produziu erro %v", status, e)
+			t.Errorf("status %d produced error %v", status, e)
 		}
 	}
 }
@@ -63,13 +63,13 @@ func TestClassifyExtractsMetasCodeWithoutDependingOnIt(t *testing.T) {
 
 	e := ClassifyResponse(http.StatusBadRequest, body)
 	if e == nil {
-		t.Fatal("nao produziu erro")
+		t.Fatal("did not produce an error")
 	}
 	if e.MetaCode != 131047 {
-		t.Errorf("MetaCode = %d, quero 131047", e.MetaCode)
+		t.Errorf("MetaCode = %d, want 131047", e.MetaCode)
 	}
 	if e.Class != ClassPermanent {
-		t.Errorf("Class = %q — a classe vem do status 400, nao do codigo", e.Class)
+		t.Errorf("Class = %q — the class comes from status 400, not the code", e.Class)
 	}
 }
 
@@ -77,7 +77,7 @@ func TestClassifyWithstandsABodyThatDoesNotHelp(t *testing.T) {
 	// Meta can return an empty body, proxy HTML, or JSON without `error`.
 	// None of that can bring the gateway down or erase the classification.
 	cases := [][]byte{
-		nil, {}, []byte(`nao e json`), []byte(`null`), []byte(`[]`),
+		nil, {}, []byte(`not json`), []byte(`null`), []byte(`[]`),
 		[]byte(`{"error":"texto em vez de objeto"}`),
 		[]byte(`{"error":{"code":"131047"}}`), // code as a STRING
 		[]byte(`<html>502 Bad Gateway</html>`),
@@ -87,15 +87,15 @@ func TestClassifyWithstandsABodyThatDoesNotHelp(t *testing.T) {
 		func() {
 			defer func() {
 				if r := recover(); r != nil {
-					t.Fatalf("panico com corpo %q: %v", body, r)
+					t.Fatalf("panic with body %q: %v", body, r)
 				}
 			}()
 			e := ClassifyResponse(http.StatusBadGateway, body)
 			if e == nil {
-				t.Fatalf("corpo %q apagou a classificacao", body)
+				t.Fatalf("body %q erased the classification", body)
 			}
 			if e.Class != ClassRetryable {
-				t.Errorf("corpo %q mudou a classe para %q", body, e.Class)
+				t.Errorf("body %q changed the class to %q", body, e.Class)
 			}
 		}()
 	}
@@ -114,11 +114,11 @@ func TestMetaErrorDoesNotLeakTheBodyIntoTheMessage(t *testing.T) {
 
 	for _, forbidden := range []string{"5511999990000", "segredo do cliente", "error_data"} {
 		if strings.Contains(text, forbidden) {
-			t.Errorf("a mensagem do erro vazou %q: %s", forbidden, text)
+			t.Errorf("the error message leaked %q: %s", forbidden, text)
 		}
 	}
 	if !strings.Contains(text, "Invalid parameter") {
-		t.Errorf("a mensagem util da Meta se perdeu: %s", text)
+		t.Errorf("Meta's useful message was lost: %s", text)
 	}
 }
 
@@ -129,10 +129,10 @@ func TestAnUnknownClassNeverBecomesRetryable(t *testing.T) {
 	for _, status := range []int{100, 301, 302, 399} {
 		e := ClassifyResponse(status, []byte(`{}`))
 		if e == nil {
-			t.Fatalf("status %d nao produziu erro", status)
+			t.Fatalf("status %d did not produce an error", status)
 		}
 		if e.Class == ClassRetryable {
-			t.Errorf("status %d classificado como retentavel", status)
+			t.Errorf("status %d classified as retryable", status)
 		}
 	}
 }
@@ -152,10 +152,10 @@ func TestClassifyKeepsTheMessageWhenTheCodeIsMalformed(t *testing.T) {
 	for _, body := range cases {
 		e := ClassifyResponse(http.StatusBadRequest, []byte(body))
 		if e == nil {
-			t.Fatalf("corpo %s nao produziu erro", body)
+			t.Fatalf("body %s did not produce an error", body)
 		}
 		if e.Message != "seria util" {
-			t.Errorf("corpo %s: Message = %q — o campo ruim levou o bom junto", body, e.Message)
+			t.Errorf("body %s: Message = %q — the bad field took the good one down with it", body, e.Message)
 		}
 	}
 }
@@ -165,10 +165,10 @@ func TestClassifyReadsTheCodeAsANumberOrAsAString(t *testing.T) {
 	text := ClassifyResponse(http.StatusBadRequest, []byte(`{"error":{"code":"131047"}}`))
 
 	if number.MetaCode != 131047 {
-		t.Errorf("codigo como numero = %d", number.MetaCode)
+		t.Errorf("code as a number = %d", number.MetaCode)
 	}
 	if text.MetaCode != 131047 {
-		t.Errorf("codigo como string = %d", text.MetaCode)
+		t.Errorf("code as a string = %d", text.MetaCode)
 	}
 }
 
@@ -178,7 +178,7 @@ func TestClassifyKeepsTheCodeWhenTheMessageIsMalformed(t *testing.T) {
 	e := ClassifyResponse(http.StatusBadRequest, []byte(`{"error":{"message":{"x":1},"code":100}}`))
 
 	if e.MetaCode != 100 {
-		t.Errorf("MetaCode = %d — a mensagem malformada levou o codigo junto", e.MetaCode)
+		t.Errorf("MetaCode = %d — the malformed message took the code down with it", e.MetaCode)
 	}
 }
 
@@ -186,7 +186,7 @@ func TestClassifyTreatsTimeoutAndTooEarlyAsRetryable(t *testing.T) {
 	for _, status := range []int{http.StatusRequestTimeout, http.StatusTooEarly} {
 		e := ClassifyResponse(status, []byte(`{}`))
 		if e.Class != ClassRetryable {
-			t.Errorf("status %d -> %q, quero retentavel — sao 'tente de novo' por definicao do HTTP",
+			t.Errorf("status %d -> %q, want retryable — they are 'try again' by HTTP's own definition",
 				status, e.Class)
 		}
 	}
@@ -202,10 +202,10 @@ func TestClassifyAThrottlingCodePromotesPermanentToRetryable(t *testing.T) {
 
 	e := ClassifyResponse(http.StatusBadRequest, body)
 	if e == nil {
-		t.Fatal("nao produziu erro")
+		t.Fatal("did not produce an error")
 	}
 	if e.Class != ClassRetryable {
-		t.Errorf("status 400 + codigo 130429 -> %q, quero ClassRetryable", e.Class)
+		t.Errorf("status 400 + code 130429 -> %q, want ClassRetryable", e.Class)
 	}
 }
 
@@ -216,10 +216,10 @@ func TestClassifyAnUnknownCodeDoesNotPromote(t *testing.T) {
 
 	e := ClassifyResponse(http.StatusBadRequest, body)
 	if e == nil {
-		t.Fatal("nao produziu erro")
+		t.Fatal("did not produce an error")
 	}
 	if e.Class != ClassPermanent {
-		t.Errorf("status 400 + codigo desconhecido -> %q, quero ClassPermanent", e.Class)
+		t.Errorf("status 400 + unknown code -> %q, want ClassPermanent", e.Class)
 	}
 }
 
@@ -231,10 +231,10 @@ func TestClassifyAThrottlingCodeDoesNotDowngradeClassConfig(t *testing.T) {
 
 	e := ClassifyResponse(http.StatusUnauthorized, body)
 	if e == nil {
-		t.Fatal("nao produziu erro")
+		t.Fatal("did not produce an error")
 	}
 	if e.Class != ClassConfig {
-		t.Errorf("status 401 + codigo 130429 -> %q, quero ClassConfig (o codigo NAO rebaixa)", e.Class)
+		t.Errorf("status 401 + code 130429 -> %q, want ClassConfig (the code does NOT downgrade)", e.Class)
 	}
 }
 
@@ -246,10 +246,10 @@ func TestClassifyTheFiveThrottlingCodesPromote(t *testing.T) {
 
 		e := ClassifyResponse(http.StatusBadRequest, body)
 		if e == nil {
-			t.Fatalf("codigo %d: nao produziu erro", code)
+			t.Fatalf("code %d: did not produce an error", code)
 		}
 		if e.Class != ClassRetryable {
-			t.Errorf("codigo %d: status 400 -> %q, quero ClassRetryable", code, e.Class)
+			t.Errorf("code %d: status 400 -> %q, want ClassRetryable", code, e.Class)
 		}
 	}
 }
@@ -259,10 +259,10 @@ func TestClassifyTheFiveThrottlingCodesPromote(t *testing.T) {
 func TestClassifyWithoutACodeUsesOnlyTheStatus(t *testing.T) {
 	e := ClassifyResponse(http.StatusBadRequest, []byte(`{"error":{"message":"sem codigo"}}`))
 	if e == nil {
-		t.Fatal("nao produziu erro")
+		t.Fatal("did not produce an error")
 	}
 	if e.Class != ClassPermanent {
-		t.Errorf("status 400 sem codigo -> %q, quero ClassPermanent", e.Class)
+		t.Errorf("status 400 without a code -> %q, want ClassPermanent", e.Class)
 	}
 }
 
@@ -279,19 +279,19 @@ func TestClassifyFillsDetailWhenErrorDataDetailsComes(t *testing.T) {
 
 	e := ClassifyResponse(http.StatusBadRequest, body)
 	if e == nil {
-		t.Fatal("nao produziu erro")
+		t.Fatal("did not produce an error")
 	}
 	want := "Button title length invalid. Min length: 1, Max length: 20"
 	if e.Detail != want {
-		t.Errorf("Detail = %q, quero %q", e.Detail, want)
+		t.Errorf("Detail = %q, want %q", e.Detail, want)
 	}
 	// The message and the code still come through, intact — the new field
 	// cannot take down the two that already existed.
 	if e.Message != "Parameter value is not valid" {
-		t.Errorf("Message = %q — a leitura de error_data levou a mensagem junto", e.Message)
+		t.Errorf("Message = %q — reading error_data took the message down with it", e.Message)
 	}
 	if e.MetaCode != 131009 {
-		t.Errorf("MetaCode = %d — a leitura de error_data levou o codigo junto", e.MetaCode)
+		t.Errorf("MetaCode = %d — reading error_data took the code down with it", e.MetaCode)
 	}
 }
 
@@ -302,10 +302,10 @@ func TestClassifyWithoutErrorDataLeavesDetailEmpty(t *testing.T) {
 
 	e := ClassifyResponse(http.StatusBadRequest, body)
 	if e.Detail != "" {
-		t.Errorf("Detail = %q, quero vazio (corpo sem error_data)", e.Detail)
+		t.Errorf("Detail = %q, want empty (body without error_data)", e.Detail)
 	}
 	if e.Message != "Invalid parameter" || e.MetaCode != 100 {
-		t.Errorf("Message/MetaCode mudaram sem error_data: %q / %d", e.Message, e.MetaCode)
+		t.Errorf("Message/MetaCode changed without error_data: %q / %d", e.Message, e.MetaCode)
 	}
 }
 
@@ -318,7 +318,7 @@ func TestClassifyToleratesMalformedErrorData(t *testing.T) {
 		name string
 		body string
 	}{
-		{"sem details", `{"error":{"message":"algo","code":1,"error_data":{"blocked_reason":"x"}}}`},
+		{"no details", `{"error":{"message":"algo","code":1,"error_data":{"blocked_reason":"x"}}}`},
 		{"error_data null", `{"error":{"message":"algo","code":1,"error_data":null}}`},
 		{"error_data string", `{"error":{"message":"algo","code":1,"error_data":"nao e objeto"}}`},
 	}
@@ -326,16 +326,16 @@ func TestClassifyToleratesMalformedErrorData(t *testing.T) {
 	for _, c := range cases {
 		e := ClassifyResponse(http.StatusBadRequest, []byte(c.body))
 		if e == nil {
-			t.Fatalf("%s: nao produziu erro", c.name)
+			t.Fatalf("%s: did not produce an error", c.name)
 		}
 		if e.Detail != "" {
-			t.Errorf("%s: Detail = %q, quero vazio", c.name, e.Detail)
+			t.Errorf("%s: Detail = %q, want empty", c.name, e.Detail)
 		}
 		if e.Message != "algo" {
-			t.Errorf("%s: Message = %q — error_data malformado levou a mensagem junto", c.name, e.Message)
+			t.Errorf("%s: Message = %q — malformed error_data took the message down with it", c.name, e.Message)
 		}
 		if e.MetaCode != 1 {
-			t.Errorf("%s: MetaCode = %d — error_data malformado levou o codigo junto", c.name, e.MetaCode)
+			t.Errorf("%s: MetaCode = %d — malformed error_data took the code down with it", c.name, e.MetaCode)
 		}
 	}
 }
@@ -352,11 +352,11 @@ func TestClassifyTruncatesDetailAt500Runes(t *testing.T) {
 
 	suffix := " …[truncado]"
 	if !strings.HasSuffix(e.Detail, suffix) {
-		t.Fatalf("Detail nao termina com o sufixo de truncagem: %q", e.Detail)
+		t.Fatalf("Detail does not end with the truncation suffix: %q", e.Detail)
 	}
 	truncatedBody := strings.TrimSuffix(e.Detail, suffix)
 	if runes := len([]rune(truncatedBody)); runes != 500 {
-		t.Errorf("parte antes do sufixo tem %d runas, quero 500", runes)
+		t.Errorf("the part before the suffix has %d runes, want 500", runes)
 	}
 }
 
@@ -365,7 +365,7 @@ func TestClassifyDoesNotTruncateADetailWithinTheCap(t *testing.T) {
 
 	e := ClassifyResponse(http.StatusBadRequest, body)
 	if e.Detail != "curto" {
-		t.Errorf("Detail = %q, quero %q sem truncagem", e.Detail, "curto")
+		t.Errorf("Detail = %q, want %q with no truncation", e.Detail, "curto")
 	}
 }
 
@@ -384,23 +384,23 @@ func TestClassifyReadsSubcodeExplanationAndTrace(t *testing.T) {
 
 	e := ClassifyResponse(http.StatusServiceUnavailable, body)
 	if e == nil {
-		t.Fatal("nao produziu erro")
+		t.Fatal("did not produce an error")
 	}
 	if e.Subcode != 2494055 {
-		t.Errorf("Subcode = %d, quero 2494055", e.Subcode)
+		t.Errorf("Subcode = %d, want 2494055", e.Subcode)
 	}
 	if e.Trace != "AbCdEfGhIjKlMnOp" {
-		t.Errorf("Trace = %q, quero %q", e.Trace, "AbCdEfGhIjKlMnOp")
+		t.Errorf("Trace = %q, want %q", e.Trace, "AbCdEfGhIjKlMnOp")
 	}
 	want := "Erro temporario: Tente novamente em alguns instantes"
 	if e.Explanation != want {
-		t.Errorf("Explanation = %q, quero %q", e.Explanation, want)
+		t.Errorf("Explanation = %q, want %q", e.Explanation, want)
 	}
 	if e.Message != "An unknown error has occurred" {
-		t.Errorf("Message = %q — os campos novos levaram a mensagem junto", e.Message)
+		t.Errorf("Message = %q — the new fields took the message down with them", e.Message)
 	}
 	if e.MetaCode != 2 {
-		t.Errorf("MetaCode = %d — os campos novos levaram o codigo junto", e.MetaCode)
+		t.Errorf("MetaCode = %d — the new fields took the code down with them", e.MetaCode)
 	}
 }
 
@@ -411,7 +411,7 @@ func TestClassifyAnExplanationWithoutATitleGetsNoPrefix(t *testing.T) {
 
 	e := ClassifyResponse(http.StatusBadRequest, body)
 	if e.Explanation != "tente de novo mais tarde" {
-		t.Errorf("Explanation = %q, quero sem prefixo", e.Explanation)
+		t.Errorf("Explanation = %q, want it without a prefix", e.Explanation)
 	}
 }
 
@@ -423,16 +423,16 @@ func TestClassifyWithoutTheNewFieldsLeavesTheThreeEmpty(t *testing.T) {
 
 	e := ClassifyResponse(http.StatusBadRequest, body)
 	if e.Subcode != 0 {
-		t.Errorf("Subcode = %d, quero 0", e.Subcode)
+		t.Errorf("Subcode = %d, want 0", e.Subcode)
 	}
 	if e.Explanation != "" {
-		t.Errorf("Explanation = %q, quero vazio", e.Explanation)
+		t.Errorf("Explanation = %q, want empty", e.Explanation)
 	}
 	if e.Trace != "" {
-		t.Errorf("Trace = %q, quero vazio", e.Trace)
+		t.Errorf("Trace = %q, want empty", e.Trace)
 	}
 	if e.Message != "parametro invalido" || e.MetaCode != 100 {
-		t.Errorf("Message/MetaCode mudaram sem os campos novos: %q / %d", e.Message, e.MetaCode)
+		t.Errorf("Message/MetaCode changed without the new fields: %q / %d", e.Message, e.MetaCode)
 	}
 }
 
@@ -443,7 +443,7 @@ func TestClassifyReadsSubcodeAsAString(t *testing.T) {
 
 	e := ClassifyResponse(http.StatusBadRequest, body)
 	if e.Subcode != 2494055 {
-		t.Errorf("Subcode = %d, quero 2494055 (lido como string)", e.Subcode)
+		t.Errorf("Subcode = %d, want 2494055 (read as a string)", e.Subcode)
 	}
 }
 
@@ -455,22 +455,22 @@ func TestClassifyToleratesMalformedNewFields(t *testing.T) {
 		name string
 		body string
 	}{
-		{"error_subcode aninhado", `{"error":{"message":"algo","code":1,"error_subcode":{"x":1}}}`},
-		{"error_user_title aninhado", `{"error":{"message":"algo","code":1,"error_user_title":{"x":1},"error_user_msg":"msg"}}`},
-		{"error_user_msg aninhado", `{"error":{"message":"algo","code":1,"error_user_msg":{"x":1}}}`},
-		{"fbtrace_id aninhado", `{"error":{"message":"algo","code":1,"fbtrace_id":{"x":1}}}`},
+		{"nested error_subcode", `{"error":{"message":"algo","code":1,"error_subcode":{"x":1}}}`},
+		{"nested error_user_title", `{"error":{"message":"algo","code":1,"error_user_title":{"x":1},"error_user_msg":"msg"}}`},
+		{"nested error_user_msg", `{"error":{"message":"algo","code":1,"error_user_msg":{"x":1}}}`},
+		{"nested fbtrace_id", `{"error":{"message":"algo","code":1,"fbtrace_id":{"x":1}}}`},
 	}
 
 	for _, c := range cases {
 		e := ClassifyResponse(http.StatusBadRequest, []byte(c.body))
 		if e == nil {
-			t.Fatalf("%s: nao produziu erro", c.name)
+			t.Fatalf("%s: did not produce an error", c.name)
 		}
 		if e.Message != "algo" {
-			t.Errorf("%s: Message = %q — campo novo malformado levou a mensagem junto", c.name, e.Message)
+			t.Errorf("%s: Message = %q — the malformed new field took the message down with it", c.name, e.Message)
 		}
 		if e.MetaCode != 1 {
-			t.Errorf("%s: MetaCode = %d — campo novo malformado levou o codigo junto", c.name, e.MetaCode)
+			t.Errorf("%s: MetaCode = %d — the malformed new field took the code down with it", c.name, e.MetaCode)
 		}
 	}
 	// The nested-title case still has to let error_user_msg through — it's
@@ -478,7 +478,7 @@ func TestClassifyToleratesMalformedNewFields(t *testing.T) {
 	e := ClassifyResponse(http.StatusBadRequest,
 		[]byte(`{"error":{"message":"algo","code":1,"error_user_title":{"x":1},"error_user_msg":"msg boa"}}`))
 	if e.Explanation != "msg boa" {
-		t.Errorf("Explanation = %q, quero %q — titulo malformado nao pode apagar a mensagem boa", e.Explanation, "msg boa")
+		t.Errorf("Explanation = %q, want %q — a malformed title must not erase the good message", e.Explanation, "msg boa")
 	}
 }
 
@@ -492,10 +492,10 @@ func TestClassifyTruncatesExplanationAt500Runes(t *testing.T) {
 
 	suffix := " …[truncado]"
 	if !strings.HasSuffix(e.Explanation, suffix) {
-		t.Fatalf("Explanation nao termina com o sufixo de truncagem: %q", e.Explanation)
+		t.Fatalf("Explanation does not end with the truncation suffix: %q", e.Explanation)
 	}
 	truncatedBody := strings.TrimSuffix(e.Explanation, suffix)
 	if runes := len([]rune(truncatedBody)); runes != 500 {
-		t.Errorf("parte antes do sufixo tem %d runas, quero 500", runes)
+		t.Errorf("the part before the suffix has %d runes, want 500", runes)
 	}
 }
