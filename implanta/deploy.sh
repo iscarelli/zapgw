@@ -153,6 +153,13 @@ esperar_saude() {
 		i=0
 		while [ "$i" -lt "$limite" ]; do
 			corpo=$(curl -fsS -m 2 "$url" 2>/dev/null || true)
+			# NOT a zapgw:log-coupling marker on purpose: this pattern matches
+			# the RENDERED JSON key+value ("ok":true), not a literal that sits
+			# in the Go source — the coupling is really to the `OK bool
+			# json:"ok"` field staying true on success (cmd/zapgw/main.go),
+			# which the marker-based gate (internal/config/shell_log_coupling_test.go)
+			# has no mechanical way to check without producing false negatives
+			# on the word "ok". Reviewed by hand for T-235: still matches today.
 			case "$corpo" in
 			*'"ok":true'*)
 				echo "$corpo"
@@ -173,6 +180,7 @@ esperar_saude() {
 # as not to confuse one with the other.
 extrair_versao_do_corpo() {
 	local linha valor
+	# zapgw:log-coupling "versao"
 	linha=$(printf '%s' "$1" | grep -o '"versao":"[^"]*"' || true)
 	[ -n "$linha" ] || return 1
 	valor=${linha#'"versao":"'}
@@ -243,7 +251,7 @@ conferir_versao() {
 # need to migrate /etc/zapgw/env without entering the CT by hand: the FAILURE
 # path already dumps the whole journal on purpose and doesn't change here.
 #
-# Filters by the same substring the log emits ("esta obsoleta -- use"), never
+# Filters by the same substring the log emits ("is deprecated -- use"), never
 # the whole journal: a dump becomes noise, and noise trains people to ignore
 # the deploy's output — which is where the version proof lives (T-184).
 #
@@ -257,7 +265,8 @@ avisos_nome_obsoleto() {
 		erro "COULD NOT READ the journal to check for deprecated variable names"
 		return
 	fi
-	avisos=$(printf '%s\n' "$jornal" | grep -F 'esta obsoleta -- use' || true)
+	# zapgw:log-coupling "is deprecated -- use"
+	avisos=$(printf '%s\n' "$jornal" | grep -F 'is deprecated -- use' || true)
 	if [ -n "$avisos" ]; then
 		echo "WARNING: environment variable(s) with a deprecated name in use at startup:"
 		printf '%s\n' "$avisos" | sed 's/^/  /'

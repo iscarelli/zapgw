@@ -103,6 +103,7 @@ checar() { # $1 name  $2 expected  $3 got  $4 substring required in the body (""
 	printf '%-56s expected=%s got=%s  %s\n' "$1" "$2" "$3" "$veredito"
 	if [ "$veredito" = "FAILED" ]; then
 		echo "   body: $(cat "$RAIZ/corpo.json")"
+		# zapgw:log-coupling "lideranca"
 		echo "   log:  $(grep -i lideranca "$RAIZ/saida.log" | tail -1)"
 	fi
 }
@@ -110,8 +111,10 @@ checar() { # $1 name  $2 expected  $3 got  $4 substring required in the body (""
 echo "== A) guard ARMED, grant ABSENT -> must REFUSE"
 rm -f "$CONCESSAO"
 subir "$CONCESSAO"
-grep -q "guarda de lideranca ARMADA" "$RAIZ/saida.log" \
+# zapgw:log-coupling "leadership guard ARMED"
+grep -q "leadership guard ARMED" "$RAIZ/saida.log" \
 	|| { echo "FAILED: the startup did not announce ARMED"; falhou=1; }
+# zapgw:log-coupling "lideranca"
 checar "A) absent refuses" 503 "$(enviar)" "lideranca"
 derrubar
 
@@ -135,13 +138,15 @@ if ! touch -d "@$(( $(date +%s) - 600 ))" "$CONCESSAO" 2>/dev/null; then
 	derrubar
 	inconclusivo "this machine's \`touch -d\` does not age a file; case C cannot be measured"
 fi
+# zapgw:log-coupling "lideranca"
 checar "C) expired refuses, without restarting" 503 "$(enviar)" "lideranca"
 derrubar
 
 echo
 echo "== D) guard DISARMED -> behavior identical to before it existed"
 subir ""
-grep -q "guarda de lideranca DESARMADA" "$RAIZ/saida.log" \
+# zapgw:log-coupling "leadership guard DISARMED"
+grep -q "leadership guard DISARMED" "$RAIZ/saida.log" \
 	|| { echo "FAILED: the startup did not announce DISARMED"; falhou=1; }
 checar "D) disarmed opens (reaches 401)" 401 "$(enviar)" ""
 derrubar
@@ -153,6 +158,7 @@ export ZAPGW_LIDERANCA_VALIDADE="quinze"
 if "$BIN" > "$RAIZ/saida2.log" 2>&1; then
 	echo "E) FAILED: came up with an unreadable validity"
 	falhou=1
+# zapgw:log-coupling "nao e uma duracao valida"
 elif grep -qi "nao e uma duracao valida" "$RAIZ/saida2.log"; then
 	echo "E) OK     refused to come up: $(tail -1 "$RAIZ/saida2.log")"
 else
@@ -171,6 +177,7 @@ unset ZAPGW_LIDERANCA_VALIDADE
 if "$BIN" > "$RAIZ/saida3.log" 2>&1; then
 	echo "F) FAILED: came up armed without validity — a silent default came back"
 	falhou=1
+# zapgw:log-coupling "V + A < T"
 elif grep -q "V + A < T" "$RAIZ/saida3.log"; then
 	echo "F) OK     refused to come up, and the message carries the formula"
 else
