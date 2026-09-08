@@ -4,6 +4,17 @@ One line per version shipped, in the same commit as the bump. The entry states t
 
 ## Unreleased
 
+- **T-236 — Fix the two dead doc pointers the widened gate found, and DELETE their exemptions** —
+  the point was never the two edits: it was that both had been parked in
+  `deadDocPointerExceptions` marked `KNOWN PRE-EXISTING BUG` so the gate would go green. An
+  exemption like that is honest on the day it is written and indistinguishable from noise three
+  months later. Both are now fixed and both exemptions are gone, proved by the inverted check
+  (`grep -c 'KNOWN PRE-EXISTING BUG'` → 0) — the gate is green **because the bug is gone**, not
+  because it was listed. It also fixed more than the gate had named: the line the gate flagged cited
+  three renamed fixtures and the gate could only see one, because the other two were written
+  abbreviated. _Completed 2026-09-08 03:34._
+
+
 - **T-222 — Fix the error vocabulary the consumer contract documents** — the contract documented the
   error as `classe` with `permanente`/`retentavel`/`desconhecido`; the gateway has emitted `class`
   with `permanent`/`retryable`/`config`/`unknown` since T-209. Corrected across

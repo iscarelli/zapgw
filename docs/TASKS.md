@@ -245,44 +245,6 @@ instancias foram rotacionadas. Duas licoes que custaram na hora e valem alem des
 
 > A fila do periodo privado esta em `iscarelli/zapgw-dev`, congelada. Tarefa nova nasce aqui.
 
-## [ ] T-236  Fix the two dead doc pointers the widened gate found, and DELETE their exemptions
-After:   T-222 (ela esta reescrevendo `docs/MIGRACAO-CONTRATO-EN.md` agora)
-Why:     A T-234 alargou o portao de ponteiro de doc e ele fez exatamente o que devia: achou dois
-         ponteiros mortos de verdade. Mas a T-234 os colocou em `deadDocPointerExceptions` marcados
-         `KNOWN PRE-EXISTING BUG`, para o portao ficar verde.
-🔴 ISSO E' O PROBLEMA, e vale mais que os dois consertos: **uma excecao marcada "bug conhecido"
-         e' como lista de excecao vira permanente.** Ela e' honesta hoje, quando o comentario esta
-         fresco e alguem lembra. Em tres meses e' so' mais uma linha na lista, e o portao passa a
-         responder verde sobre um doc que mente. O criterio desta casa e' que o portao fique verde
-         **porque o bug sumiu**, nunca porque ele foi listado.
-         Os dois, medidos em 2026-09-08:
-         (1) `docs/META-CAMPOS-DE-WEBHOOK.md:142` cita
-             `testdata/corpus/categoria_de_template_rebaixamento.json`; a T-228 renomeou para
-             `template_category_downgrade.json`. A linha cita mais dois na mesma frase
-             (`..._restauracao.json`) — confira TODOS os da frase, nao so' o que o portao nomeou.
-         (2) `docs/MIGRACAO-CONTRATO-EN.md` linhas 126, 148, 195 e 311 citam
-             `testdata/delivery-signature.json` sem o diretorio. O arquivo real e'
-             `internal/inbound/testdata/delivery-signature.json`. Este e' ANTIGO: o texto ja era
-             parcial antes do rename, e o rename so' trocou o nome, preservando o caminho incompleto.
-Files:   docs/META-CAMPOS-DE-WEBHOOK.md, docs/MIGRACAO-CONTRATO-EN.md,
-         internal/config/doc_pointers_test.go
-Do:      1. Conserte os ponteiros apontando para o caminho REAL. 🔴 Confirme cada destino com `ls`
-            antes de escrever — nunca adivinhe o nome novo por parecenca, e a propria mensagem do
-            portao diz isso (`git log --follow`, nunca adivinhar).
-         2. APAGUE as duas entradas `KNOWN PRE-EXISTING BUG` de `deadDocPointerExceptions`.
-            🔴 So' essas duas. As outras entradas da lista sao falso positivo LEGITIMO (mirror pt-BR
-            apagado de proposito, controle descartavel da T-199, fixture aposentada da T-174,
-            citacao a repo de terceiro) e ficam.
-         3. Se ao apagar as excecoes o portao acusar mais alguma coisa, NAO acrescente excecao nova:
-            conserte o ponteiro. Se voce encontrar um caso que genuinamente NAO pode ser consertado,
-            pare e relate — quem decide criar excecao e' o planner.
-Verify:  `go test ./internal/config/ -run TestDocPointers` verde **com as duas excecoes ausentes**.
-         Prove que o verde vem do conserto e nao da lista: mostre no relatorio o `grep -c
-         'KNOWN PRE-EXISTING BUG' internal/config/doc_pointers_test.go` dando **0**.
-         E o verify inteiro: `CGO_ENABLED=0 go build ./... && go test ./... && go vet ./... &&
-         gofmt -l cmd internal`, sete pacotes `ok`.
-
-
 ## [ ] T-237  The consumer contract still describes four families of key the gateway stopped emitting
 After:   T-236
 Why:     A T-222 consertou o vocabulario de ERRO e, no caminho, encontrou que a mesma doenca esta em
@@ -357,6 +319,48 @@ Do:      1. VARRA os referenciadores ANTES de renomear e liste-os no relatorio:
 Verify:  CGO_ENABLED=0 go build ./... && go test ./... && gofmt -l cmd internal
          E a varredura do passo 1 rodada de novo vem vazia, fora de `docs/CHANGELOG.md`, que e'
          historico e cita o nome antigo de proposito.
+
+
+## [ ] T-238  Close the doc-pointer gate's bare-filename hole — seven dead pointers are hiding in it
+After:   T-230
+Why:     A T-234 alargou o portao para alem de `.go` e ele achou dois ponteiros mortos. Bom. Mas ele
+         exige um componente de DIRETORIO (`internal/config/doc_pointers_test.go:359`,
+         `strings.Contains(pathPart, "/")`), e a propria T-234 escreveu esse limite no teste — o que
+         foi a coisa certa a fazer, e e' o que permitiu encontrar isto.
+🔴 **O limite nao e' teorico: ele esconde SETE ponteiros mortos hoje**, medidos em
+         2026-09-08 varrendo os docs por `` `nome.json` `` e conferindo cada um contra o disco:
+         `botao_de_template.json`, `categoria_de_template_sintetico.json`, `localizacao.json`,
+         `qualidade_do_numero_sintetico.json`, `reacao.json`, `status_sent_com_pricing.json`,
+         `texto_de_tipo_errado_sintetico.json`. Todos sao nomes que a T-228 renomeou.
+         ➡️ **E a licao e' o proprio portao se provando:** *um portao e' exatamente tao largo quanto
+         o padrao dele, e a largura e' invisivel de fora.* A T-234 provou isso no portao anterior; o
+         portao dela caiu na mesma regra uma tarefa depois. Isso nao e' falha da T-234 — e' a razao
+         pela qual escrever o limite dentro do teste vale tanto quanto o teste.
+Files:   internal/config/doc_pointers_test.go, docs/ARMADILHAS.md, docs/META-CAMPOS-DE-WEBHOOK.md,
+         e qualquer outro doc que a varredura acusar
+Do:      1. Primeiro CONSERTE os sete, um a um. Confirme o destino com `ls` antes de escrever, nunca
+            por parecenca. Use `git log --follow` se precisar achar para onde o arquivo foi.
+            🔴 **Cuidado com o caso legitimo:** um doc que NARRA o rename cita o nome velho de
+            proposito (`docs/ARMADILHAS.md` tem uma entrada de 2026-09-07 escrita exatamente assim:
+            "`localizacao.json` → `location.json`"). Esse fica. Distinga narrativa de ponteiro.
+         2. Depois ALARGUE o portao: um nome solto com extensao reconhecida passa a ser conferido
+            contra o conjunto de BASENAMES de arquivos do repositorio. Se o basename nao existe em
+            lugar nenhum, e' ponteiro morto.
+            🔴 O risco continua sendo falso positivo, e ele e' pior que o buraco. Use o mesmo
+            mecanismo que ja esta la: excecao por texto EXATO do ponteiro, uma entrada por caso, com
+            a razao escrita ao lado. E **nunca** uma excecao chamada "bug conhecido" — se e' bug,
+            conserta (foi a T-236 que teve de limpar duas dessas).
+         3. Atualize o bloco de limites no topo do teste: tire o que deixou de ser limite, e
+            acrescente o que passou a ser. **O bloco de limites e' parte do portao, nao comentario.**
+Verify:  🔴 Prova contra dado real, obrigatoria: cite num doc um nome solto que nao existe
+         (`fixture_que_nao_existe_t238.json`), rode o portao, mostre que ele REPROVA nomeando
+         `doc:linha`, e desfaca. Cole a mensagem.
+         E a varredura que me achou os sete tem de vir vazia depois:
+         `grep -ohP '\x60[a-z_]+\.json\x60' docs/*.md | tr -d '\x60' | sort -u` e, para cada nome,
+         conferir que existe em `testdata/corpus/` ou `internal/inbound/testdata/` — exceto os que
+         voce declarou como narrativa no passo 1, que devem estar listados no relatorio.
+         `CGO_ENABLED=0 go build ./... && go test ./... && go vet ./... && gofmt -l cmd internal`,
+         sete pacotes `ok`.
 
 ## [ ] T-231  Translate the English side of the docs that is still Portuguese
 After:   T-230
