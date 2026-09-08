@@ -186,10 +186,10 @@ func (a *unknownCategoryWarning) warn(slug, category string) {
 	if !first {
 		return
 	}
-	log.Printf("ALARME zapgw: instancia %q recebeu cobranca da Meta na categoria %q,"+
-		" que nao esta no vocabulario de contadores — os eventos dela estao caindo em %q"+
-		" e a medicao de custo por categoria fica incompleta enquanto isso."+
-		" ACAO: acrescentar a chave em internal/config/counter.go (ela aparece sozinha em"+
-		" `zapgw estado` e em GET /v1/estado). Este aviso sai UMA vez por categoria por processo",
+	log.Printf("ALARME zapgw: instance %q received a Meta billing in category %q,"+
+		" which is not in the counter vocabulary — its events are falling into %q"+
+		" and the cost-by-category measurement stays incomplete in the meantime."+
+		" ACTION: add the key in internal/config/counter.go (it shows up on its own in"+
+		" `zapgw estado` and in GET /v1/estado). This warning fires ONCE per category per process",
 		slug, category, config.CounterBillingOther)
 }

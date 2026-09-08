@@ -78,20 +78,20 @@ func ConsumerVerdict(status int, err error) Verdict {
 			return Verdict{
 				StatusForMeta: http.StatusGatewayTimeout,
 				Alarm:         true,
-				Reason: "o bundle de CA cadastrado nesta instancia nao carrega certificado nenhum," +
-					" entao NENHUMA entrega dela sai — e nenhum reenvio da Meta conserta isso." +
-					" ACAO: recadastrar a instancia com um --bundle-ca em PEM valido, ou sem bundle se o consumidor usa CA publica",
+				Reason: "the CA bundle registered on this instance carries no certificate at all," +
+					" so NO delivery from it goes out — and no Meta redelivery fixes this." +
+					" ACTION: re-register the instance with a valid PEM --bundle-ca, or with no bundle if the consumer uses a public CA",
 			}
 		}
 		if isCertificateFailure(err) {
 			return Verdict{
 				StatusForMeta: http.StatusGatewayTimeout,
 				Alarm:         true,
-				Reason: "CERTIFICADO do consumidor recusado no TLS (vencido, autoassinado, hostname errado" +
-					" ou emitido por CA que este gateway nao conhece). Isso NAO se conserta sozinho:" +
-					" cada reenvio da Meta leva a mesma recusa, e quando ela desistir a mensagem se perde em definitivo." +
-					" ACAO: renovar/corrigir o certificado do consumidor, ou cadastrar a CA dele na instancia (--bundle-ca)." +
-					" Desligar a verificacao NAO e uma opcao neste gateway",
+				Reason: "the consumer's CERTIFICATE was refused in TLS (expired, self-signed, wrong hostname," +
+					" or issued by a CA this gateway doesn't know). This does NOT fix itself:" +
+					" every Meta redelivery hits the same refusal, and once it gives up the message is lost for good." +
+					" ACTION: renew/fix the consumer's certificate, or register its CA on the instance (--bundle-ca)." +
+					" Turning off verification is NOT an option in this gateway",
 			}
 		}
 		// Down, timeout, DNS: redelivering fixes it IF it comes back in
@@ -108,13 +108,13 @@ func ConsumerVerdict(status int, err error) Verdict {
 	case status >= 200 && status < 300:
 		return Verdict{
 			StatusForMeta: http.StatusOK,
-			Reason:        fmt.Sprintf("consumidor guardou (%d)", status),
+			Reason:        fmt.Sprintf("consumer stored it (%d)", status),
 		}
 
 	case status >= 500 && status < 600:
 		return Verdict{
 			StatusForMeta: http.StatusBadGateway,
-			Reason:        fmt.Sprintf("consumidor falhou de forma transitoria (%d); a Meta vai reenviar", status),
+			Reason:        fmt.Sprintf("consumer failed transiently (%d); Meta will redeliver", status),
 		}
 
 	case status >= 400:
@@ -123,7 +123,7 @@ func ConsumerVerdict(status int, err error) Verdict {
 		return Verdict{
 			StatusForMeta: http.StatusOK,
 			Alarm:         true,
-			Reason:        fmt.Sprintf("consumidor RECUSOU (%d); evento perdido em definitivo", status),
+			Reason:        fmt.Sprintf("consumer REFUSED (%d); event lost for good", status),
 		}
 
 	default:
@@ -131,7 +131,7 @@ func ConsumerVerdict(status int, err error) Verdict {
 		return Verdict{
 			StatusForMeta: http.StatusOK,
 			Alarm:         true,
-			Reason:        fmt.Sprintf("consumidor devolveu status inesperado (%d)", status),
+			Reason:        fmt.Sprintf("consumer returned an unexpected status (%d)", status),
 		}
 	}
 }
@@ -210,10 +210,10 @@ func isCertificateFailure(err error) bool {
 func errorReason(err error) string {
 	switch {
 	case errors.Is(err, context.DeadlineExceeded):
-		return "consumidor nao respondeu no prazo"
+		return "consumer did not respond in time"
 	case errors.Is(err, context.Canceled):
-		return "entrega cancelada antes da resposta do consumidor"
+		return "delivery canceled before the consumer's response"
 	default:
-		return "consumidor inalcancavel"
+		return "consumer unreachable"
 	}
 }

@@ -66,24 +66,24 @@ func TestTransitStoresNoContent(t *testing.T) {
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, quero 200", rec.Code)
+		t.Fatalf("status = %d, want 200", rec.Code)
 	}
 
 	db, err := sql.Open("sqlite", path)
 	if err != nil {
-		t.Fatalf("abrir banco para conferir: %v", err)
+		t.Fatalf("open database to check: %v", err)
 	}
 	defer db.Close()
 
 	rows, err := db.Query(`SELECT * FROM transito WHERE slug = 'lojinha'`)
 	if err != nil {
-		t.Fatalf("consultar transito: %v", err)
+		t.Fatalf("query transito: %v", err)
 	}
 	defer rows.Close()
 
 	columns, err := rows.Columns()
 	if err != nil {
-		t.Fatalf("listar colunas: %v", err)
+		t.Fatalf("list columns: %v", err)
 	}
 
 	sentinels := []string{
@@ -105,23 +105,23 @@ func TestTransitStoresNoContent(t *testing.T) {
 			pointers[i] = &values[i]
 		}
 		if err := rows.Scan(pointers...); err != nil {
-			t.Fatalf("ler linha de transito: %v", err)
+			t.Fatalf("read transit row: %v", err)
 		}
 		for i, v := range values {
 			text := fmt.Sprintf("%v", v)
 			for _, sentinel := range sentinels {
 				if strings.Contains(text, sentinel) {
-					t.Fatalf("coluna %q da linha de transito contem a sentinela %q — conteudo vazou para o log de transito",
+					t.Fatalf("column %q of the transit row contains the sentinel %q — content leaked into the transit log",
 						columns[i], sentinel)
 				}
 			}
 		}
 	}
 	if err := rows.Err(); err != nil {
-		t.Fatalf("iterar transito: %v", err)
+		t.Fatalf("iterate transito: %v", err)
 	}
 	if nRows == 0 {
-		t.Fatal("nenhuma linha de transito foi gravada — o teste nao exercitou o caminho que ele prova")
+		t.Fatal("no transit row was written — the test did not exercise the path it proves")
 	}
 
 	// POSITIVE, on purpose (T-094): the payload's phone number and wamid
@@ -134,13 +134,13 @@ func TestTransitStoresNoContent(t *testing.T) {
 	var counterpart, wamid string
 	if err := db.QueryRow(`SELECT contraparte, wamid FROM transito WHERE slug = 'lojinha' AND tipo = 'message'`).
 		Scan(&counterpart, &wamid); err != nil {
-		t.Fatalf("ler contraparte/wamid da linha de mensagem: %v", err)
+		t.Fatalf("read contraparte/wamid from the message row: %v", err)
 	}
 	if counterpart != "5511999990000" {
-		t.Fatalf("contraparte = %q, quero o telefone em CLARO (decisao do dono, T-094)", counterpart)
+		t.Fatalf("contraparte = %q, want the phone number in the CLEAR (owner's decision, T-094)", counterpart)
 	}
 	if wamid != "wamid.TEXTO1" {
-		t.Fatalf("wamid = %q, quero o wamid em CLARO (decisao do dono, T-094)", wamid)
+		t.Fatalf("wamid = %q, want the wamid in the CLEAR (owner's decision, T-094)", wamid)
 	}
 }
 
@@ -153,7 +153,7 @@ type alwaysFailingTransitStore struct{ calls atomic.Int64 }
 
 func (f *alwaysFailingTransitStore) WriteTransit(config.TransitRecord, time.Time) error {
 	f.calls.Add(1)
-	return errors.New("alwaysFailingTransitStore: falha proposital de teste")
+	return errors.New("alwaysFailingTransitStore: deliberate test failure")
 }
 
 // TestHandlerTransitFailureDoesNotChangeTheStatus is T-091's Verify (c).
@@ -200,9 +200,9 @@ func TestHandlerTransitFailureDoesNotChangeTheStatus(t *testing.T) {
 	h.ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, quero 200 — falha do TRANSITO nao pode mudar o veredito da ENTREGA", rec.Code)
+		t.Fatalf("status = %d, want 200 — a TRANSIT failure cannot change the DELIVERY verdict", rec.Code)
 	}
 	if fake.calls.Load() == 0 {
-		t.Fatal("o transito que sempre erra nunca foi chamado — o teste nao exercitou o caminho que ele prova")
+		t.Fatal("the always-failing transit store was never called — the test did not exercise the path it proves")
 	}
 }

@@ -58,13 +58,13 @@ func TestDeliverSendsTheRawAndTheEventsTogether(t *testing.T) {
 	status, err := NewDeliverer(nil).
 		Deliver(context.Background(), testInst(srv.URL), raw, evs, "", "corr-1", "")
 	if err != nil {
-		t.Fatalf("Entregar: %v", err)
+		t.Fatalf("Deliver: %v", err)
 	}
 	if status != http.StatusOK {
-		t.Fatalf("status = %d, quero 200", status)
+		t.Fatalf("status = %d, want 200", status)
 	}
 	if received.Raw != base64.StdEncoding.EncodeToString(raw) {
-		t.Errorf("Raw = %q — nao veio o corpo exato em base64", received.Raw)
+		t.Errorf("Raw = %q — the exact body did not come through in base64", received.Raw)
 	}
 	if len(received.Events) != 1 || received.Events[0].Text != "oi" {
 		t.Errorf("Events = %+v", received.Events)
@@ -99,7 +99,7 @@ func captureDelivery(t *testing.T, raw []byte, evs []meta.Event) capturedDeliver
 
 	if _, err := NewDeliverer(nil).
 		Deliver(context.Background(), testInst(srv.URL), raw, evs, "", "corr-1", ""); err != nil {
-		t.Fatalf("Entregar: %v", err)
+		t.Fatalf("Deliver: %v", err)
 	}
 	return captured
 }
@@ -109,10 +109,10 @@ func TestDeliverSignsWithInstanceSecret(t *testing.T) {
 
 	want := SignDelivery(captured.timestamp, captured.body, "segredo-entrega-de-teste")
 	if captured.signature != want {
-		t.Fatalf("X-Zapgw-Signature = %q, quero %q", captured.signature, want)
+		t.Fatalf("X-Zapgw-Signature = %q, want %q", captured.signature, want)
 	}
 	if captured.signature == "" {
-		t.Fatal("entrega sem assinatura — quem descobrir a URL de callback injeta evento falso")
+		t.Fatal("delivery with no signature — whoever discovers the callback URL injects a fake event")
 	}
 }
 
@@ -137,19 +137,19 @@ func TestDeliverSignsTheTimestampTogetherWithTheBody(t *testing.T) {
 
 	// (1) the delivery as it arrived has to verify — otherwise (2) would pass for free.
 	if !DeliverySignatureValid(captured.timestamp, captured.body, captured.signature, secret) {
-		t.Fatalf("a entrega legitima nao verificou (ts=%q, assinatura=%q)", captured.timestamp, captured.signature)
+		t.Fatalf("the legitimate delivery did not verify (ts=%q, signature=%q)", captured.timestamp, captured.signature)
 	}
 
 	// (2) the replay: same body, same signature, timestamp advanced by 1h
 	// to fit inside the consumer's tolerance window.
 	n, err := strconv.ParseInt(captured.timestamp, 10, 64)
 	if err != nil {
-		t.Fatalf("X-Zapgw-Timestamp = %q nao e um unix em segundos: %v", captured.timestamp, err)
+		t.Fatalf("X-Zapgw-Timestamp = %q is not a unix timestamp in seconds: %v", captured.timestamp, err)
 	}
 	fresh := strconv.FormatInt(n+3600, 10)
 	if DeliverySignatureValid(fresh, captured.body, captured.signature, secret) {
-		t.Fatal("a assinatura continuou valida com o timestamp trocado — o replay passa " +
-			"e a tolerancia do consumidor nao protege de nada")
+		t.Fatal("the signature stayed valid with the timestamp swapped — the replay goes through " +
+			"and the consumer's tolerance protects nothing")
 	}
 }
 
@@ -183,7 +183,7 @@ func TestDeliverSignsTheSAMEInstantThatGoesInTheHeader(t *testing.T) {
 	}
 
 	if _, err := e.Deliver(context.Background(), testInst(srv.URL), []byte(`{}`), nil, "", "c", ""); err != nil {
-		t.Fatalf("Entregar: %v", err)
+		t.Fatalf("Deliver: %v", err)
 	}
 	if !DeliverySignatureValid(captured.timestamp, captured.body, captured.signature, secret) {
 		t.Fatalf("o header e a assinatura usaram instantes diferentes (%d leituras do relogio): "+
@@ -254,7 +254,7 @@ func TestFrozenSignatureVector(t *testing.T) {
 	// failure, not a detail. (Same rule as the directory-walking guard:
 	// verify that there is something to verify.)
 	if !strings.ContainsRune(v.Body, '\\') {
-		t.Error("o corpo do vetor perdeu a barra invertida — o escape de JSON deixa de ser exercitado")
+		t.Error("the vector's body lost the backslash — JSON escaping stops being exercised")
 	}
 	nonASCII := false
 	for _, r := range v.Body {
@@ -264,18 +264,18 @@ func TestFrozenSignatureVector(t *testing.T) {
 		}
 	}
 	if !nonASCII {
-		t.Error("o corpo do vetor perdeu o caractere nao-ASCII — a codificacao UTF-8 deixa de ser exercitada")
+		t.Error("the vector's body lost the non-ASCII character — UTF-8 encoding stops being exercised")
 	}
 	if v.Secret == "" || v.Timestamp == "" || v.Expected == "" {
-		t.Fatalf("vetor incompleto: %+v", v)
+		t.Fatalf("incomplete vector: %+v", v)
 	}
 
 	if got := SignDelivery(v.Timestamp, []byte(v.Body), v.Secret); got != v.Expected {
-		t.Fatalf("SignDelivery = %s\nvetor congelado = %s\n"+
-			"a formula mudou: ou o vetor esta desatualizado, ou a mudanca quebra todo consumidor", got, v.Expected)
+		t.Fatalf("SignDelivery = %s\nfrozen vector = %s\n"+
+			"the formula changed: either the vector is stale, or the change breaks every consumer", got, v.Expected)
 	}
 	if !DeliverySignatureValid(v.Timestamp, []byte(v.Body), v.Expected, v.Secret) {
-		t.Fatal("o verificador recusou a assinatura do proprio vetor — assinar e verificar discordam")
+		t.Fatal("the verifier rejected its own vector's signature — signing and verifying disagree")
 	}
 }
 
@@ -291,7 +291,7 @@ func TestDeliverySignatureRejectsWhatItMustNotAccept(t *testing.T) {
 		body      []byte
 		signature string
 	}{
-		{"timestamp ausente", "", captured.body, captured.signature},
+		{"missing timestamp", "", captured.body, captured.signature},
 		// The case above isn't enough, and the mutation proved it: remove
 		// the explicit rejection of an empty timestamp, and it stays red by
 		// accident anyway — an attacker who just DELETES the header can't
@@ -301,19 +301,19 @@ func TestDeliverySignatureRejectsWhatItMustNotAccept(t *testing.T) {
 		// it: without the rejection, that verifies as valid and produces a
 		// "verified" delivery with no instant at all to check against the
 		// tolerance window — the T-022 hole coming back through another door.
-		{"timestamp ausente, e assinado sem ele", "", captured.body, SignDelivery("", captured.body, secret)},
-		{"corpo trocado", captured.timestamp, []byte(`{"injetado":true}`), captured.signature},
-		{"segredo de outra instancia", captured.timestamp, captured.body, SignDelivery(captured.timestamp, captured.body, "outro-segredo")},
-		{"assinatura ausente", captured.timestamp, captured.body, ""},
-		{"sem o prefixo sha256=", captured.timestamp, captured.body, strings.TrimPrefix(captured.signature, "sha256=")},
-		{"hex invalido", captured.timestamp, captured.body, "sha256=nao-e-hex"},
-		{"hex de tamanho errado", captured.timestamp, captured.body, "sha256=abcd"},
-		{"header nao-ASCII", captured.timestamp, captured.body, "sha256=çãé"},
+		{"missing timestamp, and signed without it", "", captured.body, SignDelivery("", captured.body, secret)},
+		{"swapped body", captured.timestamp, []byte(`{"injetado":true}`), captured.signature},
+		{"another instance's secret", captured.timestamp, captured.body, SignDelivery(captured.timestamp, captured.body, "outro-segredo")},
+		{"missing signature", captured.timestamp, captured.body, ""},
+		{"no sha256= prefix", captured.timestamp, captured.body, strings.TrimPrefix(captured.signature, "sha256=")},
+		{"invalid hex", captured.timestamp, captured.body, "sha256=nao-e-hex"},
+		{"wrong-sized hex", captured.timestamp, captured.body, "sha256=abcd"},
+		{"non-ASCII header", captured.timestamp, captured.body, "sha256=çãé"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			if DeliverySignatureValid(c.timestamp, c.body, c.signature, secret) {
-				t.Errorf("verificou o que nao devia (ts=%q, assinatura=%q)", c.timestamp, c.signature)
+				t.Errorf("verified what it should not have (ts=%q, signature=%q)", c.timestamp, c.signature)
 			}
 		})
 	}
@@ -331,17 +331,17 @@ func TestDeliverSendsTracingAndAntiReplayHeaders(t *testing.T) {
 	_, err := NewDeliverer(nil).
 		Deliver(context.Background(), testInst(srv.URL), []byte(`{}`), evs, "", "corr-42", "")
 	if err != nil {
-		t.Fatalf("Entregar: %v", err)
+		t.Fatalf("Deliver: %v", err)
 	}
 
 	if h.Get("X-Zapgw-Timestamp") == "" {
-		t.Error("falta X-Zapgw-Timestamp — sem ele nao ha janela anti-replay")
+		t.Error("missing X-Zapgw-Timestamp — without it there is no anti-replay window")
 	}
 	if got := h.Get("X-Zapgw-Event-Id"); got != "msg:wamid.A" {
-		t.Errorf("X-Zapgw-Event-Id = %q, quero msg:wamid.A", got)
+		t.Errorf("X-Zapgw-Event-Id = %q, want msg:wamid.A", got)
 	}
 	if got := h.Get("X-Zapgw-Correlation-Id"); got != "corr-42" {
-		t.Errorf("X-Zapgw-Correlation-Id = %q, quero corr-42", got)
+		t.Errorf("X-Zapgw-Correlation-Id = %q, want corr-42", got)
 	}
 	if h.Get("Content-Type") != "application/json" {
 		t.Errorf("Content-Type = %q", h.Get("Content-Type"))
@@ -361,10 +361,10 @@ func TestDeliverReturnsConsumerStatusUntranslated(t *testing.T) {
 		srv.Close()
 
 		if err != nil {
-			t.Fatalf("Entregar: %v", err)
+			t.Fatalf("Deliver: %v", err)
 		}
 		if got != want {
-			t.Errorf("status = %d, quero %d", got, want)
+			t.Errorf("status = %d, want %d", got, want)
 		}
 	}
 }
@@ -383,10 +383,10 @@ func TestDeliverPassesThroughMetasOriginalSignature(t *testing.T) {
 	_, err := NewDeliverer(nil).
 		Deliver(context.Background(), testInst(srv.URL), []byte(`{}`), nil, "", "c", "sha256=abcdef")
 	if err != nil {
-		t.Fatalf("Entregar: %v", err)
+		t.Fatalf("Deliver: %v", err)
 	}
 	if receivedSignature != "sha256=abcdef" {
-		t.Fatalf("X-Hub-Signature-256 = %q, quero sha256=abcdef", receivedSignature)
+		t.Fatalf("X-Hub-Signature-256 = %q, want sha256=abcdef", receivedSignature)
 	}
 }
 
@@ -402,7 +402,7 @@ func TestDeliverOmitsTheSignatureWhenThereIsNone(t *testing.T) {
 		Deliver(context.Background(), testInst(srv.URL), []byte(`{}`), nil, "", "c", "")
 
 	if present {
-		t.Fatal("header presente e vazio — melhor omitir que mentir que existe")
+		t.Fatal("header present and empty — better to omit it than to lie that it exists")
 	}
 }
 
@@ -417,15 +417,15 @@ func TestDeliverCarriesParseErrorWithoutFailingToSendTheRaw(t *testing.T) {
 	defer srv.Close()
 
 	_, err := NewDeliverer(nil).
-		Deliver(context.Background(), testInst(srv.URL), []byte(`null`), nil, "corpo nao e objeto", "c", "")
+		Deliver(context.Background(), testInst(srv.URL), []byte(`null`), nil, "body is not an object", "c", "")
 	if err != nil {
-		t.Fatalf("Entregar: %v", err)
+		t.Fatalf("Deliver: %v", err)
 	}
-	if received.ParseError != "corpo nao e objeto" {
+	if received.ParseError != "body is not an object" {
 		t.Errorf("ParseError = %q", received.ParseError)
 	}
 	if received.Raw != base64.StdEncoding.EncodeToString([]byte(`null`)) {
-		t.Errorf("Raw = %q — o cru TEM de ir mesmo com o parse falhando", received.Raw)
+		t.Errorf("Raw = %q — the raw body HAS to go out even with the parse failing", received.Raw)
 	}
 }
 
@@ -450,11 +450,11 @@ func TestEnvelopeWithNoEventGoesOutAsEmptyArrayOnTheWireNeverNull(t *testing.T) 
 	captured := captureDelivery(t, []byte(`{"object":"whatsapp_business_account"}`), nil)
 
 	if bytes.Contains(captured.body, []byte(`"events":null`)) {
-		t.Errorf("o fio manda `\"events\":null`, que estoura `for ev in envelope[\"events\"]`"+
-			" em Python e nunca casa com `events == []`; corpo: %s", captured.body)
+		t.Errorf("the wire sends `\"events\":null`, which blows up `for ev in envelope[\"events\"]`"+
+			" in Python and never matches `events == []`; body: %s", captured.body)
 	}
 	if !bytes.Contains(captured.body, []byte(`"events":[]`)) {
-		t.Errorf("o fio nao traz `\"events\":[]`; corpo: %s", captured.body)
+		t.Errorf("the wire does not carry `\"events\":[]`; body: %s", captured.body)
 	}
 
 	// `parse_error` in the SAME envelope, and it's CORRECT as it is: with
@@ -465,13 +465,13 @@ func TestEnvelopeWithNoEventGoesOutAsEmptyArrayOnTheWireNeverNull(t *testing.T) 
 	// doesn't get touched; a field whose empty value is `null` in a type
 	// that gets ITERATED over does.
 	if !bytes.Contains(captured.body, []byte(`"parse_error":""`)) {
-		t.Errorf("`parse_error` deixou de sair como `\"\"` no fio; corpo: %s", captured.body)
+		t.Errorf("`parse_error` stopped going out as `\"\"` on the wire; body: %s", captured.body)
 	}
 }
 
 // --- Delivery TLS: strict, no escape hatch ----------------------------------
 //
-// THE PROJECT RULE (CLAUDE.md, "TLS — não existe modo desligado"): no path in
+// THE PROJECT RULE (CLAUDE.md, "TLS has no off switch, in either direction"): no path in
 // this gateway may have an option to skip certificate verification. Not a
 // flag, not an environment variable, not a config field, not
 // "development-only."
@@ -492,7 +492,7 @@ func TestEnvelopeWithNoEventGoesOutAsEmptyArrayOnTheWireNeverNull(t *testing.T) 
 func certificatePEM(t *testing.T, c *x509.Certificate) string {
 	t.Helper()
 	if c == nil {
-		t.Fatal("servidor de teste sem certificado — o teste nao verificaria nada")
+		t.Fatal("test server with no certificate — the test would not verify anything")
 	}
 	return string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: c.Raw}))
 }
@@ -511,7 +511,7 @@ func selfSignedCertificate(t *testing.T, name string, from, until time.Time) tls
 	t.Helper()
 	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
-		t.Fatalf("gerar chave: %v", err)
+		t.Fatalf("generate key: %v", err)
 	}
 	template := x509.Certificate{
 		SerialNumber:          big.NewInt(time.Now().UnixNano()),
@@ -526,7 +526,7 @@ func selfSignedCertificate(t *testing.T, name string, from, until time.Time) tls
 	}
 	derBytes, err := x509.CreateCertificate(rand.Reader, &template, &template, &key.PublicKey, key)
 	if err != nil {
-		t.Fatalf("criar certificado: %v", err)
+		t.Fatalf("create certificate: %v", err)
 	}
 	return tls.Certificate{Certificate: [][]byte{derBytes}, PrivateKey: key}
 }
@@ -581,10 +581,10 @@ func TestDeliveryFailsOnCertificateNoAnchorCovers(t *testing.T) {
 		Deliver(context.Background(), testInst(srv.URL), []byte(`{}`), nil, "", "c", "")
 
 	if err == nil {
-		t.Fatalf("a entrega PASSOU com certificado autoassinado (status %d) — a verificacao de TLS esta desligada em algum lugar", status)
+		t.Fatalf("the delivery PASSED with a self-signed certificate (status %d) — TLS verification is turned off somewhere", status)
 	}
 	if status != 0 {
-		t.Errorf("status = %d — entrega que falhou no TLS nao pode devolver status de consumidor", status)
+		t.Errorf("status = %d — a delivery that failed on TLS cannot return a consumer status", status)
 	}
 
 	// The classification is checked against the REAL handshake error,
@@ -592,20 +592,20 @@ func TestDeliveryFailsOnCertificateNoAnchorCovers(t *testing.T) {
 	// mirror.go's taxonomy matches what the platform actually returns.
 	v := ConsumerVerdict(status, err)
 	if !v.Alarm {
-		t.Error("falha de certificado NAO alarmou — certificado errado ou vencido nao se conserta sozinho, e a Meta desiste em 36h")
+		t.Error("certificate failure did NOT alarm — a wrong or expired certificate doesn't fix itself, and Meta gives up in 36h")
 	}
-	if !strings.Contains(strings.ToLower(v.Reason), "certificado") {
-		t.Errorf("Reason = %q — tem de dizer que o problema e CERTIFICADO, senao a acao humana e a errada (levantar o app do consumidor em vez de renovar o certificado)", v.Reason)
+	if !strings.Contains(strings.ToLower(v.Reason), "certificate") {
+		t.Errorf("Reason = %q — has to say the problem is the CERTIFICATE, otherwise the human action is wrong (bringing the consumer's app up instead of renewing the certificate)", v.Reason)
 	}
 	if v.StatusForMeta/100 == 2 {
-		t.Errorf("StatusForMeta = %d — 2xx aqui joga a mensagem fora antes de qualquer chance de conserto", v.StatusForMeta)
+		t.Errorf("StatusForMeta = %d — a 2xx here throws the message away before any chance of a fix", v.StatusForMeta)
 	}
 	// Reason goes to the log; the callback_url is encrypted at rest
 	// precisely so that a stolen backup doesn't reveal the consumers'
 	// topology.
 	for _, forbidden := range []string{strings.TrimPrefix(srv.URL, "https://"), srv.Listener.Addr().String()} {
 		if strings.Contains(v.Reason, forbidden) {
-			t.Errorf("Reason vazou %q — texto: %s", forbidden, v.Reason)
+			t.Errorf("Reason leaked %q — text: %s", forbidden, v.Reason)
 		}
 	}
 }
@@ -620,10 +620,10 @@ func TestDeliveryAcceptsCertificateFromCARegisteredOnInstance(t *testing.T) {
 	status, err := NewDeliverer(nil).
 		Deliver(context.Background(), inst, []byte(`{}`), nil, "", "c", "")
 	if err != nil {
-		t.Fatalf("Entregar com a CA da instancia cadastrada: %v — sem esta saida o consumidor com CA propria nao tem caminho legitimo, e e dai que nasce a pressao pela escotilha", err)
+		t.Fatalf("Deliver with the instance's registered CA: %v — without this way out, a consumer with its own CA has no legitimate path, and that's exactly where the pressure for the escape hatch comes from", err)
 	}
 	if status != http.StatusOK {
-		t.Fatalf("status = %d, quero 200", status)
+		t.Fatalf("status = %d, want 200", status)
 	}
 }
 
@@ -639,13 +639,13 @@ func TestCertificateAcceptedOnOneInstanceIsNotValidOnAnother(t *testing.T) {
 	// Instance A delivers to its own consumer: passes.
 	instA := instWithBundle(srvA.URL, certificatePEM(t, srvA.Certificate()))
 	if _, err := e.Deliver(context.Background(), instA, []byte(`{}`), nil, "", "c", ""); err != nil {
-		t.Fatalf("instancia A no consumidor dela: %v", err)
+		t.Fatalf("instance A on its own consumer: %v", err)
 	}
 
 	// Instance B, with A's CA, delivering to B's consumer: FAILS.
 	instB := instWithBundle(srvB.URL, certificatePEM(t, srvA.Certificate()))
 	if _, err := e.Deliver(context.Background(), instB, []byte(`{}`), nil, "", "c", ""); err == nil {
-		t.Fatal("a CA da instancia A validou o certificado do consumidor de B — as ancoras de confianca estao vazando entre inquilinos")
+		t.Fatal("instance A's CA validated instance B's consumer's certificate — trust anchors are leaking between tenants")
 	}
 
 	// And instance B, with ITS OWN CA, has to pass. Without this half the
@@ -656,13 +656,13 @@ func TestCertificateAcceptedOnOneInstanceIsNotValidOnAnother(t *testing.T) {
 	// CA got registered — in production.
 	instBCorrect := instWithBundle(srvB.URL, certificatePEM(t, srvB.Certificate()))
 	if _, err := e.Deliver(context.Background(), instBCorrect, []byte(`{}`), nil, "", "c", ""); err != nil {
-		t.Fatalf("instancia B com a CA dela: %v — cada instancia tem de usar a ancora DELA, nao a que chegou primeiro", err)
+		t.Fatalf("instance B with its own CA: %v — each instance has to use ITS OWN anchor, not whichever arrived first", err)
 	}
 
 	// And A's path keeps working afterward: B's rejection cannot have been
 	// "the cache broke everything."
 	if _, err := e.Deliver(context.Background(), instA, []byte(`{}`), nil, "", "c", ""); err != nil {
-		t.Fatalf("instancia A parou de funcionar depois da recusa de B: %v", err)
+		t.Fatalf("instance A stopped working after B's rejection: %v", err)
 	}
 
 	// THE LAST ASSERTION, and it's the one that catches a pool that
@@ -673,7 +673,7 @@ func TestCertificateAcceptedOnOneInstanceIsNotValidOnAnother(t *testing.T) {
 	// above, repeated at the end: the answer changes depending on what
 	// happened in between, and that's exactly what's being tested.
 	if _, err := e.Deliver(context.Background(), instB, []byte(`{}`), nil, "", "c", ""); err == nil {
-		t.Fatal("depois que as duas CAs foram usadas, a instancia B passou a validar com a CA de A — as ancoras estao se acumulando num pool comum")
+		t.Fatal("after both CAs were used, instance B started validating with A's CA — anchors are accumulating in a shared pool")
 	}
 }
 
@@ -689,10 +689,10 @@ func TestDeliveryFailsOnExpiredCertificateEvenWithCARegistered(t *testing.T) {
 	_, err := NewDeliverer(nil).
 		Deliver(context.Background(), inst, []byte(`{}`), nil, "", "c", "")
 	if err == nil {
-		t.Fatal("a entrega PASSOU com certificado vencido — a validade nao esta sendo conferida")
+		t.Fatal("delivery PASSED with an expired certificate — validity is not being checked")
 	}
 	if v := ConsumerVerdict(0, err); !v.Alarm {
-		t.Errorf("certificado vencido nao alarmou (Reason=%q) — ninguem seria avisado ate a Meta desistir", v.Reason)
+		t.Errorf("expired certificate did not alarm (Reason=%q) — no one would be warned until Meta gives up", v.Reason)
 	}
 }
 
@@ -702,15 +702,15 @@ func TestDeliveryFailsOnExpiredCertificateEvenWithCARegistered(t *testing.T) {
 // doesn't come back on its own.
 func TestDeliveryFlagsInstanceBundleWithNoCertificateAtAll(t *testing.T) {
 	srv := testTLSServer(t, "consumidor")
-	inst := instWithBundle(srv.URL, "-----BEGIN CERTIFICATE-----\nnao sou um certificado\n-----END CERTIFICATE-----\n")
+	inst := instWithBundle(srv.URL, "-----BEGIN CERTIFICATE-----\nnot a certificate\n-----END CERTIFICATE-----\n")
 
 	_, err := NewDeliverer(nil).
 		Deliver(context.Background(), inst, []byte(`{}`), nil, "", "c", "")
 	if !errors.Is(err, config.ErrInvalidCABundle) {
-		t.Fatalf("erro = %v, quero ErrInvalidCABundle", err)
+		t.Fatalf("err = %v, want ErrInvalidCABundle", err)
 	}
 	if v := ConsumerVerdict(0, err); !v.Alarm {
-		t.Error("bundle invalido nao alarmou — a instancia fica muda para sempre e ninguem fica sabendo")
+		t.Error("invalid bundle did not alarm — the instance goes mute forever and no one finds out")
 	}
 }
 
@@ -723,7 +723,7 @@ func TestDeliveryFlagsInstanceBundleWithNoCertificateAtAll(t *testing.T) {
 // piece of shared mutable state on this path, written by every delivery
 // that completes a handshake. Without it in this list, -race would have
 // nothing to detect in the new write — which is literally the trap
-// recorded in docs/ARMADILHAS.md, "Go / concorrência".
+// recorded in docs/ARMADILHAS.md, "Go / concurrency".
 func TestConcurrentDeliveryDoesNotMixInstanceCertificates(t *testing.T) {
 	srvA := testTLSServer(t, "consumidor-da-instancia-a")
 	srvB := testTLSServer(t, "consumidor-da-instancia-b")
@@ -748,18 +748,18 @@ func TestConcurrentDeliveryDoesNotMixInstanceCertificates(t *testing.T) {
 	for ok := range asExpected {
 		n++
 		if !ok {
-			t.Fatal("entrega concorrente deu o desfecho errado — ou a instancia certa falhou, ou a errada passou")
+			t.Fatal("concurrent delivery gave the wrong outcome — either the right instance failed, or the wrong one passed")
 		}
 	}
 	if n != 60 {
-		t.Fatalf("conferi %d entregas, esperava 60", n)
+		t.Fatalf("checked %d deliveries, expected 60", n)
 	}
 
 	// Only the 40 deliveries that COMPLETED a handshake turned into an
 	// observation — the 20 from the instance with the wrong anchor never
 	// got to see any trustworthy certificate.
 	if obs := spy.all(); len(obs) != 40 {
-		t.Errorf("observacoes = %d, quero 40 (20 de A + 20 de B; as 20 recusadas nao observam)", len(obs))
+		t.Errorf("observations = %d, want 40 (20 from A + 20 from B; the 20 refused ones don't observe)", len(obs))
 	}
 }
 
@@ -831,31 +831,31 @@ func TestDeliveryObservesConsumerCertificateValidity(t *testing.T) {
 
 	status, err := e.Deliver(context.Background(), inst, []byte(`{}`), nil, "", "c", "")
 	if err != nil {
-		t.Fatalf("Entregar: %v", err)
+		t.Fatalf("Deliver: %v", err)
 	}
 	if status != http.StatusOK {
-		t.Fatalf("status = %d, quero 200", status)
+		t.Fatalf("status = %d, want 200", status)
 	}
 
 	obs := spy.all()
 	if len(obs) != 1 {
-		t.Fatalf("observacoes = %d, quero 1 — a entrega nao capturou o certificado do consumidor", len(obs))
+		t.Fatalf("observations = %d, want 1 — the delivery did not capture the consumer's certificate", len(obs))
 	}
 	if obs[0].slug != "lojinha" {
-		t.Errorf("slug = %q, quero %q — observacao gravada na instancia errada le o certificado do consumidor alheio",
+		t.Errorf("slug = %q, want %q — an observation recorded on the wrong instance reads another instance's consumer's certificate",
 			obs[0].slug, "lojinha")
 	}
 	if want := srv.Certificate().NotAfter; !obs[0].expiresAt.Equal(want) {
-		t.Errorf("expiresAt = %v, quero %v (o NotAfter do certificado que o consumidor apresentou)",
+		t.Errorf("expiresAt = %v, want %v (the NotAfter of the certificate the consumer presented)",
 			obs[0].expiresAt, want)
 	}
 	// And the date can't be a disguised zero value: it's the forged
 	// certificate's own date.
 	if want := expires.UTC().Truncate(time.Second); !obs[0].expiresAt.UTC().Equal(want) {
-		t.Errorf("expiresAt = %v, quero %v", obs[0].expiresAt.UTC(), want)
+		t.Errorf("expiresAt = %v, want %v", obs[0].expiresAt.UTC(), want)
 	}
 	if !obs[0].observedAt.Equal(when) {
-		t.Errorf("observedAt = %v, quero %v — o carimbo e o instante da entrega, nao um segundo time.Now()",
+		t.Errorf("observedAt = %v, want %v — the timestamp is the instant of the delivery, not a second time.Now()",
 			obs[0].observedAt, when)
 	}
 }
@@ -870,10 +870,10 @@ func TestDeliveryWithRefusedCertificateObservesNothing(t *testing.T) {
 	e, spy := delivererWithSpy()
 
 	if _, err := e.Deliver(context.Background(), testInst(srv.URL), []byte(`{}`), nil, "", "c", ""); err == nil {
-		t.Fatal("a entrega passou com certificado que nenhuma ancora cobre")
+		t.Fatal("the delivery passed with a certificate no anchor covers")
 	}
 	if obs := spy.all(); len(obs) != 0 {
-		t.Errorf("observacoes = %d, quero 0 — certificado recusado nao vira observacao (%+v)", len(obs), obs)
+		t.Errorf("observations = %d, want 0 — a refused certificate does not turn into an observation (%+v)", len(obs), obs)
 	}
 }
 
@@ -896,13 +896,13 @@ func TestDeliveryObservesCertificateEvenWhenConsumerAnswers500(t *testing.T) {
 
 	status, err := e.Deliver(context.Background(), inst, []byte(`{}`), nil, "", "c", "")
 	if err != nil {
-		t.Fatalf("Entregar: %v", err)
+		t.Fatalf("Deliver: %v", err)
 	}
 	if status != http.StatusInternalServerError {
-		t.Fatalf("status = %d, quero 500", status)
+		t.Fatalf("status = %d, want 500", status)
 	}
 	if obs := spy.all(); len(obs) != 1 {
-		t.Errorf("observacoes = %d, quero 1 — o certificado foi apresentado, o 500 e da aplicacao dele", len(obs))
+		t.Errorf("observations = %d, want 1 — the certificate was presented, the 500 belongs to its application", len(obs))
 	}
 }
 
@@ -910,7 +910,7 @@ func TestDeliveryObservesCertificateEvenWhenConsumerAnswers500(t *testing.T) {
 type failingObservationStore struct{}
 
 func (failingObservationStore) RecordCallbackCertificate(string, time.Time, time.Time) error {
-	return errors.New("banco fora do ar")
+	return errors.New("database down")
 }
 
 // THE SAME RULE AS THE COUNTER (T-035): tracking never brings delivery
@@ -924,10 +924,10 @@ func TestFailureToObserveCertificateDoesNotChangeDeliveryOutcome(t *testing.T) {
 	e := NewDeliverer(config.NewCertificateObserverWithStore(failingObservationStore{}))
 	status, err := e.Deliver(context.Background(), inst, []byte(`{}`), nil, "", "c", "")
 	if err != nil {
-		t.Fatalf("Entregar: %v — a falha ao gravar a observacao vazou para o desfecho da entrega", err)
+		t.Fatalf("Deliver: %v — the failure to record the observation leaked into the delivery's outcome", err)
 	}
 	if status != http.StatusOK {
-		t.Fatalf("status = %d, quero 200", status)
+		t.Fatalf("status = %d, want 200", status)
 	}
 }
 
@@ -942,7 +942,7 @@ func delivered(e *Deliverer, inst config.Instance) bool {
 // catches the escape hatch in any file in the repository, including a
 // test — because "only in the test" is exactly how the option gets in
 // before it turns into production. This is the test CLAUDE.md promises in
-// the "TLS — não existe modo desligado" section (T-160).
+// the "TLS has no off switch, in either direction" section (T-160).
 //
 // The needle is assembled by concatenation on purpose: written out whole,
 // it would show up in this very file and the sweep would flag itself.
@@ -954,13 +954,13 @@ func TestNoSourceInTheRepoTurnsOffTLSVerification(t *testing.T) {
 
 	root, err := moduleRoot()
 	if err != nil {
-		t.Fatalf("localizar a raiz do modulo (falha fechada): %v", err)
+		t.Fatalf("locate the module root (fail closed): %v", err)
 	}
 	seenIDs := map[string]bool{}
 	var findings []string
 	err = filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
 		if err != nil {
-			return fmt.Errorf("ler %s: %w", path, err)
+			return fmt.Errorf("read %s: %w", path, err)
 		}
 		if d.IsDir() {
 			// .git never has real .go files. .claude/ holds worktrees from
@@ -979,14 +979,14 @@ func TestNoSourceInTheRepoTurnsOffTLSVerification(t *testing.T) {
 		}
 		relative, err := filepath.Rel(root, path)
 		if err != nil {
-			return fmt.Errorf("relativizar %s: %w", path, err)
+			return fmt.Errorf("relativize %s: %w", path, err)
 		}
 		relative = filepath.ToSlash(relative)
 		seenIDs[relative] = true
 
 		content, err := os.ReadFile(path)
 		if err != nil {
-			return fmt.Errorf("ler %s: %w", path, err)
+			return fmt.Errorf("read %s: %w", path, err)
 		}
 		for i, line := range strings.Split(string(content), "\n") {
 			if strings.Contains(line, needle) {
@@ -996,24 +996,24 @@ func TestNoSourceInTheRepoTurnsOffTLSVerification(t *testing.T) {
 		return nil
 	})
 	if err != nil {
-		t.Fatalf("varrer o repo (falha fechada): %v", err)
+		t.Fatalf("sweep the repo (fail closed): %v", err)
 	}
 	if len(findings) > 0 {
-		t.Fatalf("%s encontrado em %s: desligar a verificacao de certificado nao gera erro nenhum, so remove uma protecao —"+
-			" por isso a opcao nao pode existir (CLAUDE.md, \"TLS — nao existe modo desligado\")."+
-			" Consumer com CA propria usa o bundle de CA por instancia, que continua sendo verificacao",
+		t.Fatalf("%s found in %s: turning off certificate verification produces no error at all, it just removes a protection —"+
+			" that's why the option cannot exist (CLAUDE.md, \"TLS has no off switch, in either direction\")."+
+			" A consumer with its own CA uses the per-instance CA bundle, which is still verification",
 			needle, strings.Join(findings, ", "))
 	}
 
 	// Guard against the worst outcome of a sweep: passing GREEN without
-	// having looked at anything (docs/ARMADILHAS.md, "Testes"). The two
+	// having looked at anything (docs/ARMADILHAS.md, "Tests"). The two
 	// required files are one for each direction of the rule.
 	for _, required := range []string{
 		"internal/inbound/deliver.go", // delivery to the consumer
 		"internal/meta/client.go",     // conversation with the Graph API
 	} {
 		if !seenIDs[required] {
-			t.Fatalf("a varredura nao alcancou %s — ela passou sem verificar o que existe para verificar (%d arquivos vistos)",
+			t.Fatalf("the sweep did not reach %s — it passed without checking what there was to check (%d files seen)",
 				required, len(seenIDs))
 		}
 	}
@@ -1025,7 +1025,7 @@ func TestNoSourceInTheRepoTurnsOffTLSVerification(t *testing.T) {
 func moduleRoot() (string, error) {
 	_, file, _, ok := runtime.Caller(0)
 	if !ok {
-		return "", fmt.Errorf("runtime.Caller(0) nao retornou o caminho deste arquivo")
+		return "", fmt.Errorf("runtime.Caller(0) did not return this file's path")
 	}
 	dir := filepath.Dir(file)
 	for {
@@ -1034,7 +1034,7 @@ func moduleRoot() (string, error) {
 		}
 		parent := filepath.Dir(dir)
 		if parent == dir {
-			return "", fmt.Errorf("go.mod nao encontrado subindo a partir de %s", filepath.Dir(file))
+			return "", fmt.Errorf("go.mod not found walking up from %s", filepath.Dir(file))
 		}
 		dir = parent
 	}

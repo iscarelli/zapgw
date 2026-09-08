@@ -29,7 +29,7 @@ func corpus(t *testing.T, name string) []byte {
 	t.Helper()
 	b, err := os.ReadFile(filepath.Join(inboundCorpusDir, name))
 	if err != nil {
-		t.Fatalf("ler corpus %q: %v", name, err)
+		t.Fatalf("read corpus %q: %v", name, err)
 	}
 	return b
 }
@@ -118,7 +118,7 @@ func requireBilling(t *testing.T, path string, want map[string]int) {
 	t.Helper()
 	for _, key := range vocabularyBillingKeys() {
 		if n := directCount(t, path, "lojinha", key); n != want[key] {
-			t.Errorf("%s = %d, quero %d", key, n, want[key])
+			t.Errorf("%s = %d, want %d", key, n, want[key])
 		}
 	}
 }
@@ -144,7 +144,7 @@ func TestCountsBillingCategoryAndOnlyTheRightKey(t *testing.T) {
 			// The category counts; the billable column does NOT — Meta said
 			// it doesn't charge, and absence of billing cannot turn into
 			// billing.
-			name: "sent real, service, nao cobravel",
+			name: "real sent, service, not billable",
 			raw:  corpus(t, "status_sent_com_pricing.json"),
 			want: map[string]int{config.CounterBillingService: 1},
 		},
@@ -153,22 +153,22 @@ func TestCountsBillingCategoryAndOnlyTheRightKey(t *testing.T) {
 			// `pricing`. It is not an error; it's ~7.5% of the volume, and
 			// without its own key it would silently vanish from the
 			// measurement.
-			name: "sent real sem pricing vai para ausente",
+			name: "real sent with no pricing goes to absent",
 			raw:  corpus(t, "status_sent_sem_pricing.json"),
 			want: map[string]int{config.CounterBillingAbsent: 1},
 		},
 		{
-			name: "marketing cobravel",
+			name: "billable marketing",
 			raw:  syntheticCorpusStatus("sent", "wamid.SINT01", `{"billable":true,"pricing_model":"PMP","category":"marketing","type":"regular"}`),
 			want: map[string]int{config.CounterBillingMarketing: 1, config.CounterBillingBillable: 1},
 		},
 		{
-			name: "utility cobravel",
+			name: "billable utility",
 			raw:  syntheticCorpusStatus("sent", "wamid.SINT02", `{"billable":true,"pricing_model":"PMP","category":"utility","type":"regular"}`),
 			want: map[string]int{config.CounterBillingUtility: 1, config.CounterBillingBillable: 1},
 		},
 		{
-			name: "authentication cobravel",
+			name: "billable authentication",
 			raw:  syntheticCorpusStatus("sent", "wamid.SINT03", `{"billable":true,"pricing_model":"PMP","category":"authentication","type":"regular"}`),
 			want: map[string]int{config.CounterBillingAuthentication: 1, config.CounterBillingBillable: 1},
 		},
@@ -177,7 +177,7 @@ func TestCountsBillingCategoryAndOnlyTheRightKey(t *testing.T) {
 			// the category counts, the billable column doesn't. Without
 			// this case, a counter that treated absence as billed would
 			// pass green.
-			name: "marketing sem billable nao conta cobravel",
+			name: "marketing with no billable does not count as billable",
 			raw:  syntheticCorpusStatus("sent", "wamid.SINT04", `{"pricing_model":"PMP","category":"marketing","type":"regular"}`),
 			want: map[string]int{config.CounterBillingMarketing: 1},
 		},
@@ -205,13 +205,13 @@ func TestOnlySentCountsBilling(t *testing.T) {
 		raw  []byte
 	}{
 		// Capture: same wamid and same category as the `sent` in the table above.
-		{"delivered real do MESMO wamid do sent", corpus(t, "status_delivered.json")},
+		{"real delivered of the SAME wamid as sent", corpus(t, "status_delivered.json")},
 		// Capture: `read` carries its own `pricing` (`utility`, `billable:true`).
-		{"read real com pricing", corpus(t, "status_read_com_cobranca.json")},
+		{"real read with pricing", corpus(t, "status_read_com_cobranca.json")},
 		// `failed` has no pricing — a cheap non-regression check, because a
 		// counter that counted "every status" would send it to
 		// `cobranca_ausente`.
-		{"failed real", corpus(t, "status_failed.json")},
+		{"real failed", corpus(t, "status_failed.json")},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -221,7 +221,7 @@ func TestOnlySentCountsBilling(t *testing.T) {
 			// guard) — otherwise this test would pass green for the wrong
 			// reason.
 			if n := directCount(t, path, "lojinha", config.CounterReceived); n != 1 {
-				t.Errorf("recebidas = %d, quero 1 — o lote tem de ter chegado ate a entrega", n)
+				t.Errorf("recebidas = %d, want 1 — the batch has to have made it through to delivery", n)
 			}
 		})
 	}
@@ -247,10 +247,10 @@ func TestUnknownCategoryGoesToOtherAndLogsTheValue(t *testing.T) {
 
 	output := buf.String()
 	if !strings.Contains(output, "engajamento_novo") {
-		t.Errorf("o log nao traz o valor literal da categoria — e ele que diz QUAL chave criar: %s", output)
+		t.Errorf("the log does not carry the category's literal value — that's what says WHICH key to create: %s", output)
 	}
 	if !strings.Contains(output, "ALARME") {
-		t.Errorf("o aviso saiu sem ALARME — so gente acrescenta a chave nova: %s", output)
+		t.Errorf("the warning came out without ALARME — only a person adds the new key: %s", output)
 	}
 }
 
@@ -278,12 +278,12 @@ func TestUnknownCategoryWarnsOnceButAlwaysCounts(t *testing.T) {
 		rec := httptest.NewRecorder()
 		h.ServeHTTP(rec, req)
 		if rec.Code != http.StatusOK {
-			t.Fatalf("evento %d: status = %d, quero 200", i, rec.Code)
+			t.Fatalf("event %d: status = %d, want 200", i, rec.Code)
 		}
 	}
 
 	if n := strings.Count(buf.String(), "engajamento_novo"); n != 1 {
-		t.Errorf("o aviso saiu %d vezes, quero 1 — alarme repetido vira ruido e some junto com o que importa", n)
+		t.Errorf("the warning fired %d times, want 1 — a repeated alarm turns into noise and disappears along with what matters", n)
 	}
 	requireBilling(t, path, map[string]int{
 		config.CounterBillingOther:    3,
@@ -330,7 +330,7 @@ func TestUnknownCategoryWarningUnderConcurrency(t *testing.T) {
 	times := strings.Count(buf.String(), "engajamento_novo")
 	mu.Unlock()
 	if times != 1 {
-		t.Errorf("o aviso saiu %d vezes sob concorrencia, quero 1", times)
+		t.Errorf("the warning fired %d times under concurrency, want 1", times)
 	}
 	requireBilling(t, path, map[string]int{
 		config.CounterBillingOther:    n,
@@ -401,10 +401,10 @@ func TestBillingCounterFailureDoesNotChangeStatusReturnedToMeta(t *testing.T) {
 	h.ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusOK {
-		t.Errorf("status = %d, quero 200 — contador quebrado nao pode mudar o que a Meta ouviu", rec.Code)
+		t.Errorf("status = %d, want 200 — a broken counter cannot change what Meta heard", rec.Code)
 	}
 	if broken.calls.Load() == 0 {
-		t.Error("o contador nem foi chamado — o teste passaria verde pelo motivo errado")
+		t.Error("the counter was not even called — the test would pass green for the wrong reason")
 	}
 }
 
@@ -435,14 +435,14 @@ func TestBillingKeysOfABatchWithSeveralStatuses(t *testing.T) {
 	}
 	for key, n := range want {
 		if has[key] != n {
-			t.Errorf("%s = %d, quero %d (chaves: %v)", key, has[key], n, keys)
+			t.Errorf("%s = %d, want %d (keys: %v)", key, has[key], n, keys)
 		}
 	}
 	if len(keys) != 4 {
-		t.Errorf("len(chaves) = %d, quero 4 — o `delivered` do mesmo wamid nao pode contar: %v", len(keys), keys)
+		t.Errorf("len(keys) = %d, want 4 — the same wamid's `delivered` cannot count: %v", len(keys), keys)
 	}
 	if len(unknown) != 0 {
-		t.Errorf("desconhecidas = %v, quero vazio", unknown)
+		t.Errorf("unknown = %v, want empty", unknown)
 	}
 }
 
@@ -467,7 +467,7 @@ func TestEveryBillingKeyIsInTheClosedVocabulary(t *testing.T) {
 		keys, _ := BillingKeys(eventsOfPayload(t, raw))
 		for _, key := range keys {
 			if !inVocabulary[key] {
-				t.Errorf("chave %q nao esta em config.KeysInDisplayOrder — ela seria recusada e a contagem sumiria", key)
+				t.Errorf("key %q is not in config.KeysInDisplayOrder — it would be rejected and the count would vanish", key)
 			}
 		}
 	}

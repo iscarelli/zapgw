@@ -63,11 +63,11 @@ func activeTestHandlerWithCap(t *testing.T, callback string, maxBytes int) http.
 
 	db, err := sql.Open("sqlite", path)
 	if err != nil {
-		t.Fatalf("abrir banco para ativar instancia de teste: %v", err)
+		t.Fatalf("open database to activate test instance: %v", err)
 	}
 	defer db.Close()
 	if _, err := db.Exec(`UPDATE instancia SET ativo = 1 WHERE slug = ?`, "lojinha"); err != nil {
-		t.Fatalf("ativar instancia de teste: %v", err)
+		t.Fatalf("activate test instance: %v", err)
 	}
 	return h
 }
@@ -141,7 +141,7 @@ func TestHandlerDeliversAndMirrors200(t *testing.T) {
 	activeTestHandler(t, consumer.URL).ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, quero 200", rec.Code)
+		t.Fatalf("status = %d, want 200", rec.Code)
 	}
 }
 
@@ -162,10 +162,10 @@ func TestHandlerRejectsInvalidSignatureWithoutDeliveringAnything(t *testing.T) {
 	activeTestHandler(t, consumer.URL).ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusForbidden {
-		t.Errorf("status = %d, quero 403", rec.Code)
+		t.Errorf("status = %d, want 403", rec.Code)
 	}
 	if delivered {
-		t.Fatal("entregou ao consumidor com assinatura invalida")
+		t.Fatal("delivered to the consumer with an invalid signature")
 	}
 }
 
@@ -199,8 +199,8 @@ func TestHandlerRejectsUnknownSlugWith404(t *testing.T) {
 		method string
 		body   string
 	}{
-		{"POST — a Meta entregando", http.MethodPost, "{}"},
-		{"GET — o que as duas sondas perguntam", http.MethodGet, ""},
+		{"POST — Meta delivering", http.MethodPost, "{}"},
+		{"GET — what both probes ask", http.MethodGet, ""},
 	}
 
 	for _, c := range cases {
@@ -211,14 +211,14 @@ func TestHandlerRejectsUnknownSlugWith404(t *testing.T) {
 			testHandler(t, "http://127.0.0.1:1").ServeHTTP(rec, req)
 
 			if rec.Code != http.StatusNotFound {
-				t.Fatalf("status = %d, quero 404", rec.Code)
+				t.Fatalf("status = %d, want 404", rec.Code)
 			}
 			if got := rec.Body.String(); got != gatewayBody {
-				t.Fatalf("corpo = %q, quero %q — mudar esta mensagem quebra implanta/sonda-publica.sh e sonda-worker/src/index.js; mude os tres no mesmo commit",
+				t.Fatalf("body = %q, want %q — changing this message breaks implanta/sonda-publica.sh and sonda-worker/src/index.js; change all three in the same commit",
 					got, gatewayBody)
 			}
 			if n := rec.Body.Len(); n != 23 {
-				t.Fatalf("corpo tem %d bytes, quero 23 — e o numero que a doc e as sondas citam como prova de que quem respondeu foi o gateway", n)
+				t.Fatalf("body has %d bytes, want 23 — that's the number the doc and the probes cite as proof that it was the gateway that answered", n)
 			}
 		})
 	}
@@ -241,13 +241,13 @@ func TestHandlerDeliversTheRawEvenWithTheParseFailing(t *testing.T) {
 	activeTestHandler(t, consumer.URL).ServeHTTP(rec, req)
 
 	if len(bodyAtConsumer) == 0 {
-		t.Fatal("o parse falhou e NADA foi entregue — e exatamente a perda silenciosa que o gateway existe para acabar")
+		t.Fatal("the parse failed and NOTHING was delivered — that's exactly the silent loss the gateway exists to end")
 	}
 	if !strings.Contains(string(bodyAtConsumer), `"parse_error"`) {
-		t.Errorf("envelope sem parse_error: %s", bodyAtConsumer)
+		t.Errorf("envelope with no parse_error: %s", bodyAtConsumer)
 	}
 	if rec.Code != http.StatusOK {
-		t.Errorf("status = %d, quero 200 (o consumidor guardou o cru)", rec.Code)
+		t.Errorf("status = %d, want 200 (the consumer stored the raw body)", rec.Code)
 	}
 }
 
@@ -290,21 +290,21 @@ func TestHandlerRejectsPhoneNumberIDFromAnotherInstance(t *testing.T) {
 	h.ServeHTTP(rec, req)
 
 	if delivered {
-		t.Fatal("entregou evento cujo phone_number_id nao e da instancia do path")
+		t.Fatal("delivered an event whose phone_number_id is not the path instance's")
 	}
 	// 200 + alarm: redelivering would repeat the same failure for 36h.
 	if rec.Code != http.StatusOK {
-		t.Errorf("status = %d, quero 200", rec.Code)
+		t.Errorf("status = %d, want 200", rec.Code)
 	}
 	if n := directCount(t, path, "lojinha", config.CounterNumberDiscarded); n != 1 {
-		t.Errorf("numero_descartado = %d, quero 1 — a recusa de isolamento por phone_number_id"+
-			" tem de aparecer em `zapgw estado`, nao so no journal", n)
+		t.Errorf("numero_descartado = %d, want 1 — the isolation rejection by phone_number_id"+
+			" has to show up in `zapgw estado`, not just in the journal", n)
 	}
 	// NON-REGRESSION: conta_descartada remains the EXCLUSIVE key for 5b
 	// (waba_id). If the new key were written to the wrong place — or if
 	// someone "simplified" by merging the two into one —, this test flags it.
 	if n := directCount(t, path, "lojinha", config.CounterAccountDiscarded); n != 0 {
-		t.Errorf("conta_descartada = %d, quero 0 — quem recusou foi a guarda do phone_number_id (5a), nao a da waba (5b)", n)
+		t.Errorf("conta_descartada = %d, want 0 — the phone_number_id guard (5a) is what rejected it, not the waba one (5b)", n)
 	}
 	// T-047's DECISION, written as a test: an early exit does NOT count
 	// `recebidas`. Here `recebidas` means "webhook that made it through to
@@ -313,7 +313,7 @@ func TestHandlerRejectsPhoneNumberIDFromAnotherInstance(t *testing.T) {
 	// among early exits, which is the exact shape of this project's
 	// mother-trap.
 	if n := directCount(t, path, "lojinha", config.CounterReceived); n != 0 {
-		t.Errorf("recebidas = %d, quero 0 — saida antecipada nao conta recebidas (ver o comentario do passo 5 em handler.go)", n)
+		t.Errorf("recebidas = %d, want 0 — an early exit does not count recebidas (see the comment on step 5 in handler.go)", n)
 	}
 }
 
@@ -338,13 +338,13 @@ func TestHandlerDoesNotCountDiscardedNumberWhenPhoneNumberIDMatches(t *testing.T
 	h.ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, quero 200", rec.Code)
+		t.Fatalf("status = %d, want 200", rec.Code)
 	}
 	if n := directCount(t, path, "lojinha", config.CounterNumberDiscarded); n != 0 {
-		t.Errorf("numero_descartado = %d, quero 0 (o numero bate, nao e descarte)", n)
+		t.Errorf("numero_descartado = %d, want 0 (the number matches, it's not a discard)", n)
 	}
 	if n := directCount(t, path, "lojinha", config.CounterReceived); n != 1 {
-		t.Errorf("recebidas = %d, quero 1", n)
+		t.Errorf("recebidas = %d, want 1", n)
 	}
 }
 
@@ -398,14 +398,14 @@ func TestHandlerRejectsAccountWebhookFromAnotherWaba(t *testing.T) {
 	h.ServeHTTP(rec, req)
 
 	if delivered {
-		t.Fatal("entregou webhook de conta cujo waba_id nao e da instancia do path")
+		t.Fatal("delivered an account webhook whose waba_id is not the path instance's")
 	}
 	// 200: redelivering would repeat the same configuration mismatch for 36h.
 	if rec.Code != http.StatusOK {
-		t.Errorf("status = %d, quero 200", rec.Code)
+		t.Errorf("status = %d, want 200", rec.Code)
 	}
 	if n := directCount(t, path, "lojinha", config.CounterAccountDiscarded); n != 1 {
-		t.Errorf("conta_descartada = %d, quero 1", n)
+		t.Errorf("conta_descartada = %d, want 1", n)
 	}
 }
 
@@ -458,19 +458,19 @@ func TestHandlerRejectsAccountWebhookWithUnreadableWabaID(t *testing.T) {
 	h.ServeHTTP(rec, req)
 
 	if delivered {
-		t.Fatal("entregou webhook de conta cujo waba_id nao pode ser lido — nao da para provar que e' desta instancia")
+		t.Fatal("delivered an account webhook whose waba_id cannot be read — there is no way to prove it belongs to this instance")
 	}
 	// 200 for the same reason as the other two isolation rejections:
 	// redelivering would repeat the same mismatch for 36h, and the fix is
 	// a person.
 	if rec.Code != http.StatusOK {
-		t.Errorf("status = %d, quero 200", rec.Code)
+		t.Errorf("status = %d, want 200", rec.Code)
 	}
 	// The SAME key as 5b: whoever reads the table asks "was there an
 	// account-level isolation rejection?", and the answer is the same in
 	// both cases.
 	if n := directCount(t, path, "lojinha", config.CounterAccountDiscarded); n != 1 {
-		t.Errorf("conta_descartada = %d, quero 1 — a recusa tem de ser VISIVEL em `zapgw estado`", n)
+		t.Errorf("conta_descartada = %d, want 1 — the rejection has to be VISIBLE in `zapgw estado`", n)
 	}
 }
 
@@ -546,13 +546,13 @@ func TestHandlerRejectsUnreadableWabaIDEvenIfInstanceHasNoWabaID(t *testing.T) {
 	h.ServeHTTP(rec, req)
 
 	if delivered {
-		t.Fatal("entregou: waba_id ilegivel casou com o waba_id VAZIO da instancia — a guarda virou decoracao")
+		t.Fatal("delivered: unreadable waba_id matched the instance's EMPTY waba_id — the guard turned into decoration")
 	}
 	if rec.Code != http.StatusOK {
-		t.Errorf("status = %d, quero 200", rec.Code)
+		t.Errorf("status = %d, want 200", rec.Code)
 	}
 	if n := directCount(t, path, "lojinha", config.CounterAccountDiscarded); n != 1 {
-		t.Errorf("conta_descartada = %d, quero 1", n)
+		t.Errorf("conta_descartada = %d, want 1", n)
 	}
 }
 
@@ -579,20 +579,20 @@ func TestHandlerDeliversAccountWebhookWithMatchingWabaID(t *testing.T) {
 	h.ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, quero 200", rec.Code)
+		t.Fatalf("status = %d, want 200", rec.Code)
 	}
 	if len(receivedBody) == 0 {
-		t.Fatal("webhook de conta com waba_id casando NAO foi entregue")
+		t.Fatal("account webhook with a matching waba_id was NOT delivered")
 	}
 	var env Envelope
 	if err := json.Unmarshal(receivedBody, &env); err != nil {
-		t.Fatalf("corpo entregue nao e o Envelope esperado: %v", err)
+		t.Fatalf("delivered body is not the expected Envelope: %v", err)
 	}
 	if env.Raw != base64.StdEncoding.EncodeToString(raw) {
-		t.Error("Envelope.Raw nao e' o cru EXATO do webhook de conta")
+		t.Error("Envelope.Raw is not the EXACT raw body of the account webhook")
 	}
 	if n := directCount(t, path, "lojinha", config.CounterAccountDiscarded); n != 0 {
-		t.Errorf("conta_descartada = %d, quero 0 (a waba bate, nao e descarte)", n)
+		t.Errorf("conta_descartada = %d, want 0 (the waba matches, it's not a discard)", n)
 	}
 }
 
@@ -620,11 +620,11 @@ func TestHandlerIgnoresTheHost(t *testing.T) {
 		h.ServeHTTP(rec, req)
 
 		if rec.Code != http.StatusOK {
-			t.Errorf("Host %q deu status %d, quero 200", host, rec.Code)
+			t.Errorf("Host %q gave status %d, want 200", host, rec.Code)
 		}
 	}
 	if howMany != 3 {
-		t.Fatalf("entregas = %d, quero 3 — o Host mudou o destino", howMany)
+		t.Fatalf("deliveries = %d, want 3 — the Host changed the destination", howMany)
 	}
 }
 
@@ -642,10 +642,10 @@ func TestHandlerRejectsBodyAboveTheCap(t *testing.T) {
 	// instance active, otherwise the pause's 503 masks the 413 it's testing.
 	db, err := sql.Open("sqlite", path)
 	if err != nil {
-		t.Fatalf("abrir banco para ativar instancia de teste: %v", err)
+		t.Fatalf("open database to activate test instance: %v", err)
 	}
 	if _, err := db.Exec(`UPDATE instancia SET ativo = 1 WHERE slug = ?`, "lojinha"); err != nil {
-		t.Fatalf("ativar instancia de teste: %v", err)
+		t.Fatalf("activate test instance: %v", err)
 	}
 	db.Close()
 	h := NewHandler(store, NewDeliverer(nil), 10, config.NewCounter(store), config.NewTransit(store)) // 10-byte cap
@@ -656,7 +656,7 @@ func TestHandlerRejectsBodyAboveTheCap(t *testing.T) {
 	h.ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusRequestEntityTooLarge {
-		t.Fatalf("status = %d, quero 413", rec.Code)
+		t.Fatalf("status = %d, want 413", rec.Code)
 	}
 }
 
@@ -678,7 +678,7 @@ func TestHandlerAnswersTheVerificationChallenge(t *testing.T) {
 	h.ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusOK || rec.Body.String() != "DESAFIO123" {
-		t.Fatalf("status=%d corpo=%q, quero 200 e DESAFIO123", rec.Code, rec.Body.String())
+		t.Fatalf("status=%d body=%q, want 200 and DESAFIO123", rec.Code, rec.Body.String())
 	}
 
 	reqWrong := httptest.NewRequest(http.MethodGet,
@@ -687,7 +687,7 @@ func TestHandlerAnswersTheVerificationChallenge(t *testing.T) {
 	h.ServeHTTP(recWrong, reqWrong)
 
 	if recWrong.Code != http.StatusForbidden {
-		t.Fatalf("verify_token errado deu %d, quero 403", recWrong.Code)
+		t.Fatalf("wrong verify_token gave %d, want 403", recWrong.Code)
 	}
 }
 
@@ -711,10 +711,10 @@ func TestHandlerRejectsPausedInstance(t *testing.T) {
 	h.ServeHTTP(rec, req)
 
 	if delivered {
-		t.Fatal("instancia PAUSADA entregou ao consumidor")
+		t.Fatal("PAUSED instance delivered to the consumer")
 	}
 	if rec.Code != http.StatusServiceUnavailable {
-		t.Errorf("status = %d, quero 503 — 200 descartaria a mensagem em definitivo", rec.Code)
+		t.Errorf("status = %d, want 503 — a 200 would discard the message permanently", rec.Code)
 	}
 }
 
@@ -743,10 +743,10 @@ func TestHandlerLogsALARMEWhenConsumerRefusesTheDocument(t *testing.T) {
 	activeTestHandler(t, consumer.URL).ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, quero 200 (a Meta nao pode reenviar recusa permanente)", rec.Code)
+		t.Fatalf("status = %d, want 200 (Meta cannot redeliver a permanent refusal)", rec.Code)
 	}
 	if !strings.Contains(buf.String(), "ALARME") {
-		t.Fatalf("log sem ALARME para consumidor que RECUSOU (404) — perda definitiva sem ninguem saber. log:\n%s", buf.String())
+		t.Fatalf("log with no ALARME for a consumer that REFUSED (404) — permanent loss with no one knowing. log:\n%s", buf.String())
 	}
 }
 
@@ -773,13 +773,13 @@ func TestHandlerLogsWithoutALARMEWhenConsumerFailsTransiently(t *testing.T) {
 	activeTestHandler(t, consumer.URL).ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusBadGateway {
-		t.Fatalf("status = %d, quero 502 (a Meta reenvia sozinha)", rec.Code)
+		t.Fatalf("status = %d, want 502 (Meta redelivers on its own)", rec.Code)
 	}
 	if !strings.Contains(buf.String(), "correlacao=") {
-		t.Fatalf("falha transitoria nao logou nada, e o rastreio importa aqui. log:\n%s", buf.String())
+		t.Fatalf("transient failure logged nothing, and tracing matters here. log:\n%s", buf.String())
 	}
 	if strings.Contains(buf.String(), "ALARME") {
-		t.Fatalf("log com ALARME para falha TRANSITORIA (500) — a Meta ja reenvia sozinha, ninguem precisa agir. log:\n%s", buf.String())
+		t.Fatalf("log with ALARME for a TRANSIENT failure (500) — Meta already redelivers on its own, no one needs to act. log:\n%s", buf.String())
 	}
 }
 
@@ -802,7 +802,7 @@ func TestHandlerAlarmsOnlyAfterLargeBodyThreshold(t *testing.T) {
 		rec := httptest.NewRecorder()
 		h.ServeHTTP(rec, req)
 		if rec.Code != http.StatusRequestEntityTooLarge {
-			t.Fatalf("status = %d, quero 413", rec.Code)
+			t.Fatalf("status = %d, want 413", rec.Code)
 		}
 	}
 
@@ -810,30 +810,30 @@ func TestHandlerAlarmsOnlyAfterLargeBodyThreshold(t *testing.T) {
 		send()
 	}
 	if strings.Contains(buf.String(), "ALARME") {
-		t.Fatalf("alarmou antes do limiar — alarme que dispara no evento isolado (que a Meta ainda vai reenviar) treina quem opera a ignora-lo. log:\n%s", buf.String())
+		t.Fatalf("alarmed before the threshold — an alarm that fires on the isolated event (which Meta will still redeliver) trains whoever operates it to ignore it. log:\n%s", buf.String())
 	}
-	if !strings.Contains(buf.String(), "corpo acima do teto") {
-		t.Fatalf("rejeicao abaixo do limiar parou de deixar rastro no log — o rastreio importa mesmo sem alarme. log:\n%s", buf.String())
+	if !strings.Contains(buf.String(), "body above the cap") {
+		t.Fatalf("a rejection below the threshold stopped leaving a trace in the log — tracing matters even without an alarm. log:\n%s", buf.String())
 	}
 
 	send() // the one that crosses the threshold
 	if n := strings.Count(buf.String(), "ALARME"); n != 1 {
-		t.Fatalf("ALARME saiu %d vez(es) ao cruzar o limiar, quero exatamente 1. log:\n%s", n, buf.String())
+		t.Fatalf("ALARME fired %d time(s) when crossing the threshold, want exactly 1. log:\n%s", n, buf.String())
 	}
 	if !strings.Contains(buf.String(), `"lojinha"`) {
-		t.Errorf("o ALARME nao diz QUAL instancia: log:\n%s", buf.String())
+		t.Errorf("the ALARME does not say WHICH instance: log:\n%s", buf.String())
 	}
 	if !strings.Contains(buf.String(), "ZAPGW_MAX_CORPO_BYTES") {
-		t.Errorf("o ALARME nao diz o que a pessoa precisa FAZER: log:\n%s", buf.String())
+		t.Errorf("the ALARME does not say what the person needs to DO: log:\n%s", buf.String())
 	}
 	if strings.Contains(buf.String(), "marca-do-corpo-recusado") {
-		t.Errorf("o corpo recusado vazou para o log: %s", buf.String())
+		t.Errorf("the rejected body leaked into the log: %s", buf.String())
 	}
 
 	send()
 	send()
 	if n := strings.Count(buf.String(), "ALARME"); n != 1 {
-		t.Fatalf("ALARME repetiu (%d) dentro da MESMA janela — um alarme por evento vira ruido e some junto com o que importa. log:\n%s", n, buf.String())
+		t.Fatalf("ALARME repeated (%d) within the SAME window — one alarm per event turns into noise and disappears along with what matters. log:\n%s", n, buf.String())
 	}
 }
 
@@ -843,7 +843,7 @@ func TestHandlerAlarmsOnlyAfterLargeBodyThreshold(t *testing.T) {
 // which the guarantee stops existing; the exact value within them stays free.
 func TestLargeBodyAlarmConstantsKeepTheGuarantee(t *testing.T) {
 	if largeBodyThreshold < 2 {
-		t.Errorf("limiar = %d: com 1, o evento ISOLADO alarma e a metade 'e nenhum antes' do contrato deixa de existir",
+		t.Errorf("threshold = %d: with 1, the ISOLATED event alarms and the contract's 'and none before' half stops existing",
 			largeBodyThreshold)
 	}
 	// Meta redelivers for up to 36h and then gives up (docs/ARMADILHAS.md).
@@ -851,7 +851,7 @@ func TestLargeBodyAlarmConstantsKeepTheGuarantee(t *testing.T) {
 	// accumulator: the alarm would arrive after the message was already
 	// lost, which is the same as it never arriving.
 	if largeBodyWindow <= 0 || largeBodyWindow > 36*time.Hour {
-		t.Errorf("janela = %s: fora de (0, 36h] o alarme deixa de significar 'esta acontecendo agora, da tempo de agir'",
+		t.Errorf("window = %s: outside (0, 36h] the alarm stops meaning 'this is happening now, there's time to act'",
 			largeBodyWindow)
 	}
 }
@@ -867,18 +867,18 @@ func TestRejectionCounterResetsTheWindow(t *testing.T) {
 
 	c.record("lojinha")
 	if _, alarmed := c.record("lojinha"); alarmed {
-		t.Fatal("alarmou na segunda rejeicao, com limiar 3")
+		t.Fatal("alarmed on the second rejection, with threshold 3")
 	}
 
 	clock = clock.Add(time.Hour) // the window rolled over
 
 	n, alarmed := c.record("lojinha")
 	if n != 1 || alarmed {
-		t.Fatalf("depois da janela veio n=%d alarmou=%v, quero n=1 e sem alarme — a contagem tem de recomecar", n, alarmed)
+		t.Fatalf("after the window rolled over, got n=%d alarmed=%v, want n=1 and no alarm — the count has to restart", n, alarmed)
 	}
 	c.record("lojinha")
 	if _, alarmed := c.record("lojinha"); !alarmed {
-		t.Fatal("a janela nova nao alarma no limiar — zerar nao pode desligar o alarme")
+		t.Fatal("the new window does not alarm at the threshold — resetting cannot turn off the alarm")
 	}
 }
 
@@ -895,10 +895,10 @@ func TestRejectionCounterCountsPerInstance(t *testing.T) {
 
 	n, alarmed := c.record("lojinha")
 	if n != 2 || alarmed {
-		t.Fatalf("lojinha veio n=%d alarmou=%v, quero n=2 sem alarme — rejeicao de outra instancia nao pode contar aqui", n, alarmed)
+		t.Fatalf("lojinha got n=%d alarmed=%v, want n=2 with no alarm — another instance's rejection cannot count here", n, alarmed)
 	}
 	if _, alarmed := c.record("lojinha"); !alarmed {
-		t.Fatal("lojinha nao alarmou na propria terceira rejeicao")
+		t.Fatal("lojinha did not alarm on its own third rejection")
 	}
 }
 
@@ -924,7 +924,7 @@ func TestHandlerWithstandsConcurrentLargeBodies(t *testing.T) {
 			rec := httptest.NewRecorder()
 			h.ServeHTTP(rec, req)
 			if rec.Code != http.StatusRequestEntityTooLarge {
-				t.Errorf("status = %d, quero 413", rec.Code)
+				t.Errorf("status = %d, want 413", rec.Code)
 			}
 		}()
 	}
@@ -934,7 +934,7 @@ func TestHandlerWithstandsConcurrentLargeBodies(t *testing.T) {
 	// would skip the exact threshold and come out zero; a count counted
 	// twice would come out more than one.
 	if n := strings.Count(buf.String(), "ALARME"); n != 1 {
-		t.Fatalf("ALARME saiu %d vez(es) em %d rejeicoes concorrentes, quero exatamente 1", n, goroutines)
+		t.Fatalf("ALARME fired %d time(s) across %d concurrent rejections, want exactly 1", n, goroutines)
 	}
 }
 
@@ -964,7 +964,7 @@ func TestHandlerWithstandsConcurrentRequests(t *testing.T) {
 			rec := httptest.NewRecorder()
 			h.ServeHTTP(rec, req)
 			if rec.Code != http.StatusOK {
-				t.Errorf("status = %d, quero 200", rec.Code)
+				t.Errorf("status = %d, want 200", rec.Code)
 			}
 		}()
 	}
@@ -981,14 +981,14 @@ func directCount(t *testing.T, path, slug, key string) int {
 	t.Helper()
 	db, err := sql.Open("sqlite", path)
 	if err != nil {
-		t.Fatalf("abrir banco para ler contador: %v", err)
+		t.Fatalf("open database to read counter: %v", err)
 	}
 	defer db.Close()
 	var n int
 	err = db.QueryRow(`SELECT COALESCE(SUM(n), 0) FROM contador WHERE slug = ? AND chave = ?`,
 		slug, key).Scan(&n)
 	if err != nil {
-		t.Fatalf("ler contador %q/%q: %v", slug, key, err)
+		t.Fatalf("read counter %q/%q: %v", slug, key, err)
 	}
 	return n
 }
@@ -1000,7 +1000,7 @@ type alwaysFailingCounter struct{ calls atomic.Int64 }
 
 func (c *alwaysFailingCounter) IncrementCounter(slug, key string, when time.Time) error {
 	c.calls.Add(1)
-	return errors.New("alwaysFailingCounter: falha proposital de teste")
+	return errors.New("alwaysFailingCounter: deliberate test failure")
 }
 
 // Verify (a): a successful delivery increments `recebidas` and `entregues`.
@@ -1021,19 +1021,19 @@ func TestHandlerCountsReceivedAndDeliveredOnSuccessfulDelivery(t *testing.T) {
 	h.ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, quero 200", rec.Code)
+		t.Fatalf("status = %d, want 200", rec.Code)
 	}
 	if n := directCount(t, path, "lojinha", config.CounterReceived); n != 1 {
-		t.Errorf("recebidas = %d, quero 1", n)
+		t.Errorf("recebidas = %d, want 1", n)
 	}
 	if n := directCount(t, path, "lojinha", config.CounterDelivered); n != 1 {
-		t.Errorf("entregues = %d, quero 1", n)
+		t.Errorf("entregues = %d, want 1", n)
 	}
 	if n := directCount(t, path, "lojinha", config.CounterRefusedByConsumer); n != 0 {
-		t.Errorf("recusadas_pelo_consumidor = %d, quero 0 (entrega foi bem-sucedida)", n)
+		t.Errorf("recusadas_pelo_consumidor = %d, want 0 (delivery was successful)", n)
 	}
 	if n := directCount(t, path, "lojinha", config.CounterDefinitiveLossAlarm); n != 0 {
-		t.Errorf("alarme_perda_definitiva = %d, quero 0", n)
+		t.Errorf("alarme_perda_definitiva = %d, want 0", n)
 	}
 }
 
@@ -1058,16 +1058,16 @@ func TestHandlerCountsRefusedAndAlarmWhenConsumerRefuses(t *testing.T) {
 	h.ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, quero 200 (a Meta nao pode reenviar recusa permanente)", rec.Code)
+		t.Fatalf("status = %d, want 200 (Meta cannot redeliver a permanent refusal)", rec.Code)
 	}
 	if n := directCount(t, path, "lojinha", config.CounterRefusedByConsumer); n != 1 {
-		t.Errorf("recusadas_pelo_consumidor = %d, quero 1", n)
+		t.Errorf("recusadas_pelo_consumidor = %d, want 1", n)
 	}
 	if n := directCount(t, path, "lojinha", config.CounterDefinitiveLossAlarm); n != 1 {
-		t.Errorf("alarme_perda_definitiva = %d, quero 1", n)
+		t.Errorf("alarme_perda_definitiva = %d, want 1", n)
 	}
 	if n := directCount(t, path, "lojinha", config.CounterDelivered); n != 0 {
-		t.Errorf("entregues = %d, quero 0 (o consumidor RECUSOU)", n)
+		t.Errorf("entregues = %d, want 0 (the consumer REFUSED)", n)
 	}
 }
 
@@ -1082,8 +1082,8 @@ func TestHandlerCountsRefusedAndAlarmWhenConsumerRefuses(t *testing.T) {
 // RESPONDS (http.Error) instead of just logging — makes this test go red:
 // the status becomes the counter's error status, not the real verdict. It
 // is exactly the design docs/ARMADILHAS.md's hard rule for T-035 forbids
-// ("contar é acompanhamento, nunca pode derrubar a resposta já escrita à
-// Meta ou ao consumidor"), and the reason Counter.Register has no error
+// ("counting is monitoring, it can never bring down the response already
+// written to Meta or to the consumer"), and the reason Counter.Register has no error
 // at all to return.
 func TestHandlerCounterFailureDoesNotChangeTheStatus(t *testing.T) {
 	consumer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -1126,10 +1126,10 @@ func TestHandlerCounterFailureDoesNotChangeTheStatus(t *testing.T) {
 	hFailing.ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, quero 200 — falha do CONTADOR nao pode mudar o veredito da ENTREGA", rec.Code)
+		t.Fatalf("status = %d, want 200 — a COUNTER failure cannot change the DELIVERY verdict", rec.Code)
 	}
 	if fake.calls.Load() == 0 {
-		t.Fatal("o contador que sempre erra nunca foi chamado — o teste nao exercitou o caminho que ele prova")
+		t.Fatal("the always-failing counter was never called — the test did not exercise the path it proves")
 	}
 }
 
@@ -1204,17 +1204,17 @@ func TestHandlerCounterFailureDoesNotChangeStatusOfPhoneNumberIDRefusal(t *testi
 	h.ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, quero 200 — falha do CONTADOR nao pode mudar a recusa de isolamento ja escrita a Meta", rec.Code)
+		t.Fatalf("status = %d, want 200 — a COUNTER failure cannot change the isolation refusal already written to Meta", rec.Code)
 	}
 	if delivered {
-		t.Fatal("entregou evento cujo phone_number_id nao e da instancia do path")
+		t.Fatal("delivered an event whose phone_number_id is not the path instance's")
 	}
 	if fake.calls.Load() == 0 {
-		t.Fatal("o contador que sempre erra nunca foi chamado — o teste nao exercitou o caminho que ele prova")
+		t.Fatal("the always-failing counter was never called — the test did not exercise the path it proves")
 	}
 }
 
-// Verify (d): docs/ARMADILHAS.md, "Go / concorrência" — the counter is
+// Verify (d): docs/ARMADILHAS.md, "Go / concurrency" — the counter is
 // mutable state touched by concurrent goroutines over the SAME handler. Run
 // with -race.
 func TestHandlerCounterWithstandsConcurrentRequests(t *testing.T) {
@@ -1239,17 +1239,17 @@ func TestHandlerCounterWithstandsConcurrentRequests(t *testing.T) {
 			rec := httptest.NewRecorder()
 			h.ServeHTTP(rec, req)
 			if rec.Code != http.StatusOK {
-				t.Errorf("status = %d, quero 200", rec.Code)
+				t.Errorf("status = %d, want 200", rec.Code)
 			}
 		}()
 	}
 	wg.Wait()
 
 	if n := directCount(t, path, "lojinha", config.CounterReceived); n != goroutines {
-		t.Fatalf("recebidas = %d, quero %d — contagem perdida sob concorrencia", n, goroutines)
+		t.Fatalf("recebidas = %d, want %d — count lost under concurrency", n, goroutines)
 	}
 	if n := directCount(t, path, "lojinha", config.CounterDelivered); n != goroutines {
-		t.Fatalf("entregues = %d, quero %d", n, goroutines)
+		t.Fatalf("entregues = %d, want %d", n, goroutines)
 	}
 }
 
@@ -1260,11 +1260,11 @@ func activateInstanceInFile(t *testing.T, path, slug string) {
 	t.Helper()
 	db, err := sql.Open("sqlite", path)
 	if err != nil {
-		t.Fatalf("abrir banco para ativar instancia de teste: %v", err)
+		t.Fatalf("open database to activate test instance: %v", err)
 	}
 	defer db.Close()
 	if _, err := db.Exec(`UPDATE instancia SET ativo = 1 WHERE slug = ?`, slug); err != nil {
-		t.Fatalf("ativar instancia de teste: %v", err)
+		t.Fatalf("activate test instance: %v", err)
 	}
 }
 
@@ -1282,17 +1282,17 @@ func clearWabaIDInFile(t *testing.T, path, slug string) {
 	t.Helper()
 	db, err := sql.Open("sqlite", path)
 	if err != nil {
-		t.Fatalf("abrir banco para esvaziar waba_id: %v", err)
+		t.Fatalf("open database to clear waba_id: %v", err)
 	}
 	defer db.Close()
 	res, err := db.Exec(`UPDATE instancia SET waba_id = '' WHERE slug = ?`, slug)
 	if err != nil {
-		t.Fatalf("esvaziar waba_id: %v", err)
+		t.Fatalf("clear waba_id: %v", err)
 	}
 	// An UPDATE that matches no row is NOT an error for SQLite: without this
 	// check, a wrong slug would leave the test running against an instance
 	// with a filled-in waba_id — exactly the false green T-068 found.
 	if rows, err := res.RowsAffected(); err != nil || rows != 1 {
-		t.Fatalf("esvaziar waba_id: %d linha(s) afetada(s) (err=%v), quero 1", rows, err)
+		t.Fatalf("clear waba_id: %d row(s) affected (err=%v), want 1", rows, err)
 	}
 }

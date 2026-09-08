@@ -139,7 +139,7 @@ func (h *Handler) verify(w http.ResponseWriter, r *http.Request) {
 		// Same distinction as receive: the database being down is not a
 		// mistyped slug. A 404 here would send the operator hunting for a
 		// typo in the slug when the problem is infrastructure.
-		log.Printf("zapgw: erro de store no slug %q: %v", slug, err)
+		log.Printf("zapgw: store error on slug %q: %v", slug, err)
 		http.Error(w, "indisponivel", http.StatusServiceUnavailable)
 		return
 	}
@@ -166,12 +166,12 @@ func (h *Handler) receive(w http.ResponseWriter, r *http.Request) {
 			// Without this line, a stale slug in Meta's dashboard is a mute
 			// symptom: "messages stopped arriving," with no error anywhere,
 			// for up to 36h.
-			log.Printf("zapgw: slug desconhecido %q recebeu trafego", slug)
+			log.Printf("zapgw: unknown slug %q received traffic", slug)
 			http.Error(w, "instancia desconhecida", http.StatusNotFound)
 			return
 		}
 		// Database down: transient. Meta redelivers.
-		log.Printf("zapgw: erro de store no slug %q: %v", slug, err)
+		log.Printf("zapgw: store error on slug %q: %v", slug, err)
 		http.Error(w, "indisponivel", http.StatusServiceUnavailable)
 		return
 	}
@@ -188,7 +188,7 @@ func (h *Handler) receive(w http.ResponseWriter, r *http.Request) {
 	// a reaction to this log — no one needs to act JUST BECAUSE this event
 	// arrived.
 	if !inst.Active {
-		log.Printf("zapgw: instancia %q esta pausada e recebeu trafego", slug)
+		log.Printf("zapgw: instance %q is paused and received traffic", slug)
 		http.Error(w, "instancia pausada", http.StatusServiceUnavailable)
 		return
 	}
@@ -210,12 +210,13 @@ func (h *Handler) receive(w http.ResponseWriter, r *http.Request) {
 			// mattered in this file).
 			n, alarm := h.rejections.record(slug)
 			if alarm {
-				log.Printf("ALARME zapgw: instancia %q recusou %d corpos acima do teto de %d bytes em ate %s;"+
-					" o reenvio da Meta traz o MESMO corpo e leva 413 de novo, entao a mensagem se perde em definitivo quando ela desistir."+
-					" ACAO: subir ZAPGW_MAX_CORPO_BYTES e reiniciar o servico, ou cortar o payload na origem",
+				log.Printf("ALARME zapgw: instance %q rejected %d bodies above the %d-byte cap within %s;"+
+					" Meta's redelivery brings the SAME body and gets 413 again, so the message is lost for"+
+					" good once it gives up. ACTION: raise ZAPGW_MAX_CORPO_BYTES and restart the service,"+
+					" or trim the payload at the source",
 					slug, n, h.maxBytes, largeBodyWindow)
 			} else {
-				log.Printf("zapgw: corpo acima do teto na instancia %q (%d na janela de %s)", slug, n, largeBodyWindow)
+				log.Printf("zapgw: body above the cap on instance %q (%d within the %s window)", slug, n, largeBodyWindow)
 			}
 			http.Error(w, "corpo grande demais", http.StatusRequestEntityTooLarge)
 			return
@@ -227,7 +228,7 @@ func (h *Handler) receive(w http.ResponseWriter, r *http.Request) {
 	// 3. Signature, over the RAW BYTES.
 	if !meta.SignatureValid(raw, r.Header.Get("X-Hub-Signature-256"), inst.AppSecret) {
 		// We don't log the body: it carries personal data.
-		log.Printf("zapgw: assinatura invalida na instancia %q", slug)
+		log.Printf("zapgw: invalid signature on instance %q", slug)
 		http.Error(w, "assinatura invalida", http.StatusForbidden)
 		return
 	}
@@ -274,20 +275,20 @@ func (h *Handler) receive(w http.ResponseWriter, r *http.Request) {
 			// Part of the payload could not be read — deserves human
 			// attention, even when the same error also carries legitimate,
 			// unmodeled items (errors.Is sees both sides of the Join).
-			log.Printf("zapgw: parse falhou na instancia %q: %v", slug, err)
+			log.Printf("zapgw: parse failed on instance %q: %v", slug, err)
 		case errors.Is(err, meta.ErrUnmodeledItems):
 			// Only LEGITIMATE items that this slice doesn't model: this is
 			// not a failure at all, and calling it "failed"/"error" is
 			// exactly what fired the monitor with nothing wrong having
 			// happened.
-			log.Printf("zapgw: instancia %q: %v", slug, err)
+			log.Printf("zapgw: instance %q: %v", slug, err)
 		default:
 			// Defensive: no parse error today falls here (ParseWebhook only
 			// produces ErrPartialParse; ParseInstagramWebhook only produces
 			// the two sentinels above, isolated or composed), but a future
 			// error that is neither of the two falls back to the usual
 			// behavior instead of staying silent.
-			log.Printf("zapgw: parse falhou na instancia %q: %v", slug, err)
+			log.Printf("zapgw: parse failed on instance %q: %v", slug, err)
 		}
 	}
 
@@ -402,10 +403,10 @@ func (h *Handler) receive(w http.ResponseWriter, r *http.Request) {
 		for _, igID := range meta.IgIDsInPayload(raw) {
 			if igID == "" || igID != inst.IgID {
 				if igID == "" {
-					log.Printf("ALARME zapgw: instancia %q recebeu webhook de Instagram sem entry[].id legivel; "+
-						"nao da para provar que e dela (%q), entao o lote foi recusado", slug, inst.IgID)
+					log.Printf("ALARME zapgw: instance %q received an Instagram webhook with no readable entry[].id; "+
+						"there is no way to prove it is theirs (%q), so the batch was rejected", slug, inst.IgID)
 				} else {
-					log.Printf("ALARME zapgw: instancia %q recebeu webhook de Instagram do entry[].id %q, que nao e o dela (%q)",
+					log.Printf("ALARME zapgw: instance %q received an Instagram webhook for entry[].id %q, which is not theirs (%q)",
 						slug, igID, inst.IgID)
 				}
 				// 200: redelivering would repeat the same mismatch for 36h.
@@ -533,7 +534,7 @@ func (h *Handler) receive(w http.ResponseWriter, r *http.Request) {
 		// method — they don't redefine this one.
 		for _, e := range evs {
 			if e.PhoneNumberID != "" && e.PhoneNumberID != inst.PhoneNumberID {
-				log.Printf("ALARME zapgw: instancia %q recebeu phone_number_id %q, que nao e dela",
+				log.Printf("ALARME zapgw: instance %q received phone_number_id %q, which is not theirs",
 					slug, e.PhoneNumberID)
 				// 200: redelivering would repeat the same failure for 36h.
 				// The fix is a person.
@@ -566,10 +567,10 @@ func (h *Handler) receive(w http.ResponseWriter, r *http.Request) {
 		for _, waba := range meta.AccountWabaIDsInPayload(raw) {
 			if waba == "" || waba != inst.WabaID {
 				if waba == "" {
-					log.Printf("ALARME zapgw: instancia %q recebeu webhook de CONTA sem waba_id legivel; "+
-						"nao da para provar que e dela (%q), entao o lote foi recusado", slug, inst.WabaID)
+					log.Printf("ALARME zapgw: instance %q received an ACCOUNT webhook with no readable waba_id; "+
+						"there is no way to prove it is theirs (%q), so the batch was rejected", slug, inst.WabaID)
 				} else {
-					log.Printf("ALARME zapgw: instancia %q recebeu webhook de CONTA da waba_id %q, que nao e a dela (%q)",
+					log.Printf("ALARME zapgw: instance %q received an ACCOUNT webhook for waba_id %q, which is not theirs (%q)",
 						slug, waba, inst.WabaID)
 				}
 				// 200: redelivering would repeat the same mismatch for

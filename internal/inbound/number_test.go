@@ -50,11 +50,11 @@ func qualityHandler(t *testing.T, now time.Time) (http.Handler, *config.Store) {
 	}
 	db, err := sql.Open("sqlite", path)
 	if err != nil {
-		t.Fatalf("abrir banco para ativar: %v", err)
+		t.Fatalf("open database to activate: %v", err)
 	}
 	defer db.Close()
 	if _, err := db.Exec(`UPDATE instancia SET ativo = 1 WHERE slug = ?`, "lojinha"); err != nil {
-		t.Fatalf("ativar instancia: %v", err)
+		t.Fatalf("activate instance: %v", err)
 	}
 
 	_, mux := newHandler(store, NewDeliverer(nil), 1<<20, config.NewCounter(store), config.NewTransit(store),
@@ -81,7 +81,7 @@ func deliverQuality(t *testing.T, h http.Handler, raw []byte) {
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, quero 200; corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, want 200; body = %s", rec.Code, rec.Body.String())
 	}
 }
 
@@ -109,26 +109,26 @@ func TestQualityWebhookRecordsTheLimitWithSourceWEBHOOK(t *testing.T) {
 
 	n := numberOf(t, store)
 	if n.Limit.Value != "TIER_50" {
-		t.Errorf("limite = %q, quero o LITERAL TIER_50 (o `current_limit`, nao o `max_daily`)", n.Limit.Value)
+		t.Errorf("limit = %q, want the LITERAL TIER_50 (the `current_limit`, not `max_daily`)", n.Limit.Value)
 	}
 	if n.Limit.Source != config.SourceWebhook {
-		t.Errorf("fonte = %q, quero %q", n.Limit.Source, config.SourceWebhook)
+		t.Errorf("source = %q, want %q", n.Limit.Source, config.SourceWebhook)
 	}
 	if !n.Limit.ObservedAt.Equal(afterWebhook) {
-		t.Errorf("observado_em = %v, quero %v (o NOSSO relogio, nao o `time` da Meta)",
+		t.Errorf("observado_em = %v, want %v (OUR OWN clock, not Meta's `time`)",
 			n.Limit.ObservedAt, afterWebhook)
 	}
 	// A webhook isn't a check: we asked nothing, it just arrived. If it
 	// stamped `conferido_em`, "the measurement is healthy" would show
 	// green on a gateway that lost read access to the Graph API.
 	if !n.CheckedAt.IsZero() {
-		t.Errorf("conferido_em = %v, quero zero — webhook nao e' medicao", n.CheckedAt)
+		t.Errorf("conferido_em = %v, want zero — a webhook is not a measurement", n.CheckedAt)
 	}
 	// Quality remains unobserved: this webhook carries NO rating at all
 	// (it carries an `event`), and inventing one would assert a
 	// translation the Meta source doesn't support.
 	if n.Quality.Observed() {
-		t.Errorf("qualidade = %+v, quero nao-observada", n.Quality)
+		t.Errorf("quality = %+v, want unobserved", n.Quality)
 	}
 }
 
@@ -140,15 +140,15 @@ func TestWebhookOVERWRITESOLDERMeasurement(t *testing.T) {
 	if err := store.UpdateNumberAtMeta("lojinha", config.NumberUpdate{
 		Limit: "TIER_1K", Source: config.SourceMeasurement, When: beforeWebhook,
 	}); err != nil {
-		t.Fatalf("semear a medicao: %v", err)
+		t.Fatalf("seed the measurement: %v", err)
 	}
 
 	deliverQuality(t, h, qualityPayload("TIER_50"))
 
 	n := numberOf(t, store)
 	if n.Limit.Value != "TIER_50" || n.Limit.Source != config.SourceWebhook {
-		t.Errorf("limite = (%q, %q), quero (TIER_50, %q) — o aviso EMPURRADO de rebaixamento e' o "+
-			"unico que chega antes de o envio comecar a falhar por limite",
+		t.Errorf("limit = (%q, %q), want (TIER_50, %q) — the PUSHED downgrade notice is the "+
+			"only one that arrives before sending starts failing on the limit",
 			n.Limit.Value, n.Limit.Source, config.SourceWebhook)
 	}
 }
@@ -160,13 +160,13 @@ func TestLATEWebhookDoesNotRegressNEWERMeasurement(t *testing.T) {
 	if err := store.UpdateNumberAtMeta("lojinha", config.NumberUpdate{
 		Limit: "TIER_1K", Source: config.SourceMeasurement, When: afterWebhook,
 	}); err != nil {
-		t.Fatalf("semear a medicao: %v", err)
+		t.Fatalf("seed the measurement: %v", err)
 	}
 
 	deliverQuality(t, h, qualityPayload("TIER_50"))
 
 	if n := numberOf(t, store); n.Limit.Value != "TIER_1K" {
-		t.Errorf("limite = %q, quero TIER_1K — observacao atrasada nao desfaz uma mais nova", n.Limit.Value)
+		t.Errorf("limit = %q, want TIER_1K — a delayed observation does not undo a newer one", n.Limit.Value)
 	}
 }
 
@@ -185,6 +185,6 @@ func TestWebhookFromANOTHERWabaDoesNotRecordTheNumber(t *testing.T) {
 	h.ServeHTTP(rec, req)
 
 	if n := numberOf(t, store); n.Limit.Observed() {
-		t.Errorf("gravou o tier de outra WABA: %+v", n.Limit)
+		t.Errorf("recorded another WABA's tier: %+v", n.Limit)
 	}
 }
