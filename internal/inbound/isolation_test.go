@@ -66,8 +66,8 @@ const (
 	// marker in the raw POST body without decoding it would find zero even
 	// with the leak actually happening — a search unable to find what it's
 	// looking for has already cost this project (docs/ARMADILHAS.md,
-	// "eu medi a forma do invólucro e concluí sobre a existência do
-	// conteúdo").
+	// "I measured the shape of the wrapper and concluded about the
+	// existence of the content").
 	markerOfA = "SO-DO-INQUILINO-A"
 )
 
@@ -113,16 +113,16 @@ func (c *spyConsumer) leak(marker string) string {
 		if err := json.Unmarshal(body, &env); err != nil {
 			// A body that isn't an envelope is still a delivery: report it as is.
 			if strings.Contains(string(body), marker) {
-				return "corpo " + strconv.Itoa(i) + " (nao desserializa como envelope) contem " + marker
+				return "body " + strconv.Itoa(i) + " (does not deserialize as an envelope) contains " + marker
 			}
 			continue
 		}
 		raw, err := base64.StdEncoding.DecodeString(env.Raw)
 		if err == nil && strings.Contains(string(raw), marker) {
-			return "envelope com instancia=" + env.Instance + " cujo `cru` decodificado contem " + marker
+			return "envelope with instancia=" + env.Instance + " whose decoded `cru` contains " + marker
 		}
 		if strings.Contains(string(body), marker) {
-			return "envelope com instancia=" + env.Instance + " cujo corpo contem " + marker
+			return "envelope with instancia=" + env.Instance + " whose body contains " + marker
 		}
 	}
 	return ""
@@ -204,14 +204,14 @@ func deliverTo(t *testing.T, h http.Handler, slug string, raw []byte, secret str
 func requireNothingLeaked(t *testing.T, a, b *spyConsumer) {
 	t.Helper()
 	if v := b.leak(markerOfA); v != "" {
-		t.Fatalf("VAZAMENTO ENTRE INQUILINOS: o consumidor de %q recebeu conteudo de %q — %s",
+		t.Fatalf("LEAK BETWEEN TENANTS: %q's consumer received content from %q — %s",
 			slugB, slugA, v)
 	}
 	if n := len(b.receivedBodies()); n != 0 {
-		t.Fatalf("o consumidor de %q recebeu %d entrega(s) que nao deveriam existir", slugB, n)
+		t.Fatalf("%q's consumer received %d delivery(ies) that should not exist", slugB, n)
 	}
 	if n := len(a.receivedBodies()); n != 0 {
-		t.Fatalf("o consumidor de %q recebeu %d entrega(s) — o gateway REAPONTOU o lote em vez de recusar", slugA, n)
+		t.Fatalf("%q's consumer received %d delivery(ies) — the gateway REROUTED the batch instead of rejecting it", slugA, n)
 	}
 }
 
@@ -228,15 +228,15 @@ func TestPositiveControlPayloadOfAReachesConsumerOfA(t *testing.T) {
 
 	raw := messageFromA()
 	if rec := deliverTo(t, h, slugA, raw, secretA); rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, quero 200 no caminho da PROPRIA instancia; corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, want 200 on the instance's OWN path; body = %s", rec.Code, rec.Body.String())
 	}
 
 	if v := a.leak(markerOfA); v == "" {
-		t.Fatal("o consumidor de A NAO recebeu o payload de A — o aparato deste arquivo nao enxerga entrega," +
-			" e por isso nenhum dos testes de ausencia abaixo valeria como prova")
+		t.Fatal("A's consumer did NOT receive A's payload — this file's apparatus cannot see a delivery," +
+			" and so none of the absence tests below would count as proof")
 	}
 	if n := len(b.receivedBodies()); n != 0 {
-		t.Fatalf("o consumidor de %q recebeu %d entrega(s) de um lote que era do %q", slugB, n, slugA)
+		t.Fatalf("%q's consumer received %d delivery(ies) from a batch that belonged to %q", slugB, n, slugA)
 	}
 }
 
@@ -255,14 +255,14 @@ func TestPayloadOfAOnPathOfBSignedBYADoesNotPassTheSignature(t *testing.T) {
 	rec := deliverTo(t, h, slugB, messageFromA(), secretA)
 
 	if rec.Code != http.StatusForbidden {
-		t.Fatalf("status = %d, quero 403 — assinatura de outro App nao vale neste caminho; corpo = %s",
+		t.Fatalf("status = %d, want 403 — another App's signature is not valid on this path; body = %s",
 			rec.Code, rec.Body.String())
 	}
 	requireNothingLeaked(t, a, b)
 	// No counter moves: the rejection happens before any counting.
 	for _, key := range []string{config.CounterNumberDiscarded, config.CounterAccountDiscarded, config.CounterReceived} {
 		if n := directCount(t, path, slugB, key); n != 0 {
-			t.Errorf("%s de %q = %d, quero 0", key, slugB, n)
+			t.Errorf("%s for %q = %d, want 0", key, slugB, n)
 		}
 	}
 }
@@ -287,25 +287,25 @@ func TestMessageFromAOnPathOfBDoesNotLEAKThroughPhoneNumberID(t *testing.T) {
 	// 200 is this rejection's contract: redelivering would repeat the same
 	// configuration mismatch for 36h, and the fix is a person.
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, quero 200; corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, want 200; body = %s", rec.Code, rec.Body.String())
 	}
 	requireNothingLeaked(t, a, b)
 
 	if n := directCount(t, path, slugB, config.CounterNumberDiscarded); n != 1 {
-		t.Errorf("numero_descartado de %q = %d, quero 1 — a recusa tem de ser visivel em `zapgw estado`", slugB, n)
+		t.Errorf("numero_descartado for %q = %d, want 1 — the rejection has to be visible in `zapgw estado`", slugB, n)
 	}
 	// The NEIGHBORING axis's key stays put: whoever reads the table needs
 	// to know WHICH guard rejected it, otherwise they end up checking both
 	// places every time.
 	if n := directCount(t, path, slugB, config.CounterAccountDiscarded); n != 0 {
-		t.Errorf("conta_descartada de %q = %d, quero 0 — quem recusou foi a guarda 5a", slugB, n)
+		t.Errorf("conta_descartada for %q = %d, want 0 — guard 5a is what rejected it", slugB, n)
 	}
 	// And tenant A cannot be charged for a webhook that never even went
 	// through its own path: a counter on the wrong instance is the
 	// numeric version of the same leak.
 	for _, key := range []string{config.CounterNumberDiscarded, config.CounterAccountDiscarded, config.CounterReceived} {
 		if n := directCount(t, path, slugA, key); n != 0 {
-			t.Errorf("%s de %q = %d, quero 0 — nada aconteceu no caminho do %q", key, slugA, n, slugA)
+			t.Errorf("%s for %q = %d, want 0 — nothing happened on %q's path", key, slugA, n, slugA)
 		}
 	}
 }
@@ -327,19 +327,19 @@ func TestAccountWebhookOfAOnPathOfBDoesNotLEAKThroughWabaID(t *testing.T) {
 	rec := deliverTo(t, h, slugB, accountOfA(), secretB)
 
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, quero 200; corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, want 200; body = %s", rec.Code, rec.Body.String())
 	}
 	requireNothingLeaked(t, a, b)
 
 	if n := directCount(t, path, slugB, config.CounterAccountDiscarded); n != 1 {
-		t.Errorf("conta_descartada de %q = %d, quero 1", slugB, n)
+		t.Errorf("conta_descartada for %q = %d, want 1", slugB, n)
 	}
 	if n := directCount(t, path, slugB, config.CounterNumberDiscarded); n != 0 {
-		t.Errorf("numero_descartado de %q = %d, quero 0 — quem recusou foi a guarda 5b", slugB, n)
+		t.Errorf("numero_descartado for %q = %d, want 0 — guard 5b is what rejected it", slugB, n)
 	}
 	for _, key := range []string{config.CounterNumberDiscarded, config.CounterAccountDiscarded, config.CounterReceived} {
 		if n := directCount(t, path, slugA, key); n != 0 {
-			t.Errorf("%s de %q = %d, quero 0 — nada aconteceu no caminho do %q", key, slugA, n, slugA)
+			t.Errorf("%s for %q = %d, want 0 — nothing happened on %q's path", key, slugA, n, slugA)
 		}
 	}
 }

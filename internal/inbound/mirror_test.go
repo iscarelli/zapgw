@@ -25,10 +25,10 @@ func TestVerdictMirrorsConsumerSuccess(t *testing.T) {
 	for _, status := range []int{200, 201, 202, 204} {
 		v := ConsumerVerdict(status, nil)
 		if v.StatusForMeta != http.StatusOK {
-			t.Errorf("consumidor %d -> Meta %d, quero 200", status, v.StatusForMeta)
+			t.Errorf("consumer %d -> Meta %d, want 200", status, v.StatusForMeta)
 		}
 		if v.Alarm {
-			t.Errorf("consumidor %d nao devia alarmar", status)
+			t.Errorf("consumer %d should not have alarmed", status)
 		}
 	}
 }
@@ -39,11 +39,11 @@ func TestVerdictPropagatesTransientFailureSoMetaRedelivers(t *testing.T) {
 	for _, status := range []int{500, 502, 503, 504} {
 		v := ConsumerVerdict(status, nil)
 		if v.StatusForMeta/100 == 2 {
-			t.Errorf("consumidor %d -> Meta %d — 2xx aqui PERDE a mensagem para sempre",
+			t.Errorf("consumer %d -> Meta %d — a 2xx here LOSES the message forever",
 				status, v.StatusForMeta)
 		}
 		if v.StatusForMeta != http.StatusBadGateway {
-			t.Errorf("consumidor %d -> Meta %d, quero 502", status, v.StatusForMeta)
+			t.Errorf("consumer %d -> Meta %d, want 502", status, v.StatusForMeta)
 		}
 	}
 }
@@ -56,10 +56,10 @@ func TestVerdictDoesNotTellMetaToRedeliverWhatTheConsumerRefused(t *testing.T) {
 	for _, status := range []int{400, 401, 403, 404, 409, 422} {
 		v := ConsumerVerdict(status, nil)
 		if v.StatusForMeta != http.StatusOK {
-			t.Errorf("consumidor %d -> Meta %d, quero 200", status, v.StatusForMeta)
+			t.Errorf("consumer %d -> Meta %d, want 200", status, v.StatusForMeta)
 		}
 		if !v.Alarm {
-			t.Errorf("consumidor %d tem de ALARMAR — a Meta nunca mais reenvia", status)
+			t.Errorf("consumer %d has to ALARM — Meta never redelivers again", status)
 		}
 	}
 }
@@ -69,17 +69,17 @@ func TestVerdictTreatsConsumerOutageAsTransient(t *testing.T) {
 	// comes back in time.
 	v := ConsumerVerdict(0, errors.New("dial tcp: connection refused"))
 	if v.StatusForMeta != http.StatusGatewayTimeout {
-		t.Fatalf("StatusForMeta = %d, quero 504", v.StatusForMeta)
+		t.Fatalf("StatusForMeta = %d, want 504", v.StatusForMeta)
 	}
 	if v.StatusForMeta/100 == 2 {
-		t.Fatal("2xx com consumidor fora do ar perde a mensagem para sempre")
+		t.Fatal("2xx with a consumer that's down loses the message forever")
 	}
 	// IMPORTANT 1 from the T10 review: Meta WILL redeliver here (504), so
 	// this is not a permanent loss. Alarming here trains whoever operates
 	// it to ignore the alarm, and then the alarm that matters (a real
 	// permanent loss) disappears into the noise along with it.
 	if v.Alarm {
-		t.Error("consumidor fora do ar e transitorio (a Meta reenvia) — nao pode alarmar")
+		t.Error("a consumer being down is transient (Meta redelivers) — cannot alarm")
 	}
 }
 
@@ -102,11 +102,11 @@ func TestVerdictDoesNotLeakTheCallbackURLInTheReason(t *testing.T) {
 		"SEGREDO-QUE-NAO-PODE-VAZAR", "token=", "consumidor.interno", "10.0.0.99", "8443",
 	} {
 		if strings.Contains(v.Reason, forbidden) {
-			t.Errorf("Reason vazou %q — texto completo: %s", forbidden, v.Reason)
+			t.Errorf("Reason leaked %q — full text: %s", forbidden, v.Reason)
 		}
 	}
 	if v.Reason == "" {
-		t.Error("Reason vazio — sem ele, 'onde a mensagem parou' vira investigacao")
+		t.Error("Reason empty — without it, 'where did the message stop' turns into an investigation")
 	}
 }
 
@@ -118,7 +118,7 @@ func TestVerdictDistinguishesTimeoutFromUnreachable(t *testing.T) {
 	refused := ConsumerVerdict(0, errors.New("connection refused"))
 
 	if timeout.Reason == refused.Reason {
-		t.Fatalf("timeout e recusa dao o mesmo Reason (%q)", timeout.Reason)
+		t.Fatalf("timeout and refusal give the same Reason (%q)", timeout.Reason)
 	}
 }
 
@@ -129,13 +129,13 @@ func TestVerdictAlarmsOn1xxAnd3xxRanges(t *testing.T) {
 	for _, status := range []int{100, 101, 102, 300, 301, 302, 307, 308, 399} {
 		v := ConsumerVerdict(status, nil)
 		if v.StatusForMeta != http.StatusOK {
-			t.Errorf("status %d -> Meta %d, quero 200", status, v.StatusForMeta)
+			t.Errorf("status %d -> Meta %d, want 200", status, v.StatusForMeta)
 		}
 		if !v.Alarm {
-			t.Errorf("status %d responde 200 e NAO alarma — perda definitiva e silenciosa", status)
+			t.Errorf("status %d responds 200 and does NOT alarm — silent permanent loss", status)
 		}
 		if v.Reason == "" {
-			t.Errorf("status %d deu Reason vazio", status)
+			t.Errorf("status %d gave an empty Reason", status)
 		}
 	}
 }
@@ -158,14 +158,14 @@ func TestVerdictAlarmsIfAndOnlyIfTheLossIsDefinitive(t *testing.T) {
 
 		switch {
 		case realSuccess && v.Alarm:
-			t.Errorf("status %d: consumidor guardou, nao pode alarmar", status)
+			t.Errorf("status %d: consumer stored it, cannot alarm", status)
 		case definitive && !realSuccess && !v.Alarm:
-			t.Errorf("status %d: respondemos %d a Meta (definitiva) e NAO alarmamos", status, v.StatusForMeta)
+			t.Errorf("status %d: we answered Meta %d (definitive) and did NOT alarm", status, v.StatusForMeta)
 		case !definitive && v.Alarm:
-			t.Errorf("status %d: a Meta vai reenviar (%d) e mesmo assim alarmamos", status, v.StatusForMeta)
+			t.Errorf("status %d: Meta will redeliver (%d) and we alarmed anyway", status, v.StatusForMeta)
 		}
 		if v.Reason == "" {
-			t.Errorf("status %d: Reason vazio", status)
+			t.Errorf("status %d: empty Reason", status)
 		}
 	}
 }
@@ -177,10 +177,10 @@ func TestVerdictDoesNotTreatGarbageAsTransient(t *testing.T) {
 	for _, status := range []int{600, 700, 999} {
 		v := ConsumerVerdict(status, nil)
 		if v.StatusForMeta != http.StatusOK {
-			t.Errorf("status %d -> Meta %d, quero 200", status, v.StatusForMeta)
+			t.Errorf("status %d -> Meta %d, want 200", status, v.StatusForMeta)
 		}
 		if !v.Alarm {
-			t.Errorf("status %d nao alarmou — perda definitiva e silenciosa", status)
+			t.Errorf("status %d did not alarm — silent permanent loss", status)
 		}
 	}
 }
@@ -200,17 +200,17 @@ func TestCertificateVerdictAlarmsAndStatesTheActionWithoutConfusingItWithConsume
 
 	v := ConsumerVerdict(0, certErr)
 	if !v.Alarm {
-		t.Error("certificado invalido nao alarmou — a Meta desiste em 36h e a perda vira definitiva sem sinal")
+		t.Error("invalid certificate did not alarm — Meta gives up in 36h and the loss becomes permanent with no signal")
 	}
 	if v.StatusForMeta != http.StatusGatewayTimeout {
-		t.Errorf("StatusForMeta = %d, quero 504 — manter a janela de reenvio aberta e o que da tempo de alguem consertar", v.StatusForMeta)
+		t.Errorf("StatusForMeta = %d, want 504 — keeping the redelivery window open is what gives someone time to fix it", v.StatusForMeta)
 	}
-	if !strings.Contains(v.Reason, "ACAO:") {
-		t.Errorf("Reason = %q — ALARME sem acao e so um susto", v.Reason)
+	if !strings.Contains(v.Reason, "ACTION:") {
+		t.Errorf("Reason = %q — an ALARM with no action is just a scare", v.Reason)
 	}
 	for _, forbidden := range []string{"consumidor.interno", "webhooks"} {
 		if strings.Contains(v.Reason, forbidden) {
-			t.Errorf("Reason vazou %q — texto: %s", forbidden, v.Reason)
+			t.Errorf("Reason leaked %q — text: %s", forbidden, v.Reason)
 		}
 	}
 
@@ -221,7 +221,7 @@ func TestCertificateVerdictAlarmsAndStatesTheActionWithoutConfusingItWithConsume
 		Err: errors.New("dial tcp 10.0.0.99:443: connect: connection refused"),
 	}
 	if ConsumerVerdict(0, outage).Alarm {
-		t.Error("consumidor fora do ar virou alarme — a Meta reenvia, e alarme por queda treina quem opera a ignorar o alarme")
+		t.Error("a consumer being down turned into an alarm — Meta redelivers, and alarming on an outage trains whoever operates it to ignore the alarm")
 	}
 }
 
@@ -244,19 +244,19 @@ func TestCounterKeysMatchConsumerVerdictBoundaries(t *testing.T) {
 		hasAlarm := containsKey(keys, config.CounterDefinitiveLossAlarm)
 
 		if hasDelivered != wantDelivered {
-			t.Errorf("status %d: entregues=%v, quero %v (chaves=%v)", status, hasDelivered, wantDelivered, keys)
+			t.Errorf("status %d: entregues=%v, want %v (keys=%v)", status, hasDelivered, wantDelivered, keys)
 		}
 		if hasRefused != wantRefused {
-			t.Errorf("status %d: recusadas_pelo_consumidor=%v, quero %v (chaves=%v)", status, hasRefused, wantRefused, keys)
+			t.Errorf("status %d: recusadas_pelo_consumidor=%v, want %v (keys=%v)", status, hasRefused, wantRefused, keys)
 		}
 		if hasAlarm != wantAlarm {
-			t.Errorf("status %d: alarme_perda_definitiva=%v, quero %v (chaves=%v)", status, hasAlarm, wantAlarm, keys)
+			t.Errorf("status %d: alarme_perda_definitiva=%v, want %v (keys=%v)", status, hasAlarm, wantAlarm, keys)
 		}
 		// A transient 5xx has no key at all in the closed vocabulary: it
 		// cannot count as delivered NOR as rejected.
 		if status >= 500 && status < 600 {
 			if hasDelivered || hasRefused {
-				t.Errorf("status %d (transitorio): chaves=%v — 5xx nao pode contar como entrega nem recusa", status, keys)
+				t.Errorf("status %d (transient): keys=%v — a 5xx cannot count as delivered nor as refused", status, keys)
 			}
 		}
 	}
@@ -276,13 +276,13 @@ func TestCounterKeysOnErrorAxisOnlyCountAlarmWhenApplicable(t *testing.T) {
 	// redelivers) — it is NOT a permanent loss, so no key from this
 	// vocabulary applies.
 	if len(keys) != 0 {
-		t.Errorf("falha de certificado (504, alarme sem perda definitiva): chaves=%v, quero nenhuma", keys)
+		t.Errorf("certificate failure (504, alarm with no definitive loss): keys=%v, want none", keys)
 	}
 
 	outage := errors.New("dial tcp: connection refused")
 	vOutage := ConsumerVerdict(0, outage)
 	if keys := CounterKeys(0, outage, vOutage); len(keys) != 0 {
-		t.Errorf("consumidor fora do ar: chaves=%v, quero nenhuma (a Meta reenvia sozinha)", keys)
+		t.Errorf("consumer down: keys=%v, want none (Meta redelivers on its own)", keys)
 	}
 }
 
@@ -305,7 +305,7 @@ func TestVerdictAlwaysExplainsTheReason(t *testing.T) {
 
 	for _, c := range cases {
 		if v := ConsumerVerdict(c.status, c.err); v.Reason == "" {
-			t.Errorf("status=%d err=%v deu Reason vazio", c.status, c.err)
+			t.Errorf("status=%d err=%v gave an empty Reason", c.status, c.err)
 		}
 	}
 }

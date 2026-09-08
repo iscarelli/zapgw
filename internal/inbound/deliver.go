@@ -82,7 +82,7 @@ type Deliverer struct {
 // exactly where the escape hatch would get in (it would only take one
 // tls.Config without verification in the wrong place), and turning off
 // certificate verification produces no error at all — it just removes a
-// protection, silently. See CLAUDE.md, "TLS — não existe modo desligado", and the
+// protection, silently. See CLAUDE.md, "TLS has no off switch, in either direction", and the
 // guard in deliver_test.go.
 //
 // THE OBSERVER COMES IN AS A REQUIRED PARAMETER (nil for whoever doesn't care)
@@ -118,7 +118,7 @@ func (e *Deliverer) clientForInstance(bundle string) (*http.Client, error) {
 			// Without this the instance would silently fall back to the
 			// system store, which is exactly the consumer the own-CA feature
 			// exists to cover.
-			return nil, fmt.Errorf("inbound: entrega: %w", config.ErrInvalidCABundle)
+			return nil, fmt.Errorf("inbound: delivery: %w", config.ErrInvalidCABundle)
 		}
 		transport.TLSClientConfig.RootCAs = pool
 	}
@@ -288,7 +288,7 @@ func (e *Deliverer) Deliver(
 
 	body, err := json.Marshal(env)
 	if err != nil {
-		return 0, fmt.Errorf("inbound: montar envelope: %w", err)
+		return 0, fmt.Errorf("inbound: build envelope: %w", err)
 	}
 
 	deadline := time.Duration(inst.TimeoutMs) * time.Millisecond
@@ -300,7 +300,7 @@ func (e *Deliverer) Deliver(
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, inst.CallbackURL, bytes.NewReader(body))
 	if err != nil {
-		return 0, fmt.Errorf("inbound: montar requisicao: %w", err)
+		return 0, fmt.Errorf("inbound: build request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 	// THE SAME `timestamp` in both headers: what goes into X-Zapgw-Timestamp

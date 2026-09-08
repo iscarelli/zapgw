@@ -55,11 +55,11 @@ func activateInstagramInstance(t *testing.T, path string) {
 	t.Helper()
 	db, err := sql.Open("sqlite", path)
 	if err != nil {
-		t.Fatalf("abrir banco para ativar: %v", err)
+		t.Fatalf("open database to activate: %v", err)
 	}
 	defer db.Close()
 	if _, err := db.Exec(`UPDATE instancia SET ativo = 1 WHERE slug = 'insta-loja'`); err != nil {
-		t.Fatalf("ativar instancia de teste: %v", err)
+		t.Fatalf("activate test instance: %v", err)
 	}
 }
 
@@ -94,10 +94,10 @@ func TestInstagramHandlerRejectsInvalidSignatureWithoutDeliveringAnything(t *tes
 	h.ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusForbidden {
-		t.Errorf("status = %d, quero 403", rec.Code)
+		t.Errorf("status = %d, want 403", rec.Code)
 	}
 	if delivered {
-		t.Fatal("entregou ao consumidor com assinatura invalida — o parser de Instagram nunca deveria ter rodado")
+		t.Fatal("delivered to the consumer with an invalid signature — the Instagram parser should never have run")
 	}
 }
 
@@ -128,19 +128,19 @@ func TestInstagramHandlerAcceptsValidSignatureAndDelivers(t *testing.T) {
 	h.ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
 	}
 	if len(bodyAtConsumer) == 0 {
-		t.Fatal("nada foi entregue ao consumidor com assinatura valida")
+		t.Fatal("nothing was delivered to the consumer with a valid signature")
 	}
 	// The proof that the event arrived typed, with the counterpart as an
 	// IGSID — never "canonicalized" as a phone number (the INPUT half of
 	// test (e)).
 	if !strings.Contains(string(bodyAtConsumer), `"from_canonical":"IGSID_SINTETICO_1"`) {
-		t.Errorf("corpo entregue nao traz from_canonical=IGSID_SINTETICO_1 intacto: %s", bodyAtConsumer)
+		t.Errorf("delivered body does not carry from_canonical=IGSID_SINTETICO_1 intact: %s", bodyAtConsumer)
 	}
 	if !strings.Contains(string(bodyAtConsumer), `"text":"oi"`) {
-		t.Errorf("corpo entregue nao traz o texto da mensagem: %s", bodyAtConsumer)
+		t.Errorf("delivered body does not carry the message text: %s", bodyAtConsumer)
 	}
 }
 
@@ -170,13 +170,13 @@ func TestInstagramHandlerRejectsEntryIDFromAnotherInstance(t *testing.T) {
 	h.ServeHTTP(rec, req)
 
 	if delivered {
-		t.Fatal("entregou webhook de Instagram cujo entry[].id nao e da instancia do path")
+		t.Fatal("delivered an Instagram webhook whose entry[].id is not the path instance's")
 	}
 	if rec.Code != http.StatusOK {
-		t.Errorf("status = %d, quero 200 — reenviar repetiria a mesma divergencia por 36h", rec.Code)
+		t.Errorf("status = %d, want 200 — redelivering would repeat the same mismatch for 36h", rec.Code)
 	}
 	if n := directCount(t, path, "insta-loja", config.CounterAccountDiscarded); n != 1 {
-		t.Errorf("conta_descartada = %d, quero 1", n)
+		t.Errorf("conta_descartada = %d, want 1", n)
 	}
 }
 
@@ -205,13 +205,13 @@ func TestInstagramHandlerRejectsEntryWithMissingID(t *testing.T) {
 	h.ServeHTTP(rec, req)
 
 	if delivered {
-		t.Fatal("entregou webhook de Instagram sem entry[].id legivel — nao da para provar que e' desta instancia")
+		t.Fatal("delivered an Instagram webhook with no readable entry[].id — there is no way to prove it belongs to this instance")
 	}
 	if rec.Code != http.StatusOK {
-		t.Errorf("status = %d, quero 200", rec.Code)
+		t.Errorf("status = %d, want 200", rec.Code)
 	}
 	if n := directCount(t, path, "insta-loja", config.CounterAccountDiscarded); n != 1 {
-		t.Errorf("conta_descartada = %d, quero 1", n)
+		t.Errorf("conta_descartada = %d, want 1", n)
 	}
 }
 
@@ -247,7 +247,7 @@ func TestHandlerDefaultWhatsAppInstanceStaysOnTheOldBranch(t *testing.T) {
 	h.ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
 	}
 }
 
@@ -299,25 +299,25 @@ func TestInstagramHandlerEchoOnlyBatchDeliversNoEventButDeliversWholeRaw(t *test
 	h.ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
 	}
 
 	var env Envelope
 	if err := json.Unmarshal(bodyAtConsumer, &env); err != nil {
-		t.Fatalf("envelope entregue nao e JSON: %s", bodyAtConsumer)
+		t.Fatalf("delivered envelope is not JSON: %s", bodyAtConsumer)
 	}
 	if len(env.Events) != 0 {
-		t.Errorf("eventos = %d, quero 0 (o eco virou evento?): %+v", len(env.Events), env.Events)
+		t.Errorf("events = %d, want 0 (did the echo turn into an event?): %+v", len(env.Events), env.Events)
 	}
 	// `Raw` is base64 of the EXACT bytes from Meta (deliver.go) — the
 	// filter is only on the MODELED event, never on what's delivered:
 	// decoded, `cru` has to carry the whole echo, is_echo and all.
 	rawBody, err := base64.StdEncoding.DecodeString(env.Raw)
 	if err != nil {
-		t.Fatalf("env.Raw nao e base64: %v", err)
+		t.Fatalf("env.Raw is not base64: %v", err)
 	}
 	if !strings.Contains(string(rawBody), `"is_echo":true`) {
-		t.Errorf("cru decodificado nao traz o payload original com is_echo:true: %s", rawBody)
+		t.Errorf("decoded raw body does not carry the original payload with is_echo:true: %s", rawBody)
 	}
 }
 
@@ -346,36 +346,36 @@ func TestInstagramHandlerFiltersEchoFromBatchAndDeliversOnlyCustomerMessage(t *t
 	h.ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
 	}
 
 	var env Envelope
 	if err := json.Unmarshal(bodyAtConsumer, &env); err != nil {
-		t.Fatalf("envelope entregue nao e JSON: %s", bodyAtConsumer)
+		t.Fatalf("delivered envelope is not JSON: %s", bodyAtConsumer)
 	}
 	// Only the CUSTOMER's event shows up in the `eventos` array — this is
 	// the proof that the RIGHT item was filtered, not the whole batch.
 	if len(env.Events) != 1 {
-		t.Fatalf("eventos = %d, quero 1 (so a mensagem do cliente): %+v", len(env.Events), env.Events)
+		t.Fatalf("events = %d, want 1 (only the customer's message): %+v", len(env.Events), env.Events)
 	}
 	ev := env.Events[0]
 	if ev.WaMessageID != "IGMID.CLIENTE1" {
-		t.Errorf("WaMessageID = %q, quero IGMID.CLIENTE1 (o eco IGMID.ECO1 nao pode aparecer como evento)", ev.WaMessageID)
+		t.Errorf("WaMessageID = %q, want IGMID.CLIENTE1 (the echo IGMID.ECO1 cannot show up as an event)", ev.WaMessageID)
 	}
 	if ev.FromCanonical != "IGSID_CLIENTE_SINTETICO" {
-		t.Errorf("FromCanonical = %q, quero o IGSID do CLIENTE", ev.FromCanonical)
+		t.Errorf("FromCanonical = %q, want the CUSTOMER's IGSID", ev.FromCanonical)
 	}
 	// The RAW body stays WHOLE, with the echo also present (byte for byte,
 	// the consumer stores everything before looking at `eventos`).
 	rawBody, err := base64.StdEncoding.DecodeString(env.Raw)
 	if err != nil {
-		t.Fatalf("env.Raw nao e base64: %v", err)
+		t.Fatalf("env.Raw is not base64: %v", err)
 	}
 	if !strings.Contains(string(rawBody), `"is_echo":true`) {
-		t.Errorf("cru decodificado nao traz o eco original (is_echo:true): %s", rawBody)
+		t.Errorf("decoded raw body does not carry the original echo (is_echo:true): %s", rawBody)
 	}
 	if !strings.Contains(string(rawBody), `IGMID.ECO1`) {
-		t.Errorf("cru decodificado nao traz o mid do eco (IGMID.ECO1) — o cru nao pode ter sido filtrado: %s", rawBody)
+		t.Errorf("decoded raw body does not carry the echo's mid (IGMID.ECO1) — the raw body cannot have been filtered: %s", rawBody)
 	}
 }
 
@@ -458,10 +458,10 @@ func TestInstagramHandlerEchoOnlyBatchLogsNothingAboutParse(t *testing.T) {
 	rec, logged := sendToInstagramHandlerWithCapturedLog(t, raw)
 
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
 	}
 	if logged != "" {
-		t.Fatalf("lote so com eco nao deveria deixar rastro nenhum de parse no journal: %q", logged)
+		t.Fatalf("a batch with only an echo should leave no parse trace at all in the journal: %q", logged)
 	}
 }
 
@@ -474,19 +474,19 @@ func TestInstagramHandlerUnmodeledItemLogsInformationalWithoutFailed(t *testing.
 	rec, logged := sendToInstagramHandlerWithCapturedLog(t, raw)
 
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
 	}
-	if !strings.Contains(logged, `instancia "insta-loja"`) {
-		t.Fatalf("journal sem mencionar a instancia: %q", logged)
+	if !strings.Contains(logged, `instance "insta-loja"`) {
+		t.Fatalf("journal does not mention the instance: %q", logged)
 	}
 	if !strings.Contains(logged, "item legitimo que esta fatia do instagram nao modela") {
-		t.Fatalf("journal nao traz o texto do sentinela ErrUnmodeledItems: %q", logged)
+		t.Fatalf("journal does not carry the ErrUnmodeledItems sentinel text: %q", logged)
 	}
 	if strings.Contains(logged, "falhou") {
-		t.Fatalf("item nao modelado nao e falha — a palavra 'falhou' nao pode aparecer: %q", logged)
+		t.Fatalf("an unmodeled item is not a failure — the word 'falhou' cannot appear: %q", logged)
 	}
 	if strings.Contains(logged, "erro") {
-		t.Fatalf("item nao modelado nao e erro — a palavra 'erro' nao pode aparecer: %q", logged)
+		t.Fatalf("an unmodeled item is not an error — the word 'erro' cannot appear: %q", logged)
 	}
 }
 
@@ -494,17 +494,17 @@ func TestInstagramHandlerUnmodeledItemLogsInformationalWithoutFailed(t *testing.
 // falhou," checked against the exact text (a constant, not a visual
 // inspection).
 func TestInstagramHandlerUnreadableItemLogsParseFailedWithExactText(t *testing.T) {
-	const exactText = `zapgw: parse falhou na instancia "insta-loja": meta: parte do payload nao pode ser lida: 1 item(ns) ignorado(s)`
+	const exactText = `zapgw: parse failed on instance "insta-loja": meta: parte do payload nao pode ser lida: 1 item(ns) ignorado(s)`
 
 	raw := testInstagramPayloadUnreadableItem("IGID1")
 
 	rec, logged := sendToInstagramHandlerWithCapturedLog(t, raw)
 
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
 	}
 	if !strings.Contains(logged, exactText) {
-		t.Fatalf("journal nao contem o texto exato de hoje.\nquero conter: %s\njournal: %q", exactText, logged)
+		t.Fatalf("journal does not contain today's exact text.\nwant it to contain: %s\njournal: %q", exactText, logged)
 	}
 }
 
@@ -515,19 +515,19 @@ func TestInstagramHandlerUnreadableItemLogsParseFailedWithExactText(t *testing.T
 // mandatory mutation (reversing the order, with an else) has to make this
 // test go red.
 func TestInstagramHandlerMixedBatchLogsFailureNeverOnlyInformational(t *testing.T) {
-	const exactText = `zapgw: parse falhou na instancia "insta-loja": meta: parte do payload nao pode ser lida: 1 item(ns) ignorado(s)`
+	const exactText = `zapgw: parse failed on instance "insta-loja": meta: parte do payload nao pode ser lida: 1 item(ns) ignorado(s)`
 
 	raw := testInstagramPayloadMixed("IGID1")
 
 	rec, logged := sendToInstagramHandlerWithCapturedLog(t, raw)
 
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
 	}
 	if !strings.Contains(logged, exactText) {
-		t.Fatalf("lote misto tem de sair com a linha de FALHA (o item ilegivel nao pode sumir).\nquero conter: %s\njournal: %q", exactText, logged)
+		t.Fatalf("a mixed batch has to come out with the FAILURE line (the unreadable item cannot vanish).\nwant it to contain: %s\njournal: %q", exactText, logged)
 	}
 	if !strings.Contains(logged, "item legitimo que esta fatia do instagram nao modela") {
-		t.Fatalf("lote misto tambem deveria carregar a informacao do item nao modelado (errors.Join): %q", logged)
+		t.Fatalf("a mixed batch should also carry the information about the unmodeled item (errors.Join): %q", logged)
 	}
 }
