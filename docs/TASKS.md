@@ -15,12 +15,6 @@ portuguesa cairam de **5.023** (`8997609`) para **2.635**. O que sobra e' quase 
 literal de fio, vocabulario de contrato — mais `cmd/`, que e' a T-227.
 **Verify de repo inteiro verde nos 7 pacotes** depois do ultimo merge.
 
-🚦 **NAO CONFIE NA SAIDA DO `valida-lideranca.sh` NEM NO AVISO DE VARIAVEL OBSOLETA DO DEPLOY ate a
-T-235.** Medido em 2026-09-07: os dois grepam strings que o Go deixou de emitir (T-219 e T-224). O
-primeiro reporta `FAILED` falso nos casos A e D; o segundo simplesmente **parou de mostrar o aviso**,
-e "nada" e' a cara de um deploy saudavel. O deploy em si nao esta quebrado — quem esta cega e' a
-prova dele.
-
 🔥 **A licao que custou, e ela e' sobre o RECORTE das tarefas, nao sobre os implementadores.** Eu
 dividi a traducao por pacote. A T-224 traduziu `config.WarnOldEnvVar` — certo, era o pedido — e
 quebrou **8 testes em `cmd/zapgw` e `internal/outbound`**, que prendiam o substring `obsoleta`.
@@ -280,48 +274,6 @@ Verify:  Para cada nome novo, prove contra o codigo que ele e' o emitido:
          `desconhecido` pode estar descrevendo o que o gateway EMITE HOJE — liste no relatorio, uma
          a uma, as que voce deixou e em qual dos casos (b)/(c) cada uma cai.
          `CGO_ENABLED=0 go build ./... && go test ./...` (nao deve mudar nada, e' so' garantia).
-
-## [ ] T-235  Fix the two shell/Go log couplings, and build the gate that has never existed
-Why:     🔥 CUSTO MEDIDO EM 2026-09-07, e o modo de falha e' SILENCIO. Dois scripts de `implanta/`
-         decidem o que reportar rodando `grep` na saida do proprio gateway, e o `go test ./...` nao
-         le arquivo `.sh`. Duas costuras quebraram, vindas de tarefas DIFERENTES, e nenhuma das duas
-         podia ter sido vista pelo Verify da tarefa que a quebrou:
-         (1) `implanta/valida-lideranca.sh:113,144` grepa `"guarda de lideranca ARMADA"`/`"DESARMADA"`;
-             `cmd/zapgw/main.go:332,334` loga `"leadership guard ARMED"`/`"DISARMED"` desde a T-219.
-             Os casos A e D reportam FAILED FALSO.
-         (2) `implanta/deploy.sh:260` grepa `-F 'esta obsoleta -- use'`;
-             `internal/config/env_alias.go:59` loga `"is deprecated -- use %s instead (T-214)"` desde
-             a T-224. **O aviso de variavel obsoleta parou de aparecer no deploy, calado.**
-         🔴 A (2) importa alem do conserto: as seis `ZAPGW_*` obsoletas do CT ([1468]) eram gritadas a
-         cada deploy, e e' esse grito que some. Um `grep` que deixa de casar nao da erro — devolve
-         nada, e "nada" e' exatamente a cara de um deploy saudavel.
-Files:   implanta/valida-lideranca.sh, implanta/deploy.sh, e um teste NOVO (sugestao:
-         `internal/config/shell_log_coupling_test.go`)
-After:   T-227 (as strings de `cmd/` tem de estar estaveis antes de serem fixadas por um teste)
-Do:      1. Conserte as duas: leia a linha do `log.Printf` no Go e COPIE a grafia de la para o script.
-            Nao digite de memoria, nao deduza — cole a linha lida no relatorio.
-         2. 🔴 VARRA por irmas antes de fechar. Todo `grep`/`case` nos scripts de `implanta/` que
-            casa com saida do gateway e' uma costura igual. Liste TODAS no relatorio, dizendo de cada
-            uma se casa hoje ou nao:
-            `grep -n "grep\|case " implanta/*.sh`
-         3. CONSTRUA O PORTAO, que e' o que vale mais que os dois consertos. Um teste Go que:
-            - le os scripts de `implanta/` e extrai os literais que eles grepam da saida do gateway;
-            - exige que cada um apareca no fonte Go (`cmd/` ou `internal/`);
-            - FALHA nomeando o par (`arquivo.sh:linha` grepa X, e X nao existe mais no Go).
-            🔴 O portao precisa distinguir REPROVOU de NAO CONSEGUI VERIFICAR: se ele nao conseguir
-            extrair nenhum literal de nenhum script, tem de FALHAR dizendo isso, nunca passar calado.
-            Como marcar quais literais sao costura: escolha voce e ESCREVA a escolha no teste (um
-            comentario-marcador no `.sh` ao lado de cada `grep` acoplado e' a via mais simples e a
-            que nao depende de adivinhar). Se marcar exigir editar os scripts, edite.
-         4. 🔴 PROVE O PORTAO CONTRA DADO REAL, e isto nao e' opcional nesta casa: quebre de proposito
-            um dos pares (mude o literal no `.sh`), rode o teste, mostre que ele REPROVA citando o
-            par, e desfaca. Cole a mensagem de reprovacao no relatorio. Um portao que nunca reprovou
-            e' indistinguivel de um portao que nao olha.
-         🔴 NAO EXECUTE `implanta/deploy.sh`. Ele roda contra producao. A prova e' estatica.
-Verify:  `bash -n implanta/*.sh` sem erro.
-         `CGO_ENABLED=0 go build ./... && go test ./... && go vet ./... && gofmt -l cmd internal`,
-         com os sete pacotes `ok`.
-         E a prova do passo 4, colada no relatorio.
 
 ## [ ] T-234  Widen the doc-pointer gate past `.go`
 After:   T-235

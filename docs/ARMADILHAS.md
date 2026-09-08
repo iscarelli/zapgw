@@ -2602,9 +2602,26 @@ could have seen it, because both verifies were `go test`-shaped and the broken h
 
 ➡️ **The rule:** *when a string crosses out of the language your test runner can read, the coupling needs its own
 gate or it has none.* The sibling of the same day — a shared message translated in one package breaking another
-package's tests — was at least caught by `go test ./...`. This one had nothing above it. T-235 fixes both and builds
-the gate: a Go test that extracts the patterns the shell scripts grep for and asserts each one still appears in the
-Go source, so the next translation fails loudly instead of going quiet.
+package's tests — was at least caught by `go test ./...`. This one had nothing above it.
+
+✅ **The gate now exists** (T-235, `internal/config/shell_log_coupling_test.go`). It reads every `implanta/*.sh`
+file `git` sees, extracts the literals marked with a `# zapgw:log-coupling "…"` comment beside the `grep` that uses
+them, and requires each one to still appear somewhere under `cmd/` or `internal/`. Finding **zero** markers is a hard
+failure that says *could not verify* — never a silent pass. The sibling sweep that came with it gave a verdict on all
+13 `grep`/`case` points in those scripts: **8 are real couplings and are marked**; 5 are not (Proxmox output, a file
+the script itself writes, the shape of a config variable).
+
+**It has failed against real data, and that is why it counts as a mechanism here.** Breaking one marker back to the
+old Portuguese wording produces:
+
+```
+implanta/deploy.sh:268 greps "esta obsoleta -- use", which no longer appears anywhere in cmd/ or internal/
+```
+
+— and the message goes on to name **both** valid resolutions (the Go side reworded and the script must follow, or
+the marker is stale and must be deleted with the check it described), because a gate that says only "wrong" invites
+the fix that silences it. A permanent positive-control subtest re-proves the mechanism on a throwaway tree on every
+run, so the gate cannot rot into one that no longer looks.
 
 ## Environment
 

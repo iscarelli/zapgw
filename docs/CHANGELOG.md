@@ -4,6 +4,18 @@ Uma linha por versao entregue, no mesmo commit do bump. A entrada diz o **efeito
 
 ## Nao lancado
 
+- **T-235 — Fix the two shell/Go log couplings, and build the gate that has never existed** — fixed
+  `valida-lideranca.sh` (grepped a leadership line the Go stopped emitting at T-219, producing a false
+  `FAILED`) and `deploy.sh` (grepped the obsolete-env-var warning the Go stopped emitting at T-224,
+  which had silently removed that warning from every deploy). **The product is the gate**:
+  `internal/config/shell_log_coupling_test.go` reads every `implanta/*.sh`, extracts the literals
+  marked `# zapgw:log-coupling "…"` and requires each to still exist under `cmd/` or `internal/`; zero
+  markers is a hard *could not verify*, never a pass. The sibling sweep gave a verdict on all 13
+  `grep`/`case` points — 8 real couplings, marked; 5 not couplings. Failed against real data twice
+  (implementer, then re-proved by the planner), and carries a permanent positive control.
+  _Completed 2026-09-08 02:41._
+
+
 - **T-227 — Translate the Portuguese comments left in cmd/** — 12 files. T-219 had translated `cmd/`'s
   strings; this finished the comments and test messages. The CLI verb spellings, the flag names, the
   `ALARME`/`PRECISA DE GENTE` prefixes and the `sim`/`nao`/`ativa`/`pausada` contract values stayed,
