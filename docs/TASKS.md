@@ -275,36 +275,42 @@ Verify:  Para cada nome novo, prove contra o codigo que ele e' o emitido:
          a uma, as que voce deixou e em qual dos casos (b)/(c) cada uma cai.
          `CGO_ENABLED=0 go build ./... && go test ./...` (nao deve mudar nada, e' so' garantia).
 
-## [ ] T-234  Widen the doc-pointer gate past `.go`
-After:   T-235
-Why:     `internal/config/doc_pointers_test.go` (portao da T-217) so' enxerga caminho terminado em
-         `.go` — o `docPointerPattern` e' `[A-Za-z0-9_./-]+\.go(:[0-9]+(-[0-9]+)?)?`. Qualquer outro
-         arquivo do repo citado num doc e' invisivel para ele.
-         **Medido em 2026-09-07:** a T-228 renomeou 40 fixtures e o `go test ./...` veio verde nos
-         sete pacotes enquanto QUATRO docs ficaram apontando para nome inexistente — inclusive o
-         cabecalho `Código:` do `docs/CONTRATO-CONSUMIDOR.md`, que e' justamente o mecanismo que o
-         `CLAUDE.md` promete. Os ponteiros ja foram consertados a mao; o buraco do portao nao.
-Files:   internal/config/doc_pointers_test.go
-Do:      Estenda o portao para qualquer caminho de arquivo DO REPOSITORIO citado num doc, nao so'
-         `.go`. E leia isto antes, porque o risco e' falso positivo, que treina todo mundo a ignorar:
-         🔴 NAO pode acusar: (a) a forma `host:caminho` que o `CLAUDE.md` autoriza de proposito
-         (`o LXC do Traefik:/etc/traefik/traefik.yaml`, `host .16:/etc/cron.d/unifi-threats`);
-         (b) caminho fora do repositorio (`~/.zapgw/...`, `/root/...`, `/etc/...`);
-         (c) texto de exemplo (`arquivo.go`, `caminho/arquivo.go`, `NOME.md`);
-         (d) nome de arquivo que o doc cita como historia (um arquivo apagado de proposito, um
-             `.bak`) — para esses, o mecanismo e' a MESMA regra de exencao por CAMINHO COMPLETO com
-             a razao escrita ao lado, que o portao ja usa para `docs/TASKS.md`. Nunca exencao por
-             palavra.
-         Comece pelas extensoes que este repo realmente cita — `.json`, `.sh`, `.md`, `.yml`,
-         `.service`, `.txt` — em vez de "qualquer coisa com um ponto".
-         🔴 E ESCREVA NO PROPRIO TESTE o que ele NAO cobre. O buraco desta vez existiu porque a
-         largura do portao era invisivel de fora. O limite tem de viajar junto com o portao.
-Verify:  `go test ./internal/config/ -run TestDoc` verde.
-         🔴 E a prova contra dado real: renomeie um arquivo de teste de proposito (ou edite um
-         ponteiro num doc para um nome que nao existe), rode o teste, mostre que ele REPROVA citando
-         `doc:linha -> caminho inexistente`, e desfaca. Cole a mensagem no relatorio.
+## [ ] T-236  Fix the two dead doc pointers the widened gate found, and DELETE their exemptions
+After:   T-222 (ela esta reescrevendo `docs/MIGRACAO-CONTRATO-EN.md` agora)
+Why:     A T-234 alargou o portao de ponteiro de doc e ele fez exatamente o que devia: achou dois
+         ponteiros mortos de verdade. Mas a T-234 os colocou em `deadDocPointerExceptions` marcados
+         `KNOWN PRE-EXISTING BUG`, para o portao ficar verde.
+🔴 ISSO E' O PROBLEMA, e vale mais que os dois consertos: **uma excecao marcada "bug conhecido"
+         e' como lista de excecao vira permanente.** Ela e' honesta hoje, quando o comentario esta
+         fresco e alguem lembra. Em tres meses e' so' mais uma linha na lista, e o portao passa a
+         responder verde sobre um doc que mente. O criterio desta casa e' que o portao fique verde
+         **porque o bug sumiu**, nunca porque ele foi listado.
+         Os dois, medidos em 2026-09-08:
+         (1) `docs/META-CAMPOS-DE-WEBHOOK.md:142` cita
+             `testdata/corpus/categoria_de_template_rebaixamento.json`; a T-228 renomeou para
+             `template_category_downgrade.json`. A linha cita mais dois na mesma frase
+             (`..._restauracao.json`) — confira TODOS os da frase, nao so' o que o portao nomeou.
+         (2) `docs/MIGRACAO-CONTRATO-EN.md` linhas 126, 148, 195 e 311 citam
+             `testdata/delivery-signature.json` sem o diretorio. O arquivo real e'
+             `internal/inbound/testdata/delivery-signature.json`. Este e' ANTIGO: o texto ja era
+             parcial antes do rename, e o rename so' trocou o nome, preservando o caminho incompleto.
+Files:   docs/META-CAMPOS-DE-WEBHOOK.md, docs/MIGRACAO-CONTRATO-EN.md,
+         internal/config/doc_pointers_test.go
+Do:      1. Conserte os ponteiros apontando para o caminho REAL. 🔴 Confirme cada destino com `ls`
+            antes de escrever — nunca adivinhe o nome novo por parecenca, e a propria mensagem do
+            portao diz isso (`git log --follow`, nunca adivinhar).
+         2. APAGUE as duas entradas `KNOWN PRE-EXISTING BUG` de `deadDocPointerExceptions`.
+            🔴 So' essas duas. As outras entradas da lista sao falso positivo LEGITIMO (mirror pt-BR
+            apagado de proposito, controle descartavel da T-199, fixture aposentada da T-174,
+            citacao a repo de terceiro) e ficam.
+         3. Se ao apagar as excecoes o portao acusar mais alguma coisa, NAO acrescente excecao nova:
+            conserte o ponteiro. Se voce encontrar um caso que genuinamente NAO pode ser consertado,
+            pare e relate — quem decide criar excecao e' o planner.
+Verify:  `go test ./internal/config/ -run TestDocPointers` verde **com as duas excecoes ausentes**.
+         Prove que o verde vem do conserto e nao da lista: mostre no relatorio o `grep -c
+         'KNOWN PRE-EXISTING BUG' internal/config/doc_pointers_test.go` dando **0**.
          E o verify inteiro: `CGO_ENABLED=0 go build ./... && go test ./... && go vet ./... &&
-         gofmt -l cmd internal`.
+         gofmt -l cmd internal`, sete pacotes `ok`.
 
 ## [ ] T-230  Rename the Portuguese directories and script names
 After:   T-229

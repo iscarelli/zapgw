@@ -4,6 +4,17 @@ One line per version shipped, in the same commit as the bump. The entry states t
 
 ## Unreleased
 
+- **T-234 — Widen the doc-pointer gate past `.go`** — the gate now covers `.json`, `.sh`, `.md`,
+  `.yml`, `.service` and `.txt`, from a list derived by grepping what `docs/*.md` actually cites
+  rather than "anything with a dot". False positives are handled **structurally** wherever possible —
+  an absolute path is out-of-repo, which settles the `host:path` form CLAUDE.md authorises, `~/`,
+  `/etc/`, and even URLs in one rule — with a per-case text exemption only for what is left. It
+  writes its own limits into the test's doc comment, because the hole it fixes existed precisely
+  because the gate's width was invisible from outside. Proved against real data: a fabricated pointer
+  makes it fail naming `doc:line`. **It immediately found two genuine dead pointers** that the manual
+  sweep after T-228 had missed — which is the whole argument for having it. _Completed 2026-09-08 03:04._
+
+
 - **T-232 — Translate docs/CHANGELOG.md to English** — 24 blocks of Portuguese prose translated,
   including the `## Nao lancado` header, which became `## Unreleased`. Nothing any entry ASSERTS was
   changed: a changelog is a record, and correcting a record retroactively is inventing history.
