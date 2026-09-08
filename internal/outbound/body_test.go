@@ -27,7 +27,7 @@ func TestBodyCanonicalizesTheOutgoingPhone(t *testing.T) {
 	c := MetaBody(Request{Instance: "l", To: "551199990000", Type: "texto", Text: "oi"})
 
 	if c["to"] != "5511999990000" {
-		t.Fatalf("to = %v, quero 5511999990000 (canonizado)", c["to"])
+		t.Fatalf("to = %v, want 5511999990000 (canonicalized)", c["to"])
 	}
 }
 
@@ -39,7 +39,7 @@ func TestTextBody(t *testing.T) {
 		t.Errorf("messaging_product = %v", c["messaging_product"])
 	}
 	if c["type"] != "text" {
-		t.Errorf("type = %v, quero text", c["type"])
+		t.Errorf("type = %v, want text", c["type"])
 	}
 	text, _ := c["text"].(map[string]any)
 	if text["body"] != "oi" {
@@ -66,12 +66,12 @@ func TestTemplateBodyWithVariables(t *testing.T) {
 
 	comps, _ := tpl["components"].([]any)
 	if len(comps) != 1 {
-		t.Fatalf("components = %v, quero 1 (body)", comps)
+		t.Fatalf("components = %v, want 1 (body)", comps)
 	}
 	body, _ := comps[0].(map[string]any)
 	params, _ := body["parameters"].([]any)
 	if len(params) != 2 {
-		t.Fatalf("parameters = %v, quero 2", params)
+		t.Fatalf("parameters = %v, want 2", params)
 	}
 	p0, _ := params[0].(map[string]any)
 	if p0["type"] != "text" || p0["text"] != "Maria" {
@@ -88,7 +88,7 @@ func TestTemplateBodyWithoutVariablesSendsNoComponents(t *testing.T) {
 
 	tpl, _ := c["template"].(map[string]any)
 	if _, has := tpl["components"]; has {
-		t.Fatalf("template.components presente sem variaveis: %v", tpl["components"])
+		t.Fatalf("template.components present without variaveis: %v", tpl["components"])
 	}
 }
 
@@ -124,7 +124,7 @@ func TestTemplateBodyWithVariablesOnlyIsIdenticalToTodays(t *testing.T) {
 		`"name":"lembrete"},"to":"5511999990000","type":"template"}`
 
 	if string(raw) != ofToday {
-		t.Errorf("o corpo mudou para um template so com variaveis\nagora: %s\nhoje:  %s", raw, ofToday)
+		t.Errorf("the body changed for a template with only variaveis\nnow: %s\ntoday:  %s", raw, ofToday)
 	}
 }
 
@@ -142,32 +142,32 @@ func TestTemplateBodyWithDocumentHeader(t *testing.T) {
 	tpl, _ := c["template"].(map[string]any)
 	comps, _ := tpl["components"].([]any)
 	if len(comps) != 1 {
-		t.Fatalf("components = %v, quero 1 (header)", comps)
+		t.Fatalf("components = %v, want 1 (header)", comps)
 	}
 	header, _ := comps[0].(map[string]any)
 	if header["type"] != "header" {
-		t.Fatalf("components[0].type = %v, quero header", header["type"])
+		t.Fatalf("components[0].type = %v, want header", header["type"])
 	}
 	params, _ := header["parameters"].([]any)
 	if len(params) != 1 {
-		t.Fatalf("header.parameters = %v, quero 1", params)
+		t.Fatalf("header.parameters = %v, want 1", params)
 	}
 	p0, _ := params[0].(map[string]any)
 	// The field's name is the SAME as the `type` — {"type":"document","document":{…}} —,
 	// and the "documento" -> "document" translation comes from meta.GraphAPIType.
 	if p0["type"] != "document" {
-		t.Fatalf("parameters[0].type = %v, quero document", p0["type"])
+		t.Fatalf("parameters[0].type = %v, want document", p0["type"])
 	}
 	doc, _ := p0["document"].(map[string]any)
 	if doc["id"] != "MEDIA-9" {
-		t.Errorf("document.id = %v, quero MEDIA-9", doc["id"])
+		t.Errorf("document.id = %v, want MEDIA-9", doc["id"])
 	}
 	if doc["filename"] != "recibo.pdf" {
-		t.Errorf("document.filename = %v, quero recibo.pdf", doc["filename"])
+		t.Errorf("document.filename = %v, want recibo.pdf", doc["filename"])
 	}
 	// No link/url: there is no field for that, and none can come to exist.
 	if _, has := doc["link"]; has {
-		t.Errorf("document.link presente — o header e por media_id: %v", doc)
+		t.Errorf("document.link present — the header is by media_id: %v", doc)
 	}
 }
 
@@ -192,14 +192,14 @@ func TestTemplateBodyWithHeaderOfEachType(t *testing.T) {
 		tpl, _ := c["template"].(map[string]any)
 		comps, _ := tpl["components"].([]any)
 		if len(comps) != 1 {
-			t.Errorf("%s: components = %v, quero 1", hdr.Type, comps)
+			t.Errorf("%s: components = %v, want 1", hdr.Type, comps)
 			continue
 		}
 		header, _ := comps[0].(map[string]any)
 		params, _ := header["parameters"].([]any)
 		p0, _ := params[0].(map[string]any)
 		if p0["type"] != tc.graphType {
-			t.Errorf("%s: parameters[0].type = %v, quero %q", hdr.Type, p0["type"], tc.graphType)
+			t.Errorf("%s: parameters[0].type = %v, want %q", hdr.Type, p0["type"], tc.graphType)
 			continue
 		}
 		if tc.want == nil {
@@ -210,11 +210,11 @@ func TestTemplateBodyWithHeaderOfEachType(t *testing.T) {
 		}
 		media, _ := p0[tc.graphType].(map[string]any)
 		if len(media) != len(tc.want) {
-			t.Errorf("%s: %v, quero exatamente %v", hdr.Type, media, tc.want)
+			t.Errorf("%s: %v, want exactly %v", hdr.Type, media, tc.want)
 		}
 		for key, value := range tc.want {
 			if media[key] != value {
-				t.Errorf("%s: %s.%s = %v, quero %v", hdr.Type, tc.graphType, key, media[key], value)
+				t.Errorf("%s: %s.%s = %v, want %v", hdr.Type, tc.graphType, key, media[key], value)
 			}
 		}
 	}
@@ -232,17 +232,17 @@ func TestTemplateBodyOmitsFilenameWhenThereIsNone(t *testing.T) {
 	tpl, _ := c["template"].(map[string]any)
 	comps, _ := tpl["components"].([]any)
 	if len(comps) != 1 {
-		t.Fatalf("components = %v, quero 1 (header)", comps)
+		t.Fatalf("components = %v, want 1 (header)", comps)
 	}
 	header, _ := comps[0].(map[string]any)
 	params, _ := header["parameters"].([]any)
 	if len(params) != 1 {
-		t.Fatalf("header.parameters = %v, quero 1", params)
+		t.Fatalf("header.parameters = %v, want 1", params)
 	}
 	p0, _ := params[0].(map[string]any)
 	doc, _ := p0["document"].(map[string]any)
 	if _, has := doc["filename"]; has {
-		t.Errorf("filename presente sem nome_arquivo: %v", doc)
+		t.Errorf("filename present without nome_arquivo: %v", doc)
 	}
 }
 
@@ -261,21 +261,21 @@ func TestTemplateBodyWithURLButton(t *testing.T) {
 	tpl, _ := c["template"].(map[string]any)
 	comps, _ := tpl["components"].([]any)
 	if len(comps) != 1 {
-		t.Fatalf("components = %v, quero 1 (button)", comps)
+		t.Fatalf("components = %v, want 1 (button)", comps)
 	}
 	button, _ := comps[0].(map[string]any)
 	if button["type"] != "button" {
-		t.Errorf("components[0].type = %v, quero button", button["type"])
+		t.Errorf("components[0].type = %v, want button", button["type"])
 	}
 	if button["sub_type"] != "url" {
-		t.Errorf("components[0].sub_type = %v, quero url", button["sub_type"])
+		t.Errorf("components[0].sub_type = %v, want url", button["sub_type"])
 	}
 	if button["index"] != "1" {
-		t.Errorf("components[0].index = %#v, quero a STRING \"1\"", button["index"])
+		t.Errorf("components[0].index = %#v, want a STRING \"1\"", button["index"])
 	}
 	params, _ := button["parameters"].([]any)
 	if len(params) != 1 {
-		t.Fatalf("parameters = %v, quero 1", params)
+		t.Fatalf("parameters = %v, want 1", params)
 	}
 	p0, _ := params[0].(map[string]any)
 	if p0["type"] != "text" || p0["text"] != "abc123" {
@@ -298,22 +298,22 @@ func TestTemplateBodyWithTwoURLButtonsPreservesEachIndex(t *testing.T) {
 	tpl, _ := c["template"].(map[string]any)
 	comps, _ := tpl["components"].([]any)
 	if len(comps) != 2 {
-		t.Fatalf("components = %v, quero 2 blocos de botao", comps)
+		t.Fatalf("components = %v, want 2 button blocks", comps)
 	}
 	want := []struct{ index, text string }{{"0", "rastreio-1"}, {"2", "portal-9"}}
 	for i, q := range want {
 		block, _ := comps[i].(map[string]any)
 		if block["index"] != q.index {
-			t.Errorf("components[%d].index = %v, quero %q", i, block["index"], q.index)
+			t.Errorf("components[%d].index = %v, want %q", i, block["index"], q.index)
 		}
 		params, _ := block["parameters"].([]any)
 		if len(params) != 1 {
-			t.Errorf("components[%d].parameters = %v, quero 1", i, params)
+			t.Errorf("components[%d].parameters = %v, want 1", i, params)
 			continue
 		}
 		p0, _ := params[0].(map[string]any)
 		if p0["text"] != q.text {
-			t.Errorf("components[%d].parameters[0].text = %v, quero %q", i, p0["text"], q.text)
+			t.Errorf("components[%d].parameters[0].text = %v, want %q", i, p0["text"], q.text)
 		}
 	}
 }
@@ -335,13 +335,13 @@ func TestTemplateBodyBuildsInTheOrderHeaderBodyButton(t *testing.T) {
 	tpl, _ := c["template"].(map[string]any)
 	comps, _ := tpl["components"].([]any)
 	if len(comps) != 3 {
-		t.Fatalf("components = %v, quero 3", comps)
+		t.Fatalf("components = %v, want 3", comps)
 	}
 	want := []string{"header", "body", "button"}
 	for i, q := range want {
 		block, _ := comps[i].(map[string]any)
 		if block["type"] != q {
-			t.Errorf("components[%d].type = %v, quero %q", i, block["type"], q)
+			t.Errorf("components[%d].type = %v, want %q", i, block["type"], q)
 		}
 	}
 }
@@ -358,7 +358,7 @@ func TestTemplateBodyWithNoParameterAtAllSendsNoComponents(t *testing.T) {
 	tpl, _ := c["template"].(map[string]any)
 	value, has := tpl["components"]
 	if has {
-		t.Fatalf("template.components presente sem parametro nenhum: %#v (ausente != [])", value)
+		t.Fatalf("template.components present without any parameter at all: %#v (absent != [])", value)
 	}
 }
 
@@ -383,21 +383,21 @@ func TestTemplateBodyWithQuickReplyButton(t *testing.T) {
 	tpl, _ := c["template"].(map[string]any)
 	comps, _ := tpl["components"].([]any)
 	if len(comps) != 1 {
-		t.Fatalf("components = %v, quero 1 (button)", comps)
+		t.Fatalf("components = %v, want 1 (button)", comps)
 	}
 	button, _ := comps[0].(map[string]any)
 	if button["type"] != "button" {
-		t.Errorf("components[0].type = %v, quero button", button["type"])
+		t.Errorf("components[0].type = %v, want button", button["type"])
 	}
 	if button["sub_type"] != "quick_reply" {
-		t.Errorf("components[0].sub_type = %v, quero quick_reply", button["sub_type"])
+		t.Errorf("components[0].sub_type = %v, want quick_reply", button["sub_type"])
 	}
 	if button["index"] != "0" {
-		t.Errorf("components[0].index = %#v, quero a STRING \"0\"", button["index"])
+		t.Errorf("components[0].index = %#v, want a STRING \"0\"", button["index"])
 	}
 	params, _ := button["parameters"].([]any)
 	if len(params) != 1 {
-		t.Fatalf("parameters = %v, quero 1", params)
+		t.Fatalf("parameters = %v, want 1", params)
 	}
 	p0, _ := params[0].(map[string]any)
 	// The parameter's TYPE is checked BEFORE the value, on purpose: if the
@@ -406,10 +406,10 @@ func TestTemplateBodyWithQuickReplyButton(t *testing.T) {
 	// right, only the discriminator is wrong) — and that is exactly the bug
 	// T-044's mandatory mutation (i) proves.
 	if p0["type"] != "payload" {
-		t.Fatalf("parameters[0].type = %v, quero payload (NAO text)", p0["type"])
+		t.Fatalf("parameters[0].type = %v, want payload (NOT text)", p0["type"])
 	}
 	if p0["payload"] != "confirma:41" {
-		t.Errorf("parameters[0].payload = %v, quero confirma:41", p0["payload"])
+		t.Errorf("parameters[0].payload = %v, want confirma:41", p0["payload"])
 	}
 }
 
@@ -443,7 +443,7 @@ func TestTemplateURLButtonBodyStaysByteForByteWhatT044Delivered(t *testing.T) {
 		t.Fatalf("Marshal: %v", err)
 	}
 	if string(block) != fromT044 {
-		t.Errorf("o bloco de botao de URL mudou com a remocao de botoes_url:\nagora: %s\nT-044: %s",
+		t.Errorf("the URL button block changed with the removal of botoes_url:\nnow: %s\nT-044: %s",
 			block, fromT044)
 	}
 }
@@ -464,15 +464,15 @@ func TestTemplateBodyWithBothButtonTypesTogether(t *testing.T) {
 	tpl, _ := c["template"].(map[string]any)
 	comps, _ := tpl["components"].([]any)
 	if len(comps) != 2 {
-		t.Fatalf("components = %v, quero 2 blocos de botao", comps)
+		t.Fatalf("components = %v, want 2 button blocks", comps)
 	}
 	b0, _ := comps[0].(map[string]any)
 	if b0["sub_type"] != "url" || b0["index"] != "0" {
-		t.Errorf("components[0] = %v, quero sub_type:url index:0", b0)
+		t.Errorf("components[0] = %v, want sub_type:url index:0", b0)
 	}
 	b1, _ := comps[1].(map[string]any)
 	if b1["sub_type"] != "quick_reply" || b1["index"] != "1" {
-		t.Errorf("components[1] = %v, quero sub_type:quick_reply index:1", b1)
+		t.Errorf("components[1] = %v, want sub_type:quick_reply index:1", b1)
 	}
 }
 
@@ -486,16 +486,16 @@ func TestButtonsBody(t *testing.T) {
 	}
 	inter, _ := c["interactive"].(map[string]any)
 	if inter["type"] != "button" {
-		t.Errorf("interactive.type = %v, quero button", inter["type"])
+		t.Errorf("interactive.type = %v, want button", inter["type"])
 	}
 	action, _ := inter["action"].(map[string]any)
 	buttons, _ := action["buttons"].([]any)
 	if len(buttons) != 2 {
-		t.Fatalf("buttons = %v, quero 2", buttons)
+		t.Fatalf("buttons = %v, want 2", buttons)
 	}
 	b0, _ := buttons[0].(map[string]any)
 	if b0["type"] != "reply" {
-		t.Errorf("buttons[0].type = %v, quero reply", b0["type"])
+		t.Errorf("buttons[0].type = %v, want reply", b0["type"])
 	}
 	reply, _ := b0["reply"].(map[string]any)
 	if reply["id"] != "SIM" || reply["title"] != "Sim" {
@@ -504,10 +504,10 @@ func TestButtonsBody(t *testing.T) {
 	// NO REGRESSION (T-137): without cabecalho_texto/rodape in the request,
 	// the body remains WITHOUT header/footer.
 	if _, has := inter["header"]; has {
-		t.Error("interactive.header presente sem cabecalho_texto no pedido")
+		t.Error("interactive.header present without cabecalho_texto in the request")
 	}
 	if _, has := inter["footer"]; has {
-		t.Error("interactive.footer presente sem rodape no pedido")
+		t.Error("interactive.footer present without rodape in the request")
 	}
 }
 
@@ -518,7 +518,7 @@ func TestCtaURLBody(t *testing.T) {
 
 	inter, _ := c["interactive"].(map[string]any)
 	if inter["type"] != "cta_url" {
-		t.Fatalf("interactive.type = %v, quero cta_url", inter["type"])
+		t.Fatalf("interactive.type = %v, want cta_url", inter["type"])
 	}
 	action, _ := inter["action"].(map[string]any)
 	params, _ := action["parameters"].(map[string]any)
@@ -530,10 +530,10 @@ func TestCtaURLBody(t *testing.T) {
 	// on a real device in another project of this network. A 200 from Meta
 	// would not have proven this.
 	if _, has := inter["header"]; has {
-		t.Error("interactive.header presente — o formato verificado nao tem header")
+		t.Error("interactive.header present — the verified shape has no header")
 	}
 	if _, has := inter["footer"]; has {
-		t.Error("interactive.footer presente — o formato verificado nao tem footer")
+		t.Error("interactive.footer present — the verified shape has no footer")
 	}
 }
 
@@ -568,21 +568,21 @@ func TestButtonsBodyWithHeaderTextAndFooter(t *testing.T) {
 
 			header, hasHeader := inter["header"].(map[string]any)
 			if hasHeader != c.wantHeader {
-				t.Fatalf("header presente = %v, quero %v", hasHeader, c.wantHeader)
+				t.Fatalf("header present = %v, want %v", hasHeader, c.wantHeader)
 			}
 			if c.wantHeader {
 				if header["type"] != "text" || header["text"] != c.headerText {
-					t.Errorf("header = %v, quero type:text text:%q", header, c.headerText)
+					t.Errorf("header = %v, want type:text text:%q", header, c.headerText)
 				}
 			}
 
 			footer, hasFooter := inter["footer"].(map[string]any)
 			if hasFooter != c.wantFooter {
-				t.Fatalf("footer presente = %v, quero %v", hasFooter, c.wantFooter)
+				t.Fatalf("footer present = %v, want %v", hasFooter, c.wantFooter)
 			}
 			if c.wantFooter {
 				if footer["text"] != c.footerField {
-					t.Errorf("footer = %v, quero text:%q", footer, c.footerField)
+					t.Errorf("footer = %v, want text:%q", footer, c.footerField)
 				}
 			}
 		})
@@ -605,11 +605,11 @@ func TestCtaURLBodyWithHeaderTextAndFooter(t *testing.T) {
 
 	header, _ := inter["header"].(map[string]any)
 	if header["type"] != "text" || header["text"] != "Novidades" {
-		t.Errorf("header = %v, quero type:text text:Novidades", header)
+		t.Errorf("header = %v, want type:text text:Novidades", header)
 	}
 	footer, _ := inter["footer"].(map[string]any)
 	if footer["text"] != "Oferta valida hoje" {
-		t.Errorf("footer = %v, quero text:Oferta valida hoje", footer)
+		t.Errorf("footer = %v, want text:Oferta valida hoje", footer)
 	}
 }
 
@@ -634,11 +634,11 @@ func TestListBody(t *testing.T) {
 	body := asJSON(t, MetaBody(p))
 
 	if body["type"] != "interactive" {
-		t.Fatalf("type = %v, quero interactive", body["type"])
+		t.Fatalf("type = %v, want interactive", body["type"])
 	}
 	inter, _ := body["interactive"].(map[string]any)
 	if inter["type"] != "list" {
-		t.Fatalf("interactive.type = %v, quero list", inter["type"])
+		t.Fatalf("interactive.type = %v, want list", inter["type"])
 	}
 	interBody, _ := inter["body"].(map[string]any)
 	if interBody["text"] != "escolha uma opcao" {
@@ -647,20 +647,20 @@ func TestListBody(t *testing.T) {
 
 	action, _ := inter["action"].(map[string]any)
 	if action["button"] != "Ver opcoes" {
-		t.Errorf("action.button = %v, quero \"Ver opcoes\"", action["button"])
+		t.Errorf("action.button = %v, want \"Ver opcoes\"", action["button"])
 	}
 	sections, _ := action["sections"].([]any)
 	if len(sections) != 2 {
-		t.Fatalf("action.sections tem %d itens, quero 2", len(sections))
+		t.Fatalf("action.sections has %d items, want 2", len(sections))
 	}
 
 	s0, _ := sections[0].(map[string]any)
 	if s0["title"] != "Bebidas" {
-		t.Errorf("sections[0].title = %v, quero Bebidas", s0["title"])
+		t.Errorf("sections[0].title = %v, want Bebidas", s0["title"])
 	}
 	rows0, _ := s0["rows"].([]any)
 	if len(rows0) != 2 {
-		t.Fatalf("sections[0].rows tem %d itens, quero 2", len(rows0))
+		t.Fatalf("sections[0].rows has %d items, want 2", len(rows0))
 	}
 	l0, _ := rows0[0].(map[string]any)
 	if l0["id"] != "cafe" || l0["title"] != "Cafe" || l0["description"] != "Cafe coado" {
@@ -673,22 +673,22 @@ func TestListBody(t *testing.T) {
 		t.Errorf("sections[0].rows[1] = %v", l1)
 	}
 	if _, has := l1["description"]; has {
-		t.Error("sections[0].rows[1].description presente -- deveria estar AUSENTE (item sem descricao)")
+		t.Error("sections[0].rows[1].description present -- should be ABSENT (item without a description)")
 	}
 
 	s1, _ := sections[1].(map[string]any)
 	if s1["title"] != "Comidas" {
-		t.Errorf("sections[1].title = %v, quero Comidas", s1["title"])
+		t.Errorf("sections[1].title = %v, want Comidas", s1["title"])
 	}
 
 	// NO REGRESSION: without cabecalho_texto/rodape in the request, the body
 	// remains WITHOUT header/footer -- the same key-absent-when-empty rule
 	// as the rest of this file.
 	if _, has := inter["header"]; has {
-		t.Error("interactive.header presente -- pedido nao mandou cabecalho_texto")
+		t.Error("interactive.header present -- the request did not send cabecalho_texto")
 	}
 	if _, has := inter["footer"]; has {
-		t.Error("interactive.footer presente -- pedido nao mandou rodape")
+		t.Error("interactive.footer present -- the request did not send rodape")
 	}
 }
 
@@ -708,11 +708,11 @@ func TestListBodyWithHeaderTextAndFooter(t *testing.T) {
 
 	header, _ := inter["header"].(map[string]any)
 	if header["type"] != "text" || header["text"] != "Novidades" {
-		t.Errorf("header = %v, quero type:text text:Novidades", header)
+		t.Errorf("header = %v, want type:text text:Novidades", header)
 	}
 	footer, _ := inter["footer"].(map[string]any)
 	if footer["text"] != "Oferta valida hoje" {
-		t.Errorf("footer = %v, quero text:Oferta valida hoje", footer)
+		t.Errorf("footer = %v, want text:Oferta valida hoje", footer)
 	}
 }
 
@@ -732,7 +732,7 @@ func TestBodyOmitsContextWhenThereIsNone(t *testing.T) {
 		Instance: "l", To: "5511999990000", Type: "texto", Text: "oi"}))
 
 	if _, has := c["context"]; has {
-		t.Fatal("context presente sem responder_a — a Meta pode recusar context vazio")
+		t.Fatal("context present without responder_a — Meta may refuse an empty context")
 	}
 }
 
@@ -763,16 +763,16 @@ func TestMediaBodyPerCategory(t *testing.T) {
 			MediaID: "M1", Caption: c.caption, Filename: c.name}))
 
 		if body["type"] != c.graphType {
-			t.Errorf("%s: type = %v, quero %q", c.category, body["type"], c.graphType)
+			t.Errorf("%s: type = %v, want %q", c.category, body["type"], c.graphType)
 			continue
 		}
 		media, _ := body[c.graphType].(map[string]any)
 		if len(media) != len(c.wantKey) {
-			t.Errorf("%s: corpo = %v, quero exatamente %v", c.category, media, c.wantKey)
+			t.Errorf("%s: body = %v, want exactly %v", c.category, media, c.wantKey)
 		}
 		for key, value := range c.wantKey {
 			if media[key] != value {
-				t.Errorf("%s: %s.%s = %v, quero %v", c.category, c.graphType, key, media[key], value)
+				t.Errorf("%s: %s.%s = %v, want %v", c.category, c.graphType, key, media[key], value)
 			}
 		}
 	}
@@ -788,10 +788,10 @@ func TestMediaBodyOmitsEmptyCaptionAndEmptyFilename(t *testing.T) {
 
 	doc, _ := body["document"].(map[string]any)
 	if _, has := doc["caption"]; has {
-		t.Errorf("caption presente sem legenda: %v", doc)
+		t.Errorf("caption present without legenda: %v", doc)
 	}
 	if _, has := doc["filename"]; has {
-		t.Errorf("filename presente sem nome_arquivo: %v", doc)
+		t.Errorf("filename present without nome_arquivo: %v", doc)
 	}
 }
 
@@ -808,14 +808,14 @@ func TestReactionBody(t *testing.T) {
 		Reaction: &ReactionRequest{Target: "wamid.ABC", Emoji: emojiPtr("\U0001F44D")}}))
 
 	if c["type"] != "reaction" {
-		t.Fatalf("type = %v, quero reaction", c["type"])
+		t.Fatalf("type = %v, want reaction", c["type"])
 	}
 	reaction, _ := c["reaction"].(map[string]any)
 	if reaction["message_id"] != "wamid.ABC" {
-		t.Errorf("reaction.message_id = %v, quero wamid.ABC", reaction["message_id"])
+		t.Errorf("reaction.message_id = %v, want wamid.ABC", reaction["message_id"])
 	}
 	if reaction["emoji"] != "\U0001F44D" {
-		t.Errorf("reaction.emoji = %v, quero \U0001F44D", reaction["emoji"])
+		t.Errorf("reaction.emoji = %v, want \U0001F44D", reaction["emoji"])
 	}
 }
 
@@ -833,11 +833,11 @@ func TestReactionBodyWithEmptyEmojiSendsTheKeyEmpty(t *testing.T) {
 	reaction, _ := c["reaction"].(map[string]any)
 	emoji, present := reaction["emoji"]
 	if !present {
-		t.Fatalf("chave \"emoji\" ausente do corpo — a remocao vira pedido sem efeito, "+
-			"e a Meta responde 200 do mesmo jeito sem remover nada: %v", reaction)
+		t.Fatalf("key \"emoji\" absent from the body — the removal turns into a no-op request, "+
+			"and Meta answers 200 the same way without removing anything: %v", reaction)
 	}
 	if emoji != "" {
-		t.Errorf("reaction.emoji = %v, quero \"\" (remocao)", emoji)
+		t.Errorf("reaction.emoji = %v, want \"\" (removal)", emoji)
 	}
 }
 
@@ -858,7 +858,7 @@ func TestLocationBody(t *testing.T) {
 		}}))
 
 	if c["type"] != "location" {
-		t.Fatalf("type = %v, quero location", c["type"])
+		t.Fatalf("type = %v, want location", c["type"])
 	}
 	loc, _ := c["location"].(map[string]any)
 	// NUMBER, not string: json.Unmarshal returns float64 for a JSON number
@@ -866,23 +866,23 @@ func TestLocationBody(t *testing.T) {
 	// is what proves the serialization didn't turn into text.
 	lat, isNumber := loc["latitude"].(float64)
 	if !isNumber {
-		t.Fatalf("location.latitude = %#v (%T), quero float64 (numero JSON, nao string)", loc["latitude"], loc["latitude"])
+		t.Fatalf("location.latitude = %#v (%T), want float64 (JSON number, not string)", loc["latitude"], loc["latitude"])
 	}
 	if lat != 37.44221496582 {
-		t.Errorf("location.latitude = %v, quero 37.44221496582", lat)
+		t.Errorf("location.latitude = %v, want 37.44221496582", lat)
 	}
 	lon, isNumber := loc["longitude"].(float64)
 	if !isNumber {
-		t.Fatalf("location.longitude = %#v (%T), quero float64 (numero JSON, nao string)", loc["longitude"], loc["longitude"])
+		t.Fatalf("location.longitude = %#v (%T), want float64 (JSON number, not string)", loc["longitude"], loc["longitude"])
 	}
 	if lon != -122.16165924072 {
-		t.Errorf("location.longitude = %v, quero -122.16165924072", lon)
+		t.Errorf("location.longitude = %v, want -122.16165924072", lon)
 	}
 	if loc["name"] != "Cafe de Teste" {
-		t.Errorf("location.name = %v, quero Cafe de Teste", loc["name"])
+		t.Errorf("location.name = %v, want Cafe de Teste", loc["name"])
 	}
 	if loc["address"] != "Rua de Teste, 101" {
-		t.Errorf("location.address = %v, quero Rua de Teste, 101", loc["address"])
+		t.Errorf("location.address = %v, want Rua de Teste, 101", loc["address"])
 	}
 }
 
@@ -900,17 +900,17 @@ func TestLocationBodyDoesNotOmitZeroLatitudeAndLongitude(t *testing.T) {
 	loc, _ := c["location"].(map[string]any)
 	latitude, has := loc["latitude"]
 	if !has {
-		t.Fatal("location.latitude AUSENTE para latitude=0 — apagaria o equador em silencio")
+		t.Fatal("location.latitude ABSENT for latitude=0 — would silently erase the equator")
 	}
 	if latitude != float64(0) {
-		t.Errorf("location.latitude = %v, quero 0", latitude)
+		t.Errorf("location.latitude = %v, want 0", latitude)
 	}
 	longitude, has := loc["longitude"]
 	if !has {
-		t.Fatal("location.longitude AUSENTE para longitude=0 — apagaria o meridiano de Greenwich em silencio")
+		t.Fatal("location.longitude ABSENT for longitude=0 — would silently erase the Greenwich meridian")
 	}
 	if longitude != float64(0) {
-		t.Errorf("location.longitude = %v, quero 0", longitude)
+		t.Errorf("location.longitude = %v, want 0", longitude)
 	}
 }
 
@@ -923,10 +923,10 @@ func TestLocationBodyOmitsNameAndAddressWhenAbsent(t *testing.T) {
 
 	loc, _ := c["location"].(map[string]any)
 	if _, has := loc["name"]; has {
-		t.Errorf("location.name presente sem nome: %v", loc)
+		t.Errorf("location.name present without nome: %v", loc)
 	}
 	if _, has := loc["address"]; has {
-		t.Errorf("location.address presente sem endereco: %v", loc)
+		t.Errorf("location.address present without endereco: %v", loc)
 	}
 }
 
@@ -952,11 +952,11 @@ func TestContactsBody(t *testing.T) {
 	}))
 
 	if c["type"] != "contacts" {
-		t.Fatalf("type = %v, quero contacts", c["type"])
+		t.Fatalf("type = %v, want contacts", c["type"])
 	}
 	contacts, isList := c["contacts"].([]any)
 	if !isList || len(contacts) != 1 {
-		t.Fatalf("contacts = %v, quero uma lista com 1 item", c["contacts"])
+		t.Fatalf("contacts = %v, want a list with 1 item", c["contacts"])
 	}
 	c0, _ := contacts[0].(map[string]any)
 
@@ -967,7 +967,7 @@ func TestContactsBody(t *testing.T) {
 	// last_name ABSENT when empty -- never "" -- the same rule as the rest of
 	// this file.
 	if _, has := name["last_name"]; has {
-		t.Errorf("name.last_name presente sem valor: %v", name)
+		t.Errorf("name.last_name present without a value: %v", name)
 	}
 
 	phones, _ := c0["phones"].([]any)
@@ -1001,7 +1001,7 @@ func TestContactsBodyOmitsAbsentOptionalFields(t *testing.T) {
 
 	for _, key := range []string{"addresses", "birthday", "emails", "org", "phones", "urls"} {
 		if _, has := c0[key]; has {
-			t.Errorf("contacts[0].%s presente sem valor: %v", key, c0)
+			t.Errorf("contacts[0].%s present without a value: %v", key, c0)
 		}
 	}
 }
@@ -1016,7 +1016,7 @@ func TestContactsBodyWithMoreThanOneCard(t *testing.T) {
 	}))
 	contacts, _ := c["contacts"].([]any)
 	if len(contacts) != 2 {
-		t.Fatalf("contacts tem %d itens, quero 2", len(contacts))
+		t.Fatalf("contacts has %d items, want 2", len(contacts))
 	}
 }
 
@@ -1036,7 +1036,7 @@ func TestLocationRequestBody(t *testing.T) {
 	body := asJSON(t, MetaBody(p))
 
 	if body["type"] != "interactive" {
-		t.Fatalf("type = %v, quero interactive", body["type"])
+		t.Fatalf("type = %v, want interactive", body["type"])
 	}
 	inter, _ := body["interactive"].(map[string]any)
 
@@ -1046,7 +1046,7 @@ func TestLocationRequestBody(t *testing.T) {
 		"action": map[string]any{"name": "send_location"},
 	}
 	if !reflect.DeepEqual(inter, want) {
-		t.Fatalf("interactive = %#v, quero %#v (a forma tem de ser EXATAMENTE os tres campos da doc)",
+		t.Fatalf("interactive = %#v, want %#v (the shape has to be EXACTLY the doc's three fields)",
 			inter, want)
 	}
 }
@@ -1062,7 +1062,7 @@ func TestLocationRequestBodyWithLongTextDoesNotTruncate(t *testing.T) {
 	inter, _ := body["interactive"].(map[string]any)
 	interBody, _ := inter["body"].(map[string]any)
 	if interBody["text"] != long {
-		t.Errorf("body.text truncado: %d caracteres, quero %d", len(interBody["text"].(string)), len(long))
+		t.Errorf("body.text truncated: %d characters, want %d", len(interBody["text"].(string)), len(long))
 	}
 }
 
@@ -1085,7 +1085,7 @@ func TestFlowBodyWithIDAndNavigate(t *testing.T) {
 	body := asJSON(t, MetaBody(p))
 
 	if body["type"] != "interactive" {
-		t.Fatalf("type = %v, quero interactive", body["type"])
+		t.Fatalf("type = %v, want interactive", body["type"])
 	}
 	inter, _ := body["interactive"].(map[string]any)
 
@@ -1105,7 +1105,7 @@ func TestFlowBodyWithIDAndNavigate(t *testing.T) {
 		},
 	}
 	if !reflect.DeepEqual(inter, want) {
-		t.Fatalf("interactive = %#v, quero %#v", inter, want)
+		t.Fatalf("interactive = %#v, want %#v", inter, want)
 	}
 }
 
@@ -1129,10 +1129,10 @@ func TestFlowBodyWithNameBecomesFlowName(t *testing.T) {
 	params, _ := action["parameters"].(map[string]any)
 
 	if params["flow_name"] != "fluxo-de-agendamento" {
-		t.Errorf("flow_name = %v, quero fluxo-de-agendamento", params["flow_name"])
+		t.Errorf("flow_name = %v, want fluxo-de-agendamento", params["flow_name"])
 	}
 	if _, has := params["flow_id"]; has {
-		t.Error("flow_id presente -- o pedido mandou fluxo.nome, nao fluxo.id")
+		t.Error("flow_id present -- the request sent fluxo.nome, not fluxo.id")
 	}
 }
 
@@ -1156,7 +1156,7 @@ func TestFlowBodyDataExchangeWithoutPayloadOmitsTheKey(t *testing.T) {
 	params, _ := action["parameters"].(map[string]any)
 
 	if _, has := params["flow_action_payload"]; has {
-		t.Errorf("flow_action_payload presente (%v) -- fluxo sem tela nem dados deveria omitir a chave",
+		t.Errorf("flow_action_payload present (%v) -- fluxo without tela nor dados should omit the key",
 			params["flow_action_payload"])
 	}
 }
@@ -1182,10 +1182,10 @@ func TestFlowBodyWithDataAndScreen(t *testing.T) {
 	payload, _ := params["flow_action_payload"].(map[string]any)
 
 	if payload["screen"] != "TELA_DOIS" {
-		t.Errorf("flow_action_payload.screen = %v, quero TELA_DOIS", payload["screen"])
+		t.Errorf("flow_action_payload.screen = %v, want TELA_DOIS", payload["screen"])
 	}
 	data, _ := payload["data"].(map[string]any)
 	if data["nome_cliente"] != "Maria" {
-		t.Errorf("flow_action_payload.data.nome_cliente = %v, quero Maria", data["nome_cliente"])
+		t.Errorf("flow_action_payload.data.nome_cliente = %v, want Maria", data["nome_cliente"])
 	}
 }
