@@ -173,7 +173,7 @@ func (h *RegistrationHandler) register(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusUnauthorized, "config", "token ausente ou invalido", 0)
 			return
 		}
-		log.Printf("zapgw: erro de store ao autenticar em %s: %v", registrationRoute, err)
+		log.Printf("zapgw: store error while authenticating on %s: %v", registrationRoute, err)
 		respondError(w, http.StatusServiceUnavailable, "retryable", "indisponivel", 0)
 		return
 	}
@@ -229,7 +229,7 @@ func (h *RegistrationHandler) register(w http.ResponseWriter, r *http.Request) {
 	// becomes an oracle that answers "does this slug exist?" to anyone with any
 	// token.
 	if !CanUse(consumer, p.Instance) {
-		log.Printf("zapgw: consumidor %q pediu cadastrar a instancia %q, que nao e dele",
+		log.Printf("zapgw: consumer %q asked to register instance %q, which is not theirs",
 			consumer.Name, p.Instance)
 		respondError(w, http.StatusForbidden, "config", "instancia nao autorizada para este consumidor", 0)
 		return
@@ -243,13 +243,13 @@ func (h *RegistrationHandler) register(w http.ResponseWriter, r *http.Request) {
 	inst, err := h.store.FindInstance(p.Instance)
 	if err != nil {
 		if errors.Is(err, config.ErrInstanceNotFound) {
-			log.Printf("zapgw: consumidor %q tem vinculo com a instancia %q, que NAO existe mais no banco",
+			log.Printf("zapgw: consumer %q has a link to instance %q, which NO LONGER exists in the database",
 				consumer.Name, p.Instance)
 			respondError(w, http.StatusNotFound, "config",
 				"esta instancia nao existe mais no gateway; fale com quem te entregou o slug", 0)
 			return
 		}
-		log.Printf("zapgw: erro de store ao buscar instancia %q em %s: %v", p.Instance, registrationRoute, err)
+		log.Printf("zapgw: store error while looking up instance %q on %s: %v", p.Instance, registrationRoute, err)
 		respondError(w, http.StatusServiceUnavailable, "retryable", "indisponivel", 0)
 		return
 	}
@@ -277,7 +277,7 @@ func (h *RegistrationHandler) register(w http.ResponseWriter, r *http.Request) {
 	// to guarantee that nothing encrypted leaves from here is to never have the value in hand.
 	summary, err := h.store.SummarizeInstance(p.Instance)
 	if err != nil {
-		log.Printf("zapgw: cadastro da instancia %q GRAVOU e a leitura do resumo falhou: %v", p.Instance, err)
+		log.Printf("zapgw: registration of instance %q WROTE but reading the summary failed: %v", p.Instance, err)
 		respondError(w, http.StatusServiceUnavailable, "retryable",
 			"o cadastro foi gravado, mas o gateway nao conseguiu ler o estado dela para te responder;"+
 				" repetir o cadastro e seguro (ele substitui pelo mesmo valor)", 0)
@@ -340,7 +340,7 @@ func (h *RegistrationHandler) respondRegistrationError(w http.ResponseWriter, sl
 		// check the token when the problem is the clock. The log goes out WITHOUT
 		// throttling: it's a rare event per instance, and it's what the owner looks for
 		// when the consumer notifies him.
-		log.Printf("zapgw: consumidor %q tentou cadastrar a instancia %q com a janela FECHADA (abriu em %s): %v",
+		log.Printf("zapgw: consumer %q tried to register instance %q with the window CLOSED (opened at %s): %v",
 			consumer, slug, window.OpenedAt.UTC().Format(time.RFC3339), err)
 		respondError(w, http.StatusConflict, "config",
 			"a janela de cadastro desta instancia esta FECHADA e nada foi gravado."+
@@ -350,7 +350,7 @@ func (h *RegistrationHandler) respondRegistrationError(w http.ResponseWriter, sl
 				" e o comando `zapgw instancia reabrir-cadastro`, do lado do gateway."+
 				" A configuracao que ja estava gravada continua valendo; nada foi perdido.", 0)
 	case errors.Is(err, config.ErrInstanceNotFound):
-		log.Printf("zapgw: consumidor %q tem vinculo com a instancia %q, que NAO existe mais no banco", consumer, slug)
+		log.Printf("zapgw: consumer %q has a link to instance %q, which NO LONGER exists in the database", consumer, slug)
 		respondError(w, http.StatusNotFound, "config",
 			"esta instancia nao existe mais no gateway; fale com quem te entregou o slug", 0)
 	case errors.Is(err, config.ErrIncompleteIdentification),
@@ -363,7 +363,7 @@ func (h *RegistrationHandler) respondRegistrationError(w http.ResponseWriter, sl
 		logRejection(h.throttleLog, registrationRoute, slug, consumer, err.Error())
 		respondError(w, http.StatusBadRequest, "permanent", err.Error(), 0)
 	default:
-		log.Printf("zapgw: erro de store ao cadastrar a instancia %q: %v", slug, err)
+		log.Printf("zapgw: store error while registering instance %q: %v", slug, err)
 		respondError(w, http.StatusServiceUnavailable, "retryable", "indisponivel", 0)
 	}
 }
