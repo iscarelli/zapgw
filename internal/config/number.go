@@ -137,7 +137,7 @@ type NumberUpdate struct {
 // REFUSE, DON'T WRITE IT ANYWAY: the source travels to the consumer. A
 // typo'd string written here would show up on their dashboard as if it were
 // our vocabulary, and no one would know where it came from.
-var ErrUnknownNumberSource = errors.New("config: fonte de observacao do numero desconhecida")
+var ErrUnknownNumberSource = errors.New("config: unknown number observation source")
 
 // UpdateNumberAtMeta applies ONE update.
 //
@@ -204,7 +204,7 @@ func (s *Store) UpdateNumberAtMeta(slug string, a NumberUpdate) error {
 		a.Limit, stampIfAny(a.Limit), sourceIfAny(a.Limit, a.Source),
 		checked)
 	if err != nil {
-		return fmt.Errorf("config: atualizar o numero na meta: %w", err)
+		return fmt.Errorf("config: update the number at meta: %w", err)
 	}
 	return nil
 }
@@ -236,7 +236,7 @@ func (s *Store) NumberAtMeta(slug string) (NumberAtMeta, error) {
 		return NumberAtMeta{}, nil
 	}
 	if err != nil {
-		return NumberAtMeta{}, fmt.Errorf("config: ler o numero na meta: %w", err)
+		return NumberAtMeta{}, fmt.Errorf("config: read the number at meta: %w", err)
 	}
 
 	n := NumberAtMeta{
@@ -265,7 +265,7 @@ func parseStamp(raw, column, slug string) (time.Time, error) {
 	t, err := time.Parse(time.RFC3339, raw)
 	if err != nil {
 		return time.Time{}, fmt.Errorf(
-			"config: %s do numero na meta (slug=%q) nao e RFC3339: %w", column, slug, err)
+			"config: %s of the number at meta (slug=%q) is not RFC3339: %w", column, slug, err)
 	}
 	return t.UTC(), nil
 }
@@ -289,7 +289,7 @@ type NumberObserverStore interface {
 // guarantees order between processes is the UPSERT with stamp comparison,
 // not this lock.*
 //
-// REGISTRAR RETURNS NOTHING, and the guarantee lives in the SIGNATURE: both
+// RECORD RETURNS NOTHING, and the guarantee lives in the SIGNATURE: both
 // callers are on paths that CANNOT fail because of tracking — the watcher
 // (which never brings anything down) and the webhook handler AFTER the
 // response to Meta has already been written. A method that CAN return an
@@ -326,6 +326,6 @@ func (o *NumberObserver) Record(slug string, a NumberUpdate) {
 	o.mu.Lock()
 	defer o.mu.Unlock()
 	if err := o.store.UpdateNumberAtMeta(slug, a); err != nil {
-		log.Printf("zapgw: falha ao gravar a observacao do numero (slug=%q, fonte=%q): %v", slug, a.Source, err)
+		log.Printf("zapgw: failed to record the number observation (slug=%q, source=%q): %v", slug, a.Source, err)
 	}
 }

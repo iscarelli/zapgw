@@ -17,7 +17,7 @@ import (
 // earlier), just triggered by a different rename. A dead doc pointer does not
 // fail, does not warn, and is only found by someone who went looking and
 // didn't — the worst possible moment. This is the mechanism CLAUDE.md's
-// `Código:` header promises ("qual doc a minha mudanca quebrou?" becomes
+// `Código:` header promises ("which doc did my change break?" becomes
 // mechanical) and that, before this task, nothing enforced.
 
 // docPointerPattern finds a Go-source pointer written in prose: a run of
@@ -42,8 +42,8 @@ import (
 var docPointerPattern = regexp.MustCompile(`[A-Za-z0-9_./-]+\.go(:[0-9]+(-[0-9]+)?)?`)
 
 // docsFilesToSweep is every markdown file under docs/ EXCEPT the ones named
-// here, each with its reason spelled out — the "por CAMINHO COMPLETO, nunca
-// por palavra" rule applies to what the sweep skips, not only to what it
+// here, each with its reason spelled out — the "exemption by FULL PATH,
+// never by word" rule applies to what the sweep skips, not only to what it
 // forgives once inside a file.
 //
 // docs/TASKS.md is the only exclusion, and it earns it structurally, not by
@@ -339,8 +339,8 @@ func TestNoDeadGoPointerInDocs(t *testing.T) {
 }
 
 // TestDeadDocPointerGateFailsOnAMutatedPointer is T-217's positive control
-// (Verify item 4: "aponte um doc para um arquivo inexistente, confirme que
-// o teste reprova nomeando doc, linha e ponteiro"). It runs the SAME
+// (Verify item 4: "point a doc at a nonexistent file, confirm the test
+// fails naming the doc, line and pointer"). It runs the SAME
 // sweepDeadDocPointers function the real gate uses, against a temporary
 // tree, so this control can't drift from what actually runs in production.
 func TestDeadDocPointerGateFailsOnAMutatedPointer(t *testing.T) {
@@ -358,9 +358,9 @@ func TestDeadDocPointerGateFailsOnAMutatedPointer(t *testing.T) {
 		t.Fatalf("WriteFile message.go: %v", err)
 	}
 
-	const mutatedDoc = "docs/EXEMPLO.md"
+	const mutatedDoc = "docs/EXAMPLE.md"
 	// Line 3 is where the dead pointer lives — checked below.
-	content := "# exemplo\n\nponteiro morto: `internal/outbound/mensagem_velha_que_nao_existe.go`\n"
+	content := "# example\n\ndead pointer: `internal/outbound/old_message_that_does_not_exist.go`\n"
 	if err := os.WriteFile(filepath.Join(root, mutatedDoc), []byte(content), 0o644); err != nil {
 		t.Fatalf("WriteFile %s: %v", mutatedDoc, err)
 	}
@@ -381,7 +381,7 @@ func TestDeadDocPointerGateFailsOnAMutatedPointer(t *testing.T) {
 		t.Fatalf("expected exactly 1 dead pointer, got %d: %v", len(dead), dead)
 	}
 	got := dead[0].String()
-	want := mutatedDoc + ":3: internal/outbound/mensagem_velha_que_nao_existe.go"
+	want := mutatedDoc + ":3: internal/outbound/old_message_that_does_not_exist.go"
 	if got != want {
 		t.Fatalf("dead pointer finding mismatch:\n got:  %s\n want: %s", got, want)
 	}
@@ -405,9 +405,9 @@ func TestDeadDocPointerGateFailsClosedOnZeroPointers(t *testing.T) {
 		[]byte("package internal\n"), 0o644); err != nil {
 		t.Fatalf("WriteFile placeholder.go: %v", err)
 	}
-	const emptyDoc = "docs/SEM-PONTEIRO.md"
+	const emptyDoc = "docs/NO-POINTER.md"
 	if err := os.WriteFile(filepath.Join(root, emptyDoc),
-		[]byte("# nada aqui aponta para codigo\n\nso' texto.\n"), 0o644); err != nil {
+		[]byte("# nothing here points to code\n\njust text.\n"), 0o644); err != nil {
 		t.Fatalf("WriteFile %s: %v", emptyDoc, err)
 	}
 

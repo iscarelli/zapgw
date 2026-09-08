@@ -15,26 +15,26 @@ func TestVaultRoundTrips(t *testing.T) {
 		t.Fatalf("NewVault: %v", err)
 	}
 
-	plaintext := "EAAG...token-de-teste-nao-e-real"
+	plaintext := "EAAG...test-token-not-real"
 	ciphertext, err := c.Encrypt(plaintext)
 	if err != nil {
-		t.Fatalf("Cifrar: %v", err)
+		t.Fatalf("Encrypt: %v", err)
 	}
 	roundTrip, err := c.Decrypt(ciphertext)
 	if err != nil {
 		t.Fatalf("Decrypt: %v", err)
 	}
 	if roundTrip != plaintext {
-		t.Fatalf("volta = %q, quero %q", roundTrip, plaintext)
+		t.Fatalf("round trip = %q, want %q", roundTrip, plaintext)
 	}
 }
 
 func TestVaultNeverKeepsThePlaintextInTheCiphertext(t *testing.T) {
 	c, _ := NewVault(testKey)
 
-	ciphertext, _ := c.Encrypt("token-secreto-visivel")
-	if strings.Contains(ciphertext, "token-secreto-visivel") {
-		t.Fatal("o texto claro aparece no cifrado")
+	ciphertext, _ := c.Encrypt("visible-secret-token")
+	if strings.Contains(ciphertext, "visible-secret-token") {
+		t.Fatal("the plaintext shows up in the ciphertext")
 	}
 }
 
@@ -44,10 +44,10 @@ func TestVaultProducesADifferentCiphertextEveryTime(t *testing.T) {
 	// backup file.
 	c, _ := NewVault(testKey)
 
-	a, _ := c.Encrypt("mesmo-valor")
-	b, _ := c.Encrypt("mesmo-valor")
+	a, _ := c.Encrypt("same-value")
+	b, _ := c.Encrypt("same-value")
 	if a == b {
-		t.Fatal("dois Cifrar do mesmo valor deram identico — falta nonce")
+		t.Fatal("two Encrypt calls on the same value came out identical — missing nonce")
 	}
 }
 
@@ -55,12 +55,12 @@ func TestVaultRefusesTamperedCiphertext(t *testing.T) {
 	// AES-GCM is authenticated: one swapped byte has to FAIL, not return garbage.
 	c, _ := NewVault(testKey)
 
-	ciphertext, _ := c.Encrypt("valor")
+	ciphertext, _ := c.Encrypt("value")
 	tampered := []byte(ciphertext)
 	tampered[len(tampered)-1] ^= 'x'
 
 	if _, err := c.Decrypt(string(tampered)); err == nil {
-		t.Fatal("cifrado adulterado foi aceito")
+		t.Fatal("tampered ciphertext was accepted")
 	}
 }
 
@@ -77,10 +77,10 @@ func TestDeterministicHMACIsNotEncrypt(t *testing.T) {
 	a := c.DeterministicHMAC("5511999990000")
 	b := c.DeterministicHMAC("5511999990000")
 	if a != b {
-		t.Fatalf("DeterministicHMAC(x) duas vezes deu %q e %q — nao e deterministico, e a busca do log de transito quebra", a, b)
+		t.Fatalf("DeterministicHMAC(x) twice gave %q and %q — it isn't deterministic, and the transit log search breaks", a, b)
 	}
 	if a == "" {
-		t.Fatal("DeterministicHMAC devolveu vazio para uma entrada nao vazia")
+		t.Fatal("DeterministicHMAC returned empty for a non-empty input")
 	}
 
 	// The PROOF that Encrypt CANNOT replace DeterministicHMAC here: two
@@ -91,7 +91,7 @@ func TestDeterministicHMACIsNotEncrypt(t *testing.T) {
 	x, _ := c.Encrypt("5511999990000")
 	y, _ := c.Encrypt("5511999990000")
 	if x == y {
-		t.Fatal("Cifrar deixou de sortear nonce — a premissa que justifica NAO usa-lo para o log de transito caiu")
+		t.Fatal("Encrypt stopped drawing a nonce — the premise that justifies NOT using it for the transit log just fell apart")
 	}
 }
 
@@ -100,15 +100,15 @@ func TestNewVaultRefusesAnInvalidKey(t *testing.T) {
 	// Refusing early and loud is what keeps the service from coming up
 	// "working" with no encryption at all.
 	cases := []struct{ name, key string }{
-		{"vazia", ""},
-		{"curta demais", "00010203"},
-		{"nao e hex", "zzzz02030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"},
+		{"empty", ""},
+		{"too short", "00010203"},
+		{"not hex", "zzzz02030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"},
 		{"31 bytes", "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e"},
 	}
 
 	for _, c := range cases {
 		if _, err := NewVault(c.key); !errors.Is(err, ErrInvalidKey) {
-			t.Errorf("chave %s: erro = %v, quero ErrInvalidKey", c.name, err)
+			t.Errorf("key %s: err = %v, want ErrInvalidKey", c.name, err)
 		}
 	}
 }

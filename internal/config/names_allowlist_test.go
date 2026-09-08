@@ -82,17 +82,17 @@ func loadForbiddenNames() (needles []string, source string, err error) {
 	if raw, present := os.LookupEnv(forbiddenNamesEnvVar); present {
 		parsed := parseForbiddenNamesLines(raw)
 		if len(parsed) > 0 {
-			return parsed, "variavel de ambiente " + forbiddenNamesEnvVar, nil
+			return parsed, "environment variable " + forbiddenNamesEnvVar, nil
 		}
-		envAttempt = fmt.Sprintf("variavel de ambiente %s esta definida mas nao produziu "+
-			"nenhuma agulha (vazia, ou so' linhas em branco/comentario)", forbiddenNamesEnvVar)
+		envAttempt = fmt.Sprintf("environment variable %s is set but produced "+
+			"no needle (empty, or only blank/comment lines)", forbiddenNamesEnvVar)
 	} else {
-		envAttempt = fmt.Sprintf("variavel de ambiente %s nao esta definida", forbiddenNamesEnvVar)
+		envAttempt = fmt.Sprintf("environment variable %s is not set", forbiddenNamesEnvVar)
 	}
 
 	home, herr := os.UserHomeDir()
 	if herr != nil {
-		fileAttempt = fmt.Sprintf("nao foi possivel localizar o diretorio home: %v", herr)
+		fileAttempt = fmt.Sprintf("could not locate the home directory: %v", herr)
 	} else {
 		path := filepath.Join(home, filepath.FromSlash(forbiddenNamesFileRelativeToHome))
 		content, rerr := os.ReadFile(path)
@@ -103,13 +103,13 @@ func loadForbiddenNames() (needles []string, source string, err error) {
 			if len(parsed) > 0 {
 				return parsed, path, nil
 			}
-			fileAttempt = fmt.Sprintf("%s existe mas nao produziu nenhuma agulha "+
-				"(vazio, ou so' linhas em branco/comentario)", path)
+			fileAttempt = fmt.Sprintf("%s exists but produced no needle "+
+				"(empty, or only blank/comment lines)", path)
 		}
 	}
 
-	return nil, "", fmt.Errorf("NAO CONSEGUI VERIFICAR (falha fechada, isto NAO e' \"esta limpo\"): "+
-		"nenhuma fonte de agulhas disponivel — %s; %s", envAttempt, fileAttempt)
+	return nil, "", fmt.Errorf("COULD NOT VERIFY (closed failure, this is NOT \"clean\"): "+
+		"no needle source available — %s; %s", envAttempt, fileAttempt)
 }
 
 // forbiddenNameFinding is one line where a needle showed up.
@@ -136,14 +136,14 @@ func sweepForbiddenNamesOutsideTheGate(root string, targets []string, needles []
 	scanFile := func(path string) error {
 		relative, rerr := filepath.Rel(root, path)
 		if rerr != nil {
-			return fmt.Errorf("relativizar %s: %w", path, rerr)
+			return fmt.Errorf("make %s relative: %w", path, rerr)
 		}
 		relative = filepath.ToSlash(relative)
 		seen[relative] = true
 
 		content, rerr := os.ReadFile(path)
 		if rerr != nil {
-			return fmt.Errorf("ler %s: %w", path, rerr)
+			return fmt.Errorf("read %s: %w", path, rerr)
 		}
 		for i, line := range strings.Split(string(content), "\n") {
 			for _, pattern := range patterns {
@@ -159,17 +159,17 @@ func sweepForbiddenNamesOutsideTheGate(root string, targets []string, needles []
 		base := filepath.Join(root, target)
 		info, serr := os.Stat(base)
 		if serr != nil {
-			return nil, nil, fmt.Errorf("ler %s: %w", base, serr)
+			return nil, nil, fmt.Errorf("read %s: %w", base, serr)
 		}
 		if !info.IsDir() {
 			if err := scanFile(base); err != nil {
-				return nil, nil, fmt.Errorf("varrer %s: %w", base, err)
+				return nil, nil, fmt.Errorf("sweep %s: %w", base, err)
 			}
 			continue
 		}
 		werr := filepath.WalkDir(base, func(path string, d os.DirEntry, err error) error {
 			if err != nil {
-				return fmt.Errorf("ler %s: %w", path, err)
+				return fmt.Errorf("read %s: %w", path, err)
 			}
 			if d.IsDir() {
 				// Same reason as the phone gate and the TLS gate: .claude/
@@ -183,7 +183,7 @@ func sweepForbiddenNamesOutsideTheGate(root string, targets []string, needles []
 			return scanFile(path)
 		})
 		if werr != nil {
-			return nil, nil, fmt.Errorf("varrer %s: %w", base, werr)
+			return nil, nil, fmt.Errorf("sweep %s: %w", base, werr)
 		}
 	}
 	return findings, seen, nil
@@ -203,24 +203,24 @@ func TestNoCustomerNameOutsideTheGateInTheRepo(t *testing.T) {
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
-	t.Logf("agulhas carregadas de: %s (%d agulha(s))", source, len(needles))
+	t.Logf("needles loaded from: %s (%d needle(s))", source, len(needles))
 
 	root, err := moduleRootForTheAllowlist()
 	if err != nil {
-		t.Fatalf("localizar a raiz do modulo (falha fechada): %v", err)
+		t.Fatalf("locate the module root (closed failure): %v", err)
 	}
 
 	targets, err := filesGitSeesFromRoot(root)
 	if err != nil {
-		t.Fatalf("enumerar os arquivos que o git ve (falha fechada): %v", err)
+		t.Fatalf("enumerate the files git sees (closed failure): %v", err)
 	}
 
 	findings, seen, err := sweepForbiddenNamesOutsideTheGate(root, targets, needles)
 	if err != nil {
-		t.Fatalf("varrer a arvore (falha fechada): %v", err)
+		t.Fatalf("sweep the tree (closed failure): %v", err)
 	}
 	if len(seen) == 0 {
-		t.Fatalf("a varredura nao alcancou nenhum arquivo — falha fechada, nunca tratado como limpo")
+		t.Fatalf("the sweep reached zero files — closed failure, never treated as clean")
 	}
 
 	if len(findings) > 0 {
@@ -234,10 +234,10 @@ func TestNoCustomerNameOutsideTheGateInTheRepo(t *testing.T) {
 		for _, f := range findings {
 			lines = append(lines, fmt.Sprintf("%s:%d: %s", f.file, f.line, f.match))
 		}
-		t.Fatalf("nome fora do portao encontrado (%d ocorrencia(s)):\n%s\n\n"+
-			"Cada linha acima e' onde uma agulha apareceu. Este portao NAO TEM lista de "+
-			"isencoes: se o achado for legitimo, PARE e leve para o dono; se for um "+
-			"exemplo, troque por um valor sintetico que preserve o formato.",
+		t.Fatalf("name found outside the gate (%d occurrence(s)):\n%s\n\n"+
+			"Each line above is where a needle showed up. This gate has NO exemption "+
+			"list: if the finding is legitimate, STOP and take it to the owner; if it's "+
+			"an example, swap it for a synthetic value that preserves the format.",
 			len(findings), strings.Join(lines, "\n"))
 	}
 }

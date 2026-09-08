@@ -135,7 +135,7 @@ var syntheticPhoneAllowlist = map[string]bool{
 // sweep — so a renamed or deleted file turns into a failure instead of a
 // stale exception nobody notices.
 //
-// 🔴 THE ENTRIES MARKED "PROVISORIA" ARE NOT A DECISION, THEY ARE A
+// 🔴 THE ENTRIES MARKED "PROVISIONAL" ARE NOT A DECISION, THEY ARE A
 // PENDING ONE. T-185 measured the tree and found the owner's real number
 // (and, in one file, a THIRD PARTY's) in docs that PSEUDONIMOS.md does
 // NOT list as staying behind. Removing a number from a doc is the
@@ -143,24 +143,25 @@ var syntheticPhoneAllowlist = map[string]bool{
 // naming exactly which files are carrying the debt — instead of a green
 // run that hides it. The test prints them on every run.
 var filesExemptFromThePhoneScan = map[string]string{
-	// 🔴 VAZIO, E ISSO E' A PROPRIEDADE QUE ESTE REPOSITORIO EXISTE PARA TER.
+	// 🔴 EMPTY, AND THAT IS THE PROPERTY THIS REPOSITORY EXISTS TO HAVE.
 	//
-	// No `zapgw-dev` (o repositorio privado de onde este codigo veio) havia
-	// cinco isencoes: documentos de registro que carregam o telefone real do
-	// dono e, num deles, o de um CLIENTE de consumidor. Eles ficaram la, por
-	// decisao — sao historico, e historico reescrito e' historico falsificado.
+	// In `zapgw-dev` (the private repository this code came from) there were
+	// five exemptions: registration documents carrying the owner's real
+	// phone number and, in one of them, a consumer's CUSTOMER's. They stayed
+	// there, by decision — they are history, and rewritten history is
+	// falsified history.
 	//
-	// AQUI NENHUM ARQUIVO E' ISENTO, e nenhum deve passar a ser. Este
-	// repositorio e' publicado: uma isencao aqui nao e' "um caso combinado",
-	// e' um telefone real na internet, para sempre. Se algum dia um arquivo
-	// PRECISAR de telefone real, ele nao pertence a este repositorio.
+	// HERE NO FILE IS EXEMPT, and none should become one. This repository
+	// is published: an exemption here is not "an agreed-upon case", it's a
+	// real phone number on the internet, forever. If a file ever NEEDS a
+	// real phone number, it doesn't belong in this repository.
 	//
-	// A checagem abaixo continua valendo de qualquer forma: isencao cujo
-	// arquivo sumiu reprova. Com o mapa vazio ela nao tem o que fazer — e
-	// esse e' o estado desejado, nao um descuido.
+	// The check below still applies regardless: an exemption whose file
+	// disappeared fails. With the map empty it has nothing to do — and
+	// that is the desired state, not an oversight.
 }
 
-// agulha is the same pattern used on both search fronts (literal and
+// needle is the same pattern used on both search fronts (literal and
 // decoded): "55" followed by 10 or 11 digits, with a word boundary.
 // Shared so there is ONE definition of what counts as a phone number, not
 // two that could diverge.
@@ -334,7 +335,7 @@ func sweepPhoneNumbersOutsideTheAllowlist(root string, targets []string) (outsid
 	scanFile := func(path string) error {
 		relative, err := filepath.Rel(root, path)
 		if err != nil {
-			return fmt.Errorf("relativizar %s: %w", path, err)
+			return fmt.Errorf("make %s relative: %w", path, err)
 		}
 		relative = filepath.ToSlash(relative)
 		seen[relative] = true
@@ -350,7 +351,7 @@ func sweepPhoneNumbersOutsideTheAllowlist(root string, targets []string) (outsid
 
 		content, err := os.ReadFile(path)
 		if err != nil {
-			return fmt.Errorf("ler %s: %w", path, err)
+			return fmt.Errorf("read %s: %w", path, err)
 		}
 		for i, line := range strings.Split(string(content), "\n") {
 			// Front 1: a literal number in the text — T-161's original gate.
@@ -387,13 +388,13 @@ func sweepPhoneNumbersOutsideTheAllowlist(root string, targets []string) (outsid
 					// or a corrupted value. Either way, it fails,
 					// asking for a human eye instead of silently passing.
 					outsideTheAllowlist = append(outsideTheAllowlist,
-						fmt.Sprintf("%s:%d: NAO DECODIFICOU (achado, precisa de olho humano): wamid.%s", relative, i+1, payload))
+						fmt.Sprintf("%s:%d: DID NOT DECODE (finding, needs a human eye): wamid.%s", relative, i+1, payload))
 					continue
 				}
 				for _, number := range hits {
 					if !syntheticPhoneAllowlist[number] {
 						outsideTheAllowlist = append(outsideTheAllowlist,
-							fmt.Sprintf("%s:%d: %s (decodificado de wamid.%s)", relative, i+1, number, payload))
+							fmt.Sprintf("%s:%d: %s (decoded from wamid.%s)", relative, i+1, number, payload))
 					}
 				}
 			}
@@ -405,19 +406,19 @@ func sweepPhoneNumbersOutsideTheAllowlist(root string, targets []string) (outsid
 		base := filepath.Join(root, target)
 		info, err := os.Stat(base)
 		if err != nil {
-			return nil, nil, fmt.Errorf("ler %s: %w", base, err)
+			return nil, nil, fmt.Errorf("read %s: %w", base, err)
 		}
 		if !info.IsDir() {
 			// Single file (README.md). Same existence check as a
 			// directory — a missing file is an error, never silence.
 			if err := scanFile(base); err != nil {
-				return nil, nil, fmt.Errorf("varrer %s: %w", base, err)
+				return nil, nil, fmt.Errorf("sweep %s: %w", base, err)
 			}
 			continue
 		}
 		err = filepath.WalkDir(base, func(path string, d os.DirEntry, err error) error {
 			if err != nil {
-				return fmt.Errorf("ler %s: %w", path, err)
+				return fmt.Errorf("read %s: %w", path, err)
 			}
 			if d.IsDir() {
 				// Same reason as the TLS test: .claude/ holds other
@@ -431,7 +432,7 @@ func sweepPhoneNumbersOutsideTheAllowlist(root string, targets []string) (outsid
 			return scanFile(path)
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("varrer %s: %w", base, err)
+			return nil, nil, fmt.Errorf("sweep %s: %w", base, err)
 		}
 	}
 	return outsideTheAllowlist, seen, nil
@@ -490,9 +491,9 @@ func filesGitSeesFromRoot(root string) ([]string, error) {
 		all = append(all, f)
 	}
 	if len(all) == 0 {
-		return nil, fmt.Errorf("git nao devolveu nenhum arquivo a partir de %s "+
-			"(rastreado + nao-rastreado-e-nao-ignorado) — falha fechada: nunca "+
-			"tratado como \"repositorio vazio\"", root)
+		return nil, fmt.Errorf("git returned zero files from %s "+
+			"(tracked + untracked-and-not-ignored) — closed failure: never "+
+			"treated as \"empty repository\"", root)
 	}
 	sort.Strings(all)
 	return all, nil
@@ -553,29 +554,29 @@ func gitLsFiles(root string, args ...string) ([]string, error) {
 func TestNoPhoneNumberOutsideTheAllowlistInTheRepo(t *testing.T) {
 	root, err := moduleRootForTheAllowlist()
 	if err != nil {
-		t.Fatalf("localizar a raiz do modulo (falha fechada): %v", err)
+		t.Fatalf("locate the module root (closed failure): %v", err)
 	}
 
 	targets, err := filesGitSeesFromRoot(root)
 	if err != nil {
-		t.Fatalf("enumerar os arquivos que o git ve (falha fechada): %v", err)
+		t.Fatalf("enumerate the files git sees (closed failure): %v", err)
 	}
 
 	outsideTheAllowlist, seen, err := sweepPhoneNumbersOutsideTheAllowlist(root, targets)
 	if err != nil {
-		t.Fatalf("varrer a arvore (falha fechada): %v", err)
+		t.Fatalf("sweep the tree (closed failure): %v", err)
 	}
 
 	if len(outsideTheAllowlist) > 0 {
 		sort.Strings(outsideTheAllowlist)
-		t.Fatalf("numero(s) fora da allowlist encontrado(s):\n%s\n\n"+
-			"Se e sintetico, declare-o em syntheticPhoneAllowlist "+
-			"(internal/config/phones_allowlist_test.go) com o porque. "+
-			"Se e real, ele NAO PODE entrar no repositorio — troque pelo "+
-			"sintetico 5511999990000/5532999990000 (CLAUDE.md, secao do "+
-			"telefone do dono). Se a linha diz 'NAO DECODIFICOU', o portao "+
-			"nao conseguiu ler aquele valor e precisa de olho humano — "+
-			"nunca trate isso como limpo.",
+		t.Fatalf("number(s) found outside the allowlist:\n%s\n\n"+
+			"If it's synthetic, declare it in syntheticPhoneAllowlist "+
+			"(internal/config/phones_allowlist_test.go) with the reason. "+
+			"If it's real, it CANNOT go into the repository — swap it for "+
+			"the synthetic 5511999990000/5532999990000 (CLAUDE.md, the "+
+			"owner's phone number section). If the line says 'DID NOT "+
+			"DECODE', the gate could not read that value and it needs a "+
+			"human eye — never treat that as clean.",
 			strings.Join(outsideTheAllowlist, "\n"))
 	}
 
@@ -595,7 +596,7 @@ func TestNoPhoneNumberOutsideTheAllowlistInTheRepo(t *testing.T) {
 		"README.md",                   // T-185: the target that is a FILE, not a directory
 	} {
 		if !seen[required] {
-			t.Fatalf("a varredura nao alcancou %s — ela passou sem verificar o que existe para verificar (%d arquivos vistos)",
+			t.Fatalf("the sweep did not reach %s — it passed without checking what exists to check (%d files seen)",
 				required, len(seen))
 		}
 	}
@@ -609,9 +610,9 @@ func TestNoPhoneNumberOutsideTheAllowlistInTheRepo(t *testing.T) {
 	exemptFiles := make([]string, 0, len(filesExemptFromThePhoneScan))
 	for exempt := range filesExemptFromThePhoneScan {
 		if !seen[exempt] {
-			t.Fatalf("a excecao %s esta em filesExemptFromThePhoneScan mas a varredura nao "+
-				"alcancou esse arquivo — o arquivo mudou de nome ou sumiu, e a excecao "+
-				"virou letra morta. Remova-a ou corrija o caminho. Motivo registrado: %s",
+			t.Fatalf("exception %s is in filesExemptFromThePhoneScan but the sweep did not "+
+				"reach that file — the file was renamed or is gone, and the exception "+
+				"became dead letter. Remove it or fix the path. Recorded reason: %s",
 				exempt, filesExemptFromThePhoneScan[exempt])
 		}
 		exemptFiles = append(exemptFiles, exempt)
@@ -619,11 +620,11 @@ func TestNoPhoneNumberOutsideTheAllowlistInTheRepo(t *testing.T) {
 
 	// The exceptions are printed on EVERY run, green included. An
 	// exemption that only shows up in the source is an exemption that
-	// stops being read; the ones marked PROVISORIA are open debt waiting
+	// stops being read; the ones marked PROVISIONAL are open debt waiting
 	// on the owner, and debt that goes quiet is debt that gets shipped.
 	sort.Strings(exemptFiles)
 	for _, exempt := range exemptFiles {
-		t.Logf("ISENTO da varredura: %s — %s", exempt, filesExemptFromThePhoneScan[exempt])
+		t.Logf("EXEMPT from the sweep: %s — %s", exempt, filesExemptFromThePhoneScan[exempt])
 	}
 }
 
@@ -653,7 +654,7 @@ func TestTheBase64GateIFoundAPhoneNumberInItsRealForm(t *testing.T) {
 
 	// The three constants below are built by CONCATENATION on purpose —
 	// same idiom as internal/inbound/deliver_test.go
-	// (`agulha := "Insecure" + "SkipVerify"`). Written out whole, they
+	// (`needle := "Insecure" + "SkipVerify"`). Written out whole, they
 	// would be found by this package's OWN scan when it reads this file
 	// (TestNoPhoneNumberOutsideTheAllowlistInTheRepo scans all of internal/,
 	// including this file) — not because they're a real leak, but because
@@ -674,8 +675,8 @@ func TestTheBase64GateIFoundAPhoneNumberInItsRealForm(t *testing.T) {
 	corruptedWamid := "wamid." + "HBgNNTUzMj=5OTk5MDAwMBUCABIYFjNFQjBEO"
 
 	if syntheticPhoneAllowlist[numberOutsideTheAllowlist] {
-		t.Fatalf("pre-condicao do controle quebrada: %s precisa estar FORA "+
-			"da allowlist para este teste provar algo", numberOutsideTheAllowlist)
+		t.Fatalf("control precondition broken: %s needs to be OUTSIDE "+
+			"the allowlist for this test to prove anything", numberOutsideTheAllowlist)
 	}
 
 	write := func(t *testing.T, literalWamid string) (root string) {
@@ -696,11 +697,11 @@ func TestTheBase64GateIFoundAPhoneNumberInItsRealForm(t *testing.T) {
 		return root
 	}
 
-	t.Run("acha_o_telefone_escondido_no_wamid_adulterado", func(t *testing.T) {
+	t.Run("finds_the_phone_hidden_in_the_tampered_wamid", func(t *testing.T) {
 		root := write(t, tamperedWamid)
 		hits, _, err := sweepPhoneNumbersOutsideTheAllowlist(root, []string{"cmd", "internal", "testdata"})
 		if err != nil {
-			t.Fatalf("varrer: %v", err)
+			t.Fatalf("sweep: %v", err)
 		}
 		var foundWithTheRightLine bool
 		for _, a := range hits {
@@ -709,38 +710,38 @@ func TestTheBase64GateIFoundAPhoneNumberInItsRealForm(t *testing.T) {
 			}
 		}
 		if !foundWithTheRightLine {
-			t.Fatalf("esperava um achado citando %s em internal/alvo_test.go:3, achados: %v",
+			t.Fatalf("expected a finding citing %s in internal/alvo_test.go:3, found: %v",
 				numberOutsideTheAllowlist, hits)
 		}
 	})
 
-	t.Run("wamid_original_sem_adulteracao_fica_em_zero", func(t *testing.T) {
+	t.Run("original_wamid_without_tampering_comes_back_zero", func(t *testing.T) {
 		root := write(t, realWamidFromTheCorpus)
 		hits, _, err := sweepPhoneNumbersOutsideTheAllowlist(root, []string{"cmd", "internal", "testdata"})
 		if err != nil {
-			t.Fatalf("varrer: %v", err)
+			t.Fatalf("sweep: %v", err)
 		}
 		if len(hits) != 0 {
-			t.Fatalf("o wamid original (telefone sintetico, ja allowlisted) "+
-				"deveria dar ZERO achados; achou: %v", hits)
+			t.Fatalf("the original wamid (synthetic phone, already allowlisted) "+
+				"should give ZERO findings; found: %v", hits)
 		}
 	})
 
-	t.Run("valor_corrompido_reprova_em_vez_de_passar_calado", func(t *testing.T) {
+	t.Run("corrupted_value_fails_instead_of_passing_silently", func(t *testing.T) {
 		root := write(t, corruptedWamid)
 		hits, _, err := sweepPhoneNumbersOutsideTheAllowlist(root, []string{"cmd", "internal", "testdata"})
 		if err != nil {
-			t.Fatalf("varrer: %v", err)
+			t.Fatalf("sweep: %v", err)
 		}
 		var foundButDidNotDecode bool
 		for _, a := range hits {
-			if strings.Contains(a, "NAO DECODIFICOU") {
+			if strings.Contains(a, "DID NOT DECODE") {
 				foundButDidNotDecode = true
 			}
 		}
 		if !foundButDidNotDecode {
-			t.Fatalf("esperava um achado 'NAO DECODIFICOU' para o valor "+
-				"corrompido (requisito (c) da T-162); achados: %v", hits)
+			t.Fatalf("expected a 'DID NOT DECODE' finding for the corrupted "+
+				"value (T-162's requirement (c)); found: %v", hits)
 		}
 	})
 }
@@ -753,7 +754,7 @@ func TestTheBase64GateIFoundAPhoneNumberInItsRealForm(t *testing.T) {
 func moduleRootForTheAllowlist() (string, error) {
 	_, file, _, ok := runtime.Caller(0)
 	if !ok {
-		return "", fmt.Errorf("runtime.Caller(0) nao retornou o caminho deste arquivo")
+		return "", fmt.Errorf("runtime.Caller(0) did not return this file's path")
 	}
 	dir := filepath.Dir(file)
 	for {
@@ -762,7 +763,7 @@ func moduleRootForTheAllowlist() (string, error) {
 		}
 		parent := filepath.Dir(dir)
 		if parent == dir {
-			return "", fmt.Errorf("go.mod nao encontrado subindo a partir de %s", filepath.Dir(file))
+			return "", fmt.Errorf("go.mod not found walking up from %s", filepath.Dir(file))
 		}
 		dir = parent
 	}

@@ -314,7 +314,7 @@ func buildCounterKeys() map[string]bool {
 // ErrUnknownCounterKey: someone tried to write a key outside the
 // closed vocabulary. It's an error, not a silent write, because an
 // unreviewed new key is exactly the metric nobody is going to look at.
-var ErrUnknownCounterKey = errors.New("config: chave de contador fora do vocabulario fechado")
+var ErrUnknownCounterKey = errors.New("config: counter key outside the closed vocabulary")
 
 // ShortSeriesDays is the size of `serie_7_dias` — 7 entries, TODAY included.
 //
@@ -447,7 +447,7 @@ func (s *Store) IncrementCounter(slug, key string, when time.Time) error {
 		ON CONFLICT (slug, dia, chave) DO UPDATE SET n = n + 1, ultimo = excluded.ultimo`,
 		slug, dayOf(when), key, stampOf(when))
 	if err != nil {
-		return fmt.Errorf("config: incrementar contador: %w", err)
+		return fmt.Errorf("config: increment counter: %w", err)
 	}
 	return nil
 }
@@ -470,11 +470,11 @@ func (s *Store) IncrementCounter(slug, key string, when time.Time) error {
 func (s *Store) PurgeCounters(before time.Time) (int, error) {
 	res, err := s.db.Exec(`DELETE FROM contador WHERE dia < ?`, dayOf(before))
 	if err != nil {
-		return 0, fmt.Errorf("config: purgar contadores: %w", err)
+		return 0, fmt.Errorf("config: purge counters: %w", err)
 	}
 	n, err := res.RowsAffected()
 	if err != nil {
-		return 0, fmt.Errorf("config: linhas purgadas de contador: %w", err)
+		return 0, fmt.Errorf("config: rows purged from contador: %w", err)
 	}
 	return int(n), nil
 }
@@ -493,7 +493,7 @@ func (s *Store) CountersBetween(slug string, since, until time.Time) (map[string
 		 GROUP BY chave`,
 		slug, dayOf(since), dayOf(until))
 	if err != nil {
-		return nil, fmt.Errorf("config: somar contadores: %w", err)
+		return nil, fmt.Errorf("config: sum counters: %w", err)
 	}
 	defer rows.Close()
 
@@ -502,7 +502,7 @@ func (s *Store) CountersBetween(slug string, since, until time.Time) (map[string
 		var key string
 		var n int
 		if err := rows.Scan(&key, &n); err != nil {
-			return nil, fmt.Errorf("config: ler contador: %w", err)
+			return nil, fmt.Errorf("config: read counter: %w", err)
 		}
 		m[key] = n
 	}
@@ -511,7 +511,7 @@ func (s *Store) CountersBetween(slug string, since, until time.Time) (map[string
 	// out, and a summary shorter than reality is this project's most
 	// expensive failure shape.
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("config: iterar contadores: %w", err)
+		return nil, fmt.Errorf("config: iterate counters: %w", err)
 	}
 	return m, nil
 }
@@ -542,7 +542,7 @@ func (s *Store) LastEventPerKey(slug string) (map[string]time.Time, error) {
 		 WHERE slug = ? AND ultimo <> ''
 		 GROUP BY chave`, slug)
 	if err != nil {
-		return nil, fmt.Errorf("config: ultimo evento por chave: %w", err)
+		return nil, fmt.Errorf("config: last event per key: %w", err)
 	}
 	defer rows.Close()
 
@@ -550,17 +550,17 @@ func (s *Store) LastEventPerKey(slug string) (map[string]time.Time, error) {
 	for rows.Next() {
 		var key, stamp string
 		if err := rows.Scan(&key, &stamp); err != nil {
-			return nil, fmt.Errorf("config: ler carimbo de contador: %w", err)
+			return nil, fmt.Errorf("config: read counter stamp: %w", err)
 		}
 		when, err := time.Parse(time.RFC3339, stamp)
 		if err != nil {
-			return nil, fmt.Errorf("config: carimbo de contador (slug=%q chave=%q) nao e RFC3339: %w",
+			return nil, fmt.Errorf("config: counter stamp (slug=%q key=%q) is not RFC3339: %w",
 				slug, key, err)
 		}
 		m[key] = when.UTC()
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("config: iterar carimbos de contador: %w", err)
+		return nil, fmt.Errorf("config: iterate counter stamps: %w", err)
 	}
 	return m, nil
 }
@@ -579,7 +579,7 @@ func (s *Store) CountersPerDay(slug string, since, until time.Time) (map[string]
 		 GROUP BY dia, chave`,
 		slug, dayOf(since), dayOf(until))
 	if err != nil {
-		return nil, fmt.Errorf("config: contadores por dia: %w", err)
+		return nil, fmt.Errorf("config: counters per day: %w", err)
 	}
 	defer rows.Close()
 
@@ -588,7 +588,7 @@ func (s *Store) CountersPerDay(slug string, since, until time.Time) (map[string]
 		var day, key string
 		var n int
 		if err := rows.Scan(&day, &key, &n); err != nil {
-			return nil, fmt.Errorf("config: ler contador por dia: %w", err)
+			return nil, fmt.Errorf("config: read counter per day: %w", err)
 		}
 		if m[day] == nil {
 			m[day] = map[string]int{}
@@ -599,7 +599,7 @@ func (s *Store) CountersPerDay(slug string, since, until time.Time) (map[string]
 	// loop as if the data had run out, and a series shorter than reality
 	// is this project's most expensive failure shape.
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("config: iterar contadores por dia: %w", err)
+		return nil, fmt.Errorf("config: iterate counters per day: %w", err)
 	}
 	return m, nil
 }
@@ -792,6 +792,6 @@ func (c *Counter) Record(slug, key string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if err := c.store.IncrementCounter(slug, key, time.Now()); err != nil {
-		log.Printf("zapgw: falha ao gravar contador (slug=%q chave=%q): %v", slug, key, err)
+		log.Printf("zapgw: failed to record counter (slug=%q key=%q): %v", slug, key, err)
 	}
 }

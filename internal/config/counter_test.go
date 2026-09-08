@@ -26,7 +26,7 @@ func TestIncrementCounterAddsUpOnTheSameDay(t *testing.T) {
 		t.Fatalf("CountersBetween: %v", err)
 	}
 	if m[CounterReceived] != 2 {
-		t.Fatalf("recebidas = %d, quero 2 — duas chamadas no MESMO dia tem de somar na mesma linha", m[CounterReceived])
+		t.Fatalf("received = %d, want 2 — two calls on the SAME day have to add up on the same row", m[CounterReceived])
 	}
 }
 
@@ -34,9 +34,9 @@ func TestIncrementCounterRefusesAKeyOutsideTheVocabulary(t *testing.T) {
 	// The vocabulary is CLOSED on purpose (T-035): an unreviewed new key
 	// is exactly the metric nobody is going to look at.
 	s := testStore(t)
-	err := s.IncrementCounter("lojinha", "metrica_inventada", time.Now())
+	err := s.IncrementCounter("lojinha", "made-up-metric", time.Now())
 	if !errors.Is(err, ErrUnknownCounterKey) {
-		t.Fatalf("erro = %v, quero ErrUnknownCounterKey", err)
+		t.Fatalf("err = %v, want ErrUnknownCounterKey", err)
 	}
 }
 
@@ -55,7 +55,7 @@ func TestCountersBetweenSeparatesPerInstance(t *testing.T) {
 		t.Fatalf("CountersBetween: %v", err)
 	}
 	if m[CounterDelivered] != 2 {
-		t.Fatalf("entregues de lojinha = %d, quero 2 — contagem de OUTRA instancia vazou", m[CounterDelivered])
+		t.Fatalf("lojinha's delivered = %d, want 2 — ANOTHER instance's count leaked in", m[CounterDelivered])
 	}
 }
 
@@ -72,7 +72,7 @@ func TestCountersBetweenSumsSeveralDaysInThePeriod(t *testing.T) {
 		t.Fatalf("CountersBetween: %v", err)
 	}
 	if m[CounterReceived] != 2 {
-		t.Fatalf("recebidas nos ultimos 7 dias = %d, quero 2 (o evento de 8 dias atras fica DE FORA)", m[CounterReceived])
+		t.Fatalf("received in the last 7 days = %d, want 2 (the event from 8 days ago is left OUT)", m[CounterReceived])
 	}
 }
 
@@ -84,10 +84,10 @@ func TestCountersBetweenWithNoEventReturnsAnEmptyMapWithNoError(t *testing.T) {
 		t.Fatalf("CountersBetween: %v", err)
 	}
 	if len(m) != 0 {
-		t.Fatalf("mapa = %v, quero vazio", m)
+		t.Fatalf("map = %v, want empty", m)
 	}
 	if m[CounterReceived] != 0 {
-		t.Fatalf("m[CounterReceived] = %d, quero 0 (chave ausente lida como zero)", m[CounterReceived])
+		t.Fatalf("m[CounterReceived] = %d, want 0 (absent key read as zero)", m[CounterReceived])
 	}
 }
 
@@ -105,7 +105,7 @@ func TestPurgeCountersDeletesOnlyWhatIsPastTheAge(t *testing.T) {
 		t.Fatalf("PurgeCounters: %v", err)
 	}
 	if n != 1 {
-		t.Fatalf("purgou %d linha(s), quero 1", n)
+		t.Fatalf("purged %d row(s), want 1", n)
 	}
 
 	m, err := s.CountersBetween("lojinha", oldStamp, today)
@@ -113,7 +113,7 @@ func TestPurgeCountersDeletesOnlyWhatIsPastTheAge(t *testing.T) {
 		t.Fatalf("CountersBetween: %v", err)
 	}
 	if m[CounterReceived] != 1 {
-		t.Fatalf("recebidas apos purga = %d, quero 1 (o registro RECENTE tem de sobreviver)", m[CounterReceived])
+		t.Fatalf("received after purge = %d, want 1 (the RECENT record has to survive)", m[CounterReceived])
 	}
 }
 
@@ -127,7 +127,7 @@ func TestPurgeCountersDoesNotDeleteARecentRecord(t *testing.T) {
 		t.Fatalf("PurgeCounters: %v", err)
 	}
 	if n != 0 {
-		t.Fatalf("purgou %d registro(s) recente(s), quero 0", n)
+		t.Fatalf("purged %d recent record(s), want 0", n)
 	}
 }
 
@@ -155,7 +155,7 @@ func TestCounterRecordUnderConcurrencyAddsUpRight(t *testing.T) {
 		t.Fatalf("CountersBetween: %v", err)
 	}
 	if m[CounterReceived] != goroutines {
-		t.Fatalf("recebidas = %d, quero %d — contagem perdida sob concorrencia", m[CounterReceived], goroutines)
+		t.Fatalf("received = %d, want %d — count lost under concurrency", m[CounterReceived], goroutines)
 	}
 }
 
@@ -169,7 +169,7 @@ func TestCounterRecordWithAnInvalidKeyOnlyLogsAndMovesOn(t *testing.T) {
 	s := testStore(t)
 	c := NewCounter(s)
 
-	c.Record("lojinha", "chave-que-nao-existe-no-vocabulario")
+	c.Record("lojinha", "key-that-does-not-exist-in-the-vocabulary")
 	// Getting here, without a panic, is the proof: Record has no way to propagate it.
 }
 
@@ -196,7 +196,7 @@ func TestLastEventPerKeyKeepsTheMostRecentEvent(t *testing.T) {
 		t.Fatalf("LastEventPerKey: %v", err)
 	}
 	if !m[CounterReceived].Equal(last) {
-		t.Errorf("carimbo de recebidas = %v, quero %v (o carimbo e do ULTIMO evento)", m[CounterReceived], last)
+		t.Errorf("received's stamp = %v, want %v (the stamp is from the LAST event)", m[CounterReceived], last)
 	}
 }
 
@@ -209,10 +209,10 @@ func TestLastEventPerKeyCrossesTheDayBoundary(t *testing.T) {
 	today := time.Date(2026, 7, 26, 0, 1, 0, 0, time.UTC)
 
 	if err := s.IncrementCounter("lojinha", CounterDelivered, today); err != nil {
-		t.Fatalf("IncrementCounter (hoje): %v", err)
+		t.Fatalf("IncrementCounter (today): %v", err)
 	}
 	if err := s.IncrementCounter("lojinha", CounterDelivered, yesterday); err != nil {
-		t.Fatalf("IncrementCounter (ontem): %v", err)
+		t.Fatalf("IncrementCounter (yesterday): %v", err)
 	}
 
 	m, err := s.LastEventPerKey("lojinha")
@@ -220,7 +220,7 @@ func TestLastEventPerKeyCrossesTheDayBoundary(t *testing.T) {
 		t.Fatalf("LastEventPerKey: %v", err)
 	}
 	if !m[CounterDelivered].Equal(today) {
-		t.Errorf("carimbo de entregues = %v, quero %v — o MAX vale entre DIAS, nao so dentro de um",
+		t.Errorf("delivered's stamp = %v, want %v — the MAX holds ACROSS DAYS, not just within one",
 			m[CounterDelivered], today)
 	}
 }
@@ -240,7 +240,7 @@ func TestLastEventPerKeyInventsNoStampForAKeyWithNoEvent(t *testing.T) {
 		t.Fatalf("LastEventPerKey: %v", err)
 	}
 	if _, has := m[CounterSent]; has {
-		t.Errorf("chave %q ganhou carimbo sem nunca ter sido contada: %v", CounterSent, m[CounterSent])
+		t.Errorf("key %q got a stamp without ever having been counted: %v", CounterSent, m[CounterSent])
 	}
 }
 
@@ -259,7 +259,7 @@ func TestLastEventPerKeyHasNoSevenDayWindow(t *testing.T) {
 		t.Fatalf("LastEventPerKey: %v", err)
 	}
 	if !m[CounterReceived].Equal(oldTime) {
-		t.Errorf("carimbo de 20 dias atras = %v, quero %v — a janela de 7 dias nao pode corta-lo",
+		t.Errorf("stamp from 20 days ago = %v, want %v — the 7-day window cannot cut it off",
 			m[CounterReceived], oldTime)
 	}
 }
@@ -276,7 +276,7 @@ func TestLastEventPerKeySeparatesPerInstance(t *testing.T) {
 		t.Fatalf("LastEventPerKey: %v", err)
 	}
 	if len(m) != 0 {
-		t.Errorf("a instancia \"lojinha\" herdou carimbo de outra: %v", m)
+		t.Errorf("instance \"lojinha\" inherited a stamp from another one: %v", m)
 	}
 }
 
@@ -292,10 +292,10 @@ func TestSummarizeCountersJoinsTheTwoWindowsAndTheStamp(t *testing.T) {
 		t.Fatalf("IncrementCounter (hoje): %v", err)
 	}
 	if err := s.IncrementCounter("lojinha", CounterReceived, now.AddDate(0, 0, -3)); err != nil {
-		t.Fatalf("IncrementCounter (3 dias atras): %v", err)
+		t.Fatalf("IncrementCounter (3 days ago): %v", err)
 	}
 	if err := s.IncrementCounter("lojinha", CounterReceived, now.AddDate(0, 0, -10)); err != nil {
-		t.Fatalf("IncrementCounter (10 dias atras): %v", err)
+		t.Fatalf("IncrementCounter (10 days ago): %v", err)
 	}
 
 	r, err := s.SummarizeCounters("lojinha", now)
@@ -303,17 +303,17 @@ func TestSummarizeCountersJoinsTheTwoWindowsAndTheStamp(t *testing.T) {
 		t.Fatalf("SummarizeCounters: %v", err)
 	}
 	if r.Today[CounterReceived] != 1 {
-		t.Errorf("hoje = %d, quero 1", r.Today[CounterReceived])
+		t.Errorf("today = %d, want 1", r.Today[CounterReceived])
 	}
 	if r.Last7Days[CounterReceived] != 2 {
-		t.Errorf("ultimos 7 dias = %d, quero 2 — o evento de 10 dias atras fica de FORA",
+		t.Errorf("last 7 days = %d, want 2 — the event from 10 days ago is left OUT",
 			r.Last7Days[CounterReceived])
 	}
 	if !r.LastEvent[CounterReceived].Equal(now) {
-		t.Errorf("carimbo = %v, quero %v", r.LastEvent[CounterReceived], now)
+		t.Errorf("stamp = %v, want %v", r.LastEvent[CounterReceived], now)
 	}
 	if len(r.Series) != ShortSeriesDays || len(r.ShortSeries) != ShortSeriesDays {
-		t.Errorf("sem janela pedida: Series tem %d e ShortSeries tem %d entradas, quero %d nas duas",
+		t.Errorf("with no requested window: Series has %d and ShortSeries has %d entries, want %d in both",
 			len(r.Series), len(r.ShortSeries), ShortSeriesDays)
 	}
 }
@@ -357,10 +357,10 @@ func TestTheThirtyDaySeriesComesFromDataAlreadyInTheDatabase(t *testing.T) {
 		t.Fatalf("SummarizeCountersWithSeries: %v", err)
 	}
 	if len(r.Series) != 30 {
-		t.Fatalf("a serie tem %d entradas, quero 30", len(r.Series))
+		t.Fatalf("the series has %d entries, want 30", len(r.Series))
 	}
 	if want := dayOf(now.AddDate(0, 0, -29)); r.Series[0].Day != want {
-		t.Errorf("o dia mais velho da serie e %q, quero %q (do mais velho para o mais novo)", r.Series[0].Day, want)
+		t.Errorf("the series' oldest day is %q, want %q (oldest to newest)", r.Series[0].Day, want)
 	}
 	inTheSeries := map[string]int{}
 	for _, d := range r.Series {
@@ -369,7 +369,7 @@ func TestTheThirtyDaySeriesComesFromDataAlreadyInTheDatabase(t *testing.T) {
 	for _, d := range ago {
 		day := dayOf(now.AddDate(0, 0, -d))
 		if inTheSeries[day] != 1 {
-			t.Errorf("o evento de %d dia(s) atras (%s) conta %d na serie de 30 dias, quero 1",
+			t.Errorf("the event from %d day(s) ago (%s) counts %d in the 30-day series, want 1",
 				d, day, inTheSeries[day])
 		}
 	}
@@ -395,7 +395,7 @@ func TestTheOldestDayOfTheMaximumWindowSurvivesThePurge(t *testing.T) {
 	// And one day PAST the deadline, which has to disappear: without it,
 	// a DELETE that deleted nothing would pass as "the data survived".
 	if err := s.IncrementCounter("lojinha", CounterReceived, now.AddDate(0, 0, -(DefaultRetentionDays+1))); err != nil {
-		t.Fatalf("IncrementCounter (alem do prazo): %v", err)
+		t.Fatalf("IncrementCounter (past the deadline): %v", err)
 	}
 
 	n, err := s.PurgeCounters(now.AddDate(0, 0, -DefaultRetentionDays))
@@ -403,7 +403,7 @@ func TestTheOldestDayOfTheMaximumWindowSurvivesThePurge(t *testing.T) {
 		t.Fatalf("PurgeCounters: %v", err)
 	}
 	if n != 1 {
-		t.Fatalf("a purga apagou %d linha(s), quero 1 (so a que passou do prazo)", n)
+		t.Fatalf("the purge deleted %d row(s), want 1 (only the one past the deadline)", n)
 	}
 
 	r, err := s.SummarizeCountersWithSeries("lojinha", now, DefaultRetentionDays)
@@ -411,10 +411,10 @@ func TestTheOldestDayOfTheMaximumWindowSurvivesThePurge(t *testing.T) {
 		t.Fatalf("SummarizeCountersWithSeries: %v", err)
 	}
 	if len(r.Series) != DefaultRetentionDays {
-		t.Fatalf("a serie tem %d entradas, quero %d", len(r.Series), DefaultRetentionDays)
+		t.Fatalf("the series has %d entries, want %d", len(r.Series), DefaultRetentionDays)
 	}
 	if firstOne := r.Series[0]; firstOne.Day != dayOf(oldestOfTheWindow) || firstOne.N[CounterReceived] != 1 {
-		t.Errorf("o dia mais velho da janela maxima e %q com %d evento(s), quero %q com 1 — o teto passou do que a purga guarda",
+		t.Errorf("the maximum window's oldest day is %q with %d event(s), want %q with 1 — the ceiling went past what the purge keeps",
 			firstOne.Day, firstOne.N[CounterReceived], dayOf(oldestOfTheWindow))
 	}
 }
@@ -438,12 +438,12 @@ func TestShortSeriesIsTheSevenDaySuffixOfTheRequestedWindow(t *testing.T) {
 		t.Fatalf("SummarizeCountersWithSeries: %v", err)
 	}
 	if len(r.ShortSeries) != ShortSeriesDays {
-		t.Fatalf("ShortSeries tem %d entradas com janela de 30, quero %d", len(r.ShortSeries), ShortSeriesDays)
+		t.Fatalf("ShortSeries has %d entries with a 30-day window, want %d", len(r.ShortSeries), ShortSeriesDays)
 	}
 	suffix := r.Series[len(r.Series)-ShortSeriesDays:]
 	for i, d := range r.ShortSeries {
 		if d.Day != suffix[i].Day || d.N[CounterDelivered] != suffix[i].N[CounterDelivered] {
-			t.Errorf("ShortSeries[%d] = (%s, %d) e o sufixo de Series = (%s, %d) — as duas saem da MESMA leitura",
+			t.Errorf("ShortSeries[%d] = (%s, %d) and Series' suffix = (%s, %d) — the two come from the SAME read",
 				i, d.Day, d.N[CounterDelivered], suffix[i].Day, suffix[i].N[CounterDelivered])
 		}
 	}
@@ -454,7 +454,7 @@ func TestShortSeriesIsTheSevenDaySuffixOfTheRequestedWindow(t *testing.T) {
 		sum += d.N[CounterDelivered]
 	}
 	if sum != r.Last7Days[CounterDelivered] {
-		t.Errorf("soma da ShortSeries = %d, Last7Days = %d — as duas contas tem de bater",
+		t.Errorf("ShortSeries sum = %d, Last7Days = %d — the two accounts have to match",
 			sum, r.Last7Days[CounterDelivered])
 	}
 	// And a window SMALLER than 7 doesn't shrink the short series: it's a living contract.
@@ -463,7 +463,7 @@ func TestShortSeriesIsTheSevenDaySuffixOfTheRequestedWindow(t *testing.T) {
 		t.Fatalf("SummarizeCountersWithSeries(3): %v", err)
 	}
 	if len(shortR.Series) != 3 || len(shortR.ShortSeries) != ShortSeriesDays {
-		t.Errorf("janela de 3 dias: Series tem %d e ShortSeries tem %d, quero 3 e %d",
+		t.Errorf("3-day window: Series has %d and ShortSeries has %d, want 3 and %d",
 			len(shortR.Series), len(shortR.ShortSeries), ShortSeriesDays)
 	}
 }
@@ -494,11 +494,11 @@ func TestCounterRetentionDaysReadsTheEnvironment(t *testing.T) {
 		{"-7", DefaultRetentionDays},
 	} {
 		if has := CounterRetentionDays(env(c.value)); has != c.want {
-			t.Errorf("%s=%q -> %d dias, quero %d", CounterRetentionEnvVar, c.value, has, c.want)
+			t.Errorf("%s=%q -> %d days, want %d", CounterRetentionEnvVar, c.value, has, c.want)
 		}
 	}
 	if has := CounterRetentionDays(nil); has != DefaultRetentionDays {
-		t.Errorf("sem ambiente nenhum -> %d dias, quero %d", has, DefaultRetentionDays)
+		t.Errorf("with no environment at all -> %d days, want %d", has, DefaultRetentionDays)
 	}
 }
 
@@ -514,16 +514,16 @@ func TestCounterRetentionDaysAcceptsNewNameAndItWins(t *testing.T) {
 		vars map[string]string
 		want int
 	}{
-		{"so a nova", map[string]string{CounterRetentionEnvVarNew: "12"}, 12},
-		{"so a velha", map[string]string{CounterRetentionEnvVar: "18"}, 18},
-		{"as duas: a NOVA vence", map[string]string{
+		{"only the new one", map[string]string{CounterRetentionEnvVarNew: "12"}, 12},
+		{"only the old one", map[string]string{CounterRetentionEnvVar: "18"}, 18},
+		{"both: the NEW one wins", map[string]string{
 			CounterRetentionEnvVarNew: "12", CounterRetentionEnvVar: "18",
 		}, 12},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			if has := CounterRetentionDays(vars(c.vars)); has != c.want {
-				t.Errorf("CounterRetentionDays = %d, quero %d", has, c.want)
+				t.Errorf("CounterRetentionDays = %d, want %d", has, c.want)
 			}
 		})
 	}
@@ -537,10 +537,10 @@ func TestCounterRetentionDaysWarnsOnlyWhenOldNameWins(t *testing.T) {
 		vars     map[string]string
 		wantWarn bool
 	}{
-		{"so a velha: avisa", map[string]string{CounterRetentionEnvVar: "10"}, true},
-		{"so a nova: fica calado", map[string]string{CounterRetentionEnvVarNew: "10"}, false},
-		{"nenhuma: fica calado", map[string]string{}, false},
-		{"as duas: a nova venceu, fica calado", map[string]string{
+		{"only the old one: warns", map[string]string{CounterRetentionEnvVar: "10"}, true},
+		{"only the new one: stays silent", map[string]string{CounterRetentionEnvVarNew: "10"}, false},
+		{"neither: stays silent", map[string]string{}, false},
+		{"both: the new one won, stays silent", map[string]string{
 			CounterRetentionEnvVarNew: "10", CounterRetentionEnvVar: "20",
 		}, false},
 	}
@@ -552,9 +552,9 @@ func TestCounterRetentionDaysWarnsOnlyWhenOldNameWins(t *testing.T) {
 			CounterRetentionDays(func(k string) string { return c.vars[k] })
 			log.SetOutput(original)
 			warned := strings.Contains(buf.String(), CounterRetentionEnvVar) &&
-				strings.Contains(buf.String(), "obsoleta")
+				strings.Contains(buf.String(), "deprecated")
 			if warned != c.wantWarn {
-				t.Errorf("aviso = %v (log: %q), quero %v", warned, buf.String(), c.wantWarn)
+				t.Errorf("warned = %v (log: %q), want %v", warned, buf.String(), c.wantWarn)
 			}
 		})
 	}

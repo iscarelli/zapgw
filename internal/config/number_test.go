@@ -49,10 +49,10 @@ func TestANumberNeverObservedIsNotAnError(t *testing.T) {
 
 	n := readNumber(t, s)
 	if n.Quality.Observed() || n.Limit.Observed() {
-		t.Errorf("n = %+v, quero tudo nao-observado", n)
+		t.Errorf("n = %+v, want everything unobserved", n)
 	}
 	if !n.CheckedAt.IsZero() {
-		t.Errorf("CheckedAt = %v, quero zero — ninguem tentou medir ainda", n.CheckedAt)
+		t.Errorf("CheckedAt = %v, want zero — nobody has tried to measure yet", n.CheckedAt)
 	}
 }
 
@@ -70,16 +70,16 @@ func TestTheNEWERWebhookBeatsTheOLDERMeasurement(t *testing.T) {
 
 	n := readNumber(t, s)
 	if n.Limit.Value != "TIER_50" {
-		t.Errorf("Limit = %q, quero TIER_50 — o webhook chegou DEPOIS da medicao e vence. "+
-			"Um rebaixamento de tier que o gateway ignora e' o aviso que so chega quando o envio ja falhou",
+		t.Errorf("Limit = %q, want TIER_50 — the webhook arrived AFTER the measurement and wins. "+
+			"A tier downgrade the gateway ignores is the warning that only arrives once the send has already failed",
 			n.Limit.Value)
 	}
 	if n.Limit.Source != SourceWebhook {
-		t.Errorf("Source = %q, quero %q — o consumidor precisa saber de onde veio o numero que mudou",
+		t.Errorf("Source = %q, want %q — the consumer needs to know where the changed number came from",
 			n.Limit.Source, SourceWebhook)
 	}
 	if !n.Limit.ObservedAt.Equal(after) {
-		t.Errorf("ObservedAt = %v, quero %v", n.Limit.ObservedAt, after)
+		t.Errorf("ObservedAt = %v, want %v", n.Limit.ObservedAt, after)
 	}
 }
 
@@ -95,7 +95,7 @@ func TestTheNEWERMeasurementBeatsTheOLDERWebhook(t *testing.T) {
 
 	n := readNumber(t, s)
 	if n.Limit.Value != "TIER_1K" || n.Limit.Source != SourceMeasurement {
-		t.Errorf("(%q, %q), quero (TIER_1K, %q) — nao ha fonte preferida, vence a mais recente",
+		t.Errorf("(%q, %q), want (TIER_1K, %q) — there is no preferred source, the most recent one wins",
 			n.Limit.Value, n.Limit.Source, SourceMeasurement)
 	}
 }
@@ -109,7 +109,7 @@ func TestALATEWebhookDoesNotRollBackANewerValue(t *testing.T) {
 	update(t, s, NumberUpdate{Limit: "TIER_50", Source: SourceWebhook, When: before})
 
 	if n := readNumber(t, s); n.Limit.Value != "TIER_1K" {
-		t.Errorf("Limit = %q, quero TIER_1K — observacao ATRASADA nao pode desfazer uma mais nova",
+		t.Errorf("Limit = %q, want TIER_1K — a DELAYED observation cannot undo a newer one",
 			n.Limit.Value)
 	}
 }
@@ -125,10 +125,10 @@ func TestAWebhookDoesNOTStampCheckedAt(t *testing.T) {
 
 	n := readNumber(t, s)
 	if !n.CheckedAt.IsZero() {
-		t.Errorf("CheckedAt = %v depois de SO um webhook, quero zero", n.CheckedAt)
+		t.Errorf("CheckedAt = %v after ONLY a webhook, want zero", n.CheckedAt)
 	}
 	if !n.Limit.Observed() {
-		t.Error("o webhook nao gravou o limite")
+		t.Error("the webhook did not record the limit")
 	}
 }
 
@@ -144,14 +144,14 @@ func TestAnEMPTYMeasurementStampsTheCheckWithoutErasingAnything(t *testing.T) {
 
 	n := readNumber(t, s)
 	if n.Quality.Value != "GREEN" || n.Limit.Value != "TIER_250" {
-		t.Errorf("(%q, %q), quero (GREEN, TIER_250) — medicao sem os campos NAO apaga o que ja se sabia",
+		t.Errorf("(%q, %q), want (GREEN, TIER_250) — a measurement with no fields does NOT erase what was already known",
 			n.Quality.Value, n.Limit.Value)
 	}
 	if !n.CheckedAt.Equal(after) {
-		t.Errorf("CheckedAt = %v, quero %v — a TENTATIVA aconteceu e tem de aparecer", n.CheckedAt, after)
+		t.Errorf("CheckedAt = %v, want %v — the ATTEMPT happened and has to show up", n.CheckedAt, after)
 	}
 	if !n.Quality.ObservedAt.Equal(before) {
-		t.Errorf("ObservedAt da qualidade = %v, quero %v — o valor e' velho e o carimbo dele tem de dizer isso",
+		t.Errorf("quality's ObservedAt = %v, want %v — the value is old and its stamp has to say so",
 			n.Quality.ObservedAt, before)
 	}
 }
@@ -168,7 +168,7 @@ func TestAWebhookDoesNOTTouchTheQuality(t *testing.T) {
 
 	n := readNumber(t, s)
 	if n.Quality.Value != "YELLOW" || n.Quality.Source != SourceMeasurement {
-		t.Errorf("qualidade = (%q, %q), quero (YELLOW, %q)", n.Quality.Value, n.Quality.Source, SourceMeasurement)
+		t.Errorf("quality = (%q, %q), want (YELLOW, %q)", n.Quality.Value, n.Quality.Source, SourceMeasurement)
 	}
 }
 
@@ -179,12 +179,12 @@ func TestAnUnknownSourceIsRefused(t *testing.T) {
 	s := testNumber(t)
 
 	err := s.UpdateNumberAtMeta("lojinha", NumberUpdate{
-		Limit: "TIER_250", Source: "palpite", When: before})
+		Limit: "TIER_250", Source: "guess", When: before})
 	if !errors.Is(err, ErrUnknownNumberSource) {
-		t.Fatalf("err = %v, quero ErrUnknownNumberSource", err)
+		t.Fatalf("err = %v, want ErrUnknownNumberSource", err)
 	}
 	if n := readNumber(t, s); n.Limit.Observed() {
-		t.Errorf("gravou assim mesmo: %+v", n.Limit)
+		t.Errorf("wrote it anyway: %+v", n.Limit)
 	}
 }
 
@@ -204,5 +204,5 @@ func TestTheNumberObserverOnlyLogsWhenTheStoreFails(t *testing.T) {
 type failingNumberStore struct{}
 
 func (failingNumberStore) UpdateNumberAtMeta(string, NumberUpdate) error {
-	return errors.New("banco fora do ar")
+	return errors.New("database is down")
 }

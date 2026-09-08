@@ -39,13 +39,13 @@ func TestCreateInstagramInstanceKeepsAndReturnsIgID(t *testing.T) {
 		t.Fatalf("FindInstance: %v", err)
 	}
 	if i.Type != TypeInstagram {
-		t.Errorf("Type = %q, quero %q", i.Type, TypeInstagram)
+		t.Errorf("Type = %q, want %q", i.Type, TypeInstagram)
 	}
 	if i.IgID != "IGID_SINTETICO_1" {
-		t.Errorf("IgID = %q, quero IGID_SINTETICO_1", i.IgID)
+		t.Errorf("IgID = %q, want IGID_SINTETICO_1", i.IgID)
 	}
 	if i.WabaID != "" || i.PhoneNumberID != "" {
-		t.Errorf("instancia Instagram nao deveria ter waba_id/phone_number_id: %q/%q", i.WabaID, i.PhoneNumberID)
+		t.Errorf("an Instagram instance should not have waba_id/phone_number_id: %q/%q", i.WabaID, i.PhoneNumberID)
 	}
 }
 
@@ -64,10 +64,10 @@ func TestCreateWhatsAppInstanceWithNoTypeNormalizesToWhatsApp(t *testing.T) {
 		t.Fatalf("FindInstance: %v", err)
 	}
 	if i.Type != TypeWhatsApp {
-		t.Errorf("Type = %q, quero %q (normalizado a partir de \"\")", i.Type, TypeWhatsApp)
+		t.Errorf("Type = %q, want %q (normalized from \"\")", i.Type, TypeWhatsApp)
 	}
 	if i.IgID != "" {
-		t.Errorf("IgID = %q, quero vazio numa instancia WhatsApp", i.IgID)
+		t.Errorf("IgID = %q, want empty on a WhatsApp instance", i.IgID)
 	}
 }
 
@@ -88,7 +88,7 @@ func TestCreateInstagramInstanceWritesTokenSetAt(t *testing.T) {
 		t.Fatalf("FindInstance: %v", err)
 	}
 	if want := birth.Format(time.RFC3339); i.TokenSetAt != want {
-		t.Errorf("TokenSetAt = %q, quero %q", i.TokenSetAt, want)
+		t.Errorf("TokenSetAt = %q, want %q", i.TokenSetAt, want)
 	}
 }
 
@@ -109,10 +109,10 @@ func TestRenewInstagramTokenAtWritesTheNewTokenAndRestartsTheValidity(t *testing
 		t.Fatalf("FindInstance: %v", err)
 	}
 	if i.SendToken != "token-novo-da-meta" {
-		t.Errorf("SendToken = %q, quero o token novo", i.SendToken)
+		t.Errorf("SendToken = %q, want the new token", i.SendToken)
 	}
 	if want := renewedAt.Format(time.RFC3339); i.TokenSetAt != want {
-		t.Errorf("TokenSetAt = %q, quero %q (reiniciado pela renovacao)", i.TokenSetAt, want)
+		t.Errorf("TokenSetAt = %q, want %q (restarted by the renewal)", i.TokenSetAt, want)
 	}
 
 	r, err := s.SummarizeInstance("insta-loja")
@@ -120,7 +120,7 @@ func TestRenewInstagramTokenAtWritesTheNewTokenAndRestartsTheValidity(t *testing
 		t.Fatalf("SummarizeInstance: %v", err)
 	}
 	if want := renewedAt.Format(time.RFC3339); r.TokenRenewedAt != want {
-		t.Errorf("TokenRenewedAt = %q, quero %q", r.TokenRenewedAt, want)
+		t.Errorf("TokenRenewedAt = %q, want %q", r.TokenRenewedAt, want)
 	}
 }
 
@@ -136,7 +136,7 @@ func TestRenewInstagramTokenAtNeverTouchesAWhatsappInstance(t *testing.T) {
 
 	err := s.RenewInstagramTokenAt("lojinha", "token-que-nao-deveria-entrar", time.Now())
 	if !errors.Is(err, ErrInstanceNotFound) {
-		t.Fatalf("erro = %v, quero ErrInstanceNotFound", err)
+		t.Fatalf("err = %v, want ErrInstanceNotFound", err)
 	}
 
 	i, err := s.FindInstance("lojinha")
@@ -144,7 +144,7 @@ func TestRenewInstagramTokenAtNeverTouchesAWhatsappInstance(t *testing.T) {
 		t.Fatalf("FindInstance: %v", err)
 	}
 	if i.SendToken != "token-envio-de-teste" {
-		t.Errorf("SendToken da instancia WHATSAPP mudou para %q — RenewInstagramTokenAt vazou a guarda de tipo", i.SendToken)
+		t.Errorf("SendToken of the WHATSAPP instance changed to %q — RenewInstagramTokenAt leaked the type guard", i.SendToken)
 	}
 }
 
@@ -154,30 +154,30 @@ func TestValidateInstanceType(t *testing.T) {
 		typ, wabaID, phoneNumberID, number, igID string
 		want                                     string // expected normalized type, "" if an error is expected
 	}{
-		{"vazio normaliza para whatsapp", "", "", "", "", "", TypeWhatsApp},
-		{"whatsapp explicito passa", TypeWhatsApp, "W1", "P1", "5532999990000", "", TypeWhatsApp},
-		{"whatsapp com ig_id e recusado", TypeWhatsApp, "", "", "", "IG1", ""},
-		{"instagram valido passa", TypeInstagram, "", "", "", "IG1", TypeInstagram},
-		{"instagram sem ig_id e recusado", TypeInstagram, "", "", "", "", ""},
-		{"instagram com waba_id e recusado", TypeInstagram, "W1", "", "", "IG1", ""},
-		{"instagram com phone_number_id e recusado", TypeInstagram, "", "P1", "", "IG1", ""},
-		{"instagram com numero_exibido e recusado", TypeInstagram, "", "", "5532999990000", "IG1", ""},
-		{"tipo desconhecido e recusado", "telegram", "", "", "", "", ""},
+		{"empty normalizes to whatsapp", "", "", "", "", "", TypeWhatsApp},
+		{"explicit whatsapp passes", TypeWhatsApp, "W1", "P1", "5532999990000", "", TypeWhatsApp},
+		{"whatsapp with ig_id is rejected", TypeWhatsApp, "", "", "", "IG1", ""},
+		{"valid instagram passes", TypeInstagram, "", "", "", "IG1", TypeInstagram},
+		{"instagram without ig_id is rejected", TypeInstagram, "", "", "", "", ""},
+		{"instagram with waba_id is rejected", TypeInstagram, "W1", "", "", "IG1", ""},
+		{"instagram with phone_number_id is rejected", TypeInstagram, "", "P1", "", "IG1", ""},
+		{"instagram with displayed number is rejected", TypeInstagram, "", "", "5532999990000", "IG1", ""},
+		{"unknown type is rejected", "telegram", "", "", "", "", ""},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			typ, err := ValidateInstanceType(c.typ, c.wabaID, c.phoneNumberID, c.number, c.igID)
 			if c.want == "" {
 				if err == nil {
-					t.Fatalf("quero erro, tipo normalizado saiu %q", typ)
+					t.Fatalf("want an error, normalized type came out %q", typ)
 				}
 				return
 			}
 			if err != nil {
-				t.Fatalf("erro inesperado: %v", err)
+				t.Fatalf("unexpected error: %v", err)
 			}
 			if typ != c.want {
-				t.Errorf("tipo normalizado = %q, quero %q", typ, c.want)
+				t.Errorf("normalized type = %q, want %q", typ, c.want)
 			}
 		})
 	}

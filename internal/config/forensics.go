@@ -80,11 +80,11 @@ func (c FailoverComparison) Lost() bool {
 func openReadOnly(path string) (*sql.DB, error) {
 	db, err := sql.Open("sqlite", path+"?mode=ro&_pragma=query_only(1)&_pragma=busy_timeout(5000)")
 	if err != nil {
-		return nil, fmt.Errorf("config: abrir %s somente leitura: %w", path, err)
+		return nil, fmt.Errorf("config: open %s read-only: %w", path, err)
 	}
 	if err := db.Ping(); err != nil {
 		_ = db.Close()
-		return nil, fmt.Errorf("config: %s nao respondeu: %w", path, err)
+		return nil, fmt.Errorf("config: %s did not respond: %w", path, err)
 	}
 	return db, nil
 }
@@ -92,7 +92,7 @@ func openReadOnly(path string) (*sql.DB, error) {
 func readIdempotency(db *sql.DB) (map[string]SendAtRisk, error) {
 	rows, err := db.Query(`SELECT consumidor, chave, wa_message_id, criado_em FROM idempotencia`)
 	if err != nil {
-		return nil, fmt.Errorf("config: ler idempotencia: %w", err)
+		return nil, fmt.Errorf("config: read idempotencia: %w", err)
 	}
 	defer func() { _ = rows.Close() }()
 
@@ -100,12 +100,12 @@ func readIdempotency(db *sql.DB) (map[string]SendAtRisk, error) {
 	for rows.Next() {
 		var e SendAtRisk
 		if err := rows.Scan(&e.Consumer, &e.Key, &e.Wamid, &e.CreatedAt); err != nil {
-			return nil, fmt.Errorf("config: ler linha de idempotencia: %w", err)
+			return nil, fmt.Errorf("config: read idempotencia row: %w", err)
 		}
 		byKey[e.Consumer+"\x00"+e.Key] = e
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("config: percorrer idempotencia: %w", err)
+		return nil, fmt.Errorf("config: iterate idempotencia: %w", err)
 	}
 	return byKey, nil
 }
@@ -132,11 +132,11 @@ func CompareFailover(oldPath, currentPath string) (FailoverComparison, error) {
 
 	old, err := readIdempotency(oldDB)
 	if err != nil {
-		return FailoverComparison{}, fmt.Errorf("banco antigo (%s): %w", oldPath, err)
+		return FailoverComparison{}, fmt.Errorf("old database (%s): %w", oldPath, err)
 	}
 	current, err := readIdempotency(currentDB)
 	if err != nil {
-		return FailoverComparison{}, fmt.Errorf("banco atual (%s): %w", currentPath, err)
+		return FailoverComparison{}, fmt.Errorf("current database (%s): %w", currentPath, err)
 	}
 
 	c := FailoverComparison{ReadInOld: len(old), ReadInCurrent: len(current)}
