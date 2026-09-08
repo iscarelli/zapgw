@@ -1,4 +1,4 @@
-// `grafo-falso` — a FAKE Graph API, for the lab.
+// `fakegraph` — a FAKE Graph API, for the lab.
 //
 // WHY IT EXISTS (T-071): a LAB instance has no number at Meta, and the only path
 // to `ativo = 1` is `zapgw fumaca`, which demands a successful send. Up to here,
@@ -14,7 +14,7 @@
 // full why is in cmd/zapgw/smoke.go, next to the guarantee it protects.
 //
 // THIS BINARY DOES NOT GO TO PRODUCTION, and not by convention:
-// `implanta/deploy.sh` builds `./cmd/zapgw`, only it. Nothing here changes the
+// `deploy/deploy.sh` builds `./cmd/zapgw`, only it. Nothing here changes the
 // gateway binary — there is no "test mode" flag anywhere in it.
 //
 // IT CANNOT PRODUCE A FALSE POSITIVE, and that is what makes it acceptable: what
@@ -116,7 +116,7 @@ func main() {
 		// Refuse here, rather than ignore: a mistyped value that got ignored would
 		// make the lab run the HAPPY path while whoever is operating expects the
 		// failure path — and the resulting "it passed" would be a lie.
-		log.Printf("grafo-falso: --falha-de-template=%q does not exist (I know: %q, %q, %q, %q)",
+		log.Printf("fakegraph: --falha-de-template=%q does not exist (I know: %q, %q, %q, %q)",
 			*templateFailure, failTemplateNone, failTemplateCreated,
 			failTemplateNotCreated, failTemplateCatalogToo)
 		os.Exit(2)
@@ -133,25 +133,25 @@ func main() {
 	// to find out in one line that it is not Meta — a silent server on 9090 is
 	// exactly the kind of thing someone assumes is production.
 	log.SetFlags(log.Ltime)
-	log.Printf("grafo-falso: FAKE Graph API at http://%s — this is not Meta, it delivers no message to anyone", address)
-	log.Printf("grafo-falso: point the lab at it with  ZAPGW_GRAPH_BASE=http://%s", address)
+	log.Printf("fakegraph: FAKE Graph API at http://%s — this is not Meta, it delivers no message to anyone", address)
+	log.Printf("fakegraph: point the lab at it with  ZAPGW_GRAPH_BASE=http://%s", address)
 	if g.refuseToken {
-		log.Printf("grafo-falso: --recusar-token ON: the GET answers 401 (token revoked)")
+		log.Printf("fakegraph: --recusar-token ON: the GET answers 401 (token revoked)")
 	}
 	if g.refuseSend {
-		log.Printf("grafo-falso: --recusar-envio ON: the POST answers 400 (send refused)")
+		log.Printf("fakegraph: --recusar-envio ON: the POST answers 400 (send refused)")
 	}
 	if g.refuseNumberFields {
-		log.Printf("grafo-falso: --recusar-campos-do-numero ON: the GET with `fields=` answers 400; " +
+		log.Printf("fakegraph: --recusar-campos-do-numero ON: the GET with `fields=` answers 400; " +
 			"the clean GET stays 200")
 	}
 	if g.templateFailure != failTemplateNone {
-		log.Printf("grafo-falso: --falha-de-template=%s ON: the template POST DIES with no answer "+
+		log.Printf("fakegraph: --falha-de-template=%s ON: the template POST DIES with no answer "+
 			"(transport failure, as on 2026-07-28)", g.templateFailure)
 	}
 
 	if err := http.ListenAndServe(address, g.routes()); err != nil {
-		log.Printf("grafo-falso: server crashed: %v", err)
+		log.Printf("fakegraph: server crashed: %v", err)
 		os.Exit(1)
 	}
 }
@@ -167,13 +167,13 @@ func main() {
 func (g *fakeGraph) routes() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		log.Printf("grafo-falso: %s %s", r.Method, r.URL.Path)
+		log.Printf("fakegraph: %s %s", r.Method, r.URL.Path)
 
 		// The token goes in the HEADER. Without this refusal, a day on which the
 		// gateway stopped sending Authorization would go unnoticed in the lab and
 		// would only show up against Meta.
 		if r.Header.Get("Authorization") == "" {
-			g.writeError(w, http.StatusUnauthorized, 190, "grafo-falso: request with no Authorization")
+			g.writeError(w, http.StatusUnauthorized, 190, "fakegraph: request with no Authorization")
 			return
 		}
 
@@ -199,7 +199,7 @@ func (g *fakeGraph) routes() http.Handler {
 			g.checkCredential(w, r)
 			return
 		}
-		g.writeError(w, http.StatusNotFound, 100, "grafo-falso: route the Graph API does not have: "+r.Method+" "+r.URL.Path)
+		g.writeError(w, http.StatusNotFound, 100, "fakegraph: route the Graph API does not have: "+r.Method+" "+r.URL.Path)
 	})
 	return mux
 }
@@ -235,7 +235,7 @@ func (g *fakeGraph) checkCredential(w http.ResponseWriter, r *http.Request) {
 		// "Meta refused for good", and that is why the watcher reconfirms with the
 		// clean GET before declaring `recusado`.
 		g.writeError(w, http.StatusBadRequest, 100,
-			"grafo-falso: (#100) Tried accessing nonexisting field on node type WhatsAppBusinessPhoneNumber")
+			"fakegraph: (#100) Tried accessing nonexisting field on node type WhatsAppBusinessPhoneNumber")
 		return
 	}
 
@@ -267,7 +267,7 @@ func (g *fakeGraph) checkCredential(w http.ResponseWriter, r *http.Request) {
 func (g *fakeGraph) postToMessages(w http.ResponseWriter, r *http.Request) {
 	raw, err := io.ReadAll(io.LimitReader(r.Body, bodyCap))
 	if err != nil {
-		g.writeError(w, http.StatusBadRequest, 100, "grafo-falso: unreadable POST body")
+		g.writeError(w, http.StatusBadRequest, 100, "fakegraph: unreadable POST body")
 		return
 	}
 	var body struct {
@@ -302,7 +302,7 @@ func (g *fakeGraph) send(w http.ResponseWriter) {
 		// THE SAME error shape as Meta's (error.message + error.code): what
 		// classifies is internal/meta.ClassifyResponse, and a body in another
 		// shape would prove an error path production does not have.
-		g.writeError(w, http.StatusBadRequest, 131000, "grafo-falso: send refused on request (--recusar-envio)")
+		g.writeError(w, http.StatusBadRequest, 131000, "fakegraph: send refused on request (--recusar-envio)")
 		return
 	}
 	// A UNIQUE id per send. A fixed id would pass just the same today, but it
@@ -330,7 +330,7 @@ func (g *fakeGraph) send(w http.ResponseWriter) {
 func (g *fakeGraph) createTemplate(w http.ResponseWriter, r *http.Request) {
 	raw, err := io.ReadAll(io.LimitReader(r.Body, bodyCap))
 	if err != nil {
-		g.writeError(w, http.StatusBadRequest, 100, "grafo-falso: unreadable POST body")
+		g.writeError(w, http.StatusBadRequest, 100, "fakegraph: unreadable POST body")
 		return
 	}
 	var p struct {
@@ -339,7 +339,7 @@ func (g *fakeGraph) createTemplate(w http.ResponseWriter, r *http.Request) {
 		Language string `json:"language"`
 	}
 	if err := json.Unmarshal(raw, &p); err != nil || strings.TrimSpace(p.Name) == "" {
-		g.writeError(w, http.StatusBadRequest, 100, "grafo-falso: template creation with no `name`")
+		g.writeError(w, http.StatusBadRequest, 100, "fakegraph: template creation with no `name`")
 		return
 	}
 
@@ -363,7 +363,7 @@ func (g *fakeGraph) createTemplate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if g.templateFailure != failTemplateNone {
-		log.Printf("grafo-falso: dropping the template POST's connection WITH NO answer (--falha-de-template=%s)",
+		log.Printf("fakegraph: dropping the template POST's connection WITH NO answer (--falha-de-template=%s)",
 			g.templateFailure)
 		panic(http.ErrAbortHandler)
 	}
@@ -384,7 +384,7 @@ func (g *fakeGraph) createTemplate(w http.ResponseWriter, r *http.Request) {
 // prove is the RE-READ after the ambiguous creation.
 func (g *fakeGraph) listTemplates(w http.ResponseWriter) {
 	if g.templateFailure == failTemplateCatalogToo {
-		log.Printf("grafo-falso: dropping the catalog GET too (--falha-de-template=%s)", g.templateFailure)
+		log.Printf("fakegraph: dropping the catalog GET too (--falha-de-template=%s)", g.templateFailure)
 		panic(http.ErrAbortHandler)
 	}
 	g.mu.Lock()

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# valida-lideranca.sh — proves, with the REAL BINARY actually coming up, that
+# check-leadership.sh — proves, with the REAL BINARY actually coming up, that
 # the sending singleton guard (internal/outbound/leadership.go) is in the
 # path and obeys its configuration.
 #
@@ -29,7 +29,7 @@
 # no one mistakes it for a credential). The whole directory is deleted on exit.
 #
 # Usage:
-#   implanta/valida-lideranca.sh
+#   deploy/check-leadership.sh
 #
 # Per-environment adjustments:
 #   ZAPGW_VALIDA_PORTA     18099   (loopback port for the test gateway)

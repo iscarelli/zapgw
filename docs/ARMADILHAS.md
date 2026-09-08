@@ -214,7 +214,7 @@ context** (the creation one may be dead from an exhausted deadline, which is one
 there) and answers `201` if it found it, `INCONCLUSIVO` if it did not, and `502` with **both failures
 logged** if the reread also fell over. The reread is a `GET` and nothing else —
 `TestRereadDoesNOTCreateAgain` counts the POSTs reaching Meta across the three outcomes and requires
-exactly **one**. `cmd/grafo-falso` gained `--falha-de-template={criado,nao-criado,catalogo-tambem}`, which
+exactly **one**. `cmd/fakegraph` gained `--falha-de-template={criado,nao-criado,catalogo-tambem}`, which
 drops the POST connection **without a response** (`panic(http.ErrAbortHandler)`): a `500` would be a
 RESPONSE, and a response is something Meta classifies — the `desconhecido` outcome is born from its
 absence.*
@@ -1700,7 +1700,7 @@ log line. Zero cost on the happy path. Guards:
 `TestWatchdogDoesNOTRefuseTheTokenWhenGraphRefusesOnlyTheFields` and
 `TestWatchdogKEEPSRefusingWhenTheTokenIsReallyRefused` (`internal/outbound/number_test.go`), the second because
 without it, deleting the credential check entirely would pass green. In the laboratory,
-`grafo-falso --recusar-campos-do-numero` reproduces the outcome with the real binary.
+`fakegraph --recusar-campos-do-numero` reproduces the outcome with the real binary.
 
 **Marking a message as read also marks the PREVIOUS ones in that conversation** — *"When you mark a message as read,
 the API also marks earlier messages in the conversation as read"* (both pages above, 2026-07-28). It is not a
@@ -2191,7 +2191,7 @@ gateway; without a key, the "anonymized" data opens with a script.* See `interna
 ## Tests
 
 🔥 **`-ldflags -X` FOR A SYMBOL THAT DOES NOT EXIST IS SILENTLY IGNORED — and it is the whole deploy lying with a
-green push (2026-08-30, T-172 batch 5).** `implanta/deploy.sh:286` injects the version into the binary with
+green push (2026-08-30, T-172 batch 5).** `deploy/deploy.sh:286` injects the version into the binary with
 `-ldflags "-X main.version=$VERSAO_DO_BUILD"`. The layer-2 rename changed that variable from `versao` to `version`.
 **Had the implementer renamed only the code:**
 
@@ -2578,7 +2578,7 @@ the limit travels with it. T-234 widens this one.
 
 ### 🔥 The deploy scripts GREP the gateway's log, and no test in this repo covers that seam — two of them went blind, silently (2026-09-07)
 
-`implanta/deploy.sh` and `implanta/valida-lideranca.sh` decide what to report by running `grep` over the gateway's
+`deploy/deploy.sh` and `deploy/check-leadership.sh` decide what to report by running `grep` over the gateway's
 own output. That makes a log line **a contract between a Go file and a shell file** — and `go test ./...`, which is
 this project's entire automated safety net, does not read shell scripts at all. Neither does `gofmt`, `go vet`, or
 CI. The seam has **no mechanism whatsoever**.
@@ -2588,7 +2588,7 @@ anything failing:
 
 | the script greps | the Go emits today | consequence |
 |---|---|---|
-| `valida-lideranca.sh:113,144` — `"guarda de lideranca ARMADA"` / `"DESARMADA"` | `cmd/zapgw/main.go:332,334` — `"leadership guard ARMED"` / `"DISARMED"` | cases A and D report a **false `FAILED`** |
+| `check-leadership.sh:113,144` — `"guarda de lideranca ARMADA"` / `"DESARMADA"` | `cmd/zapgw/main.go:332,334` — `"leadership guard ARMED"` / `"DISARMED"` | cases A and D report a **false `FAILED`** |
 | `deploy.sh:260` — `grep -F 'esta obsoleta -- use'` | `internal/config/env_alias.go:59` — `"is deprecated -- use %s instead"` | the obsolete-env-var warning **stops appearing in the deploy**, and nothing says so |
 
 **The second one is the dangerous shape**, and it is worth spelling out: a `grep` that stops matching does not error
@@ -2604,7 +2604,7 @@ could have seen it, because both verifies were `go test`-shaped and the broken h
 gate or it has none.* The sibling of the same day — a shared message translated in one package breaking another
 package's tests — was at least caught by `go test ./...`. This one had nothing above it.
 
-✅ **The gate now exists** (T-235, `internal/config/shell_log_coupling_test.go`). It reads every `implanta/*.sh`
+✅ **The gate now exists** (T-235, `internal/config/shell_log_coupling_test.go`). It reads every `deploy/*.sh`
 file `git` sees, extracts the literals marked with a `# zapgw:log-coupling "…"` comment beside the `grep` that uses
 them, and requires each one to still appear somewhere under `cmd/` or `internal/`. Finding **zero** markers is a hard
 failure that says *could not verify* — never a silent pass. The sibling sweep that came with it gave a verdict on all
@@ -2612,10 +2612,11 @@ failure that says *could not verify* — never a silent pass. The sibling sweep 
 the script itself writes, the shape of a config variable).
 
 **It has failed against real data, and that is why it counts as a mechanism here.** Breaking one marker back to the
-old Portuguese wording produces:
+old Portuguese wording produces (path shown as it reads today; the script's directory was `implanta` before T-230
+renamed it):
 
 ```
-implanta/deploy.sh:268 greps "esta obsoleta -- use", which no longer appears anywhere in cmd/ or internal/
+deploy/deploy.sh:268 greps "esta obsoleta -- use", which no longer appears anywhere in cmd/ or internal/
 ```
 
 — and the message goes on to name **both** valid resolutions (the Go side reworded and the script must follow, or
@@ -3002,7 +3003,7 @@ about design, not about the command:** fixing only the `PATH` would have fixed t
 **trading `command not found` for `resumo indisponivel:` is trading a clear error for an obscure one**, and it would
 have looked like a fix. *Two absences with the same cause need the fix that catches both, otherwise the second only
 shows up later, without the context that explained it.* The reason for each line is in the deployment runbook (kept in the private repository), *O que
-faz `zapgw` funcionar venha você de onde vier*. ✅ **T-090** versioned the file at `implanta/profile-zapgw.sh` and
+faz `zapgw` funcionar venha você de onde vier*. ✅ **T-090** versioned the file at `deploy/profile-zapgw.sh` and
 `deploy.sh` started installing it on every deployment — a new CT, or one rebuilt from scratch, is born with the
 problem already solved.
 
@@ -4068,7 +4069,7 @@ door** to `ativo = 1` — an architecture decision for a problem that already ha
 **The mechanism, which is what to take away: the fake the operator needed was locked inside `_test.go`.** When a test
 needs a fake server to prove a path, **whoever operates needs the same server to exercise that path** — and a
 `grafoFalso` that only exists in a test file is invisible to the person in the CT at six in the evening. Fix:
-`cmd/grafo-falso/` (a separate binary; `deploy.sh` compiles only `./cmd/zapgw`) and the recipe in
+`cmd/fakegraph/` (a separate binary; `deploy.sh` compiles only `./cmd/zapgw`) and the recipe in
 the deployment runbook (kept in the private repository). **When you write "there is no way", say why there is not — the complete sentence is what can be
 checked.**
 

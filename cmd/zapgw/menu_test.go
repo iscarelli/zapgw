@@ -442,7 +442,7 @@ func TestWithoutTTYDoesNotOpenMenu(t *testing.T) {
 		args    []string
 		in, out *os.File
 	}{
-		// The implanta/deploy.sh case: called with an argument. Never a
+		// The deploy/deploy.sh case: called with an argument. Never a
 		// menu, not even when both sides are a terminal.
 		{"with an argument never opens", []string{"provisionar", "instancia"}, os.Stdin, os.Stdout},
 		{"output to a file", nil, read, regular},
@@ -465,7 +465,7 @@ func TestWithoutTTYDoesNotOpenMenu(t *testing.T) {
 	}
 }
 
-// The proof in the REAL BINARY, which is the one `implanta/deploy.sh`
+// The proof in the REAL BINARY, which is the one `deploy/deploy.sh`
 // depends on: with no argument and no terminal, the process starts the
 // SERVER, as it always has. If the menu showed up here, it would read EOF
 // and the process would die without ever answering /v1/health — which is

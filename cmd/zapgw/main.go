@@ -32,7 +32,7 @@ import (
 // version from a file would lie exactly when it matters (an old file next
 // to a new binary — that is what happened on 2026-07-25 and opened
 // T-025). Injection is via `-ldflags "-X main.version=…"` at build time
-// (implanta/deploy.sh, sourced from the VERSION file).
+// (deploy/deploy.sh, sourced from the VERSION file).
 //
 // Without injection (a plain `go build ./...`, the way a dev runs it
 // locally) the value stays "desenvolvimento" — NEVER a plausible number
@@ -284,7 +284,7 @@ func main() {
 	// THE ONLY EXCEPTION to "no argument starts the server": someone is
 	// at the terminal. The whole condition (and why it looks at BOTH
 	// sides) is in `shouldOpenMenu` — with no TTY the menu does NOT open,
-	// otherwise systemd and implanta/deploy.sh would sit waiting for a
+	// otherwise systemd and deploy/deploy.sh would sit waiting for a
 	// choice no one is going to type.
 	if shouldOpenMenu(os.Args[1:], os.Stdin, os.Stdout) {
 		if err := menu(os.Stdin, os.Stdout, os.Getenv); err != nil {

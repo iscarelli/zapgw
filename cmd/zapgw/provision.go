@@ -675,7 +675,7 @@ func rotateInstance(args []string, out io.Writer, env environment) error {
 // door: `config.ActivateInstance` remains the only path to `ativo = 1`,
 // and `zapgw fumaca` remains the only one that calls it. A lab instance
 // activates through that SAME fumaca, with the Graph API pointed at the
-// fake in cmd/grafo-falso/ (ZAPGW_GRAPH_BASE) — the requirement of a
+// fake in cmd/fakegraph/ (ZAPGW_GRAPH_BASE) — the requirement of a
 // successful send stays whole. The full reasoning is in
 // cmd/zapgw/smoke.go and the recipe in docs/IMPLANTACAO.md.
 

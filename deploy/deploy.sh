@@ -30,7 +30,7 @@
 # Usage:
 #   ZAPGW_DEPLOY_HOST=user@node ZAPGW_DEPLOY_VMID=100 \
 #   ZAPGW_DEPLOY_SAUDE=http://<gateway-internal-ip>:8080/v1/health \
-#   implanta/deploy.sh
+#   deploy/deploy.sh
 #
 # REQUIRED — no default, and the absence of a default IS the protection:
 #   ZAPGW_DEPLOY_VMID      numeric id of the container on Proxmox
@@ -355,7 +355,7 @@ echo "in the CT: $(ct "sha256sum $NOVO")"
 # guarded with "||"/"if" and prints an ALARM before continuing, instead of
 # aborting the whole deploy or swallowing the error.
 passo "installing /etc/profile.d/zapgw.sh"
-if scp "${SSH_OPCOES[@]}" -q "$RAIZ/implanta/profile-zapgw.sh" "$HOST:/tmp/zapgw.profile.$$" &&
+if scp "${SSH_OPCOES[@]}" -q "$RAIZ/deploy/profile-zapgw.sh" "$HOST:/tmp/zapgw.profile.$$" &&
 	remoto "sudo /usr/sbin/pct push $VMID /tmp/zapgw.profile.$$ /etc/profile.d/zapgw.sh --perms 0644 --user 0 --group 0"; then
 	echo "profile installed: $(ct "sha256sum /etc/profile.d/zapgw.sh")"
 else
@@ -386,7 +386,7 @@ if ct "test -f $UNIT"; then
 	ct "cp -a $UNIT $UNIT_ANTERIOR"
 	UNIT_SALVA=sim
 fi
-scp "${SSH_OPCOES[@]}" -q "$RAIZ/implanta/zapgw.service" "$HOST:/tmp/zapgw.service.$$"
+scp "${SSH_OPCOES[@]}" -q "$RAIZ/deploy/zapgw.service" "$HOST:/tmp/zapgw.service.$$"
 remoto "sudo /usr/sbin/pct push $VMID /tmp/zapgw.service.$$ $UNIT --perms 0644 --user 0 --group 0"
 remoto "rm -f /tmp/zapgw.service.$$"
 ct "systemctl daemon-reload"
