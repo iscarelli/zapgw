@@ -4,6 +4,20 @@ One line per version shipped, in the same commit as the bump. The entry states t
 
 ## Unreleased
 
+- **T-222 — Fix the error vocabulary the consumer contract documents** — the contract documented the
+  error as `classe` with `permanente`/`retentavel`/`desconhecido`; the gateway has emitted `class`
+  with `permanent`/`retryable`/`config`/`unknown` since T-209. Corrected across
+  `docs/CONTRATO-CONSUMIDOR.md` (111 lines), its pt-BR mirror (114), `docs/INVENTARIO-VALORES.md`
+  section 1.6 and two `docs/ARMADILHAS.md` entries that asserted the old vocabulary as **current**
+  behaviour. The whole error body was wrong, not just those four words: `erro`, `codigo_meta`,
+  `mensagem`, `detalhe_meta`, `subcodigo_meta`, `explicacao_meta` and `rastro_meta` were fixed too.
+  `docs/MIGRACAO-CONTRATO-EN.md` was deliberately left alone — every occurrence there is a migration
+  row citing the old form on purpose. The implementer caught and reverted two of its own over-broad
+  replacements that had hit ordinary Portuguese prose. **Surfaced four further families of contract
+  key the doc still gets wrong** — now T-237, with every pointer re-measured by the planner because
+  one of the four was reported incorrectly. _Completed 2026-09-08 03:22._
+
+
 - **T-234 — Widen the doc-pointer gate past `.go`** — the gate now covers `.json`, `.sh`, `.md`,
   `.yml`, `.service` and `.txt`, from a list derived by grepping what `docs/*.md` actually cites
   rather than "anything with a dot". False positives are handled **structurally** wherever possible —

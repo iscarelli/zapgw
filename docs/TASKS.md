@@ -245,36 +245,6 @@ instancias foram rotacionadas. Duas licoes que custaram na hora e valem alem des
 
 > A fila do periodo privado esta em `iscarelli/zapgw-dev`, congelada. Tarefa nova nasce aqui.
 
-## [ ] T-222  Fix the error vocabulary the consumer contract documents
-Vikunja: 1466
-Why:     `docs/CONTRATO-CONSUMIDOR.md` documenta o erro como `classe` com
-         `permanente`/`retentavel`/`desconhecido`. O gateway EMITE `class` com
-         `permanent`/`retryable`/`config`/`unknown` desde a virada da T-209
-         (`internal/outbound/handler.go:277`, `internal/meta/errors.go:29-32`). E' doc falso no
-         documento que os consumidores leem para integrar: quem escrever um `switch` a partir dele
-         nunca casa. Medido em 2026-09-06.
-Files:   docs/CONTRATO-CONSUMIDOR.md, docs/CONTRATO-CONSUMIDOR.pt-BR.md, docs/INVENTARIO-VALORES.md,
-         docs/ARMADILHAS.md, docs/MIGRACAO-CONTRATO-EN.md
-Do:      🔴 NAO E' SED GLOBAL, e a armadilha ja esta escrita no proprio `ARMADILHAS.md`: um
-         `.replace()` que troca toda ocorrencia. Parte das ocorrencias e' LEGITIMA.
-         1. Va arquivo por arquivo. Em cada ocorrencia decida entre tres casos:
-            (a) e' o VALOR/CHAVE que o gateway emite hoje -> corrija para a forma inglesa;
-            (b) e' o doc de MIGRACAO citando a forma VELHA de proposito (`retentavel` ->
-                `retryable`) -> NAO toque;
-            (c) e' prosa em portugues nos arquivos `.pt-BR.md` usando a palavra como palavra
-                ("erro permanente") -> NAO toque; so' o literal muda.
-         2. Confira cada afirmacao contra o CODIGO, nunca contra o doc antigo. Aponte `arquivo:linha`.
-         3. Se achar outro campo do corpo de erro documentado com nome errado, conserte no mesmo
-            passo e diga no relatorio quais eram.
-         NAO mexa em codigo. Esta tarefa e' so' documentacao.
-Verify:  Para cada nome novo, prove contra o codigo que ele e' o emitido:
-         `grep -rn 'json:"class"' internal/outbound/handler.go` e
-         `grep -rn 'ErrorClass = ' internal/meta/errors.go`
-         E depois, no doc corrigido: nenhuma ocorrencia de `classe`/`retentavel`/`permanente`/
-         `desconhecido` pode estar descrevendo o que o gateway EMITE HOJE — liste no relatorio, uma
-         a uma, as que voce deixou e em qual dos casos (b)/(c) cada uma cai.
-         `CGO_ENABLED=0 go build ./... && go test ./...` (nao deve mudar nada, e' so' garantia).
-
 ## [ ] T-236  Fix the two dead doc pointers the widened gate found, and DELETE their exemptions
 After:   T-222 (ela esta reescrevendo `docs/MIGRACAO-CONTRATO-EN.md` agora)
 Why:     A T-234 alargou o portao de ponteiro de doc e ele fez exatamente o que devia: achou dois
@@ -311,6 +281,62 @@ Verify:  `go test ./internal/config/ -run TestDocPointers` verde **com as duas e
          'KNOWN PRE-EXISTING BUG' internal/config/doc_pointers_test.go` dando **0**.
          E o verify inteiro: `CGO_ENABLED=0 go build ./... && go test ./... && go vet ./... &&
          gofmt -l cmd internal`, sete pacotes `ok`.
+
+
+## [ ] T-237  The consumer contract still describes four families of key the gateway stopped emitting
+After:   T-236
+Why:     A T-222 consertou o vocabulario de ERRO e, no caminho, encontrou que a mesma doenca esta em
+         mais quatro lugares do `docs/CONTRATO-CONSUMIDOR.md` — o documento que consumidores reais
+         leem para integrar. **Eu re-medi cada um contra o codigo em 2026-09-08**, porque o relatorio
+         errou num deles (ver o item 4). Doc falso aqui nao e' desleixo: quem escreve um parser a
+         partir dele nunca casa, e o sintoma aparece na producao do outro.
+🔴 O ITEM 1 E' O MAIS GRAVE DE TODOS e vale sozinho a tarefa: e' o discriminador de
+         TODO evento de webhook. Errar nele nao quebra um campo, quebra o roteamento inteiro.
+Files:   docs/CONTRATO-CONSUMIDOR.md, docs/CONTRATO-CONSUMIDOR.pt-BR.md
+Do:      Va familia por familia. Em cada uma, o codigo e' a fonte e o `arquivo:linha` esta aqui —
+         **mas confira mesmo assim antes de escrever, porque estes ponteiros envelhecem.**
+
+         **1. O discriminador do evento.** O codigo emite a chave `kind` com o valor `message`
+            (`internal/meta/types.go:413` -> `Type EventType \`json:"kind"\``, e a constante em
+            `internal/meta/types.go:9` -> `EventTypeMessage EventType = "message"`).
+            O doc diz `"tipo": "mensagem"` em **12 lugares** medidos no `CONTRATO-CONSUMIDOR.md`.
+
+         **2. O sub-objeto de erro do evento de status.** O codigo emite `code` / `message` /
+            `details` (`internal/meta/types.go:141-151`, `type StatusError`).
+            O doc diz `erro` / `codigo` / `mensagem` / `detalhes`.
+
+         **3. Os blocos do `GET /v1/estado`.** O codigo esta em ingles em
+            `internal/outbound/ingress.go` e `internal/outbound/watchdog.go` (`via`, `connector`,
+            `state`, `observed`, `unknown`, `not_configured`, `verdict`, `ok`, `refused`).
+            O doc ainda usa `veredito` / `conector` / `estado` / `observado` / `desconhecido` /
+            `nao_configurado` / `entrada`.
+            ⚠️ Esta familia e' a maior e a menos conferida das quatro. Se ela sozinha ficar grande
+            demais, faca as familias 1, 2 e 4, PARE, e relate — nao entregue meia familia calada.
+
+         **4. O corpo de sucesso de `POST`/`DELETE /v1/bloqueios`.** 🔴 **ARMADILHA, e um `sed`
+            global escreve uma mentira aqui.** O struct e' MISTO
+            (`internal/outbound/block_handler.go:164-169`):
+            `json:"instance"`, `json:"operacao"`, `json:"processed"`, `json:"failures"`.
+            Tres chaves inglesas e **uma portuguesa**. O doc descreve as quatro em portugues, entao
+            ele esta **errado em tres e CERTO em uma**. Corrija as tres e **deixe `operacao`**.
+            *(O relatorio da T-222 afirmou que o codigo emite `operation`. Nao emite. Foi por isso
+            que esta tarefa traz os `arquivo:linha` re-medidos.)*
+
+         🔴 REGRAS QUE VALEM NAS QUATRO:
+         - **Nao e' sed global.** Toda ocorrencia cai num de tres casos, os mesmos da T-222:
+           (a) descreve o que o gateway emite HOJE -> corrija; (b) e' registro historico ou tabela de
+           migracao citando a forma velha de proposito -> nao toque; (c) e' prosa portuguesa usando a
+           palavra como palavra, no arquivo `.pt-BR.md` -> nao toque.
+         - **O `.pt-BR.md` traduz a PROSA, nunca a CHAVE.** Um exemplo de JSON no doc portugues mostra
+           a chave que vai no fio, que e' inglesa. Foi assim que a T-222 quase trocou `erro` por
+           `error` em duas frases de prosa comum — ela pegou e reverteu; voce confira igual.
+         - **NAO MEXA EM CODIGO.** Se voce achar que o codigo e' que esta errado (por exemplo o
+           `operacao` do item 4), **pare e relate** — mudar chave de fio tem terceiro do outro lado e
+           e' decisao do dono.
+Verify:  Para cada uma das quatro familias, cole no relatorio a prova contra o codigo (o comando e a
+         saida) ANTES da correcao, e depois o `grep` mostrando que o doc passou a casar.
+         E liste, uma a uma, as ocorrencias que voce DEIXOU e em qual dos casos (b)/(c) cada uma cai.
+         `CGO_ENABLED=0 go build ./... && go test ./...` (so' garantia; nada de codigo muda).
 
 ## [ ] T-230  Rename the Portuguese directories and script names
 After:   T-229
