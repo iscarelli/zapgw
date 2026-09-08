@@ -143,7 +143,7 @@ func TestExternalProbeURLWarnsOnlyWhenOldNameWins(t *testing.T) {
 			log.SetOutput(&buf)
 			ExternalProbeURL(func(k string) string { return c.vars[k] })
 			log.SetOutput(original)
-			warned := strings.Contains(buf.String(), VarExternalProbeURL) && strings.Contains(buf.String(), "obsoleta")
+			warned := strings.Contains(buf.String(), VarExternalProbeURL) && strings.Contains(buf.String(), "deprecated")
 			if warned != c.wantWarn {
 				t.Errorf("warning = %v (log: %q), want %v", warned, buf.String(), c.wantWarn)
 			}

@@ -98,7 +98,7 @@ func TestOpenStoreWarnsOnlyWhenOldNamesWin(t *testing.T) {
 			false, false,
 		},
 		{
-			"as duas velhas: avisam as duas",
+			"both old: both warn",
 			map[string]string{envEncryptionKeyOld: testKey, envDatabaseOld: filepath.Join(t.TempDir(), "b.db")},
 			true, true,
 		},
@@ -115,8 +115,8 @@ func TestOpenStoreWarnsOnlyWhenOldNamesWin(t *testing.T) {
 			}
 			_ = store.Close()
 			text := buf.String()
-			keyWarned := strings.Contains(text, envEncryptionKeyOld) && strings.Contains(text, "obsoleta")
-			pathWarned := strings.Contains(text, envDatabaseOld) && strings.Contains(text, "obsoleta")
+			keyWarned := strings.Contains(text, envEncryptionKeyOld) && strings.Contains(text, "deprecated")
+			pathWarned := strings.Contains(text, envDatabaseOld) && strings.Contains(text, "deprecated")
 			if keyWarned != c.wantKeyWarn {
 				t.Errorf("aviso da chave = %v (log: %q), quero %v", keyWarned, text, c.wantKeyWarn)
 			}
@@ -258,7 +258,7 @@ func TestWebhookURLWarnsOnlyWhenOldNameWins(t *testing.T) {
 		vars     map[string]string
 		wantWarn bool
 	}{
-		{"so a velha: avisa", map[string]string{envPublicURLOld: "https://velho.example"}, true},
+		{"only the old one: warns", map[string]string{envPublicURLOld: "https://velho.example"}, true},
 		{"so a nova: fica calado", map[string]string{envPublicURLNew: "https://novo.example"}, false},
 		{"nenhuma: fica calado", map[string]string{}, false},
 	}
@@ -269,7 +269,7 @@ func TestWebhookURLWarnsOnlyWhenOldNameWins(t *testing.T) {
 			log.SetOutput(&buf)
 			webhookURL(fakeEnvironment(c.vars), "slug")
 			log.SetOutput(original)
-			warned := strings.Contains(buf.String(), envPublicURLOld) && strings.Contains(buf.String(), "obsoleta")
+			warned := strings.Contains(buf.String(), envPublicURLOld) && strings.Contains(buf.String(), "deprecated")
 			if warned != c.wantWarn {
 				t.Errorf("aviso = %v (log: %q), quero %v", warned, buf.String(), c.wantWarn)
 			}
@@ -303,7 +303,7 @@ func TestDiagnosticProbeFolderWarnsOnlyWhenOldNameWins(t *testing.T) {
 		set      func(vars map[string]string)
 		wantWarn bool
 	}{
-		{"so a velha: avisa", func(v map[string]string) { v[envDiagnosticProbeFolderOld] = "1" }, true},
+		{"only the old one: warns", func(v map[string]string) { v[envDiagnosticProbeFolderOld] = "1" }, true},
 		{"so a nova: fica calado", func(v map[string]string) { v[envDiagnosticProbeFolderNew] = "1" }, false},
 	}
 	original := log.Writer()
@@ -321,7 +321,7 @@ func TestDiagnosticProbeFolderWarnsOnlyWhenOldNameWins(t *testing.T) {
 			if err != nil {
 				t.Fatalf("dispatch: %v\n%s", err, out.String())
 			}
-			warned := strings.Contains(buf.String(), envDiagnosticProbeFolderOld) && strings.Contains(buf.String(), "obsoleta")
+			warned := strings.Contains(buf.String(), envDiagnosticProbeFolderOld) && strings.Contains(buf.String(), "deprecated")
 			if warned != c.wantWarn {
 				t.Errorf("aviso = %v (log: %q), quero %v", warned, buf.String(), c.wantWarn)
 			}
@@ -419,7 +419,7 @@ func TestServerStartupWarnsOnOldNamesAndStaysSilentOnNewNames(t *testing.T) {
 	}
 	oldStderr := bootAndCaptureStderr(t, bin, oldVars)
 	for _, name := range oldNames {
-		if !strings.Contains(oldStderr, name) || !strings.Contains(oldStderr, "obsoleta") {
+		if !strings.Contains(oldStderr, name) || !strings.Contains(oldStderr, "deprecated") {
 			t.Errorf("arranque com nomes velhos NAO avisou sobre %s:\nstderr:\n%s", name, oldStderr)
 		}
 	}
@@ -439,7 +439,7 @@ func TestServerStartupWarnsOnOldNamesAndStaysSilentOnNewNames(t *testing.T) {
 		"ZAPGW_EXTERNAL_PROBE_URL":    "http://127.0.0.1:9/status",
 	}
 	newStderr := bootAndCaptureStderr(t, bin, newVars)
-	if strings.Contains(newStderr, "obsoleta") {
+	if strings.Contains(newStderr, "deprecated") {
 		t.Errorf("arranque com TODOS os nomes NOVOS imprimiu aviso T-214 indevido:\nstderr:\n%s", newStderr)
 	}
 }
