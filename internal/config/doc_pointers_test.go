@@ -297,23 +297,6 @@ var deadDocPointerExceptions = map[string]string{
 		"— not a path in this repository",
 	"CONTRIBUTING.md": "docs/ARMADILHAS.md:4079 and :4093 name ProxmoxVED/community-scripts's " +
 		"CONTRIBUTING.md, same citation as AGENTS.md above — not a path in this repository",
-
-	// --- flagged for the planner, not fixed here ---
-
-	// T-238's Do item 1 fixed six of the seven dead pointers it found. This
-	// is the seventh, and it is a REAL bug — replacing "com" with "with"
-	// would fix it — but this implementer was explicitly told not to touch
-	// docs/CONTRATO-CONSUMIDOR.md or its .pt-BR.md mirror in this session,
-	// because another implementer holds both files concurrently. This is
-	// NOT the "known bug" category CLAUDE.md forbids (a bug left in place
-	// because fixing it was inconvenient): the fix is trivial and known,
-	// the obstacle is a same-session write conflict with another agent's
-	// task, and it is flagged in T-238's report for the planner to close
-	// once that other task lands.
-	"status_sent_com_pricing.json": "docs/CONTRATO-CONSUMIDOR.md:4886 and its .pt-BR.md " +
-		"mirror (line 4829) both name the pre-T-228 fixture; the fix is renaming it to " +
-		"status_sent_with_pricing.json, but T-238 was explicitly barred from touching either " +
-		"file this session (a concurrent implementer holds them) — flagged for the planner",
 }
 
 // rejectFalseEndBoundary reports whether the character right after a match
