@@ -662,8 +662,8 @@ func (h *TemplatesHandler) deleteTemplate(w http.ResponseWriter, r *http.Request
 		// NO CALL TO META AT ALL. Deleting a name that is not there would
 		// spend the instance's quota to receive an error about something
 		// the consumer already got right.
-		log.Printf("zapgw: exclusao de template na instancia %q: o nome %q NAO esta no catalogo — "+
-			"nada foi pedido a Meta (desfecho %s)", inst.Slug, name, OutcomeDidNotExist)
+		log.Printf("zapgw: template deletion on instance %q: name %q is NOT in the catalog — "+
+			"nothing was requested from Meta (outcome %s)", inst.Slug, name, OutcomeDidNotExist)
 		respondTemplateDeleted(w, templateDeletedResponse{
 			Instance: inst.Slug,
 			Name:     name,
@@ -703,7 +703,7 @@ func (h *TemplatesHandler) respondDeleted(
 	// The name is a technical identifier and is exactly what the next person
 	// needs in order to search the catalog; the URL carries the waba_id and
 	// travels next to the token.
-	log.Printf("zapgw: template %q APAGADO na instancia %q — %d entrada(s) no catalogo antes: %s",
+	log.Printf("zapgw: template %q DELETED on instance %q — %d entry(ies) in the catalog before: %s",
 		name, inst.Slug, len(found), languagesOf(found))
 
 	resp := templateDeletedResponse{
@@ -863,16 +863,16 @@ func (h *TemplatesHandler) respondAmbiguousDeletion(
 	// (1) THE REAL ERROR, ALWAYS, BEFORE anything else that might also fail.
 	// It was the absence of exactly this line that made the 2026-07-28
 	// creation outcome structurally undiagnosable (see respondAmbiguousOutcome).
-	log.Printf("zapgw: exclusao de template terminou SEM VEREDITO da Meta na instancia %q (template %q): "+
-		"%v — relendo o catalogo para descobrir se ela aconteceu", inst.Slug, name, cause)
+	log.Printf("zapgw: template deletion ended WITHOUT A VERDICT from Meta on instance %q (template %q): "+
+		"%v — rereading the catalog to find out whether it happened", inst.Slug, name, cause)
 
 	rest, attempts, want, err := h.spacedRereadsForDeletion(r.Context(), inst, name)
 	switch {
 	case err != nil:
 		// BOTH FAILURES LOGGED, in one line: the deletion's cause above and
 		// the reading's cause here.
-		log.Printf("zapgw: a releitura do catalogo da instancia %q TAMBEM falhou apos a exclusao ambigua do "+
-			"template %q (tentativa %d de releitura, %s de espera acumulada): %v — o desfecho continua desconhecido",
+		log.Printf("zapgw: the catalog reread for instance %q ALSO failed after the ambiguous deletion of "+
+			"template %q (reread attempt %d, %s of accumulated wait): %v — the outcome remains unknown",
 			inst.Slug, name, attempts, want, err)
 		respondErrorWithWait(w, http.StatusBadGateway, string(meta.ClassUnknown),
 			MessageUnknownDeletion, attempts, want)
@@ -882,16 +882,16 @@ func (h *TemplatesHandler) respondAmbiguousDeletion(
 		// PENDING_DELETION — which Meta documents as the ACCEPTED deletion of
 		// a template with delivery still in flight. What failed was our
 		// reading of the response.
-		log.Printf("zapgw: a releitura do catalogo da instancia %q confirmou a exclusao do template %q na "+
-			"tentativa %d (apos %s de espera): %d entrada(s) restante(s) [%s] — a exclusao TINHA acontecido",
+		log.Printf("zapgw: the catalog reread for instance %q confirmed the deletion of template %q on "+
+			"attempt %d (after %s of wait): %d entry(ies) remaining [%s] — the deletion HAD happened",
 			inst.Slug, name, attempts, want, len(rest), languagesOf(rest))
 		h.respondDeleted(w, inst, name, found, rest, attempts, want)
 
 	default:
 		// STILL THERE, ALIVE, IN EVERY ATTEMPT. This does NOT authorize
 		// saying "it was not deleted" — see MessageInconclusiveDeletion.
-		log.Printf("zapgw: a releitura do catalogo da instancia %q ainda ACHA o template %q [%s] em %d "+
-			"tentativas espacadas (%s de espera) — desfecho INCONCLUSIVO, e nao 'nao foi apagado'",
+		log.Printf("zapgw: the catalog reread for instance %q still FINDS the template %q [%s] after %d "+
+			"spaced-out attempts (%s of wait) — outcome INCONCLUSIVE, and not 'not deleted'",
 			inst.Slug, name, languagesOf(rest), attempts, want)
 		respondErrorWithWait(w, http.StatusBadGateway, string(meta.ClassUnknown),
 			MessageInconclusiveDeletion, attempts, want)
@@ -948,7 +948,7 @@ func (h *TemplatesHandler) authenticate(w http.ResponseWriter, r *http.Request) 
 		respondError(w, http.StatusUnauthorized, "config", "token ausente ou invalido", 0)
 		return config.Consumer{}, false
 	}
-	log.Printf("zapgw: erro de store ao autenticar em /v1/templates: %v", err)
+	log.Printf("zapgw: store error while authenticating on /v1/templates: %v", err)
 	respondError(w, http.StatusServiceUnavailable, "retryable", "indisponivel", 0)
 	return config.Consumer{}, false
 }
@@ -967,7 +967,7 @@ func (h *TemplatesHandler) instanceActive(
 	// would read B's catalog — which describes its business — and would
 	// still spend the quota of an instance that isn't its own.
 	if !CanUse(consumer, slug) {
-		log.Printf("zapgw: consumidor %q pediu templates da instancia %q, que nao e dele",
+		log.Printf("zapgw: consumer %q asked for templates of instance %q, which is not theirs",
 			consumer.Name, slug)
 		respondError(w, http.StatusForbidden, "config",
 			"instancia nao autorizada para este consumidor", 0)
@@ -983,7 +983,7 @@ func (h *TemplatesHandler) instanceActive(
 			respondError(w, http.StatusNotFound, "config", "instancia desconhecida", 0)
 			return config.Instance{}, false
 		}
-		log.Printf("zapgw: erro de store ao buscar instancia %q em /v1/templates: %v", slug, err)
+		log.Printf("zapgw: store error while looking up instance %q on /v1/templates: %v", slug, err)
 		respondError(w, http.StatusServiceUnavailable, "retryable", "indisponivel", 0)
 		return config.Instance{}, false
 	}
@@ -1141,8 +1141,8 @@ func (h *TemplatesHandler) respondAmbiguousOutcome(
 	// the body carries the `componentes`, which is text that goes to the
 	// tenant's end customer. Name and language are technical identifiers,
 	// and are exactly what the next person needs to search the catalog.
-	log.Printf("zapgw: criacao de template terminou SEM VEREDITO da Meta na instancia %q "+
-		"(template %q, idioma %q): %v — relendo o catalogo para descobrir se ela aconteceu",
+	log.Printf("zapgw: template creation ended WITHOUT A VERDICT from Meta on instance %q "+
+		"(template %q, language %q): %v — rereading the catalog to find out whether it happened",
 		inst.Slug, name, language, cause)
 
 	hit, attempts, want, err := h.spacedRereads(r.Context(), inst, name, language)
@@ -1151,8 +1151,8 @@ func (h *TemplatesHandler) respondAmbiguousOutcome(
 		// BOTH FAILURES LOGGED. One single line, with the creation's cause
 		// above and the reading's cause here, and the next occurrence stops
 		// being undiagnosable.
-		log.Printf("zapgw: a releitura do catalogo da instancia %q TAMBEM falhou apos a criacao ambigua "+
-			"do template %q (tentativa %d de releitura, %s de espera acumulada): %v — o desfecho continua desconhecido",
+		log.Printf("zapgw: the catalog reread for instance %q ALSO failed after the ambiguous creation "+
+			"of template %q (reread attempt %d, %s of accumulated wait): %v — the outcome remains unknown",
 			inst.Slug, name, attempts, want, err)
 		respondErrorWithWait(w, http.StatusBadGateway, string(meta.ClassUnknown),
 			MessageUnknownOutcome, attempts, want)
@@ -1161,9 +1161,9 @@ func (h *TemplatesHandler) respondAmbiguousOutcome(
 		// NOT AN ERROR: the template exists. What failed was our reading of
 		// the response, and the consumer gets the success the first call
 		// would have returned.
-		log.Printf("zapgw: a releitura do catalogo da instancia %q ACHOU o template %q (idioma %q, "+
-			"status %q) na tentativa %d de releitura (apos %s de espera) — a criacao TINHA acontecido; "+
-			"respondendo 201", inst.Slug, name, language, hit.Status, attempts, want)
+		log.Printf("zapgw: the catalog reread for instance %q FOUND the template %q (language %q, "+
+			"status %q) on reread attempt %d (after %s of wait) — the creation HAD happened; "+
+			"responding 201", inst.Slug, name, language, hit.Status, attempts, want)
 		resp := templateCreatedResponse{
 			ID:                hit.ID,
 			Status:            hit.Status,
@@ -1187,9 +1187,9 @@ func (h *TemplatesHandler) respondAmbiguousOutcome(
 		// the source and the why, and which COMES OUT IDENTICAL regardless
 		// of how many attempts happened: the warning does not loosen, it
 		// only gets rarer (T-101).
-		log.Printf("zapgw: a releitura do catalogo da instancia %q NAO achou o template %q (idioma %q) em "+
-			"%d tentativas espacadas (%s de espera) — desfecho INCONCLUSIVO, e nao 'nao foi criado': a Meta "+
-			"nao documenta que o catalogo mostra na hora o que um POST acabou de criar",
+		log.Printf("zapgw: the catalog reread for instance %q did NOT find the template %q (language %q) in "+
+			"%d spaced-out attempts (%s of wait) — outcome INCONCLUSIVE, and not 'not created': Meta "+
+			"does not document that the catalog shows right away what a POST just created",
 			inst.Slug, name, language, attempts, want)
 		respondErrorWithWait(w, http.StatusBadGateway, string(meta.ClassUnknown),
 			MessageInconclusiveOutcome, attempts, want)

@@ -891,8 +891,8 @@ func TestCreateTemplateAmbiguousREREADSTheCatalogAndConfirmsTheCreation(t *testi
 	if !strings.Contains(resp.Warning, "PENDING") {
 		t.Errorf("o aviso perdeu a instrucao de que o template nasce pendente: %q", resp.Warning)
 	}
-	if !strings.Contains(record, "pedido_avaliacao_v2") || !strings.Contains(record, "ACHOU") {
-		t.Errorf("o desfecho nao ficou no log; log = %q", record)
+	if !strings.Contains(record, "pedido_avaliacao_v2") || !strings.Contains(record, "FOUND") {
+		t.Errorf("the outcome did not land in the log; log = %q", record)
 	}
 	if urls, _ := m.seen(); len(urls) < 2 {
 		t.Errorf("a releitura nem aconteceu: urls = %v", urls)
@@ -970,8 +970,8 @@ func TestCreateTemplateAmbiguousNotFoundInTheCatalogIsINCONCLUSIVE(t *testing.T)
 	if !strings.Contains(lower, "nao repita") {
 		t.Errorf("a mensagem nao avisa para NAO repetir as cegas: %q", errBody.Error.Message)
 	}
-	if !strings.Contains(record, "INCONCLUSIVO") || !strings.Contains(record, "lembrete_consulta") {
-		t.Errorf("o desfecho inconclusivo nao ficou no log; log = %q", record)
+	if !strings.Contains(record, "INCONCLUSIVE") || !strings.Contains(record, "lembrete_consulta") {
+		t.Errorf("the inconclusive outcome did not land in the log; log = %q", record)
 	}
 
 	// Exhausted the entire RereadWaits (1 immediate attempt + 3
@@ -1062,12 +1062,12 @@ func TestCreateTemplateAmbiguousWithARereadThatAlsoFailsLOGSBOTH(t *testing.T) {
 	if errBody.Error.Class != string(meta.ClassUnknown) {
 		t.Errorf("classe = %q, quero %q", errBody.Error.Class, meta.ClassUnknown)
 	}
-	if !strings.Contains(record, "SEM VEREDITO") {
-		t.Errorf("a falha da CRIACAO nao foi logada; log = %q", record)
+	if !strings.Contains(record, "WITHOUT A VERDICT") {
+		t.Errorf("the CREATION failure was not logged; log = %q", record)
 	}
-	if !strings.Contains(record, "TAMBEM falhou") {
-		t.Errorf("a falha da RELEITURA nao foi logada — sem ela ninguem sabe se o gateway chegou a "+
-			"conferir; log = %q", record)
+	if !strings.Contains(record, "ALSO failed") {
+		t.Errorf("the REREAD failure was not logged — without it nobody knows whether the gateway got to "+
+			"check; log = %q", record)
 	}
 	// Transport failed ON THE FIRST attempt (abortRead drops EVERY
 	// GET): no point insisting against a transport that does not respond,

@@ -369,7 +369,7 @@ func (h *BlockHandler) list(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusUnauthorized, "config", "token ausente ou invalido", 0)
 			return
 		}
-		log.Printf("zapgw: erro de store ao autenticar em %s: %v", listBlocksRoute, err)
+		log.Printf("zapgw: store error while authenticating on %s: %v", listBlocksRoute, err)
 		respondError(w, http.StatusServiceUnavailable, "retryable", "indisponivel", 0)
 		return
 	}
