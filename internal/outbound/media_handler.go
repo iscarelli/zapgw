@@ -446,7 +446,7 @@ func respondMediaError(w http.ResponseWriter, err error) {
 // multipart (inside meta.UploadMedia) and the one that CHECKS it is the
 // handler's goroutine, after the call returns. A raw counter shared between
 // two goroutines already cost this project a Critical (docs/ARMADILHAS.md,
-// "Go / concorrência").
+// "Go / concurrency").
 type cappedReader struct {
 	r          io.Reader
 	remaining  int64

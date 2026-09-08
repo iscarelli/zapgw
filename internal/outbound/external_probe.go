@@ -243,7 +243,7 @@ type ExternalProbe struct {
 	// mu protects `m`: the timer goroutine writes, and every HTTP request
 	// to GET /v1/estado reads. This project already paid a Critical for
 	// shared state with no lock in a handler (docs/ARMADILHAS.md, "Go /
-	// concorrência").
+	// concurrency").
 	mu sync.Mutex
 	m  externalReachMeasurement
 }

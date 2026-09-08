@@ -252,7 +252,7 @@ func normalizeCategory(s string) string {
 // MessageInconclusiveOutcome stays EXACTLY the same.
 //
 // 2s / 5s / 10s, and NOT the consumer's original suggestion (2s / 5s / 15s):
-// the sum enters into the "prazo com folga (30 s é confortável)" deadline the
+// the sum enters into the "generous deadline (30 s is comfortable)" the
 // CONTRACT tells its client to use (docs/CONTRATO-CONSUMIDOR.md) — and that
 // sum covers ONLY the pauses, without counting the original creation attempt
 // or the network time of each re-read, which also consume that budget.
@@ -906,7 +906,7 @@ func respondTemplateCreated(w http.ResponseWriter, resp templateCreatedResponse)
 
 // Validate trims and requires the four fields. Trims BEFORE deciding, and
 // assigns the trimmed value — otherwise the spaces travel to Meta
-// (docs/ARMADILHAS.md, "Validação": presence is not content).
+// (docs/ARMADILHAS.md, "Validation": presence is not content).
 //
 // EXPORTED (T-036) so `zapgw template criar` calls the SAME function as this
 // route — see the comment on CreateTemplateRequest.

@@ -348,7 +348,7 @@ type ConnectorProbe struct {
 
 	// mu protects `m`: the timer's goroutine writes and every HTTP request
 	// reads. This project already paid a Critical for shared state without a
-	// lock in a handler (docs/ARMADILHAS.md, "Go / concorrência").
+	// lock in a handler (docs/ARMADILHAS.md, "Go / concurrency").
 	mu sync.Mutex
 	m  connectorMeasurement
 }

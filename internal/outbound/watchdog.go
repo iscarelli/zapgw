@@ -166,7 +166,7 @@ type Watchdog struct {
 	// mu protects measurements: the timer writes from one goroutine and the
 	// HTTP handler reads from another, one per request. This project
 	// already paid a Critical for an unlocked counter in a shared handler
-	// (docs/ARMADILHAS.md, "Go / concorrência").
+	// (docs/ARMADILHAS.md, "Go / concurrency").
 	mu           sync.Mutex
 	measurements map[string]measurement
 
