@@ -191,7 +191,7 @@ func (h *HealthHandler) health(w http.ResponseWriter, r *http.Request) {
 // channel fit to send right now? —, and a `502` here versus a `503` there
 // forces the monitor to learn the entire taxonomy to decide "red or green".
 // The class travels in the body, like the rest of the gateway, and it's the
-// class that says whether the fix is waiting (`retentavel`) or calling a
+// class that says whether the fix is waiting (`retryable`) or calling a
 // human (`config`).
 //
 // The message NEVER carries the token nor Meta's raw body: `em.Message`

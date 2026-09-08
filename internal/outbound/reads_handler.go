@@ -163,7 +163,7 @@ func (h *ReadsHandler) mark(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		// Same reading as the send: the consumer's connection dropped midway. 400
-		// because what arrived incomplete was the REQUEST, and `retentavel` because
+		// because what arrived incomplete was the REQUEST, and `retryable` because
 		// retrying resolves it.
 		logRejection(h.throttleLog, readsRoute, "", consumer.Name, "corpo nao foi lido por inteiro")
 		respondError(w, http.StatusBadRequest, "retryable", "corpo nao foi lido por inteiro", 0)

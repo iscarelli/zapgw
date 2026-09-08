@@ -186,7 +186,7 @@ func TestHealthWith401FromMetaAnswers503WithoutLeakingTokenNorMetaBody(t *testin
 		t.Fatalf("error body does not deserialize: %v (body = %q)", err, body)
 	}
 	// Refused token is `config`: no retry fixes it, only a human. Calling it
-	// `retentavel` would send the operator to wait for something that
+	// `retryable` would send the operator to wait for something that
 	// doesn't change.
 	if errBody.Error.Class != string(meta.ClassConfig) {
 		t.Errorf("class = %q, want %q", errBody.Error.Class, meta.ClassConfig)

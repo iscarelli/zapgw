@@ -797,7 +797,7 @@ func deletionAccepted(rest []templateEntry) bool {
 // the same reasoning, as respondCreationError.
 //
 // The difference from reading is the same one creation has: the deletion MAY
-// have happened on Meta's side. Calling it `retentavel` would send the
+// have happened on Meta's side. Calling it `retryable` would send the
 // consumer to retry blindly, and by the "NINGUÉM fala direto com a Meta" rule
 // it has no second door to check through. Who checks is us, in
 // respondAmbiguousDeletion.
@@ -1054,7 +1054,7 @@ func (h *TemplatesHandler) respondCatalogError(w http.ResponseWriter, slug strin
 		}
 		// Transport, deadline exceeded, reading the response. Unlike
 		// creation, READING creates nothing on the other side: retrying is
-		// safe, and that is why here it really is `retentavel`, not
+		// safe, and that is why here it really is `retryable`, not
 		// `unknown`.
 		respondError(w, http.StatusServiceUnavailable, string(meta.ClassRetryable),
 			"nao foi possivel falar com a Meta para ler o catalogo; tente de novo", 0)
@@ -1064,7 +1064,7 @@ func (h *TemplatesHandler) respondCatalogError(w http.ResponseWriter, slug strin
 // respondCreationError translates a WRITE failure.
 //
 // The difference from reading is in the no-response outcome: creating MAY
-// have happened on Meta's side. Calling this `retentavel` would send the
+// have happened on Meta's side. Calling this `retryable` would send the
 // consumer to retry blindly — and until T-078 this branch told IT to check
 // the catalog, something it can no longer do: by the "NINGUÉM fala direto
 // com a Meta" rule (CLAUDE.md, 2026-07-28) it no longer has the second door.

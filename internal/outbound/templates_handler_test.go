@@ -618,7 +618,7 @@ func TestTemplatesWithPausedInstanceAnswers503WithoutCallingMeta(t *testing.T) {
 
 // T-115 (5): forces the meta.ErrCatalogNotUnderstood branch in
 // respondCatalogError (templates_handler.go:547-549) — the ONLY one of
-// the four catalog-error branches that decides 503/retentavel instead of
+// the four catalog-error branches that decides 503/retryable instead of
 // 502/config, and that no HANDLER test reached before this task (the
 // internal/meta suite already proved the error at the SOURCE, never the
 // translation into an HTTP response).
@@ -772,7 +772,7 @@ func TestCreateTemplateRefusesInvalidBodyWithoutCallingMeta(t *testing.T) {
 }
 
 // Creation has no idempotency, so the transport outcome is truly UNKNOWN:
-// the template may have been created. Calling this `retentavel` would send
+// the template may have been created. Calling this `retryable` would send
 // the consumer to retry blindly.
 //
 // With the whole destination down, this test exercises the THIRD outcome of

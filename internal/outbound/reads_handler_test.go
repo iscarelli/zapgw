@@ -443,14 +443,14 @@ func TestReadsTranslatesTheMetaErrorIntoTheContractStatus(t *testing.T) {
 		},
 		{
 			// RETRYABLE error: Meta went down. Re-queue.
-			name: "retentavel (5xx da Meta)", metaStatus: http.StatusBadGateway,
+			name: "retryable (5xx from Meta)", metaStatus: http.StatusBadGateway,
 			metaBody:   `{"error":{"message":"Service temporarily unavailable","code":2}}`,
 			wantStatus: http.StatusServiceUnavailable, wantClass: "retryable", wantCode: 2,
 		},
 		{
 			// Rate limit is also retryable — and it's the case T-075 asked to
 			// measure whether thirteen markings in a row would hit it.
-			name: "retentavel (limite de taxa)", metaStatus: http.StatusTooManyRequests,
+			name: "retryable (rate limit)", metaStatus: http.StatusTooManyRequests,
 			metaBody:   `{"error":{"message":"Too many requests","code":130429}}`,
 			wantStatus: http.StatusServiceUnavailable, wantClass: "retryable", wantCode: 130429,
 		},

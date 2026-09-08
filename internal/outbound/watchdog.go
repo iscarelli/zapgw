@@ -379,7 +379,7 @@ func (v *Watchdog) record(slug string, err error) {
 // doesn't work.
 //
 //   - *meta.MetaError of class config (401/403) — Meta rejected the token;
-//   - *meta.MetaError of class permanente (remaining 4xx) — it responded
+//   - *meta.MetaError of class permanent (remaining 4xx) — it responded
 //     and retrying repeats the same error; in both cases only a human can
 //     fix it;
 //   - ErrInvalidPhoneNumberID — the call never left here, and no send

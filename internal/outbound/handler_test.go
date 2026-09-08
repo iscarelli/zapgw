@@ -294,7 +294,7 @@ func TestHandlerNeverLeaksACredentialInTheResponse(t *testing.T) {
 // A-1: an UNKNOWN outcome (the message may have gone out) must not release the
 // key — otherwise a legitimate retry sends a real SECOND message.
 //
-// The status and class are 502/desconhecido, NOT 503/retentavel: 503 would instruct
+// The status and class are 502/unknown, NOT 503/retryable: 503 would instruct
 // the consumer to try again, and trying again with this key can only give a
 // 409 — the key is held on purpose. See ClassUnknown in
 // internal/meta/errors.go.
@@ -660,7 +660,7 @@ func TestHandlerRespectsTheInstanceTimeoutMs(t *testing.T) {
 			rt.deadline, wantMin, wantMax, timeoutMs)
 	}
 
-	// 502/desconhecido, not 503/retentavel: the transport failed without a
+	// 502/unknown, not 503/retryable: the transport failed without a
 	// response from Meta, so the message's outcome is UNKNOWN — the same
 	// treatment as a real timeout blowing up mid-call.
 	if rec.Code != http.StatusBadGateway {

@@ -105,7 +105,7 @@ func TestWatchdogMarksRefusedWhenMetaRefusesTheToken(t *testing.T) {
 }
 
 // The CHECK failing is NOT the credential failing. A 503 from Meta
-// (retentavel class) says the problem is theirs, not the token's: the
+// (retryable class) says the problem is theirs, not the token's: the
 // previous verdict stays in place and the DIVERGENCE between the two
 // timestamps is what flags the failure — visible without the consumer
 // knowing anything about our implementation.
