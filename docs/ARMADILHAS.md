@@ -431,7 +431,7 @@ the `phone_number_quality_update` sample carries `current_limit` and
 green with an identical `ID`. **And the step's value is that it sometimes answers NO:** in the
 `account_alerts` sample the five fields are distinct, so it did not get a synthetic sibling — adding one
 "for symmetry" with its neighbour would be ceremony without a guarantee (the same decision as
-`botao_interativo.json`).
+`interactive_button.json`).
 *Three instances, two different answers, cost of asking: a thirty-second visual `diff`.*
 
 ---
@@ -2009,7 +2009,7 @@ happen"? If not, the only proof is a photo/video/witness from outside the system
 becomes "documenting without checking", which is worse.***
 
 **A fixture "correct by the doc" may be testing the RARE case, and only a real capture reveals which case is the
-common one.** T-026 swapped `testdata/corpus/localizacao.json` (derived from the doc) for a real capture from
+common one.** T-026 swapped `testdata/corpus/location.json` (derived from the doc) for a real capture from
 `consumer-a` (2026-07-26). Meta's doc shows a `location` example with `name` and `address` filled in (a business pin),
 and the old fixture copied that example — both fields are technically optional according to the same doc, but nothing
 in it says which of the two cases is more frequent. The real capture showed the opposite of what the fixture tested:
@@ -2019,7 +2019,7 @@ the rare case leaves the common path (both fields absent) with no coverage at al
 real consumer will hit first.
 *Cost: zero — the divergence broke nothing because `Localizacao.Name`/`Localizacao.Endereco` already use `omitempty`
 and the parser already reads both as optional since T-023; the finding is about test COVERAGE, not about the code.
-Fix: `localizacao.json` became the bare pin (real capture), and the case with name/address got a synthetic test of
+Fix: `location.json` became the bare pin (real capture), and the case with name/address got a synthetic test of
 its own (`TestParseWebhookReadsALocationWithNameAndAddress`, `internal/meta/parse_test.go`) so as not to lose coverage
 of the documented path. **The question that generalizes: a doc example that "matches" the code proves the PATH is
 accepted, never that it is the USUAL path** — and a corpus that exists only to prove acceptance, having never seen
@@ -2044,7 +2044,7 @@ way round. Checked: **it was right**, and `consumer-a`'s capture (2026-07-26, tw
 `reaction.message_id` always different from each other) confirms by observation that the two values never coincide in
 production. It is not a finding (there was no bug), but the mutation proving the test would catch the opposite is
 recorded: swapping `Alvo: m.Reaction.MessageID` for `Alvo: m.ID` leaves `TestCorpusInteiro/reacao.json`,
-`TestCorpusInteiro/reacao_removida.json`, `TestParseWebhookReadsAReaction` and
+`TestCorpusInteiro/reaction_removed.json`, `TestParseWebhookReadsAReaction` and
 `TestParseWebhookAReactionWithoutAnEmojiIsAValidRemovalNotAParseError` red — all four compare against
 `wamid.TESTE001`, which only appears as a target in the fixture, never as an event id.
 
@@ -2533,6 +2533,65 @@ does not move with a rename; the compiler cannot help.
 `Contains`/`NotContains` is a guard that just went blind. Where the language allows it, pin the guard to the symbol
 (a constant, a struct tag read through reflection) rather than to a typed-out string, so the rename either updates
 it or breaks the build.
+
+### The doc-pointer gate only sees `.go` — renaming anything else leaves a dead pointer it cannot find (2026-09-07)
+
+`internal/config/doc_pointers_test.go` is T-217's gate, and it works: it caught the 50 dead `.go` pointers that
+CAMADA 1's rename left behind. But its `docPointerPattern` is
+
+```go
+regexp.MustCompile(`[A-Za-z0-9_./-]+\.go(:[0-9]+(-[0-9]+)?)?`)
+```
+
+— it matches a path **ending in `.go`**, and nothing else. Every other kind of repo path cited in a doc is invisible
+to it: a test fixture, a shell script, a JSON file, a systemd unit.
+
+**Measured on 2026-09-07, by walking straight into it.** T-228 renamed 40 test fixtures to English
+(`localizacao.json` → `location.json`, `assinatura-entrega.json` → `delivery-signature.json`, …). `go test ./...`
+came back green on all seven packages — and **four docs were left pointing at filenames that no longer existed**:
+`docs/ARMADILHAS.md` (3 pointers), `docs/CONTRATO-CONSUMIDOR.md` and its pt-BR mirror (the `Código:` header itself),
+and `docs/MIGRACAO-CONTRATO-EN.md` (4 pointers, one of them in a row of the contract migration table). The
+implementer found them by grepping on its own initiative and flagged them; the gate said nothing.
+
+**The `Código:` header is the worst place for this**, because that header is the whole mechanism CLAUDE.md promises:
+*"which doc did my change break?" becomes mechanical, `grep -rl "file_i_touched" docs/subsistemas/`*. A `Código:`
+line naming a file that does not exist breaks the mechanism in the direction that does not fail — you grep the new
+name, get nothing, and conclude no doc describes it.
+
+➡️ **The generalisation, and it is the one this project keeps relearning:** *a gate is exactly as wide as its
+pattern, and the pattern's width is invisible from the outside.* Green from a gate means "nothing matched what I
+look for", never "nothing is wrong". When you build one, write down what it does NOT cover — in the gate itself, so
+the limit travels with it. T-234 widens this one.
+
+### 🔥 The deploy scripts GREP the gateway's log, and no test in this repo covers that seam — two of them went blind, silently (2026-09-07)
+
+`implanta/deploy.sh` and `implanta/valida-lideranca.sh` decide what to report by running `grep` over the gateway's
+own output. That makes a log line **a contract between a Go file and a shell file** — and `go test ./...`, which is
+this project's entire automated safety net, does not read shell scripts at all. Neither does `gofmt`, `go vet`, or
+CI. The seam has **no mechanism whatsoever**.
+
+Two of them were found broken on 2026-09-07, both by a human-style read during T-229's translation pass, not by
+anything failing:
+
+| the script greps | the Go emits today | consequence |
+|---|---|---|
+| `valida-lideranca.sh:113,144` — `"guarda de lideranca ARMADA"` / `"DESARMADA"` | `cmd/zapgw/main.go:332,334` — `"leadership guard ARMED"` / `"DISARMED"` | cases A and D report a **false `FAILED`** |
+| `deploy.sh:260` — `grep -F 'esta obsoleta -- use'` | `internal/config/env_alias.go:59` — `"is deprecated -- use %s instead"` | the obsolete-env-var warning **stops appearing in the deploy**, and nothing says so |
+
+**The second one is the dangerous shape**, and it is worth spelling out: a `grep` that stops matching does not error
+— it returns nothing, and "nothing" is exactly what a healthy run looks like. The deploy would keep printing a clean
+report while the warning it exists to surface had gone silent. *A check whose failure mode is silence is a check
+that deletes itself.*
+
+**They arrived from two different directions, which is the point:** the first from T-219 (2026-09-06, the CLI's
+strings), the second from T-224 (2026-09-07, `internal/config`). Neither task was wrong; neither task's `Verify`
+could have seen it, because both verifies were `go test`-shaped and the broken half is a `.sh` file.
+
+➡️ **The rule:** *when a string crosses out of the language your test runner can read, the coupling needs its own
+gate or it has none.* The sibling of the same day — a shared message translated in one package breaking another
+package's tests — was at least caught by `go test ./...`. This one had nothing above it. T-235 fixes both and builds
+the gate: a Go test that extracts the patterns the shell scripts grep for and asserts each one still appears in the
+Go source, so the next translation fails loudly instead of going quiet.
 
 ## Environment
 

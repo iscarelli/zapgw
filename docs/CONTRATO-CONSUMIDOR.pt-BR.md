@@ -3,7 +3,7 @@
 *[Read in English](CONTRATO-CONSUMIDOR.md)*
 
 **Código:** `internal/inbound/deliver.go`, `internal/inbound/handler.go`,
-`internal/inbound/mirror.go`, `internal/inbound/testdata/assinatura-entrega.json`,
+`internal/inbound/mirror.go`, `internal/inbound/testdata/delivery-signature.json`,
 `internal/meta/types.go`, `internal/meta/parse.go`, `internal/meta/client.go`,
 `internal/meta/errors.go`, `internal/meta/media.go`, `internal/meta/templates.go`,
 `internal/meta/read.go`, `internal/meta/number.go`, `internal/meta/instagram.go`,

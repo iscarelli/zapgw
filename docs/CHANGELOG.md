@@ -4,6 +4,28 @@ Uma linha por versao entregue, no mesmo commit do bump. A entrada diz o **efeito
 
 ## Nao lancado
 
+- **T-229 — Translate the deploy scripts, the CI and the env example** — 7 files: `implanta/deploy.sh`,
+  `profile-zapgw.sh`, `valida-lideranca.sh`, `zapgw.service`, `.githooks/pre-push`,
+  `.github/workflows/verify.yml`, `.env.example`. Comments and operator-facing output in English;
+  every string compared by `case`, `grep` or equality stayed, because translating one in shell makes
+  the branch stop matching and **nothing warns**. `deploy.sh` was never executed — the proof for this
+  task is static by design. 🔥 **Found two real regressions and deliberately did not fix them** (out
+  of its scope, now T-235): `valida-lideranca.sh` greps for a leadership log line the Go stopped
+  emitting at T-219, and `deploy.sh` greps for the obsolete-env-var warning the Go stopped emitting at
+  T-224 — the second one silently removed that warning from every deploy.
+  _Completed 2026-09-08 01:38._
+
+- **T-228 — Rename the Portuguese test fixtures to English** — 39 fixtures in `testdata/corpus/` plus
+  `internal/inbound/testdata/assinatura-entrega.json` → `delivery-signature.json`, all by `git mv`
+  (38 renames detected by git, history preserved). **Zero bytes of JSON payload changed** — the corpus
+  is what Meta actually sends, and an edited value there is a corpus lying about its source. 8 Go
+  readers updated and `testdata/corpus/README.md` translated (665 → 693 lines), including the Go
+  identifiers it cites, which T-223..T-226 had renamed. Left four dead pointers in `docs/` that the
+  doc-pointer gate could not see, because that gate only matches paths ending in `.go` — pointers
+  fixed by hand in the same movement, gate widening queued as T-234.
+  _Completed 2026-09-08 01:25._
+
+
 - **T-233 — Re-align the tests that pin the old Portuguese deprecation warning** — realigned the 11
   assertions in `cmd/zapgw/env_aliases_test.go` (6), `internal/outbound/ingress_test.go` (2),
   `leadership_test.go` (2) and `external_probe_test.go` (1) that pinned the old Portuguese spelling of

@@ -15,6 +15,12 @@ portuguesa cairam de **5.023** (`8997609`) para **2.635**. O que sobra e' quase 
 literal de fio, vocabulario de contrato — mais `cmd/`, que e' a T-227.
 **Verify de repo inteiro verde nos 7 pacotes** depois do ultimo merge.
 
+🚦 **NAO CONFIE NA SAIDA DO `valida-lideranca.sh` NEM NO AVISO DE VARIAVEL OBSOLETA DO DEPLOY ate a
+T-235.** Medido em 2026-09-07: os dois grepam strings que o Go deixou de emitir (T-219 e T-224). O
+primeiro reporta `FAILED` falso nos casos A e D; o segundo simplesmente **parou de mostrar o aviso**,
+e "nada" e' a cara de um deploy saudavel. O deploy em si nao esta quebrado — quem esta cega e' a
+prova dele.
+
 🔥 **A licao que custou, e ela e' sobre o RECORTE das tarefas, nao sobre os implementadores.** Eu
 dividi a traducao por pacote. A T-224 traduziu `config.WarnOldEnvVar` — certo, era o pedido — e
 quebrou **8 testes em `cmd/zapgw` e `internal/outbound`**, que prendiam o substring `obsoleta`.
@@ -283,36 +289,78 @@ Do:      So' comentarios e mensagens de teste. 🔴 As grafias dos VERBOS e os N
          contrato de CLI e territorio da T-220 — nao toque nelas aqui.
 Verify:  CGO_ENABLED=0 go build ./... && go test ./... && go vet ./... && gofmt -l cmd internal
 
-## [ ] T-228  Rename the Portuguese test fixtures to English
-After:   T-227
-Why:     42 arquivos em `testdata/corpus/` e um em `internal/inbound/testdata/` tem nome portugues
-         (`mensagem_texto.json`, `reacao_removida.json`, `assinatura-entrega.json`). Nome de arquivo
-         e' a parte da traducao que aparece na listagem do repositorio publico.
-Files:   testdata/corpus/*.json, testdata/corpus/README.md, internal/inbound/testdata/*.json,
-         internal/meta/corpus_test.go, internal/inbound/*_test.go
-Do:      1. Renomeie com `git mv` (nunca copiar e apagar — perde a historia do arquivo).
-         2. Atualize TODO leitor: `grep -rn "corpus/" --include="*.go" .` e o README do corpus.
-         3. 🔴 O CONTEUDO dos JSON e' payload da Meta: nao traduza NADA dentro deles. So' o nome.
-         4. Traduza `testdata/corpus/README.md` para ingles (788 ocorrencias PT medidas).
-Verify:  CGO_ENABLED=0 go build ./... && go test ./... e `git status` sem arquivo orfao, e
-         `grep -rn "mensagem_texto|reacao_|assinatura-entrega|documento_com_legenda" -E .` vazio
-         fora de `docs/CHANGELOG.md`.
+## [ ] T-235  Fix the two shell/Go log couplings, and build the gate that has never existed
+Why:     🔥 CUSTO MEDIDO EM 2026-09-07, e o modo de falha e' SILENCIO. Dois scripts de `implanta/`
+         decidem o que reportar rodando `grep` na saida do proprio gateway, e o `go test ./...` nao
+         le arquivo `.sh`. Duas costuras quebraram, vindas de tarefas DIFERENTES, e nenhuma das duas
+         podia ter sido vista pelo Verify da tarefa que a quebrou:
+         (1) `implanta/valida-lideranca.sh:113,144` grepa `"guarda de lideranca ARMADA"`/`"DESARMADA"`;
+             `cmd/zapgw/main.go:332,334` loga `"leadership guard ARMED"`/`"DISARMED"` desde a T-219.
+             Os casos A e D reportam FAILED FALSO.
+         (2) `implanta/deploy.sh:260` grepa `-F 'esta obsoleta -- use'`;
+             `internal/config/env_alias.go:59` loga `"is deprecated -- use %s instead (T-214)"` desde
+             a T-224. **O aviso de variavel obsoleta parou de aparecer no deploy, calado.**
+         🔴 A (2) importa alem do conserto: as seis `ZAPGW_*` obsoletas do CT ([1468]) eram gritadas a
+         cada deploy, e e' esse grito que some. Um `grep` que deixa de casar nao da erro — devolve
+         nada, e "nada" e' exatamente a cara de um deploy saudavel.
+Files:   implanta/valida-lideranca.sh, implanta/deploy.sh, e um teste NOVO (sugestao:
+         `internal/config/shell_log_coupling_test.go`)
+After:   T-227 (as strings de `cmd/` tem de estar estaveis antes de serem fixadas por um teste)
+Do:      1. Conserte as duas: leia a linha do `log.Printf` no Go e COPIE a grafia de la para o script.
+            Nao digite de memoria, nao deduza — cole a linha lida no relatorio.
+         2. 🔴 VARRA por irmas antes de fechar. Todo `grep`/`case` nos scripts de `implanta/` que
+            casa com saida do gateway e' uma costura igual. Liste TODAS no relatorio, dizendo de cada
+            uma se casa hoje ou nao:
+            `grep -n "grep\|case " implanta/*.sh`
+         3. CONSTRUA O PORTAO, que e' o que vale mais que os dois consertos. Um teste Go que:
+            - le os scripts de `implanta/` e extrai os literais que eles grepam da saida do gateway;
+            - exige que cada um apareca no fonte Go (`cmd/` ou `internal/`);
+            - FALHA nomeando o par (`arquivo.sh:linha` grepa X, e X nao existe mais no Go).
+            🔴 O portao precisa distinguir REPROVOU de NAO CONSEGUI VERIFICAR: se ele nao conseguir
+            extrair nenhum literal de nenhum script, tem de FALHAR dizendo isso, nunca passar calado.
+            Como marcar quais literais sao costura: escolha voce e ESCREVA a escolha no teste (um
+            comentario-marcador no `.sh` ao lado de cada `grep` acoplado e' a via mais simples e a
+            que nao depende de adivinhar). Se marcar exigir editar os scripts, edite.
+         4. 🔴 PROVE O PORTAO CONTRA DADO REAL, e isto nao e' opcional nesta casa: quebre de proposito
+            um dos pares (mude o literal no `.sh`), rode o teste, mostre que ele REPROVA citando o
+            par, e desfaca. Cole a mensagem de reprovacao no relatorio. Um portao que nunca reprovou
+            e' indistinguivel de um portao que nao olha.
+         🔴 NAO EXECUTE `implanta/deploy.sh`. Ele roda contra producao. A prova e' estatica.
+Verify:  `bash -n implanta/*.sh` sem erro.
+         `CGO_ENABLED=0 go build ./... && go test ./... && go vet ./... && gofmt -l cmd internal`,
+         com os sete pacotes `ok`.
+         E a prova do passo 4, colada no relatorio.
 
-## [ ] T-229  Translate the deploy scripts, the CI and the env example
-After:   T-228
-Why:     `implanta/deploy.sh` (302 ocorrencias PT), `implanta/valida-lideranca.sh` (105),
-         `.githooks/pre-push` (41), `.github/workflows/verify.yml` (63), `.env.example` (69) e
-         `implanta/zapgw.service` (22). Sao os arquivos que um estranho abre primeiro.
-Files:   implanta/deploy.sh, implanta/profile-zapgw.sh, implanta/valida-lideranca.sh,
-         implanta/zapgw.service, .githooks/pre-push, .github/workflows/verify.yml, .env.example
-Do:      Traduza COMENTARIO e MENSAGEM DE SAIDA.
-         🔴 NAO TOQUE: nome de variavel de ambiente, nome de passo do workflow que outra coisa
-         referencie, caminho, nome de unit, nome de arquivo, nem nenhuma string comparada por `case`
-         ou por teste de igualdade. Se um `case` casa com texto portugues, ele e' fio.
-         🔴 `.env.example` so' pode ter PLACEHOLDER literal — nenhum valor real entra.
-Verify:  `bash -n implanta/deploy.sh implanta/profile-zapgw.sh implanta/valida-lideranca.sh .githooks/pre-push`
-         sem erro. 🔴 O deploy NAO roda como verify — ele muda producao. Prova estatica so'.
-         Liste no relatorio o que sobrou em portugues em cada arquivo e por que.
+## [ ] T-234  Widen the doc-pointer gate past `.go`
+After:   T-235
+Why:     `internal/config/doc_pointers_test.go` (portao da T-217) so' enxerga caminho terminado em
+         `.go` — o `docPointerPattern` e' `[A-Za-z0-9_./-]+\.go(:[0-9]+(-[0-9]+)?)?`. Qualquer outro
+         arquivo do repo citado num doc e' invisivel para ele.
+         **Medido em 2026-09-07:** a T-228 renomeou 40 fixtures e o `go test ./...` veio verde nos
+         sete pacotes enquanto QUATRO docs ficaram apontando para nome inexistente — inclusive o
+         cabecalho `Código:` do `docs/CONTRATO-CONSUMIDOR.md`, que e' justamente o mecanismo que o
+         `CLAUDE.md` promete. Os ponteiros ja foram consertados a mao; o buraco do portao nao.
+Files:   internal/config/doc_pointers_test.go
+Do:      Estenda o portao para qualquer caminho de arquivo DO REPOSITORIO citado num doc, nao so'
+         `.go`. E leia isto antes, porque o risco e' falso positivo, que treina todo mundo a ignorar:
+         🔴 NAO pode acusar: (a) a forma `host:caminho` que o `CLAUDE.md` autoriza de proposito
+         (`o LXC do Traefik:/etc/traefik/traefik.yaml`, `host .16:/etc/cron.d/unifi-threats`);
+         (b) caminho fora do repositorio (`~/.zapgw/...`, `/root/...`, `/etc/...`);
+         (c) texto de exemplo (`arquivo.go`, `caminho/arquivo.go`, `NOME.md`);
+         (d) nome de arquivo que o doc cita como historia (um arquivo apagado de proposito, um
+             `.bak`) — para esses, o mecanismo e' a MESMA regra de exencao por CAMINHO COMPLETO com
+             a razao escrita ao lado, que o portao ja usa para `docs/TASKS.md`. Nunca exencao por
+             palavra.
+         Comece pelas extensoes que este repo realmente cita — `.json`, `.sh`, `.md`, `.yml`,
+         `.service`, `.txt` — em vez de "qualquer coisa com um ponto".
+         🔴 E ESCREVA NO PROPRIO TESTE o que ele NAO cobre. O buraco desta vez existiu porque a
+         largura do portao era invisivel de fora. O limite tem de viajar junto com o portao.
+Verify:  `go test ./internal/config/ -run TestDoc` verde.
+         🔴 E a prova contra dado real: renomeie um arquivo de teste de proposito (ou edite um
+         ponteiro num doc para um nome que nao existe), rode o teste, mostre que ele REPROVA citando
+         `doc:linha -> caminho inexistente`, e desfaca. Cole a mensagem no relatorio.
+         E o verify inteiro: `CGO_ENABLED=0 go build ./... && go test ./... && go vet ./... &&
+         gofmt -l cmd internal`.
 
 ## [ ] T-230  Rename the Portuguese directories and script names
 After:   T-229
