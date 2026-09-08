@@ -61,7 +61,7 @@ No host de destino, tres coisas precisam estar no lugar:
 | o que | onde | de onde vem |
 |---|---|---|
 | o binario | `/usr/local/bin/zapgw` | o release ou o build acima |
-| a unit do systemd | `/etc/systemd/system/zapgw.service` | [`implanta/zapgw.service`](implanta/zapgw.service) |
+| a unit do systemd | `/etc/systemd/system/zapgw.service` | [`deploy/zapgw.service`](deploy/zapgw.service) |
 | as variaveis | `/etc/zapgw/env`, modo `0600` | copia de [`.env.example`](.env.example), preenchida |
 
 O `/etc/zapgw/env` e o unico lugar onde segredo mora — `ZAPGW_CHAVE_CIFRA` inclusive. Ele nao e
@@ -69,7 +69,7 @@ versionado, o deploy nao o copia, e nada disso passa por linha de comando.
 
 ### O script de deploy
 
-[`implanta/deploy.sh`](implanta/deploy.sh) faz o caminho inteiro para um container Proxmox: compila,
+[`deploy/deploy.sh`](deploy/deploy.sh) faz o caminho inteiro para um container Proxmox: compila,
 envia, tira snapshot, guarda o binario anterior, troca, reinicia e **espera o `/v1/health`
 responder**. Se ele nao responder no prazo, o script **reverte sozinho** para o binario anterior e
 sai diferente de zero. Ele assume `pct` no no de destino; para outra topologia, vale mais como
@@ -81,7 +81,7 @@ de ele tocar em rede, nomeando a variavel e o formato esperado:
     ZAPGW_DEPLOY_VMID=100 \
     ZAPGW_DEPLOY_HOST=deploy@no-proxmox.exemplo.internal \
     ZAPGW_DEPLOY_SAUDE=http://<ip-interno-do-gateway>:8080/v1/health \
-    implanta/deploy.sh
+    deploy/deploy.sh
 
 *Elas nao tem default de proposito.* Ate a abertura deste repositorio o script trazia o no, o
 container e o IP de uma instalacao real embutidos. Num repositorio publico um default assim nao e

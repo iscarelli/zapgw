@@ -43,7 +43,7 @@
 // simpler confirmation": it would be the protection ending.
 //
 // (3) IT DOES NOT SHOW UP FOR A SCRIPT.
-// `implanta/deploy.sh` and systemd call this binary with no one at the
+// `deploy/deploy.sh` and systemd call this binary with no one at the
 // terminal; a menu waiting for input that never comes LOCKS UP the
 // deploy. That is why the menu only opens when there is NO argument AND
 // BOTH sides (input and output) are a terminal — see `shouldOpenMenu`. With
@@ -338,7 +338,7 @@ func isTerminal(f *os.File) bool {
 // shouldOpenMenu decides, and it is the entire guarantee (3) in four
 // lines.
 //
-// WITH AN ARGUMENT it never opens — `implanta/deploy.sh` and every script
+// WITH AN ARGUMENT it never opens — `deploy/deploy.sh` and every script
 // call the binary this way, and a menu in place of a subcommand locks up
 // the deploy waiting for input that never comes.
 //

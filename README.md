@@ -65,7 +65,7 @@ Three things have to be in place on the target host:
 | what | where | from |
 |---|---|---|
 | the binary | `/usr/local/bin/zapgw` | the release, or the build above |
-| the systemd unit | `/etc/systemd/system/zapgw.service` | [`implanta/zapgw.service`](implanta/zapgw.service) |
+| the systemd unit | `/etc/systemd/system/zapgw.service` | [`deploy/zapgw.service`](deploy/zapgw.service) |
 | the variables | `/etc/zapgw/env`, mode `0600` | a filled-in copy of [`.env.example`](.env.example) |
 
 `/etc/zapgw/env` is the only place secrets live — `ZAPGW_CHAVE_CIFRA` included. It is not version
@@ -73,7 +73,7 @@ controlled, the deploy script does not copy it, and none of it ever travels on a
 
 ### The deploy script
 
-[`implanta/deploy.sh`](implanta/deploy.sh) does the whole path for a Proxmox container: build, ship,
+[`deploy/deploy.sh`](deploy/deploy.sh) does the whole path for a Proxmox container: build, ship,
 snapshot, keep the previous binary, swap, restart, and **wait for `/v1/health` to answer**. If it
 doesn't answer in time, the script **rolls back on its own** and exits non-zero. It assumes `pct` on
 the target node; for any other topology it is worth more as a script to read than as a tool to run.
@@ -84,7 +84,7 @@ before it touches the network, naming the variable and the expected format:
     ZAPGW_DEPLOY_VMID=100 \
     ZAPGW_DEPLOY_HOST=deploy@proxmox-node.example.internal \
     ZAPGW_DEPLOY_SAUDE=http://<gateway-internal-ip>:8080/v1/health \
-    implanta/deploy.sh
+    deploy/deploy.sh
 
 *They have no defaults on purpose.* Until this repository was opened, the script carried a real
 installation's node, container and IP baked in. In a public repository a default like that is not

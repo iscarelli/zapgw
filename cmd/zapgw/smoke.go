@@ -30,8 +30,8 @@
 // THE ONE CHOSEN opens no door at all: the lab points the Graph API at
 // ANOTHER ENDPOINT (ZAPGW_GRAPH_BASE, which main.go already read —
 // `graphBase`) and runs THIS SAME command, with all four steps and the
-// proof requirement intact. The fake lives in cmd/grafo-falso/ (a separate
-// binary: implanta/deploy.sh only builds ./cmd/zapgw) and the recipe is in
+// proof requirement intact. The fake lives in cmd/fakegraph/ (a separate
+// binary: deploy/deploy.sh only builds ./cmd/zapgw) and the recipe is in
 // docs/IMPLANTACAO.md.
 //
 // For whoever wants proof the requirement survived:

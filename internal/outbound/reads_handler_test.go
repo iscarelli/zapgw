@@ -18,7 +18,7 @@ import (
 
 // --- fake Graph API, only for this route ---------------------------------------
 //
-// It's the SAME idea as `cmd/grafo-falso` (T-071) — a fake Graph API that
+// It's the SAME idea as `cmd/fakegraph` (T-071) — a fake Graph API that
 // cannot produce a false positive —, here in-process because that binary is
 // `package main` and can't be imported. It RECORDS what it received (verb,
 // path, body) instead of just answering 200: this task's central finding was

@@ -77,7 +77,7 @@ var syntheticPhoneAllowlist = map[string]bool{
 	"5511888880000": true,
 	"5511777770000": true,
 	// T-185, found when implanta/ entered the sweep: the `para` of the
-	// POST that implanta/valida-lideranca.sh:93 fires against a gateway
+	// POST that deploy/check-leadership.sh:93 fires against a gateway
 	// it just started. All nines after the area code — synthetic by
 	// construction, and it is never meant to reach the Meta.
 	"5511999999999": true,

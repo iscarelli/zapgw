@@ -1,4 +1,4 @@
-Código: cmd/zapgw/, internal/outbound/, internal/config/, internal/meta/, internal/inbound/, cmd/grafo-falso/
+Código: cmd/zapgw/, internal/outbound/, internal/config/, internal/meta/, internal/inbound/, cmd/fakegraph/
 
 # Inventário de strings de produção em português (T-213)
 
@@ -22,10 +22,10 @@ diz `A MEDIR` e o que faltou, em vez de chutar.
    chamadas) e o corpo inteiro de `internal/outbound/message.go` (a função `Request.Validate()`,
    que sozinha tem **103 pontos distintos de `fmt.Errorf`/`errors.New` em português**, nenhum
    acentuado).
-3. **cmd/zapgw e cmd/grafo-falso são um binário à parte do consumidor.** `cmd/zapgw/main.go`
+3. **cmd/zapgw e cmd/fakegraph são um binário à parte do consumidor.** `cmd/zapgw/main.go`
    confirma por comentário: sem argumento o binário sobe o servidor HTTP; com argumento vira
    ferramenta de CLI, e o dispatch de CLI escreve em `out io.Writer` (stdout do operador) — nunca
-   no `http.ResponseWriter` do consumidor. `cmd/grafo-falso` é uma Graph API FALSA de laboratório
+   no `http.ResponseWriter` do consumidor. `cmd/fakegraph` é uma Graph API FALSA de laboratório
    que "NÃO VAI PARA PRODUÇÃO" (comentário no topo do arquivo). Por isso **toda string desses dois
    binários é LOG (saída de operador/laboratório) por construção**, sem precisar rastrear cada
    uma — e nenhuma delas pode ser SAIDA-CONSUMIDOR.
@@ -37,7 +37,7 @@ diz `A MEDIR` e o que faltou, em vez de chutar.
 | **SAIDA-CONSUMIDOR** (só) | **~44** | ver tabela 2 |
 | **AMBOS** | **~132** | ver tabela 3 — 103 delas vêm de UMA função (`message.go: Request.Validate()`) |
 | **LOG** (internal, não-CLI) | **~40** | ver tabela 4 |
-| **LOG** (CLI/laboratório — `cmd/zapgw`, `cmd/grafo-falso`) | **98 confirmadas com acento** + volume ASCII não contado (não afeta o número acima porque é estruturalmente impossível chegar ao consumidor — ver item 3) | ver tabela 5 |
+| **LOG** (CLI/laboratório — `cmd/zapgw`, `cmd/fakegraph`) | **98 confirmadas com acento** + volume ASCII não contado (não afeta o número acima porque é estruturalmente impossível chegar ao consumidor — ver item 3) | ver tabela 5 |
 | **Nunca impressa** (nem log, nem resposta — achado à parte) | 7 | ver seção própria |
 | **A MEDIR** | ver seção própria | funções de erro específicas de alguns handlers não varridas linha a linha até o fim |
 
@@ -177,13 +177,13 @@ Confirmado que o texto só aparece em `log.Printf`/`log.Print`/`log.Fatalf` — 
 | `internal/config/store.go:215-233` (`ValidateSlug`), linhas 222,227 | | só chamada por `CreateInstanceAt` (CLI) e diretamente por `provision.go` |
 | `internal/meta/registration.go:46` (`ErrInvalidPin`) | | `Register`/`SetPin` só chamados por `cmd/zapgw/provision.go` (CLI) |
 
-## Tabela 5 — LOG (CLI/laboratório, `cmd/zapgw` e `cmd/grafo-falso`)
+## Tabela 5 — LOG (CLI/laboratório, `cmd/zapgw` e `cmd/fakegraph`)
 
 Estruturalmente impossível chegar ao consumidor (ver item 3 da metodologia): `cmd/zapgw` roteia
 por `dispatch(args, out io.Writer, env)` (CLI) ou pelo servidor HTTP com NENHUM texto duro destes
 arquivos — os textos abaixo vivem em `provision.go`, `menu.go`, `diagnostics.go`, `log.go`,
 `transit.go`, `smoke.go`, `lost.go`, `state.go`, `template.go`, `main.go`, todos sob `cmd/zapgw/`, e
-em `cmd/grafo-falso/main.go` (que o próprio arquivo documenta como "NÃO VAI PARA PRODUÇÃO").
+em `cmd/fakegraph/main.go` (que o próprio arquivo documenta como "NÃO VAI PARA PRODUÇÃO").
 
 | arquivo | strings com acento confirmadas (contagem exata) | strings ASCII (não contadas — ver A MEDIR) |
 |---|---|---|
@@ -197,7 +197,7 @@ em `cmd/grafo-falso/main.go` (que o próprio arquivo documenta como "NÃO VAI PA
 | `cmd/zapgw/state.go` | 2 | não contado |
 | `cmd/zapgw/main.go` | 1 | não contado |
 | `cmd/zapgw/template.go` | 0 (na busca por acento) | não contado |
-| `cmd/grafo-falso/main.go` | 3 | não contado |
+| `cmd/fakegraph/main.go` | 3 | não contado |
 | **total** | **98** | — |
 
 Amostra conferida com `sed -n`: `cmd/zapgw/provision.go:1084` (mensagem de erro de tipo de
@@ -226,7 +226,7 @@ lugar".
 Sendo honesto sobre os limites do que foi rastreado nesta sessão, em vez de estender a tabela 2/3
 por extrapolação:
 
-- **Volume ASCII exato de `cmd/zapgw`/`cmd/grafo-falso`.** A tabela 5 conta só as strings com
+- **Volume ASCII exato de `cmd/zapgw`/`cmd/fakegraph`.** A tabela 5 conta só as strings com
   acento (98). O volume sem acento existe e é grande (o padrão se repete: mensagens de CLI também
   evitam acento), mas não foi contado linha a linha porque **não muda o número que importa**
   (SAIDA-CONSUMIDOR): está estruturalmente provado que nada desses dois binários alcança o
@@ -259,7 +259,7 @@ próximo passo (tradução) vai precisar fechar antes de tocar nesses arquivos.
 - **~132 padrões distintos AMBOS + ~44 padrões distintos SAIDA-CONSUMIDOR** entre strings
   ASCII e acentuadas de `internal/outbound`/`internal/config`, dos quais **103 vêm de um único
   arquivo** (`message.go`).
-- **98 strings com acento** em `cmd/zapgw`/`cmd/grafo-falso` (LOG por construção).
+- **98 strings com acento** em `cmd/zapgw`/`cmd/fakegraph` (LOG por construção).
 
 Somando só as linhas de código reais rastreadas (sem contar ocorrências repetidas da tabela 1 mais
 de uma vez): **164 (acentuadas) + ~132 ASCII não-acentuadas em `message.go`/`store.go`/handlers +

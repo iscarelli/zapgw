@@ -10,8 +10,8 @@ import (
 	"testing"
 )
 
-// T-235's GATE, and the reason it exists: `implanta/valida-lideranca.sh` and
-// `implanta/deploy.sh` decide what to report by grepping the gateway's OWN
+// T-235's GATE, and the reason it exists: `deploy/check-leadership.sh` and
+// `deploy/deploy.sh` decide what to report by grepping the gateway's OWN
 // log output. That makes a `log.Printf` string (or a JSON struct tag) a
 // CONTRACT between a Go file and a shell file — and `go test ./...`, this
 // project's entire automated safety net, does not read `.sh` files at all.
@@ -21,7 +21,7 @@ import (
 // (the CLI's English pass), one from T-224 (`internal/config`). Neither
 // task's Verify could have seen it, because both verifies are `go test`
 // shaped and the broken half is shell. The dangerous one (deploy.sh:260,
-// `implanta/deploy.sh`) has a failure mode that IS silence: a `grep` that
+// `deploy/deploy.sh`) has a failure mode that IS silence: a `grep` that
 // stops matching returns nothing, and "nothing" is exactly what a healthy
 // deploy looks like. Full account: docs/ARMADILHAS.md, "The deploy scripts
 // GREP the gateway's log".
@@ -41,13 +41,13 @@ import (
 // This test extracts every such literal and requires it to still appear,
 // verbatim, somewhere under cmd/ or internal/. Two couplings are
 // DELIBERATELY left unmarked, with the reason written at the site instead:
-//   - implanta/deploy.sh's `case "$corpo" in *'"ok":true'*)` matches a
+//   - deploy/deploy.sh's `case "$corpo" in *'"ok":true'*)` matches a
 //     RENDERED JSON key+value, not a literal that sits in the Go source
 //     (the real coupling is to the `OK bool json:"ok"` field staying `true`
 //     on success) — matching on the bare word "ok" would produce constant
 //     false negatives, since "ok" appears throughout the codebase for
 //     unrelated reasons.
-//   - implanta/deploy.sh's `case ${ZAPGW_DEPLOY_VMID} in`, the `pct status`
+//   - deploy/deploy.sh's `case ${ZAPGW_DEPLOY_VMID} in`, the `pct status`
 //     grep, and the `/root/.bashrc` grep check shell input, a third-party
 //     tool's output, and a file this same script writes — none of them are
 //     the gateway's own log output.
@@ -65,21 +65,21 @@ var shellLogCouplingMarker = regexp.MustCompile(`#\s*zapgw:log-coupling\s+"([^"]
 // script, with the file:line it was found at (the marker's own line, which
 // sits right next to the grep/case it documents) for the failure message.
 type shellLogCoupling struct {
-	file    string // relative to the module root, e.g. "implanta/deploy.sh"
+	file    string // relative to the module root, e.g. "deploy/deploy.sh"
 	line    int    // 1-based
 	literal string
 }
 
-// extractShellLogCouplings scans every implanta/*.sh file among `targets`
+// extractShellLogCouplings scans every deploy/*.sh file among `targets`
 // (expected to come from filesGitSeesFromRoot, same convention T-191 set
-// for the phone/name gates — a new script under implanta/ is covered
+// for the phone/name gates — a new script under deploy/ is covered
 // without anyone editing this test) for the marker comment and returns
 // every one found, in file order.
 func extractShellLogCouplings(root string, targets []string) ([]shellLogCoupling, error) {
 	var found []shellLogCoupling
 	for _, rel := range targets {
 		relSlash := filepath.ToSlash(rel)
-		if !strings.HasPrefix(relSlash, "implanta/") || !strings.HasSuffix(relSlash, ".sh") {
+		if !strings.HasPrefix(relSlash, "deploy/") || !strings.HasSuffix(relSlash, ".sh") {
 			continue
 		}
 		content, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(relSlash)))
@@ -147,7 +147,7 @@ func goSourceContains(root, literal string) (bool, error) {
 }
 
 // TestShellScriptsLogCouplingsExistInGoSource is T-235's gate: every
-// `# zapgw:log-coupling "..."` literal declared in implanta/*.sh must still
+// `# zapgw:log-coupling "..."` literal declared in deploy/*.sh must still
 // appear somewhere under cmd/ or internal/. When it doesn't, the failure
 // names the exact pair (`file:line` greps X, X not found) instead of
 // leaving the drift to be found by a human reading a deploy transcript.
@@ -164,15 +164,15 @@ func TestShellScriptsLogCouplingsExistInGoSource(t *testing.T) {
 
 	couplings, err := extractShellLogCouplings(root, targets)
 	if err != nil {
-		t.Fatalf("read implanta/*.sh (closed failure): %v", err)
+		t.Fatalf("read deploy/*.sh (closed failure): %v", err)
 	}
 
 	if len(couplings) == 0 {
-		t.Fatalf("COULD NOT VERIFY: found zero \"# zapgw:log-coupling\" markers in implanta/*.sh. " +
+		t.Fatalf("COULD NOT VERIFY: found zero \"# zapgw:log-coupling\" markers in deploy/*.sh. " +
 			"This is deliberately NOT treated as \"nothing to check\" — it is indistinguishable " +
 			"from the extraction itself having broken (a renamed marker, a moved/deleted script), " +
 			"and passing on that would be exactly the blind monitor docs/ARMADILHAS.md warns " +
-			"about. If implanta/ genuinely lost every coupling, remove this test instead of " +
+			"about. If deploy/ genuinely lost every coupling, remove this test instead of " +
 			"letting it pass silently.")
 	}
 
@@ -217,13 +217,13 @@ func TestShellScriptsLogCouplingsExistInGoSource(t *testing.T) {
 // found" when the Go side changes wording out from under a marked literal —
 // not just "not found (yet)" because nobody tried.
 //
-// It builds a throwaway tree (a fake implanta/sample.sh and a fake
+// It builds a throwaway tree (a fake deploy/sample.sh and a fake
 // cmd/zapgw/x.go) instead of mutating the real repository files, so this
 // control itself never needs a manual break/revert to run in CI.
 func TestShellLogCouplingGateCatchesAStaleLiteral(t *testing.T) {
 	root := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(root, "implanta"), 0o755); err != nil {
-		t.Fatalf("MkdirAll implanta: %v", err)
+	if err := os.MkdirAll(filepath.Join(root, "deploy"), 0o755); err != nil {
+		t.Fatalf("MkdirAll deploy: %v", err)
 	}
 	if err := os.MkdirAll(filepath.Join(root, "cmd", "zapgw"), 0o755); err != nil {
 		t.Fatalf("MkdirAll cmd/zapgw: %v", err)
@@ -239,7 +239,7 @@ func TestShellLogCouplingGateCatchesAStaleLiteral(t *testing.T) {
 	script := "#!/usr/bin/env bash\n" +
 		"# zapgw:log-coupling \"" + literal + "\"\n" +
 		"grep -q \"" + literal + "\" out.log\n"
-	if err := os.WriteFile(filepath.Join(root, "implanta", "sample.sh"), []byte(script), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(root, "deploy", "sample.sh"), []byte(script), 0o644); err != nil {
 		t.Fatalf("WriteFile sample.sh: %v", err)
 	}
 
@@ -249,7 +249,7 @@ func TestShellLogCouplingGateCatchesAStaleLiteral(t *testing.T) {
 		t.Fatalf("WriteFile x.go: %v", err)
 	}
 
-	couplings, err := extractShellLogCouplings(root, []string{"implanta/sample.sh"})
+	couplings, err := extractShellLogCouplings(root, []string{"deploy/sample.sh"})
 	if err != nil {
 		t.Fatalf("extractShellLogCouplings: %v", err)
 	}
@@ -268,7 +268,7 @@ func TestShellLogCouplingGateCatchesAStaleLiteral(t *testing.T) {
 	})
 
 	// The Go side reworks the wording — the exact shape of T-219 breaking
-	// implanta/valida-lideranca.sh's ARMED/DISARMED markers on 2026-09-06.
+	// deploy/check-leadership.sh's ARMED/DISARMED markers on 2026-09-06.
 	goFileRenamed := "package main\n\nfunc x() { println(\"renamed guard status\") }\n"
 	if err := os.WriteFile(goFilePath, []byte(goFileRenamed), 0o644); err != nil {
 		t.Fatalf("WriteFile x.go (renamed): %v", err)

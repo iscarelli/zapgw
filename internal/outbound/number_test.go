@@ -15,7 +15,7 @@ import (
 )
 
 // numberGraph is a fake Graph API that TREATS `fields=` AS A DIFFERENT
-// QUESTION — like the real one and like cmd/grafo-falso/. A fake that
+// QUESTION — like the real one and like cmd/fakegraph/. A fake that
 // answered the two the same way would hide exactly the dangerous case this
 // task is about.
 type numberGraph struct {
