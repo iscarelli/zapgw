@@ -1,4 +1,4 @@
-// Tests for the `entrada` block of GET /v1/estado (T-120).
+// Tests for the `ingress` block of GET /v1/estado (T-120).
 //
 // WHAT THEY PROTECT, and it's one thing said in several ways: the DISTINCTION
 // between "I measured and it's bad" and "I couldn't measure". The two send
@@ -81,8 +81,8 @@ func TestIngressViaSaysWhatToDoInTheError(t *testing.T) {
 
 // THE SPACE AROUND THE URL IS TRIMMED — and ` tunel` keeps being rejected. The
 // asymmetry is deliberate and lives in ConnectorAddress: here, a line break
-// coming from a heredoc in `env` would make the probe publish `desconhecido`
-// with `falhando_desde` rising over a healthy connector, which is an alarm LYING.
+// coming from a heredoc in `env` would make the probe publish `unknown`
+// with `failing_since` rising over a healthy connector, which is an alarm LYING.
 func TestConnectorAddressTrimsSurroundingSpace(t *testing.T) {
 	cases := map[string]string{
 		"  http://10.0.0.19:60125/ready\n": "http://10.0.0.19:60125/ready",
@@ -134,7 +134,7 @@ func TestConnectorProbePublishesTheConnectionsThatReadyAnswered(t *testing.T) {
 		t.Error("medido_em nulo depois de o conector responder")
 	}
 	if c.FailingSince != nil {
-		t.Errorf("falhando_desde = %v numa medicao que deu certo", *c.FailingSince)
+		t.Errorf("failing_since = %v numa medicao que deu certo", *c.FailingSince)
 	}
 }
 
@@ -158,7 +158,7 @@ func TestConnectorProbeTreatsZeroConnectionsAsAMeasurementWhateverTheHTTPStatus(
 		t.Errorf("conexoes_prontas = %v, quero 0", c.ReadyConnections)
 	}
 	if c.FailingSince != nil {
-		t.Errorf("falhando_desde = %v: a pergunta VOLTOU, o que falhou foi o tunel", *c.FailingSince)
+		t.Errorf("failing_since = %v: a pergunta VOLTOU, o que falhou foi o tunel", *c.FailingSince)
 	}
 }
 
@@ -175,7 +175,7 @@ func deadAddress(t *testing.T) string {
 }
 
 // 🔴 THE TEST THE MANDATORY MUTATION OF T-120 PROTECTS: connector unreachable
-// CANNOT turn into a number. `desconhecido` + `falhando_desde` is the only
+// CANNOT turn into a number. `unknown` + `failing_since` is the only
 // honest answer — a `conexoes_prontas: 0` here would be indistinguishable from
 // the legitimate measurement of the test above, and would send someone looking
 // for the defect in the tunnel when the defect is on the path to the connector
@@ -193,7 +193,7 @@ func TestConnectorProbeDownComesOutUnknownWithFailingSinceAndNeverZero(t *testin
 			*c.ReadyConnections)
 	}
 	if c.FailingSince == nil {
-		t.Error("falhando_desde nulo: sem ele, `desconhecido` nao distingue 'nunca perguntei' de 'pergunto e nao volta'")
+		t.Error("failing_since nulo: sem ele, `unknown` nao distingue 'nunca perguntei' de 'pergunto e nao volta'")
 	}
 	if c.MeasuredAt != nil {
 		t.Errorf("medido_em = %v sem o conector nunca ter respondido", *c.MeasuredAt)
@@ -223,7 +223,7 @@ func TestConnectorProbeRefusesAnswerWithoutTheFieldInsteadOfReadingZero(t *testi
 // After ONE good measurement, the next failure erases the NUMBER but not the
 // TIMESTAMP: `medido_em` keeps saying how long the gateway hasn't heard from
 // the connector — information that zeroing it out would destroy (same rule as
-// MetaToken). And `falhando_desde` marks the FIRST failure of the sequence,
+// MetaToken). And `failing_since` marks the FIRST failure of the sequence,
 // never the last.
 func TestConnectorProbeKeepsTheStampOfTheLastAnswerAndANCHORSFailingSince(t *testing.T) {
 	s := NewConnectorProbe(fakeReady(t, http.StatusOK, 4))
@@ -252,14 +252,14 @@ func TestConnectorProbeKeepsTheStampOfTheLastAnswerAndANCHORSFailingSince(t *tes
 		t.Errorf("medido_em = %v, quero o carimbo da ultima RESPOSTA (%v)", c.MeasuredAt, *good.MeasuredAt)
 	}
 	if c.FailingSince == nil || *c.FailingSince != *stamp(firstFailure) {
-		t.Errorf("falhando_desde = %v, quero a PRIMEIRA falha da sequencia (%v)",
+		t.Errorf("failing_since = %v, quero a PRIMEIRA falha da sequencia (%v)",
 			c.FailingSince, *stamp(firstFailure))
 	}
 }
 
-// A good measurement that ages degrades to `desconhecido`: a cache that never
+// A good measurement that ages degrades to `unknown`: a cache that never
 // expires is a lie with a timestamp. If the probe's goroutine dies, a frozen
-// `observado` would paint "connector standing" forever.
+// `observed` would paint "connector standing" forever.
 func TestConnectorProbeDegradesStaleMeasurementToUnknown(t *testing.T) {
 	s := NewConnectorProbe(fakeReady(t, http.StatusOK, 4))
 	clock := time.Date(2026, 8, 6, 19, 20, 44, 0, time.UTC)
@@ -281,7 +281,7 @@ func TestConnectorProbeDegradesStaleMeasurementToUnknown(t *testing.T) {
 	}
 }
 
-// --- (d) no address: `nao_configurado`, present in the JSON -----------------
+// --- (d) no address: `not_configured`, present in the JSON -----------------
 
 func TestConnectorProbeWithoutAddressComesOutNotConfigured(t *testing.T) {
 	for name, s := range map[string]*ConnectorProbe{
@@ -321,7 +321,7 @@ func TestConnectorProbeSupportsConcurrentReadAndWrite(t *testing.T) {
 
 // --- the block on the route ------------------------------------------------------
 
-// testIngress is the `entrada` block from the point of view of WHOEVER
+// testIngress is the `ingress` block from the point of view of WHOEVER
 // CONSUMES it — a deliberate copy of the format, like testStateResponse:
 // if someone renames a field, this test turns red instead of the consumer
 // finding out in production.
@@ -380,12 +380,12 @@ func TestStateRouteStays200WithTheConnectorDownAndPublishesUnknown(t *testing.T)
 		t.Errorf("conector.conexoes_prontas = %d numa medicao que nao aconteceu", *e.Connector.ReadyConnections)
 	}
 	if e.Connector.FailingSince == nil {
-		t.Error("conector.falhando_desde nulo com a sonda falhando")
+		t.Error("conector.failing_since nulo com a sonda falhando")
 	}
 }
 
 // ⚠️ A FIELD THAT DISAPPEARS BREAKS A STRICT PARSER, and this project already
-// paid for it (`token_instagram`, which came to be sent ALWAYS). The
+// paid for it (`instagram_token`, which came to be sent ALWAYS). The
 // assertion is about the KEY's PRESENCE in the raw JSON, not about the
 // deserialized value: an absent field deserializes to the same zero value as
 // a present-but-empty field, so a test that only looked at the struct would
@@ -400,11 +400,11 @@ func TestStateRouteNeverOMITSTheConnectorBlockWhenNoAddressIsConfigured(t *testi
 	}
 	rawIngress, has := raw["ingress"]
 	if !has {
-		t.Fatalf("a chave `entrada` NAO esta no JSON: %s", rec.Body.String())
+		t.Fatalf("a chave `ingress` NAO esta no JSON: %s", rec.Body.String())
 	}
 	var blocks map[string]json.RawMessage
 	if err := json.Unmarshal(rawIngress, &blocks); err != nil {
-		t.Fatalf("`entrada` nao desserializa: %v", err)
+		t.Fatalf("`ingress` nao desserializa: %v", err)
 	}
 	for _, key := range []string{"via", "connector", "last_webhook_at"} {
 		if _, has := blocks[key]; !has {

@@ -1,4 +1,4 @@
-// Tests for the `token_instagram` block of GET /v1/estado (T-098) — the
+// Tests for the `instagram_token` block of GET /v1/estado (T-098) — the
 // main DELIVERABLE of this task, after the owner's decision on
 // 2026-07-30 ("you don't need to alarm anything... the state has to tell the
 // truth from the first failure").
@@ -265,7 +265,7 @@ func TestGETStateWhatsappInstagramTokenIsNotApplicableInTheJSON(t *testing.T) {
 // --- T-099: not_applicable in the REVERSE DIRECTION — WhatsApp blocks on an ------
 // --- INSTAGRAM instance. It's the SAME mother pitfall that T-098 closed on one
 // side (above) and left open on the other: measured in production (tenant-two-ig,
-// v0.36.0, 2026-07-30 21:11), numero_na_meta said `nunca_observado` — the
+// v0.36.0, 2026-07-30 21:11), numero_na_meta said `never_observed` — the
 // WRONG answer, because quality and message tier ARE WhatsApp concepts and
 // will NEVER exist on an Instagram instance; the right answer is NotApplicable.
 

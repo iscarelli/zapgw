@@ -168,7 +168,7 @@ func TestRegistrationRefusesInstagramInstanceWith400AndGuidance(t *testing.T) {
 // without calling Meta -------------------------------------------------
 
 // healthResponseWithVerdict is testHealthResponse (health_handler_test.go)
-// plus the `veredito` field, which only this task's test needs to read.
+// plus the `verdict` field, which only this task's test needs to read.
 type healthResponseWithVerdict struct {
 	OK         bool   `json:"ok"`
 	VerifiedAt string `json:"verificado_em"`

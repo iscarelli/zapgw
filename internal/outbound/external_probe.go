@@ -1,5 +1,5 @@
 // THE VERDICT OF THE EXTERNAL PROBE, brought inside `GET /v1/estado`
-// (`alcance_externo`, T-121).
+// (`external_reach`, T-121).
 //
 // WHY THIS EXISTS: `consumer-b` reaches the gateway through the INTERNAL
 // door, and for them "the gateway responds" and "the public entrance is up"
@@ -33,17 +33,17 @@
 // there's a background TIMER with cache, and the GET /v1/estado handler
 // (state_handler.go) only reads memory.
 //
-// THE WORD `nao_consegui_verificar` IS DELIBERATE, and does NOT reuse
-// VerdictUnknown/ConnectorUnknown ("desconhecido") that the rest
+// THE WORD `could_not_verify` IS DELIBERATE, and does NOT reuse
+// VerdictUnknown/ConnectorUnknown ("unknown") that the rest
 // of this package uses for the SAME structural idea ("no valid measurement
 // right now"). Here the consumer will AUTOMATE AN ALARM on top of this
 // specific field to decide whether to page someone (T-121, explicit
 // request) — and the task flagged as a CENTRAL POINT that this reading
 // failing must NEVER turn into `down` (the verdict the probe uses for "the
 // entrance is down") nor into silence (field absent). An unambiguous name,
-// that doesn't resemble "down" nor the generic "desconhecido" used in other
+// that doesn't resemble "down" nor the generic "unknown" used in other
 // blocks, is the defense against the consumer coding
-// `if alcance_externo != "observado" { TOTAL_OUTAGE }` and confusing "I
+// `if external_reach != "observed" { TOTAL_OUTAGE }` and confusing "I
 // couldn't ask" with "you are down".
 package outbound
 
@@ -69,7 +69,7 @@ import (
 //
 // ABSENT IS A LEGITIMATE STATE, not an error: an installation that doesn't
 // yet have the public probe running (or whose owner hasn't passed the URL
-// yet) boots normally and publishes `nao_configurado` — the SAME pattern as
+// yet) boots normally and publishes `not_configured` — the SAME pattern as
 // `conector` in T-120.
 //
 // This is the OLD (Portuguese) name. T-214 (2026-08-31) added
@@ -89,7 +89,7 @@ const VarExternalProbeURLNew = "ZAPGW_EXTERNAL_PROBE_URL"
 // THE SPACE IS TRIMMED, as in ConnectorAddress and for the SAME reason:
 // there's no closed vocabulary here (unlike IngressVia) for a heredoc line
 // break to complain against — without the trim, it would just make every
-// read fail and the block would publish `nao_consegui_verificar` forever,
+// read fail and the block would publish `could_not_verify` forever,
 // pointing at a probe that was actually never asked correctly.
 //
 // T-214: accepts VarExternalProbeURLNew in addition to the old name (new
@@ -109,9 +109,9 @@ func ExternalProbeURL(getenv func(string) string) string {
 const (
 	// ReachStateObserved: the gateway ASKED the external probe and it
 	// RESPONDED with readable JSON. Its verdict (literal, "up"/"down" or
-	// whatever the probe sends) is in `veredito`.
+	// whatever the probe sends) is in `verdict`.
 	//
-	// SAME WORD as CertObserved (certificado_do_callback, numero_na_meta):
+	// SAME WORD as CertObserved (callback_certificate, number_at_meta):
 	// the question is the same — "is there a valid measurement right now?"
 	// — and a new vocabulary just for this block would force the consumer
 	// to learn a second table for the same idea.
@@ -126,38 +126,38 @@ const (
 	// attempt did not produce a trustworthy reading — no response, no
 	// readable JSON, or the expected field missing. Its OWN word, and the
 	// reason is in the file header: this field can never turn into `down`
-	// nor into silence, and reusing "desconhecido" would risk the
+	// nor into silence, and reusing "unknown" would risk the
 	// consumer treating this response as the SAME thing as
-	// `token_meta.veredito` or `entrada.conector.estado`, when the
+	// `meta_token.verdict` or `ingress.connector.state`, when the
 	// question they're automating on top of it is a different one.
 	ReachStateCouldNotVerify = "could_not_verify"
 )
 
-// SourceExternalProbe is the literal published in `alcance_externo.fonte` when
-// `estado == observado`.
+// SourceExternalProbe is the literal published in `external_reach.source` when
+// `state == observed`.
 //
 // TODAY THERE'S ONLY ONE MECHANISM (asking the URL from
 // VarExternalProbeURL), and the field might look like ceremony because of
 // that — but it follows the SAME shape as ObservedValue.Source
-// (numero_na_meta), which exists for the day a SECOND source shows up (for
+// (number_at_meta), which exists for the day a SECOND source shows up (for
 // example, the probe itself pushing the verdict instead of the gateway
 // having to ask) without forcing the consumer to reinterpret a contract
 // it's already published.
 const SourceExternalProbe = "sonda_externa"
 
-// ExternalReachInState is the `alcance_externo` block (T-121).
+// ExternalReachInState is the `external_reach` block (T-121).
 //
-// THE SHAPE IS THE SAME AS ObservedValue (numero_na_meta) — state, the
+// THE SHAPE IS THE SAME AS ObservedValue (number_at_meta) — state, the
 // measured value, when and from where —, just with the names this specific
-// field calls for (`veredito` instead of `valor`, `medido_em` instead of
-// `observado_em`, to match the vocabulary MetaToken and ConnectorInState
+// field calls for (`verdict` instead of `value`, `measured_at` instead of
+// `observed_at`, to match the vocabulary MetaToken and ConnectorInState
 // already use for "the last time a real response arrived").
 //
-// EVERY FIELD BESIDES `estado` IS A POINTER WITHOUT omitempty, by the same
+// EVERY FIELD BESIDES `state` IS A POINTER WITHOUT omitempty, by the same
 // rule as this whole package: explicit `null` says "there is none", and the
 // key is ALWAYS present — a field that disappears from the JSON would force
 // the consumer to distinguish "absent" from "null" to answer the same
-// question (and this project already paid for that: `token_instagram` in
+// question (and this project already paid for that: `instagram_token` in
 // v0.37.x).
 type ExternalReachInState struct {
 	State string `json:"state"`
@@ -165,17 +165,17 @@ type ExternalReachInState struct {
 	// "down" — see docs/CONTRATO-CONSUMIDOR.md) — WITHOUT TRANSLATION, for
 	// the same reason as NumberAtMeta.MessageLimit: translating would
 	// hide a new word the probe might use tomorrow, returning something
-	// plausible for a value nobody checked. `null` whenever `estado` !=
-	// observado.
+	// plausible for a value nobody checked. `null` whenever `state` !=
+	// observed.
 	Verdict *string `json:"verdict"`
 	// MeasuredAt is the last time the external probe actually RESPONDED —
 	// not the last ATTEMPT. It keeps pointing to that last real response
-	// even after the state degrades to nao_consegui_verificar: it's what
+	// even after the state degrades to could_not_verify: it's what
 	// says how long the gateway hasn't heard from the probe, information
 	// that zeroing it would destroy. Same rule as MetaToken.MeasuredAt and
 	// ConnectorInState.MeasuredAt.
 	MeasuredAt *string `json:"measured_at"`
-	// Source is SourceExternalProbe when `estado == observado`, `null` in the
+	// Source is SourceExternalProbe when `state == observed`, `null` in the
 	// other two states — see the comment on SourceExternalProbe.
 	Source *string `json:"source"`
 }
@@ -189,8 +189,8 @@ type ExternalReachInState struct {
 const externalProbeInterval = 60 * time.Second
 
 // externalMeasurementValidity is for how long the last response keeps being
-// presented as `observado`. Past that (or with an attempt in progress
-// failing) the block degrades to `nao_consegui_verificar`, with `medido_em`
+// presented as `observed`. Past that (or with an attempt in progress
+// failing) the block degrades to `could_not_verify`, with `measured_at`
 // intact.
 //
 // THREE TICKS, the SAME relation to the interval that watchdog.go and
@@ -251,7 +251,7 @@ type ExternalProbe struct {
 // NewExternalProbe builds the probe INERT: it only starts measuring in
 // Start (or in a standalone Measure, which is what `zapgw estado` does).
 // An empty URL returns a probe that never talks to anyone and always reads
-// `nao_configurado`.
+// `not_configured`.
 func NewExternalProbe(url string) *ExternalProbe {
 	return &ExternalProbe{
 		url: url,
@@ -297,7 +297,7 @@ func (s *ExternalProbe) Start() {
 // WHO NEEDS IT STANDALONE IS `zapgw estado` (cmd/zapgw/state.go), for the
 // SAME reason as ConnectorProbe.Measure: the measurement lives in the
 // SERVER process's memory, and a command-line process that just started
-// would always read `nao_consegui_verificar` — which, on the screen of
+// would always read `could_not_verify` — which, on the screen of
 // someone in an incident, looks like the probe itself is broken. Asking is
 // pure READ, so the status command can do it without mutating anything.
 func (s *ExternalProbe) Measure(ctx context.Context) {
@@ -368,12 +368,12 @@ func (s *ExternalProbe) record(verdict string, err error) {
 	s.m.verdict, s.m.measuredAt, s.m.failingSince = verdict, now, time.Time{}
 }
 
-// Read returns the `alcance_externo` block — ALWAYS from what's already been
+// Read returns the `external_reach` block — ALWAYS from what's already been
 // measured, never talking to the external probe. It's what guarantees the
 // T-121 Verify: the GET /v1/estado handler (state_handler.go) calls this
 // and only this, and this method does no I/O at all.
 //
-// NIL RECEIVER AND EMPTY URL are the SAME state (`nao_configurado`) on
+// NIL RECEIVER AND EMPTY URL are the SAME state (`not_configured`) on
 // purpose: whoever builds an State with no probe at all (a test, a
 // command that didn't build one) can't receive a block that looks like a
 // measurement.
@@ -393,7 +393,7 @@ func (s *ExternalProbe) Read() ExternalReachInState {
 	// THE ORDER MATTERS, as in ConnectorProbe.Read: a run of failures in
 	// progress takes down the state even if the last good response is
 	// still within validity. The opposite would make the block say
-	// `observado` while the next attempt has already been failing for
+	// `observed` while the next attempt has already been failing for
 	// minutes.
 	switch {
 	case !m.failingSince.IsZero(), m.measuredAt.IsZero(), s.now().Sub(m.measuredAt) > s.validity:

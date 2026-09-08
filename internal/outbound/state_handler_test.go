@@ -331,7 +331,7 @@ func TestStateAnswersFromCacheWithoutCallingMeta(t *testing.T) {
 	m := tokenAcceptingMeta()
 	h, _, watchdog := testState(t, m, "lojinha")
 
-	// Before any tick: `desconhecido`, and ZERO calls.
+	// Before any tick: `unknown`, and ZERO calls.
 	r := readState(t, askState(t, h, "token-do-a", "lojinha"))
 	if r.MetaToken.Verdict != VerdictUnknown {
 		t.Errorf("verdict without measurement = %q, want %q", r.MetaToken.Verdict, VerdictUnknown)

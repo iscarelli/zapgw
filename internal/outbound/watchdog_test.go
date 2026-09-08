@@ -71,7 +71,7 @@ func TestWatchdogMeasuresOKWithBothStampsEqual(t *testing.T) {
 	}
 }
 
-// An instance the watcher never measured answers `desconhecido` with
+// An instance the watcher never measured answers `unknown` with
 // EVERYTHING null — not `ok` nor `recusado`. A verdict made up at boot
 // would be worse than none: the dashboard would paint green before the
 // gateway ever talked to Meta once.
@@ -88,7 +88,7 @@ func TestWatchdogNeverMeasuredIsUnknownWithNullStamps(t *testing.T) {
 	}
 }
 
-// Meta rejecting the token turns into `recusado`, not `desconhecido`: it
+// Meta rejecting the token turns into `recusado`, not `unknown`: it
 // RESPONDED, and that's a definitive outcome — only a human can fix it.
 // Calling this "unknown" would hide the one case where the consumer needs
 // to call someone.

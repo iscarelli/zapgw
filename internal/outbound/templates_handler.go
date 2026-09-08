@@ -135,7 +135,7 @@ const WarningCategoryChangedFormat = "a categoria PEDIDA foi %q, mas a Meta GRAV
 //
 // `inconclusivo` is NOT in this list because it is not a `200`: it is an
 // ERROR response, with the SAME status (502) and the SAME class
-// (`desconhecido`) the ambiguous creation already uses — see
+// (`unknown`) the ambiguous creation already uses — see
 // MessageInconclusiveDeletion.
 const (
 	OutcomeDeleted     = "apagado"
@@ -848,7 +848,7 @@ func (h *TemplatesHandler) respondDeletionError(
 //
 // It is the SAME machinery as the ambiguous creation (T-078/T-101) —
 // catalogReread, RereadWaits, respondErrorWithWait, the same
-// `502`, the same `desconhecido` class and the same `releituras` /
+// `502`, the same `unknown` class and the same `releituras` /
 // `espera_segundos` fields — with the QUESTION inverted: creation re-reads
 // until it FINDS the template, deletion re-reads until the name stops being
 // there under a live status.
@@ -1055,7 +1055,7 @@ func (h *TemplatesHandler) respondCatalogError(w http.ResponseWriter, slug strin
 		// Transport, deadline exceeded, reading the response. Unlike
 		// creation, READING creates nothing on the other side: retrying is
 		// safe, and that is why here it really is `retentavel`, not
-		// `desconhecido`.
+		// `unknown`.
 		respondError(w, http.StatusServiceUnavailable, string(meta.ClassRetryable),
 			"nao foi possivel falar com a Meta para ler o catalogo; tente de novo", 0)
 	}
@@ -1114,7 +1114,7 @@ func (h *TemplatesHandler) respondCreationError(
 // exceeded, `2xx` with no id).
 //
 // WHY IT EXISTS (T-078, 2026-07-28): that day a consumer created
-// `pedido_avaliacao_v2` and got a `502 desconhecido` with the message "check
+// `pedido_avaliacao_v2` and got a `502 unknown` with the message "check
 // the catalog." The template HAD been created, and it only found out because
 // it still had direct access to the Graph API. That access has just been
 // forbidden. Two defects came together and both die here:

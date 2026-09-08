@@ -283,7 +283,7 @@ func (h *ReadsHandler) respondReadError(w http.ResponseWriter, instanceSlug stri
 	}
 
 	// Transport, deadline exceeded, or error reading the response: Meta gave no
-	// usable response. 502 `desconhecido` tells the truth about the upstream —
+	// usable response. 502 `unknown` tells the truth about the upstream —
 	// but, unlike the send, retrying here is safe and is the fix.
 	respondError(w, http.StatusBadGateway, string(meta.ClassUnknown),
 		"falha ao falar com a Meta; a marcacao pode nao ter acontecido — "+

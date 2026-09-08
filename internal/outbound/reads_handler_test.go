@@ -493,7 +493,7 @@ func TestReadsTranslatesTheMetaErrorIntoTheContractStatus(t *testing.T) {
 	}
 }
 
-// A TRANSPORT failure (Meta didn't respond at all) becomes 502 `desconhecido`,
+// A TRANSPORT failure (Meta didn't respond at all) becomes 502 `unknown`,
 // like on send — but with the OPPOSITE instruction in the text: here retrying
 // is safe, because marking twice has no side effect. A consumer who reads the
 // send message ("don't resend") and applies it here would leave the

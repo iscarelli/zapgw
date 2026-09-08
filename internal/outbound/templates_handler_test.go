@@ -1769,7 +1769,7 @@ func TestDeleteTemplateThatDoesNotExistAnswersDidNotExistWithoutCallingDelete(t 
 // OUTCOME 3 of 3: the DELETE died with NO response and the catalog re-read
 // STILL shows the template, alive.
 //
-// The word is INCONCLUSIVO, with the same `502` and the same `desconhecido`
+// The word is INCONCLUSIVO, with the same `502` and the same `unknown`
 // class as the ambiguous creation (T-078/T-101). "I didn't see it happen" is
 // not "it didn't happen".
 func TestDeleteTemplateWithoutVerdictAndTemplateStillAliveAnswers502Inconclusive(t *testing.T) {

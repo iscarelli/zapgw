@@ -1,4 +1,4 @@
-// WHERE this gateway's ingress is served from — the `entrada` block of
+// WHERE this gateway's ingress is served from — the `ingress` block of
 // GET /v1/estado and the SAME lines from `zapgw estado` (T-120).
 //
 // 🔴 THE LIMIT THAT DECIDES THE ENTIRE DESIGN, and it is not a lack of
@@ -27,7 +27,7 @@
 //   - `conector` — whether the `cloudflared` that publishes this route has a
 //     live connection. THIS ONE IS ACTUALLY MEASURED — and that is why it
 //     distinguishes "I measured and it's bad" from "I couldn't measure". The
-//     second answer is `desconhecido` with `falhando_desde`, NEVER a zero
+//     second answer is `unknown` with `failing_since`, NEVER a zero
 //     that looks like a verdict.
 package outbound
 
@@ -133,7 +133,7 @@ func IngressVia(getenv func(string) string) (string, error) {
 	default:
 		// Naming BOTH spellings (T-214): whichever one the operator wrote,
 		// this is the line in /etc/zapgw/env they need to find and fix.
-		return "", fmt.Errorf("zapgw: %s (ou %s) = %q nao e um caminho de entrada conhecido — use %q ou %q (vazio publica %q)",
+		return "", fmt.Errorf("zapgw: %s (or %s) = %q is not a known ingress path — use %q or %q (empty publishes %q)",
 			VarIngressViaNew, VarIngressVia, v, ViaTunnel, ViaPortForwarding, ViaUnknown)
 	}
 }
@@ -146,8 +146,8 @@ func IngressVia(getenv func(string) string) (string, error) {
 // is deliberate. In `via` the value GOES TO THE CONTRACT and the vocabulary
 // is closed: " tunel" is a fat-fingered typo that needs to scream. Here
 // there is no vocabulary — a line break coming from a heredoc would just
-// make every question fail, and the block would publish `desconhecido` with
-// `falhando_desde` climbing: an ALARM THAT LIES, pointing at a connector
+// make every question fail, and the block would publish `unknown` with
+// `failing_since` climbing: an ALARM THAT LIES, pointing at a connector
 // that is actually up. A false alarm is the fastest way to train someone to
 // ignore this block.
 // T-214: accepts VarConnectorReadyNew in addition to VarConnectorReady (new
@@ -165,9 +165,9 @@ func ConnectorAddress(getenv func(string) string) string {
 
 // The THREE states of ConnectorInState.
 //
-// `observado`/`desconhecido` are the SAME words this package already uses
+// `observed`/`unknown` are the SAME words this package already uses
 // for the SAME question ("is there a valid measurement right now?") —
-// CertObserved (certificado_do_callback, numero_na_meta) and
+// CertObserved (callback_certificate, number_at_meta) and
 // VerdictUnknown (token watchdog). A new vocabulary would force the
 // consumer to learn a second table for the same idea.
 const (
@@ -176,7 +176,7 @@ const (
 	// legitimate measurement ("the connector is up and has no tunnel
 	// mounted"), not a measurement failure.
 	//
-	// 🔴 WHY `observado` AND NOT `ok`: `ok` would be a JUDGMENT, and a
+	// 🔴 WHY `observed` AND NOT `ok`: `ok` would be a JUDGMENT, and a
 	// judgment about `conexoes_prontas: 0` would come out wrong in both
 	// directions. The gateway publishes what it measured and when it
 	// measured it; whoever alarms is whoever reads it — the same rule
@@ -184,7 +184,7 @@ const (
 	ConnectorObserved = CertObserved
 	// ConnectorUnknown: COULDN'T MEASURE — either there was never a
 	// measurement, or the last attempt failed, or the last response aged
-	// out. `falhando_desde` separates "never asked" (null) from "asking and
+	// out. `failing_since` separates "never asked" (null) from "asking and
 	// getting nothing back".
 	ConnectorUnknown = VerdictUnknown
 	// ConnectorNotConfigured: VarConnectorReady is empty — nobody told the
@@ -192,14 +192,14 @@ const (
 	//
 	// IT IS A NAMED STATE AND THE BLOCK STAYS IN THE JSON, never a field
 	// that disappears. A field that disappears breaks a strict parser, and
-	// this project already paid for that (the `token_instagram` of v0.37.x,
+	// this project already paid for that (the `instagram_token` of v0.37.x,
 	// which came to always be present precisely because of this). Besides,
 	// "not configured" is a different answer from "couldn't measure", and
 	// the two send someone to look in different places.
 	ConnectorNotConfigured = "not_configured"
 )
 
-// ConnectorInState is the `entrada.conector` block.
+// ConnectorInState is the `ingress.connector` block.
 //
 // EVERY FIELD IS A POINTER WITHOUT omitempty, by the rule this package
 // already applies in MetaToken and CounterInState: an explicit `null` says
@@ -208,7 +208,7 @@ type ConnectorInState struct {
 	State string `json:"state"`
 	// ReadyConnections is the `readyConnections` of the cloudflared `/ready`.
 	//
-	// `null` WHEN `desconhecido`, ALWAYS — and this is the field the T-120
+	// `null` WHEN `unknown`, ALWAYS — and this is the field the T-120
 	// mandatory mutation protects. Repeating the last measured number here,
 	// or writing `0` when the question got no answer, would turn "couldn't
 	// measure" into "measured and it's bad" on whoever reads it — and the
@@ -217,7 +217,7 @@ type ConnectorInState struct {
 	ReadyConnections *int `json:"ready_connections"`
 	// MeasuredAt is the last time the connector ANSWERED — not the last
 	// attempt. It keeps pointing at the last real response even after the
-	// state degrades to `desconhecido`: it is what says how long the gateway
+	// state degrades to `unknown`: it is what says how long the gateway
 	// has not heard from the connector, information that zeroing it would
 	// destroy. Same rule as MetaToken.MeasuredAt.
 	MeasuredAt *string `json:"measured_at"`
@@ -230,7 +230,7 @@ type ConnectorInState struct {
 	FailingSince *string `json:"failing_since"`
 }
 
-// IngressInState is the published `entrada` block.
+// IngressInState is the published `ingress` block.
 //
 // ⚠️ WHAT IT DOES NOT PROMISE, and the sentence has to travel along with it
 // (it is in the contract, docs/CONTRATO-CONSUMIDOR.md): `via` and `conector`
@@ -254,18 +254,18 @@ type IngressInState struct {
 	LastWebhookAt *string `json:"last_webhook_at"`
 }
 
-// IngressSource is what BuildState needs to publish the `entrada` block.
+// IngressSource is what BuildState needs to publish the `ingress` block.
 //
 // IT COMES IN AS A MANDATORY POSITIONAL PARAMETER, and this is the T-111
 // lesson applied again: whoever assembles a state has to DECLARE where the
 // ingress comes from. Omitting it does not compile. And the ZERO VALUE is
-// the most honest one there is — `via: desconhecido` and `conector:
-// nao_configurado` —, so a slip fails toward "we don't know", never toward
+// the most honest one there is — `via: unknown` and `connector:
+// not_configured` —, so a slip fails toward "we don't know", never toward
 // an assertion.
 type IngressSource struct {
 	Via string
 	// Connector CAN BE nil: the struct's zero value is a valid state
-	// (nao_configurado), and ConnectorProbe.Read handles the nil receiver.
+	// (not_configured), and ConnectorProbe.Read handles the nil receiver.
 	//
 	// A CONCRETE POINTER, not an interface, on purpose: a nil interface
 	// stored in a struct field is the "typed nil" pitfall
@@ -296,12 +296,12 @@ func (f IngressSource) inState() IngressInState {
 const connectorProbeInterval = time.Minute
 
 // connectorMeasurementValidity is how long the last response keeps being
-// presented as `observado`. Past that the block degrades to `desconhecido`,
-// with `medido_em` intact.
+// presented as `observed`. Past that the block degrades to `unknown`,
+// with `measured_at` intact.
 //
 // WHY IT EXISTS, and the argument is the same as verdictValidity: a cache
 // that never expires is a lie with a timestamp. If the probe's goroutine
-// dies, a frozen `observado` would paint "connector up" forever — which is
+// dies, a frozen `observed` would paint "connector up" forever — which is
 // exactly the blind monitor this task exists to not build.
 //
 // THREE TICKS, for the same reason as there: one missed tick is normal
@@ -356,7 +356,7 @@ type ConnectorProbe struct {
 // NewConnectorProbe assembles the probe INERT: it only starts measuring in
 // Start (or in a standalone Measure, which is what `zapgw estado` does).
 // An empty URL returns a probe that never talks to anyone and always reads
-// `nao_configurado`.
+// `not_configured`.
 func NewConnectorProbe(url string) *ConnectorProbe {
 	return &ConnectorProbe{
 		url: url,
@@ -403,7 +403,7 @@ func (s *ConnectorProbe) Start() {
 // WHO NEEDS IT STANDALONE IS `zapgw estado` (cmd/zapgw/state.go), for the
 // SAME reason as Watchdog.CheckInstance: the measurement lives in the
 // SERVER process's memory, and a command-line process that just came to
-// life would always read `desconhecido` — which on the screen of someone in
+// life would always read `unknown` — which on the screen of someone in
 // an incident looks like a broken probe. Asking `/ready` is a pure READ, so
 // the status command can do it without mutating anything (unlike the
 // Instagram token renewer, which stays nil there for that reason).
@@ -486,10 +486,10 @@ func (s *ConnectorProbe) record(n int, err error) {
 	s.m.connections, s.m.measuredAt, s.m.failingSince = n, now, time.Time{}
 }
 
-// Read returns the `entrada.conector` block — ALWAYS from what has already
+// Read returns the `ingress.connector` block — ALWAYS from what has already
 // been measured, never talking to the connector.
 //
-// A nil RECEIVER AND AN EMPTY URL are the SAME state (`nao_configurado`) on
+// A nil RECEIVER AND AN EMPTY URL are the SAME state (`not_configured`) on
 // purpose: whoever assembles a State with no probe at all (a test, a command
 // that did not build one) cannot receive a block that looks like a
 // measurement.
@@ -509,7 +509,7 @@ func (s *ConnectorProbe) Read() ConnectorInState {
 	}
 	// ORDER MATTERS: an ongoing sequence of failures brings the state down
 	// even if the last response is still within its validity. The opposite
-	// would make the block say `observado` while `falhando_desde` screams
+	// would make the block say `observed` while `failing_since` screams
 	// the opposite, two contradicting statements in the same response.
 	switch {
 	case !m.failingSince.IsZero(), m.measuredAt.IsZero(),

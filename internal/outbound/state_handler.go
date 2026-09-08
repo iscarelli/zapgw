@@ -44,7 +44,7 @@
 //     arbitrary range, no start date, and the difference isn't taste: a
 //     single-size, bounded window has predictable cost and doesn't let
 //     anyone request a slice the database doesn't have.
-//  4. It does NOT talk to the external probe (T-121). The `alcance_externo`
+//  4. It does NOT talk to the external probe (T-121). The `external_reach`
 //     block comes from outbound.ExternalProbe's cache (external_probe.go),
 //     which measures at its own pace — for the SAME reason as item 2, just
 //     with a FOURTH service in the middle (gateway, Meta, and now the
@@ -101,15 +101,15 @@ type StateHandler struct {
 	// environment variable on its own, and two resolutions of the same fact
 	// would diverge.
 	//
-	// THE ZERO VALUE IS HONEST (`via: desconhecido`, `conector:
-	// nao_configurado`), so a caller that forgets it publishes "we don't
+	// THE ZERO VALUE IS HONEST (`via: unknown`, `connector:
+	// not_configured`), so a caller that forgets it publishes "we don't
 	// know" — never a wrong assertion about the ingress path.
 	ingress IngressSource
 	// reach is the READER of the external probe's verdict (T-121) — the
-	// SAME discipline as `entrada` above: resolved from the environment a
+	// SAME discipline as `ingress` above: resolved from the environment a
 	// single time in `main`, and nil-safe (ExternalProbe.Read handles a nil
 	// receiver), so a caller that doesn't build it publishes
-	// `nao_configurado`, never a made-up measurement.
+	// `not_configured`, never a made-up measurement.
 	reach *ExternalProbe
 	// types declares which instance types this route serves (T-111) — see
 	// the comment on AcceptedTypes in types.go. It GATES NOTHING here:

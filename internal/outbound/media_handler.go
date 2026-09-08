@@ -404,7 +404,7 @@ func (h *MediaHandler) download(w http.ResponseWriter, r *http.Request) {
 // respondMediaError uses the SAME taxonomy as sending (handler.go):
 // whoever consumes this gateway shouldn't have to learn two. `permanente`
 // becomes 400, `retentavel` 503, and whatever didn't come from Meta becomes
-// 502 `desconhecido`.
+// 502 `unknown`.
 func respondMediaError(w http.ResponseWriter, err error) {
 	if errors.Is(err, meta.ErrInvalidPhoneNumberID) || errors.Is(err, meta.ErrInvalidMediaID) {
 		respondError(w, http.StatusBadRequest, string(meta.ClassPermanent),

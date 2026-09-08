@@ -164,7 +164,7 @@ func TestExternalProbePublishesTheVerdictTheURLAnswered(t *testing.T) {
 				t.Fatalf("state = %q, want %q", r.State, ReachStateObserved)
 			}
 			// 🔴 THE CENTRAL POINT: a genuinely measured `down` is
-			// `observado` with `veredito: "down"` — NEVER its own state,
+			// `observed` with `veredito: "down"` — NEVER its own state,
 			// and never confused with "couldn't ask".
 			if r.Verdict == nil || *r.Verdict != verdict {
 				t.Errorf("verdict = %v, want %q", r.Verdict, verdict)
@@ -182,7 +182,7 @@ func TestExternalProbePublishesTheVerdictTheURLAnswered(t *testing.T) {
 // --- (c) external probe down -------------------------------------------
 
 // 🔴 THE TEST T-121 EXISTS TO HAVE: an external probe that's down CANNOT
-// turn into `down`, nor into silence. `nao_consegui_verificar` is the ONLY
+// turn into `down`, nor into silence. `could_not_verify` is the ONLY
 // honest answer — a `down` here would be indistinguishable from the
 // legitimate measurement in the test above, and would trigger the
 // consumer's automatic alarm over a fact nobody measured.
@@ -274,10 +274,10 @@ func TestExternalProbeKeepsTheStampOfTheLastGoodAnswerWhenItFails(t *testing.T) 
 	if r.MeasuredAt == nil || *r.MeasuredAt != *good.MeasuredAt {
 		t.Errorf("measured_at = %v, want the timestamp of the last RESPONSE (%v)", r.MeasuredAt, *good.MeasuredAt)
 	}
-	_ = firstFailure // T-121 does not publish falhando_desde (only 4 fields in the contract)
+	_ = firstFailure // T-121 does not publish failing_since (only 4 fields in the contract)
 }
 
-// A good measurement that ages out degrades to `nao_consegui_verificar`:
+// A good measurement that ages out degrades to `could_not_verify`:
 // a cache that never expires is a lie with a timestamp.
 func TestExternalProbeDegradesStaleMeasurementToCouldNotVerify(t *testing.T) {
 	s := NewExternalProbe(fakeExternalProbe(t, "up"))
@@ -300,7 +300,7 @@ func TestExternalProbeDegradesStaleMeasurementToCouldNotVerify(t *testing.T) {
 	}
 }
 
-// --- (d) no URL: `nao_configurado`, and the process boots normally --------
+// --- (d) no URL: `not_configured`, and the process boots normally --------
 
 func TestExternalProbeWithoutURLComesOutNotConfiguredAndTheProcessStartsNormally(t *testing.T) {
 	for name, s := range map[string]*ExternalProbe{
@@ -374,7 +374,7 @@ func stateRouteWithReach(t *testing.T, reach *ExternalProbe) (http.Handler, *con
 }
 
 // ⚠️ A FIELD THAT DISAPPEARS BREAKS A STRICT PARSER (the same defect
-// `token_instagram` already paid for in v0.37.x). The assertion is about the
+// `instagram_token` already paid for in v0.37.x). The assertion is about the
 // PRESENCE OF THE KEY in the raw JSON: an absent field deserializes to the
 // same zero value as a field that's present and empty.
 func TestStateRouteNeverOmitsTheExternalReachBlockWithoutAConfiguredURL(t *testing.T) {
