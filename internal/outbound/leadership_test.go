@@ -317,8 +317,8 @@ func TestNewLeadershipWarnsOnlyWhenOldNamesWin(t *testing.T) {
 			}
 			log.SetOutput(original)
 			text := buf.String()
-			fileWarned := strings.Contains(text, VarLeadershipFile) && strings.Contains(text, "obsoleta")
-			validityWarned := strings.Contains(text, VarLeadershipValidity) && strings.Contains(text, "obsoleta")
+			fileWarned := strings.Contains(text, VarLeadershipFile) && strings.Contains(text, "deprecated")
+			validityWarned := strings.Contains(text, VarLeadershipValidity) && strings.Contains(text, "deprecated")
 			if fileWarned != c.wantFileWarn {
 				t.Errorf("file warning = %v (log: %q), want %v", fileWarned, text, c.wantFileWarn)
 			}

@@ -533,7 +533,7 @@ func TestIngressViaWarnsOnlyWhenOldNameWins(t *testing.T) {
 		vars     map[string]string
 		wantWarn bool
 	}{
-		{"so a velha: avisa", map[string]string{VarIngressVia: ViaTunnel}, true},
+		{"only the old one: warns", map[string]string{VarIngressVia: ViaTunnel}, true},
 		{"so a nova: fica calado", map[string]string{VarIngressViaNew: ViaTunnel}, false},
 		{"nenhuma: fica calado", map[string]string{}, false},
 	}
@@ -547,7 +547,7 @@ func TestIngressViaWarnsOnlyWhenOldNameWins(t *testing.T) {
 				t.Fatalf("IngressVia: %v", err)
 			}
 			log.SetOutput(original)
-			warned := strings.Contains(buf.String(), VarIngressVia) && strings.Contains(buf.String(), "obsoleta")
+			warned := strings.Contains(buf.String(), VarIngressVia) && strings.Contains(buf.String(), "deprecated")
 			if warned != c.wantWarn {
 				t.Errorf("warning = %v (log: %q), want %v", warned, buf.String(), c.wantWarn)
 			}
@@ -586,7 +586,7 @@ func TestConnectorAddressWarnsOnlyWhenOldNameWins(t *testing.T) {
 		vars     map[string]string
 		wantWarn bool
 	}{
-		{"so a velha: avisa", map[string]string{VarConnectorReady: "http://velho/ready"}, true},
+		{"only the old one: warns", map[string]string{VarConnectorReady: "http://velho/ready"}, true},
 		{"so a nova: fica calado", map[string]string{VarConnectorReadyNew: "http://novo/ready"}, false},
 		{"nenhuma: fica calado", map[string]string{}, false},
 	}
@@ -597,7 +597,7 @@ func TestConnectorAddressWarnsOnlyWhenOldNameWins(t *testing.T) {
 			log.SetOutput(&buf)
 			ConnectorAddress(func(k string) string { return c.vars[k] })
 			log.SetOutput(original)
-			warned := strings.Contains(buf.String(), VarConnectorReady) && strings.Contains(buf.String(), "obsoleta")
+			warned := strings.Contains(buf.String(), VarConnectorReady) && strings.Contains(buf.String(), "deprecated")
 			if warned != c.wantWarn {
 				t.Errorf("warning = %v (log: %q), want %v", warned, buf.String(), c.wantWarn)
 			}
