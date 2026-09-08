@@ -245,30 +245,6 @@ instancias foram rotacionadas. Duas licoes que custaram na hora e valem alem des
 
 > A fila do periodo privado esta em `iscarelli/zapgw-dev`, congelada. Tarefa nova nasce aqui.
 
-## [ ] T-239  Remove the one exemption T-238 had to leave behind
-After:   T-237
-Why:     A T-238 achou um ponteiro morto real em `docs/CONTRATO-CONSUMIDOR.md:4886` e no espelho
-         `.pt-BR.md:4829`: `status_sent_com_pricing.json`, que a T-228 renomeou para
-         `status_sent_with_pricing.json`. Ela NAO consertou, e agiu certo: a T-237 estava reescrevendo
-         esses dois arquivos no mesmo momento, e escrever por cima do trabalho de outro agente e' o
-         custo que a regra de trabalho concorrente existe para evitar.
-         Entao ela declarou uma excecao no portao **com a razao verdadeira escrita ao lado**
-         (conflito de sessao), explicitamente diferente de um "bug conhecido".
-🔴 MAS EXCECAO COM PRAZO SO' VALE SE ALGUEM RECOLHER. Sem esta tarefa, a razao
-         ("outro agente esta no arquivo") deixa de ser verdade em uma hora, e o que sobra e' uma
-         excecao escondendo um ponteiro morto — exatamente o que a T-236 teve de limpar.
-Files:   docs/CONTRATO-CONSUMIDOR.md, docs/CONTRATO-CONSUMIDOR.pt-BR.md,
-         internal/config/doc_pointers_test.go
-Do:      1. Conserte o ponteiro nos dois arquivos: `status_sent_com_pricing.json` ->
-            `status_sent_with_pricing.json`. Confirme com `ls testdata/corpus/` antes.
-         2. APAGUE a entrada correspondente de `deadDocPointerExceptions`.
-         3. Se o portao acusar mais alguma coisa depois, conserte o ponteiro — nao acrescente excecao.
-Verify:  `go test ./internal/config/ -run TestDocPointers` verde COM a excecao ausente, e
-         `grep -c 'status_sent_com_pricing' internal/config/doc_pointers_test.go docs/*.md` dando 0
-         em todos (exceto `docs/CHANGELOG.md`, que e' registro e esta fora da varredura).
-         `CGO_ENABLED=0 go build ./... && go test ./... && go vet ./... && gofmt -l cmd internal`.
-
-
 ## [ ] T-240  The `GET /v1/estado` blocks the contract still names in Portuguese
 After:   T-239
 Why:     A T-237 consertou quatro familias do `docs/CONTRATO-CONSUMIDOR.md` e, no caminho, achou uma

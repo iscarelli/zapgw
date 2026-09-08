@@ -4,6 +4,14 @@ One line per version shipped, in the same commit as the bump. The entry states t
 
 ## Unreleased
 
+- **T-239 — Remove the one exemption T-238 had to leave behind** — fixed the last dead pointer
+  (`status_sent_com_pricing.json` → `status_sent_with_pricing.json`) in both contract files and
+  deleted its exemption from the gate. T-238's reason for deferring was honest and **temporary** —
+  another implementer held the file — and a temporary exemption is only worth anything if somebody
+  collects it. The gate now sweeps 15 docs and 1115 pointers with zero dead.
+  _Completed 2026-09-08 04:58._
+
+
 - **T-237 — The consumer contract still describes four families of key the gateway stopped
   emitting** — the worst was the discriminator of **every** webhook event: the code emits `kind` with
   value `message`, the doc said `"tipo": "mensagem"`. The implementer widened past the 12 places the
