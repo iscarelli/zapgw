@@ -542,7 +542,7 @@ func rotateInstance(args []string, out io.Writer, env environment) error {
 	// "doesn't swap" with nothing flagging it.
 	//
 	// T-214: `variable` stays the name PRINTED to the operator (unchanged,
-	// so an already-familiar "trocado(s): …" line does not start reading
+	// so an already-familiar "swapped: …" line does not start reading
 	// differently) — `newVar` is only the extra name this READS from, empty
 	// when the variable is already English (ZAPGW_APP_SECRET,
 	// ZAPGW_VERIFY_TOKEN) and has nothing to alias.

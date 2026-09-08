@@ -38,7 +38,7 @@ func (g *fakeGraph) server(t *testing.T) *httptest.Server {
 		// The token goes in the header, never in the URL. If it stops
 		// going there, step 2 stops proving what it exists to prove.
 		if r.Header.Get("Authorization") == "" {
-			t.Errorf("chamada sem Authorization em %s %s", r.Method, r.URL.Path)
+			t.Errorf("call without Authorization on %s %s", r.Method, r.URL.Path)
 		}
 		time.Sleep(g.delay)
 		w.Header().Set("Content-Type", "application/json")
@@ -73,7 +73,7 @@ func smokeScenario(t *testing.T, g *fakeGraph) map[string]string {
 
 	var junk bytes.Buffer
 	if err := dispatch(instanceArgs("lojinha"), &junk, fakeEnvironment(vars)); err != nil {
-		t.Fatalf("provisionar instancia: %v", err)
+		t.Fatalf("provision instance: %v", err)
 	}
 	return vars
 }
@@ -92,17 +92,17 @@ func TestSmokeActivatesTheInstanceOnlyAFTERSendingAMessage(t *testing.T) {
 	}
 
 	if g.gets.Load() == 0 {
-		t.Error("o passo 2 nao bateu na Graph API — token revogado pelo cliente passaria despercebido")
+		t.Error("step 2 did not hit the Graph API — a token revoked by the client would go unnoticed")
 	}
 	if g.posts.Load() != 1 {
-		t.Errorf("mensagens enviadas = %d, quero 1", g.posts.Load())
+		t.Errorf("messages sent = %d, want 1", g.posts.Load())
 	}
 	i, err := storeFromEnvironment(t, vars).FindInstance("lojinha")
 	if err != nil {
 		t.Fatalf("FindInstance: %v", err)
 	}
 	if !i.Active {
-		t.Fatal("a instancia continua pausada depois de um teste de fumaca que passou")
+		t.Fatal("the instance is still paused after a smoke test that passed")
 	}
 }
 
@@ -120,7 +120,7 @@ func TestSmokeWithSendFailureLEAVESTheInstancePAUSED(t *testing.T) {
 	var out bytes.Buffer
 	err := dispatch(smokeArgs(), &out, fakeEnvironment(vars))
 	if err == nil {
-		t.Fatal("o comando devolveu sucesso com a Meta recusando o envio")
+		t.Fatal("the command returned success while Meta refused the send")
 	}
 
 	i, lookupErr := storeFromEnvironment(t, vars).FindInstance("lojinha")
@@ -128,7 +128,7 @@ func TestSmokeWithSendFailureLEAVESTheInstancePAUSED(t *testing.T) {
 		t.Fatalf("FindInstance: %v", lookupErr)
 	}
 	if i.Active {
-		t.Fatal("a instancia foi ATIVADA mesmo com o envio falhando")
+		t.Fatal("the instance was ACTIVATED even with the send failing")
 	}
 }
 
@@ -144,10 +144,10 @@ func TestSmokeWithRefusedTokenSendsNOMessageAtAll(t *testing.T) {
 	var out bytes.Buffer
 	err := dispatch(smokeArgs(), &out, fakeEnvironment(vars))
 	if err == nil {
-		t.Fatal("o comando devolveu sucesso com a Graph API recusando o token")
+		t.Fatal("the command returned success while the Graph API refused the token")
 	}
 	if g.posts.Load() != 0 {
-		t.Errorf("mandou %d mensagem(ns) depois de o token ser recusado — o passo 2 nao abortou", g.posts.Load())
+		t.Errorf("sent %d message(s) after the token was refused — step 2 did not abort", g.posts.Load())
 	}
 
 	i, lookupErr := storeFromEnvironment(t, vars).FindInstance("lojinha")
@@ -155,7 +155,7 @@ func TestSmokeWithRefusedTokenSendsNOMessageAtAll(t *testing.T) {
 		t.Fatalf("FindInstance: %v", lookupErr)
 	}
 	if i.Active {
-		t.Fatal("a instancia foi ATIVADA com o token recusado")
+		t.Fatal("the instance was ACTIVATED with the token refused")
 	}
 }
 
@@ -167,10 +167,10 @@ func TestSmokeAbortsWhenTheInstanceDoesNotExist(t *testing.T) {
 	err := dispatch([]string{"fumaca", "--slug", "nao-existe", "--destino", "5511999990000"},
 		&out, fakeEnvironment(vars))
 	if err == nil {
-		t.Fatal("o comando aceitou um slug inexistente")
+		t.Fatal("the command accepted a nonexistent slug")
 	}
 	if g.gets.Load() != 0 || g.posts.Load() != 0 {
-		t.Errorf("falou com a Graph API sobre uma instancia que nao existe (gets=%d posts=%d)",
+		t.Errorf("talked to the Graph API about an instance that does not exist (gets=%d posts=%d)",
 			g.gets.Load(), g.posts.Load())
 	}
 }
@@ -183,10 +183,10 @@ func TestSmokeRequiresDestinationWithNoDEFAULT(t *testing.T) {
 
 	var out bytes.Buffer
 	if err := dispatch([]string{"fumaca", "--slug", "lojinha"}, &out, fakeEnvironment(vars)); err == nil {
-		t.Fatal("o comando aceitou rodar sem --destino")
+		t.Fatal("the command accepted running with no --destino")
 	}
 	if g.posts.Load() != 0 {
-		t.Errorf("mandou %d mensagem(ns) sem destino informado", g.posts.Load())
+		t.Errorf("sent %d message(s) with no destination given", g.posts.Load())
 	}
 }
 
@@ -200,7 +200,7 @@ func TestSmokeTakesAnswerWithoutIDAsFAILURE(t *testing.T) {
 
 	var out bytes.Buffer
 	if err := dispatch(smokeArgs(), &out, fakeEnvironment(vars)); err == nil {
-		t.Fatal("o comando aceitou um 200 sem wa_message_id")
+		t.Fatal("the command accepted a 200 with no wa_message_id")
 	}
 
 	i, err := storeFromEnvironment(t, vars).FindInstance("lojinha")
@@ -208,7 +208,7 @@ func TestSmokeTakesAnswerWithoutIDAsFAILURE(t *testing.T) {
 		t.Fatalf("FindInstance: %v", err)
 	}
 	if i.Active {
-		t.Fatal("a instancia foi ATIVADA sobre um 200 sem id")
+		t.Fatal("the instance was ACTIVATED on a 200 with no id")
 	}
 }
 
@@ -245,11 +245,11 @@ func TestSmokeCountsSENTUnderTheSAMEKeyAsTheProductionSend(t *testing.T) {
 
 	m := todayCounters(t, vars, "lojinha")
 	if m[config.CounterSent] != 1 {
-		t.Errorf("enviadas = %d, quero 1 — a mensagem SAIU (a Meta devolveu wamid) e o contador nao a viu",
+		t.Errorf("sent = %d, want 1 — the message WENT OUT (Meta returned a wamid) and the counter did not see it",
 			m[config.CounterSent])
 	}
 	if m[config.CounterSendFailures] != 0 {
-		t.Errorf("falhas_de_envio = %d, quero 0 — o envio deu certo", m[config.CounterSendFailures])
+		t.Errorf("falhas_de_envio = %d, want 0 — the send succeeded", m[config.CounterSendFailures])
 	}
 
 	// AND THE NUMBER HAS TO SHOW UP WHERE THE QUESTION IS ASKED. This is
@@ -263,7 +263,7 @@ func TestSmokeCountsSENTUnderTheSAMEKeyAsTheProductionSend(t *testing.T) {
 		t.Fatalf("zapgw estado: %v\n%s", err, state.String())
 	}
 	if today, _ := rowValues(t, state.String(), config.CounterSent); today != 1 {
-		t.Errorf("`zapgw estado` mostra enviadas hoje = %d, quero 1:\n%s", today, state.String())
+		t.Errorf("`zapgw estado` shows sent today = %d, want 1:\n%s", today, state.String())
 	}
 }
 
@@ -279,15 +279,15 @@ func TestSmokeCountsSENDFAILURESWhenMetaRefusesTheSend(t *testing.T) {
 
 	var out bytes.Buffer
 	if err := dispatch(smokeArgs(), &out, fakeEnvironment(vars)); err == nil {
-		t.Fatal("o comando devolveu sucesso com a Meta recusando o envio")
+		t.Fatal("the command returned success while Meta refused the send")
 	}
 
 	m := todayCounters(t, vars, "lojinha")
 	if m[config.CounterSendFailures] != 1 {
-		t.Errorf("falhas_de_envio = %d, quero 1", m[config.CounterSendFailures])
+		t.Errorf("falhas_de_envio = %d, want 1", m[config.CounterSendFailures])
 	}
 	if m[config.CounterSent] != 0 {
-		t.Errorf("enviadas = %d, quero 0 (a Meta recusou)", m[config.CounterSent])
+		t.Errorf("sent = %d, want 0 (Meta refused)", m[config.CounterSent])
 	}
 }
 
@@ -305,12 +305,12 @@ func TestSmokeWithRefusedTokenDoesNotTOUCHTheSendCounter(t *testing.T) {
 
 	var out bytes.Buffer
 	if err := dispatch(smokeArgs(), &out, fakeEnvironment(vars)); err == nil {
-		t.Fatal("o comando devolveu sucesso com a Graph API recusando o token")
+		t.Fatal("the command returned success while the Graph API refused the token")
 	}
 
 	m := todayCounters(t, vars, "lojinha")
 	if m[config.CounterSent] != 0 || m[config.CounterSendFailures] != 0 {
-		t.Errorf("enviadas = %d, falhas_de_envio = %d, quero 0 e 0 — nenhuma mensagem chegou a ser tentada",
+		t.Errorf("sent = %d, falhas_de_envio = %d, want 0 and 0 — no message was even attempted",
 			m[config.CounterSent], m[config.CounterSendFailures])
 	}
 }
@@ -323,7 +323,7 @@ func TestSmokeDoesNotPrintTheSendToken(t *testing.T) {
 
 	var out bytes.Buffer
 	if err := dispatch(instanceArgs("lojinha"), &out, fakeEnvironment(vars)); err != nil {
-		t.Fatalf("provisionar instancia: %v", err)
+		t.Fatalf("provision instance: %v", err)
 	}
 	out.Reset()
 
@@ -331,6 +331,6 @@ func TestSmokeDoesNotPrintTheSendToken(t *testing.T) {
 		t.Fatalf("dispatch: %v\n%s", err, out.String())
 	}
 	if strings.Contains(out.String(), "token-de-envio-nao-pode-vazar") {
-		t.Errorf("o token de envio apareceu na saida do teste de fumaca:\n%s", out.String())
+		t.Errorf("the send token appeared in the smoke test's output:\n%s", out.String())
 	}
 }

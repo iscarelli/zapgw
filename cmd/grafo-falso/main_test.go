@@ -43,7 +43,7 @@ func TestFakeGraphSpeaksTheLanguageOfThePRODUCTIONClient(t *testing.T) {
 	c := meta.NewClient(s.Client(), s.URL)
 
 	if err := c.CheckCredential(context.Background(), "PNID1", "token"); err != nil {
-		t.Fatalf("CheckCredential: %v — o passo 2 do fumaca abortaria no laboratorio", err)
+		t.Fatalf("CheckCredential: %v — step 2 of the smoke test would abort in the lab", err)
 	}
 
 	resp, err := c.SendMessage(context.Background(), "PNID1", "token", testBody())
@@ -54,15 +54,15 @@ func TestFakeGraphSpeaksTheLanguageOfThePRODUCTIONClient(t *testing.T) {
 		// meta.ErrResponseWithoutID would have come out above; this line covers the day
 		// that guarantee moves elsewhere. An empty id would activate the instance
 		// over a channel that never proved it delivers.
-		t.Fatal("a resposta veio sem wa_message_id")
+		t.Fatal("the response came with no wa_message_id")
 	}
 
 	second, err := c.SendMessage(context.Background(), "PNID1", "token", testBody())
 	if err != nil {
-		t.Fatalf("SendMessage (segunda): %v", err)
+		t.Fatalf("SendMessage (second): %v", err)
 	}
 	if second.ID == resp.ID {
-		t.Errorf("os dois envios devolveram o mesmo id (%q) — o falso nao distingue mensagens", resp.ID)
+		t.Errorf("the two sends returned the same id (%q) — the fake does not tell messages apart", resp.ID)
 	}
 }
 
@@ -79,18 +79,18 @@ func TestFakeGraphTellsReadReceiptApartFromSend(t *testing.T) {
 		t.Fatalf("MarkAsRead: %v", err)
 	}
 	if n := g.reads.Load(); n != 1 {
-		t.Errorf("leituras = %d, quero 1", n)
+		t.Errorf("reads = %d, want 1", n)
 	}
 	if n := g.sent.Load(); n != 0 {
-		t.Errorf("enviadas = %d, quero 0 — marcar como lida NAO e envio", n)
+		t.Errorf("sent = %d, want 0 — marking as read is NOT sending", n)
 	}
 
 	// And the send goes on being a send, on the same path.
 	if _, err := c.SendMessage(context.Background(), "PNID1", "token", testBody()); err != nil {
-		t.Fatalf("SendMessage depois da marcacao: %v", err)
+		t.Fatalf("SendMessage after marking: %v", err)
 	}
 	if n := g.sent.Load(); n != 1 {
-		t.Errorf("enviadas = %d, quero 1", n)
+		t.Errorf("sent = %d, want 1", n)
 	}
 }
 
@@ -105,13 +105,13 @@ func TestFakeGraphRefuseSendBecomesACLASSIFIEDError(t *testing.T) {
 	_, err := c.SendMessage(context.Background(), "PNID1", "token", testBody())
 	var metaError *meta.MetaError
 	if !errors.As(err, &metaError) {
-		t.Fatalf("SendMessage devolveu %v, quero um *meta.MetaError", err)
+		t.Fatalf("SendMessage returned %v, want a *meta.MetaError", err)
 	}
 	if metaError.Class != meta.ClassPermanent {
-		t.Errorf("classe = %q, quero %q (400 da Meta)", metaError.Class, meta.ClassPermanent)
+		t.Errorf("class = %q, want %q (400 from Meta)", metaError.Class, meta.ClassPermanent)
 	}
 	if metaError.MetaCode == 0 {
-		t.Error("o codigo da Meta nao chegou — o corpo de erro do falso nao tem o formato da Meta")
+		t.Error("Meta's code did not come through — the fake's error body does not have Meta's format")
 	}
 }
 
@@ -122,10 +122,10 @@ func TestFakeGraphRefuseTokenFailsAtSTEP2(t *testing.T) {
 	err := c.CheckCredential(context.Background(), "PNID1", "token")
 	var metaError *meta.MetaError
 	if !errors.As(err, &metaError) {
-		t.Fatalf("CheckCredential devolveu %v, quero um *meta.MetaError", err)
+		t.Fatalf("CheckCredential returned %v, want a *meta.MetaError", err)
 	}
 	if metaError.Class != meta.ClassConfig {
-		t.Errorf("classe = %q, quero %q (401 e credencial)", metaError.Class, meta.ClassConfig)
+		t.Errorf("class = %q, want %q (401 is credential)", metaError.Class, meta.ClassConfig)
 	}
 }
 
@@ -152,7 +152,7 @@ func TestFakeGraphCreatesTemplateAndShowsItInTheCatalog(t *testing.T) {
 		t.Fatalf("CreateTemplate: %v", err)
 	}
 	if created.ID == "" {
-		t.Fatal("a criacao veio sem id — meta.ErrTemplateWithoutID sairia acima")
+		t.Fatal("the creation came with no id — meta.ErrTemplateWithoutID would have come out above")
 	}
 
 	list, err := c.ListTemplates(context.Background(), "WABA1", "token", "")
@@ -160,10 +160,10 @@ func TestFakeGraphCreatesTemplateAndShowsItInTheCatalog(t *testing.T) {
 		t.Fatalf("ListTemplates: %v", err)
 	}
 	if len(list) != 1 || list[0].Name != "lembrete_consulta" {
-		t.Fatalf("catalogo = %+v, queria o template recem-criado", list)
+		t.Fatalf("catalog = %+v, wanted the freshly created template", list)
 	}
 	if list[0].ID == "" {
-		t.Error("o item do catalogo veio sem id — a releitura da T-078 nao teria id para devolver")
+		t.Error("the catalog item came with no id — T-078's reread would have no id to return")
 	}
 }
 
@@ -177,23 +177,23 @@ func TestFakeGraphTemplateFailureCREATEDDiesWithoutAnswerAndLeavesTheTemplateInT
 
 	_, err := createOnFake(t, c, "pedido_avaliacao_v2")
 	if err == nil {
-		t.Fatal("CreateTemplate devolveu sucesso; o POST tinha de morrer sem resposta")
+		t.Fatal("CreateTemplate returned success; the POST had to die with no response")
 	}
 	// It HAS to be a TRANSPORT failure, not a refusal from Meta: it is the absence
 	// of an answer that produces the `desconhecido` outcome in the gateway.
 	var metaError *meta.MetaError
 	if errors.As(err, &metaError) {
-		t.Fatalf("veio um *meta.MetaError (%v) — isso e RESPOSTA da Meta, e o desfecho ambiguo nasce da "+
-			"AUSENCIA dela", metaError)
+		t.Fatalf("got a *meta.MetaError (%v) — that is a RESPONSE from Meta, and the ambiguous outcome is born from "+
+			"its ABSENCE", metaError)
 	}
 
 	list, err := c.ListTemplates(context.Background(), "WABA1", "token", "")
 	if err != nil {
-		t.Fatalf("ListTemplates depois da criacao ambigua: %v — a leitura e caminho DIFERENTE e "+
-			"tem de continuar funcionando", err)
+		t.Fatalf("ListTemplates after the ambiguous creation: %v — the read is a DIFFERENT path and "+
+			"has to keep working", err)
 	}
 	if len(list) != 1 || list[0].Name != "pedido_avaliacao_v2" {
-		t.Fatalf("catalogo = %+v, queria o template que FOI criado antes de a conexao cair", list)
+		t.Fatalf("catalog = %+v, wanted the template that WAS created before the connection dropped", list)
 	}
 }
 
@@ -203,14 +203,14 @@ func TestFakeGraphTemplateFailureNOTCREATEDLeavesTheCatalogEmpty(t *testing.T) {
 	c := meta.NewClient(s.Client(), s.URL)
 
 	if _, err := createOnFake(t, c, "lembrete_consulta"); err == nil {
-		t.Fatal("CreateTemplate devolveu sucesso; o POST tinha de morrer sem resposta")
+		t.Fatal("CreateTemplate returned success; the POST had to die with no response")
 	}
 	list, err := c.ListTemplates(context.Background(), "WABA1", "token", "")
 	if err != nil {
 		t.Fatalf("ListTemplates: %v", err)
 	}
 	if len(list) != 0 {
-		t.Fatalf("catalogo = %+v, queria vazio", list)
+		t.Fatalf("catalog = %+v, wanted empty", list)
 	}
 }
 
@@ -220,10 +220,10 @@ func TestFakeGraphTemplateFailureCATALOGTOODropsTheReread(t *testing.T) {
 	c := meta.NewClient(s.Client(), s.URL)
 
 	if _, err := createOnFake(t, c, "lembrete_consulta"); err == nil {
-		t.Fatal("CreateTemplate devolveu sucesso; o POST tinha de morrer sem resposta")
+		t.Fatal("CreateTemplate returned success; the POST had to die with no response")
 	}
 	if _, err := c.ListTemplates(context.Background(), "WABA1", "token", ""); err == nil {
-		t.Fatal("ListTemplates funcionou; neste modo o GET tambem tem de cair")
+		t.Fatal("ListTemplates worked; in this mode the GET also has to fail")
 	}
 }
 
@@ -239,7 +239,7 @@ func TestFakeGraphRefusesCallWithoutAuthorization(t *testing.T) {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusUnauthorized {
-		t.Errorf("status = %d sem Authorization, quero %d", resp.StatusCode, http.StatusUnauthorized)
+		t.Errorf("status = %d with no Authorization, want %d", resp.StatusCode, http.StatusUnauthorized)
 	}
 }
 
@@ -250,7 +250,7 @@ func TestFakeGraphRefusesRouteTheGraphAPIDoesNotHave(t *testing.T) {
 
 	req, err := http.NewRequest(http.MethodDelete, s.URL+"/PNID1/messages", nil)
 	if err != nil {
-		t.Fatalf("montar requisicao: %v", err)
+		t.Fatalf("build request: %v", err)
 	}
 	req.Header.Set("Authorization", "Bearer token")
 	resp, err := s.Client().Do(req)
@@ -259,6 +259,6 @@ func TestFakeGraphRefusesRouteTheGraphAPIDoesNotHave(t *testing.T) {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusNotFound {
-		t.Errorf("status = %d numa rota que a Graph API nao tem, quero %d", resp.StatusCode, http.StatusNotFound)
+		t.Errorf("status = %d on a route the Graph API does not have, want %d", resp.StatusCode, http.StatusNotFound)
 	}
 }

@@ -5,8 +5,9 @@
 // remember the command invents SQL. This project has already paid for
 // that twice — docs/IMPLANTACAO.md went as far as prescribing `UPDATE
 // instancia SET ativo = 1` on the PRODUCTION database (T-071), and T-048
-// was born from "Instância de laboratório exige SQL na mão". Every operation that
-// only exists as a hand-typed flag is an invitation to open sqlite3.
+// was born from "a laboratory instance requires hand-typed SQL". Every
+// operation that only exists as a hand-typed flag is an invitation to
+// open sqlite3.
 //
 // --- THIS FILE'S THREE GUARANTEES -----------------------------------------
 //
@@ -15,8 +16,8 @@
 // is `dispatch` — the SAME entry point as the command line
 // (provision.go). There is no validation, confirmation, secret
 // generation, or database write here; one more `if` in this file would be
-// this project's mother trap ("a regra vale num lugar e não vale no
-// seguinte", docs/ARMADILHAS.md) in its most expensive form: a menu that
+// this project's mother trap ("the rule holds in one place and not in
+// the next", docs/ARMADILHAS.md) in its most expensive form: a menu that
 // accepts what the command rejects.
 //
 // The design consequence that sustains this: A BLANK ANSWER OMITS THE

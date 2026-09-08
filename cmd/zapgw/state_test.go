@@ -35,16 +35,16 @@ func rowValues(t *testing.T, text, key string) (today, week int) {
 		if len(fields) >= 3 && fields[0] == key {
 			h, err := strconv.Atoi(fields[1])
 			if err != nil {
-				t.Fatalf("coluna 'hoje' de %q nao e numero: %q", key, fields[1])
+				t.Fatalf("column 'today' of %q is not a number: %q", key, fields[1])
 			}
 			s, err := strconv.Atoi(fields[2])
 			if err != nil {
-				t.Fatalf("coluna 'ultimos 7 dias' de %q nao e numero: %q", key, fields[2])
+				t.Fatalf("column 'last 7 days' of %q is not a number: %q", key, fields[2])
 			}
 			return h, s
 		}
 	}
-	t.Fatalf("chave %q nao apareceu na saida:\n%s", key, text)
+	t.Fatalf("key %q did not appear in the output:\n%s", key, text)
 	return 0, 0
 }
 
@@ -80,7 +80,7 @@ func valueFromState(t *testing.T, text, block, label string) string {
 		}
 		return strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(line), label+":"))
 	}
-	t.Fatalf("a linha %q (bloco %q) nao apareceu na saida:\n%s", label, block, text)
+	t.Fatalf("the line %q (block %q) did not appear in the output:\n%s", label, block, text)
 	return ""
 }
 
@@ -101,7 +101,7 @@ func activeInstanceWithFakeMeta(t *testing.T, g *fakeGraph) map[string]string {
 
 	var junk bytes.Buffer
 	if err := dispatch(instanceArgs("lojinha"), &junk, fakeEnvironment(vars)); err != nil {
-		t.Fatalf("provisionar instancia: %v", err)
+		t.Fatalf("provision instance: %v", err)
 	}
 	if err := storeFromEnvironment(t, vars).ActivateInstance("lojinha"); err != nil {
 		t.Fatalf("ActivateInstance: %v", err)
@@ -130,27 +130,27 @@ func TestStateCommandShowsTheFourBlocksOnlyTheConsumerSaw(t *testing.T) {
 	text := out.String()
 
 	if want, has := "ativa", valueFromState(t, text, "", "state"); has != want {
-		t.Errorf("estado = %q, quero %q. saida:\n%s", has, want, text)
+		t.Errorf("state = %q, want %q. output:\n%s", has, want, text)
 	}
 	if want, has := "nao", valueFromState(t, text, "", "paused"); has != want {
-		t.Errorf("pausada = %q, quero %q. saida:\n%s", has, want, text)
+		t.Errorf("pausada = %q, want %q. output:\n%s", has, want, text)
 	}
 	if want, has := version, valueFromState(t, text, "", "version"); has != want {
-		t.Errorf("versao = %q, quero %q — sem ela, 'que binario estava no ar?' vira arqueologia de deploy", has, want)
+		t.Errorf("versao = %q, want %q — without it, 'which binary was running?' becomes deploy archaeology", has, want)
 	}
 	// The verdict and BOTH timestamps: they are what answer "does Meta
 	// still accept this token?", which is the question of whoever is in
 	// the middle of the incident.
 	if want, has := outbound.VerdictOK, valueFromState(t, text, "meta_token", "verdict"); has != want {
-		t.Errorf("token_meta.veredito = %q, quero %q. saida:\n%s", has, want, text)
+		t.Errorf("token_meta.veredito = %q, want %q. output:\n%s", has, want, text)
 	}
 	for _, label := range []string{"measured_at", "checked_at"} {
 		if v := valueFromState(t, text, "meta_token", label); v == "—" {
-			t.Errorf("token_meta.%s veio vazio depois de uma medicao bem-sucedida. saida:\n%s", label, text)
+			t.Errorf("token_meta.%s came out empty after a successful measurement. output:\n%s", label, text)
 		}
 	}
 	if want, has := outbound.CertNeverObserved, valueFromState(t, text, "callback_certificate", "state"); has != want {
-		t.Errorf("certificado_do_callback.estado = %q, quero %q — instancia que nunca entregou nao tem certificado observado",
+		t.Errorf("certificado_do_callback.estado = %q, want %q — an instance that never delivered has no observed certificate",
 			has, want)
 	}
 }
@@ -169,7 +169,7 @@ func TestStateCommandShowsStampInUTCWithTheDistanceBeside(t *testing.T) {
 	vars := testEnvironment(t)
 	var buf bytes.Buffer
 	if err := dispatch(instanceArgs("lojinha"), &buf, fakeEnvironment(vars)); err != nil {
-		t.Fatalf("provisionar instancia: %v", err)
+		t.Fatalf("provision instance: %v", err)
 	}
 
 	store := storeFromEnvironment(t, vars)
@@ -188,16 +188,16 @@ func TestStateCommandShowsStampInUTCWithTheDistanceBeside(t *testing.T) {
 
 	expected := when.UTC().Format(time.RFC3339)
 	if !strings.Contains(text, expected) {
-		t.Errorf("o carimbo de `recebidas` nao saiu em UTC/RFC3339 (%s). saida:\n%s", expected, text)
+		t.Errorf("the `recebidas` timestamp did not come out in UTC/RFC3339 (%s). output:\n%s", expected, text)
 	}
 	if !strings.Contains(text, "(ha 3d)") {
-		t.Errorf("a distancia em tempo nao apareceu ao lado do carimbo. saida:\n%s", text)
+		t.Errorf("the time distance did not appear next to the timestamp. output:\n%s", text)
 	}
 	// gerado_em is also a timestamp, and it proves the rule holds for
 	// EVERY time field in the state — the formatting asks the PARSE, not
 	// the field's name.
 	if v := valueFromState(t, text, "", "generated_at"); !strings.HasSuffix(v, "(ha 0s)") {
-		t.Errorf("gerado_em = %q, quero terminando em \"(ha 0s)\"", v)
+		t.Errorf("gerado_em = %q, want ending in \"(ha 0s)\"", v)
 	}
 }
 
@@ -234,11 +234,11 @@ func TestStateCommandDoesNotAnnounceAsFutureAMeasurementThatALREADYHAPPENED(t *t
 	for _, label := range []string{"measured_at", "checked_at"} {
 		v := valueFromState(t, text, "meta_token", label)
 		if strings.Contains(v, "daqui a") {
-			t.Errorf("token_meta.%s = %q — a tela anuncia como FUTURO uma medicao que ja aconteceu.\nsaida:\n%s",
+			t.Errorf("token_meta.%s = %q — the screen announces as FUTURE a measurement that already happened.\noutput:\n%s",
 				label, v, text)
 		}
 		if !strings.Contains(v, "(ha ") {
-			t.Errorf("token_meta.%s = %q, quero a distancia no passado (\"(ha ...)\").\nsaida:\n%s",
+			t.Errorf("token_meta.%s = %q, want the distance in the past (\"(ha ...)\").\noutput:\n%s",
 				label, v, text)
 		}
 	}
@@ -255,7 +255,7 @@ func TestStateCommandShowsStampsSinceWithoutFieldListInTheCLI(t *testing.T) {
 	vars := testEnvironment(t)
 	var buf bytes.Buffer
 	if err := dispatch(instanceArgs("lojinha"), &buf, fakeEnvironment(vars)); err != nil {
-		t.Fatalf("provisionar instancia: %v", err)
+		t.Fatalf("provision instance: %v", err)
 	}
 
 	var out bytes.Buffer
@@ -266,12 +266,12 @@ func TestStateCommandShowsStampsSinceWithoutFieldListInTheCLI(t *testing.T) {
 
 	v := valueFromState(t, text, "", "stamps_since")
 	if v == outbound.NoValue {
-		t.Fatalf("carimbos_desde = %q na tela — instancia recem-criada carimba desde que nasceu.\nsaida:\n%s", v, text)
+		t.Fatalf("carimbos_desde = %q on screen — a freshly created instance stamps from the moment it was born.\noutput:\n%s", v, text)
 	}
 	// The value comes out like every timestamp on this screen: raw UTC
 	// with the distance next to it.
 	if _, err := time.Parse(time.RFC3339, strings.Fields(v)[0]); err != nil {
-		t.Errorf("carimbos_desde = %q, cuja primeira palavra nao e RFC3339: %v", v, err)
+		t.Errorf("carimbos_desde = %q, whose first word is not RFC3339: %v", v, err)
 	}
 }
 
@@ -287,7 +287,7 @@ func TestStateCommandDoesNotSpendACallOnMetaForAPausedInstance(t *testing.T) {
 
 	var buf bytes.Buffer
 	if err := dispatch(instanceArgs("lojinha"), &buf, fakeEnvironment(vars)); err != nil {
-		t.Fatalf("provisionar instancia: %v", err)
+		t.Fatalf("provision instance: %v", err)
 	}
 
 	var out bytes.Buffer
@@ -295,11 +295,11 @@ func TestStateCommandDoesNotSpendACallOnMetaForAPausedInstance(t *testing.T) {
 		t.Fatalf("estado: %v", err)
 	}
 	if n := g.gets.Load(); n != 0 {
-		t.Errorf("o comando bateu %d vez(es) na Graph API por uma instancia PAUSADA", n)
+		t.Errorf("the command hit the Graph API %d time(s) for a PAUSED instance", n)
 	}
 	text := out.String()
 	if want, has := outbound.VerdictUnknown, valueFromState(t, text, "meta_token", "verdict"); has != want {
-		t.Errorf("token_meta.veredito = %q, quero %q para instancia pausada. saida:\n%s", has, want, text)
+		t.Errorf("token_meta.veredito = %q, want %q for a paused instance. output:\n%s", has, want, text)
 	}
 }
 
@@ -309,7 +309,7 @@ func TestStateCommandWithoutTrafficPrintsZerosNotError(t *testing.T) {
 	vars := testEnvironment(t)
 	var provisionOut bytes.Buffer
 	if err := dispatch(instanceArgs("lojinha"), &provisionOut, fakeEnvironment(vars)); err != nil {
-		t.Fatalf("provisionar instancia: %v", err)
+		t.Fatalf("provision instance: %v", err)
 	}
 
 	var out bytes.Buffer
@@ -322,12 +322,12 @@ func TestStateCommandWithoutTrafficPrintsZerosNotError(t *testing.T) {
 		t.Errorf("an instance with no traffic must not alarm. output:\n%s", text)
 	}
 	if !strings.Contains(text, `instance "lojinha"`) {
-		t.Errorf("a instancia nao apareceu na saida:\n%s", text)
+		t.Errorf("the instance did not appear in the output:\n%s", text)
 	}
 	for _, key := range config.KeysInDisplayOrder {
 		today, week := rowValues(t, text, key)
 		if today != 0 || week != 0 {
-			t.Errorf("chave %q = (hoje=%d, 7dias=%d), quero (0, 0)", key, today, week)
+			t.Errorf("key %q = (today=%d, 7days=%d), want (0, 0)", key, today, week)
 		}
 	}
 }
@@ -345,7 +345,7 @@ func TestStateCommandShowsEveryVocabularyKey(t *testing.T) {
 	vars := testEnvironment(t)
 	var provisionOut bytes.Buffer
 	if err := dispatch(instanceArgs("lojinha"), &provisionOut, fakeEnvironment(vars)); err != nil {
-		t.Fatalf("provisionar instancia: %v", err)
+		t.Fatalf("provision instance: %v", err)
 	}
 
 	store := storeFromEnvironment(t, vars)
@@ -371,7 +371,7 @@ func TestStateCommandShowsEveryVocabularyKey(t *testing.T) {
 		want := i + 1
 		today, week := rowValues(t, text, key)
 		if today != want || week != want {
-			t.Errorf("chave %q = (hoje=%d, 7dias=%d), quero (%d, %d)", key, today, week, want, want)
+			t.Errorf("key %q = (today=%d, 7days=%d), want (%d, %d)", key, today, week, want, want)
 		}
 	}
 }
@@ -402,7 +402,7 @@ func TestStateRouteReturnsTheSameNumbersAsTheStateCommand(t *testing.T) {
 	if err := dispatch([]string{
 		"provisionar", "consumidor", "--nome", "consumer-a", "--instancias", "lojinha",
 	}, &buf, fakeEnvironment(vars)); err != nil {
-		t.Fatalf("provisionar consumidor: %v", err)
+		t.Fatalf("provision consumer: %v", err)
 	}
 	token := tokenFromOutput(t, buf.String())
 
@@ -468,7 +468,7 @@ func TestStateRouteReturnsTheSameNumbersAsTheStateCommand(t *testing.T) {
 			after-before)
 	}
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, quero 200; corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, want 200; body = %s", rec.Code, rec.Body.String())
 	}
 
 	var resp struct {
@@ -487,7 +487,7 @@ func TestStateRouteReturnsTheSameNumbersAsTheStateCommand(t *testing.T) {
 		} `json:"callback_certificate"`
 	}
 	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
-		t.Fatalf("corpo nao desserializa: %v (corpo = %q)", err, rec.Body.String())
+		t.Fatalf("body does not deserialize: %v (body = %q)", err, rec.Body.String())
 	}
 
 	text := out.String()
@@ -495,12 +495,12 @@ func TestStateRouteReturnsTheSameNumbersAsTheStateCommand(t *testing.T) {
 		today, week := rowValues(t, text, key)
 		fromAPI, has := resp.Counters[key]
 		if !has {
-			t.Errorf("a rota nao devolveu a chave %q que o comando mostra", key)
+			t.Errorf("the route did not return the key %q that the command shows", key)
 			continue
 		}
 		if fromAPI.Today != today || fromAPI.Last7Days != week {
-			t.Errorf("chave %q: rota = (hoje=%d, 7dias=%d), comando = (hoje=%d, 7dias=%d) — "+
-				"as duas superficies TEM de ler a mesma fonte",
+			t.Errorf("key %q: route = (today=%d, 7days=%d), command = (today=%d, 7days=%d) — "+
+				"both surfaces HAVE to read the same source",
 				key, fromAPI.Today, fromAPI.Last7Days, today, week)
 		}
 	}
@@ -520,7 +520,7 @@ func TestStateRouteReturnsTheSameNumbersAsTheStateCommand(t *testing.T) {
 	}
 	for _, c := range blocks {
 		if fromCLI := valueFromState(t, text, c.block, c.label); fromCLI != c.fromRoute {
-			t.Errorf("%s%s: rota = %q, comando = %q — os dois montam o MESMO estado",
+			t.Errorf("%s%s: route = %q, command = %q — the two build the SAME state",
 				c.block+".", c.label, c.fromRoute, fromCLI)
 		}
 	}
@@ -528,7 +528,7 @@ func TestStateRouteReturnsTheSameNumbersAsTheStateCommand(t *testing.T) {
 	// that comes out when nothing works: without this line, both sides
 	// could agree on knowing nothing and the test would pass green.
 	if resp.MetaToken.Verdict != outbound.VerdictOK {
-		t.Errorf("token_meta.veredito = %q, quero %q — com a Meta falsa aceitando, os dois lados TEM de medir",
+		t.Errorf("token_meta.veredito = %q, want %q — with the fake Meta accepting, both sides HAVE to measure",
 			resp.MetaToken.Verdict, outbound.VerdictOK)
 	}
 }
@@ -537,13 +537,13 @@ func TestStateCommandFlagsUnknownSlug(t *testing.T) {
 	vars := testEnvironment(t)
 	var provisionOut bytes.Buffer
 	if err := dispatch(instanceArgs("lojinha"), &provisionOut, fakeEnvironment(vars)); err != nil {
-		t.Fatalf("provisionar instancia: %v", err)
+		t.Fatalf("provision instance: %v", err)
 	}
 
 	var out bytes.Buffer
 	err := dispatch([]string{"estado", "--slug", "nao-existe"}, &out, fakeEnvironment(vars))
 	if !errors.Is(err, config.ErrInstanceNotFound) {
-		t.Fatalf("erro = %v, quero ErrInstanceNotFound", err)
+		t.Fatalf("error = %v, want ErrInstanceNotFound", err)
 	}
 }
 
@@ -554,7 +554,7 @@ func TestStateCommandShowsTheAlarmBEFORETheTable(t *testing.T) {
 	vars := testEnvironment(t)
 	var provisionOut bytes.Buffer
 	if err := dispatch(instanceArgs("lojinha"), &provisionOut, fakeEnvironment(vars)); err != nil {
-		t.Fatalf("provisionar instancia: %v", err)
+		t.Fatalf("provision instance: %v", err)
 	}
 
 	store := storeFromEnvironment(t, vars)
@@ -591,11 +591,11 @@ func TestStateCommandFiltersBySlug(t *testing.T) {
 	vars := testEnvironment(t)
 	var buf bytes.Buffer
 	if err := dispatch(instanceArgs("lojinha"), &buf, fakeEnvironment(vars)); err != nil {
-		t.Fatalf("provisionar lojinha: %v", err)
+		t.Fatalf("provision lojinha: %v", err)
 	}
 	buf.Reset()
 	if err := dispatch(instanceArgsWith("clinica", ""), &buf, fakeEnvironment(vars)); err != nil {
-		t.Fatalf("provisionar clinica: %v", err)
+		t.Fatalf("provision clinica: %v", err)
 	}
 
 	var out bytes.Buffer
@@ -605,10 +605,10 @@ func TestStateCommandFiltersBySlug(t *testing.T) {
 
 	text := out.String()
 	if !strings.Contains(text, `instance "lojinha"`) {
-		t.Errorf("lojinha nao apareceu:\n%s", text)
+		t.Errorf("lojinha did not appear:\n%s", text)
 	}
 	if strings.Contains(text, `instance "clinica"`) {
-		t.Errorf("clinica apareceu apesar do filtro --slug lojinha:\n%s", text)
+		t.Errorf("clinica appeared despite the --slug lojinha filter:\n%s", text)
 	}
 }
 
@@ -618,19 +618,19 @@ func TestStateCommandSumsTodayAndLast7DaysSeparately(t *testing.T) {
 	vars := testEnvironment(t)
 	var buf bytes.Buffer
 	if err := dispatch(instanceArgs("lojinha"), &buf, fakeEnvironment(vars)); err != nil {
-		t.Fatalf("provisionar instancia: %v", err)
+		t.Fatalf("provision instance: %v", err)
 	}
 
 	store := storeFromEnvironment(t, vars)
 	now := time.Now()
 	if err := store.IncrementCounter("lojinha", config.CounterReceived, now); err != nil {
-		t.Fatalf("IncrementCounter (hoje): %v", err)
+		t.Fatalf("IncrementCounter (today): %v", err)
 	}
 	if err := store.IncrementCounter("lojinha", config.CounterReceived, now.AddDate(0, 0, -3)); err != nil {
-		t.Fatalf("IncrementCounter (3 dias atras): %v", err)
+		t.Fatalf("IncrementCounter (3 days ago): %v", err)
 	}
 	if err := store.IncrementCounter("lojinha", config.CounterReceived, now.AddDate(0, 0, -10)); err != nil {
-		t.Fatalf("IncrementCounter (10 dias atras, fora da janela): %v", err)
+		t.Fatalf("IncrementCounter (10 days ago, outside the window): %v", err)
 	}
 
 	var out bytes.Buffer
@@ -641,7 +641,7 @@ func TestStateCommandSumsTodayAndLast7DaysSeparately(t *testing.T) {
 	text := out.String()
 	today, week := rowValues(t, text, config.CounterReceived)
 	if today != 1 || week != 2 {
-		t.Errorf("recebidas = (hoje=%d, 7dias=%d), quero (1, 2) — o evento de 10 dias atras fica de FORA da janela. saida:\n%s",
+		t.Errorf("recebidas = (today=%d, 7days=%d), want (1, 2) — the event from 10 days ago falls OUTSIDE the window. output:\n%s",
 			today, week, text)
 	}
 }
@@ -664,10 +664,10 @@ func TestStateCommandRefusesUnknownInboundPath(t *testing.T) {
 	var out bytes.Buffer
 	err := dispatch([]string{"estado"}, &out, fakeEnvironment(vars))
 	if err == nil {
-		t.Fatalf("o comando devia RECUSAR %q; saida:\n%s", vars["ZAPGW_ENTRADA_VIA"], out.String())
+		t.Fatalf("the command should have REFUSED %q; output:\n%s", vars["ZAPGW_ENTRADA_VIA"], out.String())
 	}
 	if !strings.Contains(err.Error(), "ZAPGW_ENTRADA_VIA") {
-		t.Errorf("o erro nao cita a variavel: %v", err)
+		t.Errorf("the error does not name the variable: %v", err)
 	}
 }
 
@@ -690,12 +690,12 @@ func TestStateCommandShowsTheInboundBlock(t *testing.T) {
 	text := out.String()
 
 	if want, has := outbound.ViaTunnel, valueFromState(t, text, "ingress", "via"); has != want {
-		t.Errorf("entrada.via = %q, quero %q. saida:\n%s", has, want, text)
+		t.Errorf("entrada.via = %q, want %q. output:\n%s", has, want, text)
 	}
 	// Without ZAPGW_CONECTOR_READY the block stays on screen, saying no
 	// one said who to ask — never a missing line, for the same reason the
 	// JSON never omits the field.
 	if !strings.Contains(text, outbound.ConnectorNotConfigured) {
-		t.Errorf("a tela nao mostra o conector como %q. saida:\n%s", outbound.ConnectorNotConfigured, text)
+		t.Errorf("the screen does not show the connector as %q. output:\n%s", outbound.ConnectorNotConfigured, text)
 	}
 }

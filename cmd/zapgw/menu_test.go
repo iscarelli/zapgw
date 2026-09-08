@@ -59,17 +59,17 @@ func TestMenuBUILDSTheSubcommandArgs(t *testing.T) {
 		expected []string
 	}{
 		{
-			name:     "estado sem slug: a flag NAO vai, e quem decide 'todas' e o subcomando",
+			name:     "state with no slug: the flag does NOT go, and it's the subcommand that decides 'all'",
 			in:       []string{"1", ""},
 			expected: []string{"estado"},
 		},
 		{
-			name:     "estado com slug",
+			name:     "state with slug",
 			in:       []string{"1", "lojinha"},
 			expected: []string{"estado", "--slug", "lojinha"},
 		},
 		{
-			name:     "instancia listar nao pergunta nada",
+			name:     "instancia listar asks nothing",
 			in:       []string{"2"},
 			expected: []string{"instancia", "listar"},
 		},
@@ -84,7 +84,7 @@ func TestMenuBUILDSTheSubcommandArgs(t *testing.T) {
 			expected: []string{"consumidor", "listar"},
 		},
 		{
-			name: "provisionar instancia: o que ficou em branco nao vira flag",
+			name: "provisionar instancia: what's left blank does not become a flag",
 			in: []string{"5", "lojinha", "WABA1", "PNID1", "5532999990000",
 				"", "https://consumidor.interno/hook", ""},
 			expected: []string{"provisionar", "instancia",
@@ -97,7 +97,7 @@ func TestMenuBUILDSTheSubcommandArgs(t *testing.T) {
 			expected: []string{"provisionar", "consumidor", "--nome", "consumer-a", "--instancias", "lojinha,outra"},
 		},
 		{
-			name:     "rotacionar instancia sem callback: a flag NAO vai (ver o teste dedicado abaixo)",
+			name:     "rotacionar instancia with no callback: the flag does NOT go (see the dedicated test below)",
 			in:       []string{"7", "lojinha", ""},
 			expected: []string{"instancia", "rotacionar", "--slug", "lojinha"},
 		},
@@ -123,7 +123,7 @@ func TestMenuBUILDSTheSubcommandArgs(t *testing.T) {
 			expected: []string{"instancia", "pausar", "--slug", "lojinha"},
 		},
 		{
-			name:     "remover: o slug redigitado vai VERBATIM em --confirmo",
+			name:     "remover: the retyped slug goes VERBATIM into --confirmo",
 			in:       []string{"99", "lojinha", "lojinha"},
 			expected: []string{"instancia", "remover", "--slug", "lojinha", "--confirmo", "lojinha"},
 		},
@@ -133,10 +133,10 @@ func TestMenuBUILDSTheSubcommandArgs(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			captured, _ := menuWithSpy(t, answers(append(c.in, "0")...))
 			if len(captured) != 1 {
-				t.Fatalf("o menu despachou %d comando(s), quero exatamente 1: %v", len(captured), captured)
+				t.Fatalf("the menu dispatched %d command(s), I want exactly 1: %v", len(captured), captured)
 			}
 			if got := strings.Join(captured[0], " "); got != strings.Join(c.expected, " ") {
-				t.Fatalf("args = %q\nquero    = %q", got, strings.Join(c.expected, " "))
+				t.Fatalf("args = %q\nwant     = %q", got, strings.Join(c.expected, " "))
 			}
 		})
 	}
@@ -158,14 +158,14 @@ func TestMenuOnlyAsksForFlagsTheSubcommandHAS(t *testing.T) {
 				t.Fatalf("%s: `zapgw %s -h`: %v", i.key, strings.Join(i.args, " "), err)
 			}
 			text := help.String()
-			if strings.Contains(text, "desconhecido") {
-				t.Fatalf("%s: `zapgw %s` nao e um subcomando de verdade: %s", i.key, strings.Join(i.args, " "), text)
+			if strings.Contains(text, "unknown subcommand") {
+				t.Fatalf("%s: `zapgw %s` is not a real subcommand: %s", i.key, strings.Join(i.args, " "), text)
 			}
 			for _, c := range i.fields {
 				name := strings.TrimLeft(c.flag, "-")
 				found := regexp.MustCompile(`(?m)^\s*-` + regexp.QuoteMeta(name) + `\b`).MatchString(text)
 				if !found {
-					t.Errorf("item %s (%s) pergunta %s, que `zapgw %s` NAO tem.\najuda do subcomando:\n%s",
+					t.Errorf("item %s (%s) asks for %s, which `zapgw %s` does NOT have.\nsubcommand help:\n%s",
 						i.key, i.label, c.flag, strings.Join(i.args, " "), text)
 				}
 			}
@@ -183,42 +183,42 @@ func TestMenuOnlyAsksForFlagsTheSubcommandHAS(t *testing.T) {
 func TestMenuDoesNOTValidateDoesNOTConfirmDoesNOTWrite(t *testing.T) {
 	forbiddenNames := map[string]string{
 		// Running a subcommand WITHOUT going through dispatch would be the fork.
-		"provision":         "o menu monta args e delega; chamar o subcomando direto pula dispatch",
-		"provisionInstance": "idem",
-		"provisionConsumer": "idem",
-		"instanceCommand":   "idem",
-		"consumerCommand":   "idem",
-		"stateCommand":      "idem",
-		"templateCommand":   "idem",
-		"listInstances":     "idem",
-		"showInstance":      "idem",
-		"rotateInstance":    "idem",
-		"rotateConsumer":    "idem",
-		"listConsumers":     "idem",
-		"pauseInstance":     "idem",
-		"removeInstance":    "idem",
-		"templateCreate":    "idem",
-		"smoke":             "idem",
+		"provision":         "the menu builds args and delegates; calling the subcommand directly skips dispatch",
+		"provisionInstance": "same",
+		"provisionConsumer": "same",
+		"instanceCommand":   "same",
+		"consumerCommand":   "same",
+		"stateCommand":      "same",
+		"templateCommand":   "same",
+		"listInstances":     "same",
+		"showInstance":      "same",
+		"rotateInstance":    "same",
+		"rotateConsumer":    "same",
+		"listConsumers":     "same",
+		"pauseInstance":     "same",
+		"removeInstance":    "same",
+		"templateCreate":    "same",
+		"smoke":             "same",
 		// Validation belongs to the subcommand/store, never here.
-		"ValidateSlug":        "validacao duplicada diverge; o menu nao valida",
-		"ValidateCallbackURL": "idem",
-		"ValidateCABundle":    "idem",
+		"ValidateSlug":        "duplicated validation diverges; the menu does not validate",
+		"ValidateCallbackURL": "same",
+		"ValidateCABundle":    "same",
 		// Secrets and writes do not pass through here.
-		"randomSecret":     "o menu nao sorteia segredo",
-		"CreateInstance":   "o menu nao grava",
-		"RemoveInstance":   "o menu nao grava",
-		"PauseInstance":    "o menu nao grava",
-		"ActivateInstance": "o menu nao grava",
-		"RotateInstance":   "o menu nao grava",
-		"CreateConsumer":   "o menu nao grava",
-		"RotateConsumer":   "o menu nao grava",
+		"randomSecret":     "the menu does not generate secrets",
+		"CreateInstance":   "the menu does not write",
+		"RemoveInstance":   "the menu does not write",
+		"PauseInstance":    "the menu does not write",
+		"ActivateInstance": "the menu does not write",
+		"RotateInstance":   "the menu does not write",
+		"CreateConsumer":   "the menu does not write",
+		"RotateConsumer":   "the menu does not write",
 	}
 
 	file := filepath.Join(".", "menu.go")
 	fs := token.NewFileSet()
 	tree, err := parser.ParseFile(fs, file, nil, 0)
 	if err != nil {
-		t.Fatalf("parse de %s: %v", file, err)
+		t.Fatalf("parse of %s: %v", file, err)
 	}
 
 	ast.Inspect(tree, func(n ast.Node) bool {
@@ -237,7 +237,7 @@ func TestMenuDoesNOTValidateDoesNOTConfirmDoesNOTWrite(t *testing.T) {
 			// second path to the data.
 			if x, ok := f.X.(*ast.Ident); ok && x.Name == "store" {
 				if f.Sel.Name != "ListInstances" && f.Sel.Name != "Close" {
-					t.Errorf("%s chama store.%s — o menu so pode CONTAR (ListInstances) e fechar",
+					t.Errorf("%s calls store.%s — the menu can only COUNT (ListInstances) and close",
 						fs.Position(call.Pos()), f.Sel.Name)
 				}
 			}
@@ -245,7 +245,7 @@ func TestMenuDoesNOTValidateDoesNOTConfirmDoesNOTWrite(t *testing.T) {
 			return true
 		}
 		if reason, forbidden := forbiddenNames[name]; forbidden {
-			t.Errorf("%s chama %s: %s", fs.Position(call.Pos()), name, reason)
+			t.Errorf("%s calls %s: %s", fs.Position(call.Pos()), name, reason)
 		}
 		return true
 	})
@@ -279,8 +279,8 @@ func TestMenuDoesEXACTLYWhatTheCommandLineDoes(t *testing.T) {
 	// carimbos_desde/token_definido_em (both come from the CLOCK at the
 	// moment of creation, internal/config/store.go CreateInstanceAt) would
 	// diverge over a field that proves NOTHING about "the menu does the
-	// same as the command line" (docs/ARMADILHAS.md, "Relógio e
-	// carimbo"; T-100). Freezing creationClock (provision.go) for
+	// same as the command line" (docs/ARMADILHAS.md, "Clocks and
+	// stamps"; T-100). Freezing creationClock (provision.go) for
 	// both calls is what makes both timestamps come out IDENTICAL, and it
 	// returns the comparison to the ENTIRE struct — with no field
 	// exception at all, not for today's fields nor for the next timestamp
@@ -310,14 +310,14 @@ func TestMenuDoesEXACTLYWhatTheCommandLineDoes(t *testing.T) {
 	// menu's screen: the menu does not rewrite, does not summarize, and
 	// does not add any line to it.
 	if !strings.Contains(menuOut.String(), commandLineOut.String()) {
-		t.Fatalf("a saida do menu nao contem, palavra por palavra, a do comando.\nmenu:\n%s\ncomando:\n%s",
+		t.Fatalf("the menu's output does not contain, word for word, the command's.\nmenu:\n%s\ncommand:\n%s",
 			menuOut.String(), commandLineOut.String())
 	}
 
 	// AND THE DATABASE: both paths recorded the same instance.
 	fromCommandLine, err := storeFromEnvironment(t, viaCommandLine).SummarizeInstance("lojinha")
 	if err != nil {
-		t.Fatalf("SummarizeInstance (linha de comando): %v", err)
+		t.Fatalf("SummarizeInstance (command line): %v", err)
 	}
 	fromMenu, err := storeFromEnvironment(t, viaMenu).SummarizeInstance("lojinha")
 	if err != nil {
@@ -330,10 +330,10 @@ func TestMenuDoesEXACTLYWhatTheCommandLineDoes(t *testing.T) {
 	// with no exception — including the next timestamp someone adds
 	// (T-100; the previous version of this test zeroed StampsSince
 	// field by field, and T-098 reopened the same flaw with
-	// TokenSetAt in under 24h — see docs/ARMADILHAS.md, "Relógio e
-	// carimbo").
+	// TokenSetAt in under 24h — see docs/ARMADILHAS.md, "Clocks and
+	// stamps").
 	if fmt.Sprintf("%+v", fromCommandLine) != fmt.Sprintf("%+v", fromMenu) {
-		t.Fatalf("a instancia criada pelo menu difere da criada pela linha de comando:\nlinha: %+v\nmenu:  %+v",
+		t.Fatalf("the instance created by the menu differs from the one created by the command line:\nline: %+v\nmenu:  %+v",
 			fromCommandLine, fromMenu)
 	}
 }
@@ -359,10 +359,10 @@ func TestMenuRemoveREQUIRESTheSlugRetyped(t *testing.T) {
 		t.Fatalf("menu: %v", err)
 	}
 	if _, err := storeFromEnvironment(t, vars).FindInstance("lojinha"); err != nil {
-		t.Fatalf("a instancia foi APAGADA respondendo \"s\" — a confirmacao virou uma tecla: %v\n%s", err, out.String())
+		t.Fatalf("the instance was DELETED by answering \"s\" — confirmation turned into a single keystroke: %v\n%s", err, out.String())
 	}
 	if !strings.Contains(out.String(), "--confirmo") {
-		t.Fatalf("a recusa nao aponta o --confirmo (quem recusa e o subcomando, e a mensagem dele tem de chegar):\n%s", out.String())
+		t.Fatalf("the refusal does not point at --confirmo (the subcommand is what refuses, and its message has to come through):\n%s", out.String())
 	}
 
 	// (b) the retyped slug, that does remove — otherwise the test above
@@ -372,7 +372,7 @@ func TestMenuRemoveREQUIRESTheSlugRetyped(t *testing.T) {
 		t.Fatalf("menu: %v", err)
 	}
 	if _, err := storeFromEnvironment(t, vars).FindInstance("lojinha"); err == nil {
-		t.Fatalf("a instancia continua no banco depois de o slug ser redigitado:\n%s", second.String())
+		t.Fatalf("the instance is still in the database after the slug was retyped:\n%s", second.String())
 	}
 }
 
@@ -383,10 +383,10 @@ func TestMenuRemoveREQUIRESTheSlugRetyped(t *testing.T) {
 func TestMenuPauseDoesNOTAskForConfirmation(t *testing.T) {
 	item, found := findItem("11")
 	if !found {
-		t.Fatal("o item de pausar sumiu do menu")
+		t.Fatal("the pausar item disappeared from the menu")
 	}
 	if len(item.fields) != 1 || item.fields[0].flag != "--slug" {
-		t.Fatalf("pausar pergunta %+v — a unica pergunta e o slug", item.fields)
+		t.Fatalf("pausar asks %+v — the only question is the slug", item.fields)
 	}
 
 	vars := testEnvironment(t)
@@ -408,7 +408,7 @@ func TestMenuPauseDoesNOTAskForConfirmation(t *testing.T) {
 		t.Fatalf("SummarizeInstance: %v", err)
 	}
 	if config.StateOf(r) != "pausada" {
-		t.Fatalf("estado = %q, quero pausada — o menu pediu algo a mais?\n%s", config.StateOf(r), out.String())
+		t.Fatalf("state = %q, want pausada — did the menu ask for something extra?\n%s", config.StateOf(r), out.String())
 	}
 }
 
@@ -421,7 +421,7 @@ func TestMenuPauseDoesNOTAskForConfirmation(t *testing.T) {
 func TestWithoutTTYDoesNotOpenMenu(t *testing.T) {
 	regular, err := os.Create(filepath.Join(t.TempDir(), "saida.log"))
 	if err != nil {
-		t.Fatalf("criar arquivo: %v", err)
+		t.Fatalf("create file: %v", err)
 	}
 	defer func() { _ = regular.Close() }()
 
@@ -433,7 +433,7 @@ func TestWithoutTTYDoesNotOpenMenu(t *testing.T) {
 
 	nullDev, err := os.OpenFile(os.DevNull, os.O_RDWR, 0)
 	if err != nil {
-		t.Fatalf("abrir %s: %v", os.DevNull, err)
+		t.Fatalf("open %s: %v", os.DevNull, err)
 	}
 	defer func() { _ = nullDev.Close() }()
 
@@ -444,24 +444,24 @@ func TestWithoutTTYDoesNotOpenMenu(t *testing.T) {
 	}{
 		// The implanta/deploy.sh case: called with an argument. Never a
 		// menu, not even when both sides are a terminal.
-		{"com argumento nunca abre", []string{"provisionar", "instancia"}, os.Stdin, os.Stdout},
-		{"saida em arquivo", nil, read, regular},
-		{"saida em pipe", nil, read, write},
+		{"with an argument never opens", []string{"provisionar", "instancia"}, os.Stdin, os.Stdout},
+		{"output to a file", nil, read, regular},
+		{"output to a pipe", nil, read, write},
 		// What systemd delivers: StandardInput=null. `/dev/null` IS a
 		// character device — if `isTerminal` stopped at ModeCharDevice,
 		// this case would open the menu, read EOF, and the binary would
 		// exit with 0 without starting the server.
-		{"entrada no dispositivo nulo", nil, nullDev, regular},
-		{"os dois no dispositivo nulo", nil, nullDev, nullDev},
+		{"input from the null device", nil, nullDev, regular},
+		{"both on the null device", nil, nullDev, nullDev},
 	}
 	for _, c := range cases {
 		if shouldOpenMenu(c.args, c.in, c.out) {
-			t.Errorf("%s: shouldOpenMenu = true, quero false", c.name)
+			t.Errorf("%s: shouldOpenMenu = true, want false", c.name)
 		}
 	}
 
 	if isTerminal(nullDev) {
-		t.Errorf("isTerminal(%s) = true — o dispositivo nulo nao e terminal de ninguem", os.DevNull)
+		t.Errorf("isTerminal(%s) = true — the null device is nobody's terminal", os.DevNull)
 	}
 }
 
@@ -474,7 +474,7 @@ func TestScriptWithoutTTYStillBringsUpTheServer(t *testing.T) {
 	bin := buildWithVersion(t, "menu-sem-tty")
 	body := startServerAndGetHealth(t, bin)
 	if !strings.Contains(string(body), `"ok":true`) {
-		t.Fatalf("/v1/health respondeu %s", body)
+		t.Fatalf("/v1/health answered %s", body)
 	}
 }
 
@@ -502,7 +502,7 @@ func TestMenuDoesNotPrintASecretTheCommandDoesNotPrint(t *testing.T) {
 	}
 	for k, v := range secrets {
 		if strings.Contains(out.String(), v) {
-			t.Errorf("o valor de %s apareceu na tela do menu:\n%s", k, out.String())
+			t.Errorf("the value of %s appeared on the menu screen:\n%s", k, out.String())
 		}
 	}
 
@@ -514,7 +514,7 @@ func TestMenuDoesNotPrintASecretTheCommandDoesNotPrint(t *testing.T) {
 				name := strings.ToLower(strings.TrimLeft(c.flag, "-"))
 				for _, forbidden := range []string{"secret", "token", "segredo", "senha"} {
 					if strings.Contains(name, forbidden) {
-						t.Errorf("item %s pergunta %s — segredo vem do ambiente, nunca da tela", i.key, c.flag)
+						t.Errorf("item %s asks for %s — secrets come from the environment, never from the screen", i.key, c.flag)
 					}
 				}
 			}
@@ -542,10 +542,10 @@ func TestMenuDoesNotClearCallbackWhenTheOperatorJustPressesEnter(t *testing.T) {
 		t.Fatalf("FindInstance: %v", err)
 	}
 	if i.CallbackURL == "" {
-		t.Fatalf("a callback_url foi APAGADA por um ENTER:\n%s", out.String())
+		t.Fatalf("the callback_url was DELETED by an ENTER:\n%s", out.String())
 	}
 	if i.AppSecret != "outro-app-secret" {
-		t.Fatalf("app_secret = %q — a rotacao pedida nao aconteceu", i.AppSecret)
+		t.Fatalf("app_secret = %q — the requested rotation did not happen", i.AppSecret)
 	}
 }
 
@@ -598,7 +598,7 @@ func TestMenuSeparatesTheIrreversibleFromTheRead(t *testing.T) {
 		var reads, writesSeen int
 		for _, i := range g.items {
 			if seen[i.key] {
-				t.Errorf("a chave %q aparece duas vezes no menu", i.key)
+				t.Errorf("the key %q appears twice in the menu", i.key)
 			}
 			seen[i.key] = true
 			if i.writes {
@@ -622,7 +622,7 @@ func TestMenuSeparatesTheIrreversibleFromTheRead(t *testing.T) {
 	// turns a wrong finger into a deleted instance.
 	target, err := strconv.Atoi(irreversibles[0].key)
 	if err != nil {
-		t.Fatalf("chave %q nao e numero: %v", irreversibles[0].key, err)
+		t.Fatalf("key %q is not a number: %v", irreversibles[0].key, err)
 	}
 	for key := range seen {
 		if key == irreversibles[0].key {
@@ -633,7 +633,7 @@ func TestMenuSeparatesTheIrreversibleFromTheRead(t *testing.T) {
 			continue
 		}
 		if n >= target-1 && n <= target+1 {
-			t.Errorf("a chave %q e vizinha da chave de `instancia remover` (%q)", key, irreversibles[0].key)
+			t.Errorf("key %q is a neighbor of the `instancia remover` key (%q)", key, irreversibles[0].key)
 		}
 	}
 }

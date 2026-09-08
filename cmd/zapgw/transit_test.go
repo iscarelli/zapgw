@@ -25,7 +25,7 @@ func TestTransitCommandRequiresInstanceAndOneOfTheTwoIndexes(t *testing.T) {
 	for _, args := range cases {
 		var out bytes.Buffer
 		if err := dispatch(args, &out, env); err == nil {
-			t.Errorf("args=%v: nenhum erro, quero recusa por falta de flag obrigatoria (ou pelas duas juntas)", args)
+			t.Errorf("args=%v: no error, want a refusal for a missing required flag (or for both together)", args)
 		}
 	}
 }
@@ -60,7 +60,7 @@ func TestTransitCommandFindsTheMessageAndDoesNOTLeakThePhone(t *testing.T) {
 		t.Fatalf("WriteTransit: %v", err)
 	}
 	if err := store.Close(); err != nil {
-		t.Fatalf("Fechar: %v", err)
+		t.Fatalf("Close: %v", err)
 	}
 
 	// Search with the CANONICAL form (with the ninth digit) — the operator
@@ -75,10 +75,10 @@ func TestTransitCommandFindsTheMessageAndDoesNOTLeakThePhone(t *testing.T) {
 	text := out.String()
 	if !strings.Contains(text, "mensagem") || !strings.Contains(text, "entrada") ||
 		!strings.Contains(text, "consumidor guardou (200)") {
-		t.Fatalf("saida nao trouxe a linha esperada:\n%s", text)
+		t.Fatalf("the output did not carry the expected line:\n%s", text)
 	}
 	if strings.Contains(text, numberWithoutNinth) || strings.Contains(text, "5511999990000") {
-		t.Fatalf("a saida de `zapgw transito` vazou o telefone:\n%s", text)
+		t.Fatalf("`zapgw transito`'s output leaked the phone number:\n%s", text)
 	}
 }
 
@@ -109,7 +109,7 @@ func TestTransitCommandFindsTheSendByKeyAndDoesNOTLeakTheIdempotencyKey(t *testi
 		t.Fatalf("WriteTransit: %v", err)
 	}
 	if err := store.Close(); err != nil {
-		t.Fatalf("Fechar: %v", err)
+		t.Fatalf("Close: %v", err)
 	}
 
 	var out bytes.Buffer
@@ -120,13 +120,13 @@ func TestTransitCommandFindsTheSendByKeyAndDoesNOTLeakTheIdempotencyKey(t *testi
 
 	text := out.String()
 	if !strings.Contains(text, "saida") || !strings.Contains(text, "texto") || !strings.Contains(text, "enviado") {
-		t.Fatalf("saida nao trouxe a linha esperada:\n%s", text)
+		t.Fatalf("the output did not carry the expected line:\n%s", text)
 	}
 	if strings.Contains(text, sentinelKey) {
-		t.Fatalf("a saida vazou a Idempotency-Key em claro:\n%s", text)
+		t.Fatalf("the output leaked the Idempotency-Key in the clear:\n%s", text)
 	}
 	if strings.Contains(text, writeHMAC) {
-		t.Fatalf("a saida vazou o HMAC da chave:\n%s", text)
+		t.Fatalf("the output leaked the key's HMAC:\n%s", text)
 	}
 }
 
@@ -168,16 +168,16 @@ func TestTransitCommandPrintsTheWamidOrTheDash(t *testing.T) {
 		Slug: "lojinha", Direction: config.DirectionInbound,
 		Counterparty: meta.Canonicalize(number), Type: "mensagem", Correlation: "c-entrada", Outcome: "consumidor guardou (200)",
 	}, time.Now()); err != nil {
-		t.Fatalf("WriteTransit (entrada, sem wamid): %v", err)
+		t.Fatalf("WriteTransit (inbound, no wamid): %v", err)
 	}
 	if err := store.WriteTransit(config.TransitRecord{
 		Slug: "lojinha", Direction: config.DirectionOutbound,
 		Counterparty: meta.Canonicalize(number), Wamid: wamid, Type: "texto", Correlation: "c-saida", Outcome: "enviado",
 	}, time.Now()); err != nil {
-		t.Fatalf("WriteTransit (saida, com wamid): %v", err)
+		t.Fatalf("WriteTransit (outbound, with wamid): %v", err)
 	}
 	if err := store.Close(); err != nil {
-		t.Fatalf("Fechar: %v", err)
+		t.Fatalf("Close: %v", err)
 	}
 
 	var outBuf bytes.Buffer
@@ -189,19 +189,19 @@ func TestTransitCommandPrintsTheWamidOrTheDash(t *testing.T) {
 	text := outBuf.String()
 	lines := strings.Split(strings.TrimRight(text, "\n"), "\n")
 	if len(lines) < 3 {
-		t.Fatalf("saida tem menos de 3 linhas (cabecalho + 2 achadas):\n%s", text)
+		t.Fatalf("output has fewer than 3 lines (header + 2 hits):\n%s", text)
 	}
 	// SearchTransit returns from MOST RECENT to OLDEST: the outbound row
 	// (recorded last) comes right after the header.
 	outboundLine, inboundLine := lines[1], lines[2]
 	if !strings.Contains(outboundLine, wamid) {
-		t.Fatalf("linha de saida nao trouxe o wamid:\n%s", outboundLine)
+		t.Fatalf("the outbound line did not carry the wamid:\n%s", outboundLine)
 	}
 	if !strings.Contains(inboundLine, "—") {
-		t.Fatalf("linha de entrada (sem wamid) nao trouxe o travessao:\n%s", inboundLine)
+		t.Fatalf("the inbound line (no wamid) did not carry the dash:\n%s", inboundLine)
 	}
 	if strings.Contains(inboundLine, wamid) {
-		t.Fatalf("linha de entrada trouxe o wamid da linha de saida:\n%s", inboundLine)
+		t.Fatalf("the inbound line carried the outbound line's wamid:\n%s", inboundLine)
 	}
 }
 
@@ -218,13 +218,13 @@ func TestTransitCommandWithoutHitsIsNotAnError(t *testing.T) {
 		t.Fatalf("CreateInstance: %v", err)
 	}
 	if err := store.Close(); err != nil {
-		t.Fatalf("Fechar: %v", err)
+		t.Fatalf("Close: %v", err)
 	}
 
 	var out bytes.Buffer
 	if err := dispatch([]string{"transito", "--instancia", "lojinha", "--telefone", "5511999990000"},
 		&out, env); err != nil {
-		t.Fatalf("dispatch: %v — buscar num numero que nunca falou nao e erro", err)
+		t.Fatalf("dispatch: %v — searching a number that never spoke is not an error", err)
 	}
 	if !strings.Contains(out.String(), "nothing found") {
 		t.Fatalf("output = %q, wanted it to say nothing was found", out.String())

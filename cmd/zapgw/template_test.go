@@ -50,7 +50,7 @@ func writeComponentsFile(t *testing.T, content string) string {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), "componentes.json")
 	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
-		t.Fatalf("escrever %s: %v", path, err)
+		t.Fatalf("write %s: %v", path, err)
 	}
 	return path
 }
@@ -77,7 +77,7 @@ func templateScenario(t *testing.T, g *fakeTemplateGraph) map[string]string {
 
 	var junk bytes.Buffer
 	if err := dispatch(instanceArgs("lojinha"), &junk, fakeEnvironment(vars)); err != nil {
-		t.Fatalf("provisionar instancia: %v", err)
+		t.Fatalf("provision instance: %v", err)
 	}
 	return vars
 }
@@ -96,14 +96,14 @@ func TestTemplateCreateValidFileBuildsTheRightRequest(t *testing.T) {
 	}
 
 	if g.calls.Load() != 1 {
-		t.Fatalf("chamadas a Meta = %d, quero 1", g.calls.Load())
+		t.Fatalf("calls to Meta = %d, want 1", g.calls.Load())
 	}
 	text := out.String()
 	if !strings.Contains(text, "TEMPLATE123") {
-		t.Errorf("a saida nao mostra o id devolvido pela Meta:\n%s", text)
+		t.Errorf("the output does not show the id returned by Meta:\n%s", text)
 	}
 	if !strings.Contains(text, "confirmacao_pedido") {
-		t.Errorf("a saida nao mostra o nome do template:\n%s", text)
+		t.Errorf("the output does not show the template's name:\n%s", text)
 	}
 }
 
@@ -115,10 +115,10 @@ func TestTemplateCreateInvalidComponentsDoesNotCallMeta(t *testing.T) {
 		name    string
 		content string
 	}{
-		{"objeto vazio", `{}`},
+		{"empty object", `{}`},
 		{"null", `null`},
-		{"nao e lista nem objeto", `"texto solto"`},
-		{"arquivo vazio", ``},
+		{"not a list nor an object", `"texto solto"`},
+		{"empty file", ``},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			g := workingTemplateGraph()
@@ -128,11 +128,11 @@ func TestTemplateCreateInvalidComponentsDoesNotCallMeta(t *testing.T) {
 			var out bytes.Buffer
 			err := dispatch(templateCreateArgs("lojinha", file), &out, fakeEnvironment(vars))
 			if err == nil {
-				t.Fatalf("componentes %q foi aceito, saida:\n%s", testCase.content, out.String())
+				t.Fatalf("components %q was accepted, output:\n%s", testCase.content, out.String())
 			}
 			if g.calls.Load() != 0 {
-				t.Errorf("a Meta foi chamada %d vez(es) com um arquivo de componentes invalido — "+
-					"a validacao tinha de recusar ANTES da rede", g.calls.Load())
+				t.Errorf("Meta was called %d time(s) with an invalid components file — "+
+					"validation had to refuse BEFORE the network", g.calls.Load())
 			}
 		})
 	}
@@ -141,11 +141,11 @@ func TestTemplateCreateInvalidComponentsDoesNotCallMeta(t *testing.T) {
 // MANDATORY MUTATION (T-036, Verify): moving the validation to AFTER the
 // network call has to leave TestTemplateCreateInvalidComponentsDoesNotCallMeta
 // red. Proved by hand by moving the `p.Validate()` call in template.go to
-// after `cliente.CreateTemplate(...)`: 3 of the 4 subtests ("objeto vazio",
-// "null", "nao e lista nem objeto") started calling Meta
+// after `cliente.CreateTemplate(...)`: 3 of the 4 subtests ("empty object",
+// "null", "not a list nor an object") started calling Meta
 // (g.chamadas.Load() == 1) before validation rejected the request, and the
 // "the Meta was called" assertion failed as expected in all three. (The
-// fourth, "arquivo vazio", kept passing for a DIFFERENT reason — empty
+// fourth, "empty file", kept passing for a DIFFERENT reason — empty
 // components makes json.Marshal fail inside meta.Client itself before any
 // HTTP, so the network call never happens either way; this does not
 // invalidate the proof, it just shows that specific case has a second
@@ -162,13 +162,13 @@ func TestTemplateCreateNonexistentFileNamesThePath(t *testing.T) {
 	var out bytes.Buffer
 	err := dispatch(templateCreateArgs("lojinha", path), &out, fakeEnvironment(vars))
 	if err == nil {
-		t.Fatal("arquivo de componentes inexistente foi aceito")
+		t.Fatal("nonexistent components file was accepted")
 	}
 	if !strings.Contains(err.Error(), path) {
-		t.Errorf("erro = %q, quero que nomeie o caminho %q", err.Error(), path)
+		t.Errorf("error = %q, want it to name the path %q", err.Error(), path)
 	}
 	if g.calls.Load() != 0 {
-		t.Errorf("a Meta foi chamada com um arquivo de componentes que nao existe")
+		t.Errorf("Meta was called with a components file that does not exist")
 	}
 }
 
@@ -186,7 +186,7 @@ func TestTemplateCreateShowsThePendingWarning(t *testing.T) {
 	}
 
 	if !strings.Contains(out.String(), "NAO pode ser usado na hora") {
-		t.Errorf("a saida nao contem o aviso de pendencia:\n%s", out.String())
+		t.Errorf("the output does not contain the pending warning:\n%s", out.String())
 	}
 }
 
@@ -200,10 +200,10 @@ func TestTemplateCreateNonexistentSlugIsANamedError(t *testing.T) {
 	var out bytes.Buffer
 	err := dispatch(templateCreateArgs("nao-existe", file), &out, fakeEnvironment(vars))
 	if !errors.Is(err, config.ErrInstanceNotFound) {
-		t.Fatalf("erro = %v, quero ErrInstanceNotFound", err)
+		t.Fatalf("error = %v, want ErrInstanceNotFound", err)
 	}
 	if g.calls.Load() != 0 {
-		t.Errorf("a Meta foi chamada para uma instancia que nao existe")
+		t.Errorf("Meta was called for an instance that does not exist")
 	}
 }
 
@@ -229,9 +229,9 @@ func TestTemplateCreateMissingRequiredFieldIsRefused(t *testing.T) {
 	var out bytes.Buffer
 	err := dispatch(args, &out, fakeEnvironment(vars))
 	if err == nil {
-		t.Fatal("nome vazio foi aceito")
+		t.Fatal("empty name was accepted")
 	}
 	if g.calls.Load() != 0 {
-		t.Errorf("a Meta foi chamada com um pedido sem nome")
+		t.Errorf("Meta was called with a request with no name")
 	}
 }
