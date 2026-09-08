@@ -1,4 +1,4 @@
-// Tests for the T-111 mechanism — AcceptedTypes, knownType, aceita and
+// Tests for the T-111 mechanism — AcceptedTypes, knownType, accepts and
 // checkType (types.go) — and for the FIVE routes that gained the check:
 // health (health_handler.go), POST /v1/leituras, POST /v1/media (upload),
 // POST /v1/templates (create) and POST /v1/cadastro.
@@ -42,7 +42,7 @@ func decodeErrorOrFail(t *testing.T, rec *httptest.ResponseRecorder) errorRespon
 	t.Helper()
 	var errBody errorResponse
 	if err := json.Unmarshal(rec.Body.Bytes(), &errBody); err != nil {
-		t.Fatalf("corpo de erro nao desserializa: %v (corpo = %q)", err, rec.Body.String())
+		t.Fatalf("error body does not deserialize: %v (body = %q)", err, rec.Body.String())
 	}
 	return errBody
 }
@@ -59,10 +59,10 @@ func decodeErrorOrFail(t *testing.T, rec *httptest.ResponseRecorder) errorRespon
 func TestAcceptedTypesUnknownValueRefusesBothTypes(t *testing.T) {
 	unknown := AcceptedTypes(99)
 	if unknown.accepts(config.TypeWhatsApp) {
-		t.Error("AcceptedTypes(99).aceita(whatsapp) = true, quero false (fail-closed)")
+		t.Error("AcceptedTypes(99).accepts(whatsapp) = true, want false (fail-closed)")
 	}
 	if unknown.accepts(config.TypeInstagram) {
-		t.Error("AcceptedTypes(99).aceita(instagram) = true, quero false (fail-closed)")
+		t.Error("AcceptedTypes(99).accepts(instagram) = true, want false (fail-closed)")
 	}
 }
 
@@ -80,14 +80,14 @@ func TestReadsRefusesInstagramInstanceWith400WithoutCallingMeta(t *testing.T) {
 	rec := markRead(t, h, "token-do-a", `{"instancia":"insta-loja","wamid":"wamid.ABC123"}`)
 
 	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("status = %d, quero 400; corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, want 400; body = %s", rec.Code, rec.Body.String())
 	}
 	errBody := decodeErrorOrFail(t, rec)
 	if errBody.Error.Class != "config" {
-		t.Errorf("classe = %q, quero \"config\"", errBody.Error.Class)
+		t.Errorf("class = %q, want \"config\"", errBody.Error.Class)
 	}
 	if !strings.Contains(errBody.Error.Message, `"instagram"`) {
-		t.Errorf("a mensagem nao diz o tipo recusado: %q", errBody.Error.Message)
+		t.Errorf("the message does not name the refused type: %q", errBody.Error.Message)
 	}
 }
 
@@ -102,11 +102,11 @@ func TestMediaUploadRefusesInstagramInstanceWith400WithoutCallingMeta(t *testing
 		"audio/ogg; codecs=opus", []byte("OggS-bytes-de-audio"), true))
 
 	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("status = %d, quero 400; corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, want 400; body = %s", rec.Code, rec.Body.String())
 	}
 	errBody := decodeErrorOrFail(t, rec)
 	if errBody.Error.Class != "config" {
-		t.Errorf("classe = %q, quero \"config\"", errBody.Error.Class)
+		t.Errorf("class = %q, want \"config\"", errBody.Error.Class)
 	}
 }
 
@@ -124,14 +124,14 @@ func TestTemplatesCreateRefusesInstagramInstanceWith400WithoutCallingMeta(t *tes
 	rec := createTemplate(t, h, "token-do-a", body)
 
 	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("status = %d, quero 400; corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, want 400; body = %s", rec.Code, rec.Body.String())
 	}
 	if n := m.calls.Load(); n != 0 {
-		t.Errorf("a Meta foi chamada %d vez(es) numa recusa que tinha de acontecer ANTES do fio", n)
+		t.Errorf("Meta was called %d time(s) on a refusal that had to happen BEFORE the wire", n)
 	}
 	errBody := decodeErrorOrFail(t, rec)
 	if errBody.Error.Class != "config" {
-		t.Errorf("classe = %q, quero \"config\"", errBody.Error.Class)
+		t.Errorf("class = %q, want \"config\"", errBody.Error.Class)
 	}
 }
 
@@ -145,14 +145,14 @@ func TestRegistrationRefusesInstagramInstanceWith400AndGuidance(t *testing.T) {
 	rec := register(t, h, "token-do-a", registrationBody("insta-loja", nil))
 
 	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("status = %d, quero 400; corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, want 400; body = %s", rec.Code, rec.Body.String())
 	}
 	errBody := decodeErrorOrFail(t, rec)
 	if errBody.Error.Class != "config" {
-		t.Errorf("classe = %q, quero \"config\"", errBody.Error.Class)
+		t.Errorf("class = %q, want \"config\"", errBody.Error.Class)
 	}
 	if !strings.Contains(errBody.Error.Message, "quem opera o gateway") {
-		t.Errorf("a mensagem nao orienta o consumidor: %q", errBody.Error.Message)
+		t.Errorf("the message does not guide the consumer: %q", errBody.Error.Message)
 	}
 	// And NOTHING was written — the rejection happened BEFORE any write.
 	r, err := store.SummarizeInstance("insta-loja")
@@ -160,7 +160,7 @@ func TestRegistrationRefusesInstagramInstanceWith400AndGuidance(t *testing.T) {
 		t.Fatalf("SummarizeInstance: %v", err)
 	}
 	if r.RegisteredAt != "" {
-		t.Errorf("a instancia recusada por TIPO foi gravada mesmo assim: cadastro_em = %q", r.RegisteredAt)
+		t.Errorf("the instance refused by TYPE was written anyway: registered_at = %q", r.RegisteredAt)
 	}
 }
 
@@ -185,21 +185,21 @@ func TestHealthInstagramAnswersNotApplicableWithoutCallingMeta(t *testing.T) {
 	rec := askHealth(t, h, "token-do-a", "insta-loja")
 
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, quero 200 (rota de LEITURA nao recusa); corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, want 200 (a READ route does not refuse); body = %s", rec.Code, rec.Body.String())
 	}
 	if n := m.gets.Load(); n != 0 {
-		t.Errorf("o probe falou %d vez(es) com a Meta por uma instancia Instagram — "+
-			"nao existe, em graph.instagram.com, equivalente ao GET /{phone_number_id} (T-104)", n)
+		t.Errorf("the probe talked to Meta %d time(s) for an Instagram instance — "+
+			"there is no equivalent, on graph.instagram.com, to GET /{phone_number_id} (T-104)", n)
 	}
 	var resp healthResponseWithVerdict
 	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
-		t.Fatalf("corpo nao desserializa: %v (corpo = %q)", err, rec.Body.String())
+		t.Fatalf("body does not deserialize: %v (body = %q)", err, rec.Body.String())
 	}
 	if !resp.OK {
-		t.Errorf("ok = %v, quero true — o gateway nao detectou problema porque nao perguntou", resp.OK)
+		t.Errorf("ok = %v, want true — the gateway did not detect a problem because it did not ask", resp.OK)
 	}
 	if resp.Verdict != NotApplicable {
-		t.Errorf("veredito = %q, quero %q", resp.Verdict, NotApplicable)
+		t.Errorf("verdict = %q, want %q", resp.Verdict, NotApplicable)
 	}
 }
 
@@ -251,7 +251,7 @@ func TestFourWriteRoutesAndHealthStay403ForForeignInstagramBeforeTheType(t *test
 		t.Run(name, func(t *testing.T) {
 			rec := ask(t)
 			if rec.Code != http.StatusForbidden {
-				t.Errorf("status = %d, quero 403 — a checagem de tipo nao pode vazar antes do vinculo; corpo = %s",
+				t.Errorf("status = %d, want 403 — the type check cannot leak before the link; body = %s",
 					rec.Code, rec.Body.String())
 			}
 		})
