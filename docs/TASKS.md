@@ -430,3 +430,31 @@ Verify:  CGO_ENABLED=0 go build ./... && go test ./... && go vet ./... && gofmt 
    125 usa `zapgw instancia listar`. Ele vive fora do repositorio e tem de ser atualizado no mesmo
    dia, ou quebra na proxima rotacao de token.
 
+
+## [ ] T-233  Re-align the tests that pin the old Portuguese deprecation warning
+After:   T-226 (e o merge da T-224 e da T-226 no `main`)
+Why:     🔥 CUSTO JA MEDIDO, em 2026-09-07. A T-224 traduziu `config.WarnOldEnvVar`
+         (`internal/config/env_alias.go`): `"variavel de ambiente %s esta obsoleta"` virou
+         `"environment variable %s is deprecated"`. Isso estava CERTO e era exatamente o que a
+         tarefa pedia. Mas essa linha de log e' EMITIDA por `internal/config` e ASSERIDA por testes
+         de OUTROS DOIS pacotes: 11 sitios em 4 arquivos casam com o substring `obsoleta`.
+🔴 O QUE ISSO ENSINA, e e' maior que o conserto: **a fronteira por pacote das tarefas
+         T-223..T-227 nao e' a fronteira do efeito.** Cada implementador rodou o verify e passou —
+         o da T-224 passou `go test ./internal/config/` verde — porque a quebra mora fora do
+         pacote dele. Foi o `go test ./...` de repo inteiro que enxergou. *Verify de escopo
+         estreito num efeito de escopo largo responde OK sem olhar.*
+Files:   cmd/zapgw/env_aliases_test.go (6 sitios), internal/outbound/ingress_test.go (2),
+         internal/outbound/leadership_test.go (2), internal/outbound/external_probe_test.go (1)
+Do:      1. Ache os sitios: `git grep -n obsoleta -- cmd internal`
+         2. Em cada um, troque o substring esperado para casar com a mensagem que
+            `internal/config/env_alias.go` EMITE HOJE. Leia a linha do `log.Printf` de la primeiro
+            e cole-a no relatorio — nao deduza a grafia, copie.
+         3. 🔴 NAO mude a mensagem de `env_alias.go` de volta para portugues. A traducao esta certa;
+            o que esta desalinhado sao as assercoes.
+         4. NAO traduza mais nada nesses arquivos alem do necessario para o alinhamento — o resto
+            deles e' territorio da T-226 e da T-227, que ja passaram.
+Verify:  🔴 O VERIFY DESTA TAREFA E' O DE REPO INTEIRO, de proposito, porque foi um verify estreito
+         que deixou isso passar:
+         `CGO_ENABLED=0 go build ./... && go test ./... && go vet ./... && gofmt -l cmd internal`
+         `go test ./...` tem de vir com TODOS os pacotes `ok`. Cole a lista inteira no relatorio.
+         E `git grep -n obsoleta -- cmd internal` tem de vir vazio.
