@@ -123,7 +123,7 @@ must be Portuguese."**
 | 1 | `aberta` | `open` | SAIDA-RESPOSTA | internal/outbound/registration_handler.go:120 |
 | 2 | `alcance_externo` | `external_reach` | SAIDA-RESPOSTA | internal/outbound/state.go:216 |
 | 3 | `alerta_de_conta` | `account_alert` | SAIDA-EVENTO | internal/meta/types.go:639 |
-| 4 | `assinatura_esperada` | `expected_signature` | A MEDIR | not a contract key today — only appears in an internal test vector (internal/inbound/deliver_test.go:245, testdata/delivery-signature.json) |
+| 4 | `assinatura_esperada` | `expected_signature` | A MEDIR | not a contract key today — only appears in an internal test vector (internal/inbound/deliver_test.go:245, internal/inbound/testdata/delivery-signature.json) |
 | 5 | `botao_payload` | `button_payload` | SAIDA-EVENTO | internal/meta/types.go:536 |
 | 6 | `botao_texto` | `button_text` | SAIDA-EVENTO | internal/meta/types.go:537 |
 | 7 | `botao_titulo` | `button_title` | ENTRADA | internal/outbound/message.go:587 |
@@ -145,7 +145,7 @@ must be Portuguese."**
 | 23 | `conexoes_prontas` | `ready_connections` | SAIDA-RESPOSTA | internal/outbound/ingress.go:188 |
 | 24 | `conferido_em` | `checked_at` | SAIDA-RESPOSTA | internal/outbound/watchdog.go:144; internal/outbound/state.go:412 |
 | 25 | `contadores` | `counters` | SAIDA-RESPOSTA | internal/outbound/state.go:111,276 |
-| 26 | `corpo` | `body` | A MEDIR | not a contract key today — only appears in an internal test vector (internal/inbound/deliver_test.go:244, testdata/delivery-signature.json) |
+| 26 | `corpo` | `body` | A MEDIR | not a contract key today — only appears in an internal test vector (internal/inbound/deliver_test.go:244, internal/inbound/testdata/delivery-signature.json) |
 | 27 | `cru` | `raw` | SAIDA-EVENTO | internal/inbound/deliver.go:47 |
 | 28 | `data` | `date` | A MEDIR | not a contract key today — the only "data" occurrences in the code are the Meta API's own pagination wrapper (e.g. internal/meta/profile.go:151), never a field of ours |
 | 29 | `de` | `from` | A MEDIR | not a contract key today — only `de_cru` and `de_canonico` exist, never a bare "de" |
@@ -192,7 +192,7 @@ must be Portuguese."**
 | 70 | `renovado_em` | `renewed_at` | SAIDA-RESPOSTA | internal/outbound/state.go:535 |
 | 71 | `responder_a` | `reply_to` | SAIDA-EVENTO + ENTRADA | internal/meta/types.go:479 (event); internal/outbound/message.go:515 (request) |
 | 72 | `rodape` | `footer` | ENTRADA | internal/outbound/message.go:623 |
-| 73 | `segredo_entrega` | `delivery_secret` | A MEDIR | not a contract key today — only appears in an internal test vector (internal/inbound/deliver_test.go:242, testdata/delivery-signature.json) |
+| 73 | `segredo_entrega` | `delivery_secret` | A MEDIR | not a contract key today — only appears in an internal test vector (internal/inbound/deliver_test.go:242, internal/inbound/testdata/delivery-signature.json) |
 | 74 | `serie_7_dias` | `last_7_days_series` | SAIDA-RESPOSTA | internal/outbound/state.go:129 |
 | 75 | `serie_diaria` | `daily_series` | SAIDA-RESPOSTA | internal/outbound/state.go:152 |
 | 76 | `sub_tipo` | `sub_kind` | SAIDA-EVENTO | internal/meta/types.go:431 |
@@ -308,7 +308,7 @@ any actual JSON field in this contract today — never a guess, each one names w
 instead:
 
 - `assinatura_esperada`, `corpo`, `segredo_entrega` — only exist inside one internal test vector
-  file (`testdata/delivery-signature.json`, read by `internal/inbound/deliver_test.go`), which pins
+  file (`internal/inbound/testdata/delivery-signature.json`, read by `internal/inbound/deliver_test.go`), which pins
   down an HMAC signature computation, not the envelope's schema. No consumer ever sees these three
   keys.
 - `data` — the only `"data"` occurrences in the code are the Meta Graph API's own pagination

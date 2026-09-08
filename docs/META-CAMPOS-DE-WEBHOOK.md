@@ -139,8 +139,8 @@ Reclassification to `MARKETING` makes every send more expensive.
 
 ✅ **It showed up, and the derived fixture is gone (T-174, 2026-08-28).** The consumer `consumer-b`
 handed over three raw payloads through the channel, frozen in
-`testdata/corpus/categoria_de_template_rebaixamento.json`, `..._restauracao.json` and
-`..._sem_anterior.json`. **Two findings the panel sample would not have given:** the pair goes and
+`testdata/corpus/template_category_downgrade.json`, `..._restore.json` and
+`..._no_previous.json`. **Two findings the panel sample would not have given:** the pair goes and
 comes back on the **same** `message_template_id` (`UTILITY → MARKETING` and, ~14.9 h later, the way
 back), and **one of the three arrived with no `previous_category`** — which was the case handled by
 design decision, with no observation at all. ⚠️ **And none of the three brought `correct_category` or

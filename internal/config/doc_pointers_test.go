@@ -120,28 +120,30 @@ func isOutsideRepoAbsolutePath(pathPart string) bool {
 // deadDocPointerExceptions is the full-path exception list T-217's Do item 5
 // (and T-234's Do item, which widens what it has to cover) asks for. Every
 // key is the EXACT matched pointer text — never a substring or a bare word.
-// Two different reasons put a pointer here, and each entry says which:
+// Every remaining entry is a NOT A REAL POINTER: the matched text only looks
+// like a repository path. A Go subtest name embeds a fixture's basename
+// after a '/' (`TestCorpusInteiro/reacao.json`); a lesson about ANOTHER
+// project cites that project's own file structure in prose with no repo
+// prefix to mark it as external (ProxmoxVED's
+// `.github/pull_request_template.md`); a rename is documented by quoting the
+// PRE-rename name on purpose (`internal/inbound/testdata/assinatura-entrega.json`,
+// T-234's Do item (d)). None of these name a file this repository's tests
+// could ever find, by construction — widening the extension list did not
+// create these cases, it only made them visible for the first time.
 //
-//  1. NOT A REAL POINTER — the matched text only looks like a repository
-//     path. A Go subtest name embeds a fixture's basename after a '/'
-//     (`TestCorpusInteiro/reacao.json`); a lesson about ANOTHER project
-//     cites that project's own file structure in prose with no repo prefix
-//     to mark it as external (ProxmoxVED's `.github/pull_request_template.md`);
-//     a rename is documented by quoting the PRE-rename name on purpose
-//     (`internal/inbound/testdata/assinatura-entrega.json`, T-234's Do
-//     item (d)). None of these name a file this repository's tests could
-//     ever find, by construction — widening the extension list did not
-//     create these cases, it only made them visible for the first time.
-//  2. KNOWN PRE-EXISTING BUG, DEFERRED — the pointer IS wrong (the doc
-//     really should say something else) but T-234 is scoped to the gate
-//     itself, not to editing docs/ (three other implementers are editing
-//     docs/*.md and docs/CHANGELOG.md in this same round; fixing a doc here
-//     risks clobbering their in-flight edit). Each such entry is also
-//     called out in T-234's report for the planner to fix for real. An
-//     entry in this bucket is a debt, not a false positive — removing it
-//     without fixing the doc's pointer would silently reopen a real gap.
+// 🔴 There used to be a second category here, for a pointer T-234 found
+// genuinely wrong but deferred to the planner instead of fixing, because
+// editing docs/ was out of that task's scope: two entries sat in this list
+// marked as debt rather than false positive. T-236 (2026-09-08) fixed both
+// real doc pointers (docs/META-CAMPOS-DE-WEBHOOK.md,
+// docs/MIGRACAO-CONTRATO-EN.md) and DELETED the two entries — on purpose,
+// per this project's own rule: an exception marked as a deferred bug is
+// honest today, while the comment is fresh, and is just another allowlist
+// line in three months. The gate has to go green because the bug is gone,
+// never because it was listed. If a future rename creates a new dead
+// pointer, fix the doc; do not reopen this category.
 var deadDocPointerExceptions = map[string]string{
-	// --- category 1: not a real pointer ---
+	// --- not a real pointer ---
 
 	"TestCorpusInteiro/reacao.json": "Go subtest identifier (TestName/fixture-basename), " +
 		"not a filesystem path — docs/ARMADILHAS.md:2035 names the SUBTEST that goes red, " +
@@ -195,22 +197,6 @@ var deadDocPointerExceptions = map[string]string{
 		"WEBHOOK.md:137 says explicitly, two paragraphs later, that \"the derived fixture " +
 		"is gone (T-174, 2026-08-28)\" — deleted on purpose once a real Meta capture " +
 		"replaced it, a historical citation of a file retired intentionally",
-
-	// --- category 2: known pre-existing bug, deferred to the planner (see
-	// T-234's report) ---
-
-	"testdata/delivery-signature.json": "KNOWN PRE-EXISTING BUG, not introduced by T-234: " +
-		"the real file is internal/inbound/testdata/delivery-signature.json. " +
-		"docs/CONTRATO-CONSUMIDOR.md, its pt-BR mirror, and docs/MIGRACAO-CONTRATO-EN.md " +
-		"cite it without the internal/inbound/ directory (4 occurrences total). Not fixed " +
-		"here: docs/CONTRATO-CONSUMIDOR.md is being edited by another implementer in this " +
-		"same round (per T-234's dispatch instructions) and editing docs/ is out of this " +
-		"task's scope regardless — flagged in T-234's report for the planner",
-	"testdata/corpus/categoria_de_template_rebaixamento.json": "KNOWN PRE-EXISTING BUG, " +
-		"exactly the T-228-shaped miss this gate was widened to catch: T-228 renamed this " +
-		"fixture to template_category_downgrade.json, and docs/META-CAMPOS-DE-WEBHOOK.md:142 " +
-		"still cites the pre-rename Portuguese name. Not fixed here (doc edit out of T-234's " +
-		"scope) — flagged in T-234's report for the planner",
 }
 
 // rejectFalseEndBoundary reports whether the character right after a match
