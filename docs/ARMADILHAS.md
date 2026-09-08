@@ -2478,6 +2478,62 @@ task** and checks that the output contains what the proof requires. A `grep -c` 
 seconds. *Same family as "selecting a target by NAME PREFIX" in the infra section: prefixes and regexps choose by
 accident of naming, and today's hit is a coincidence of how somebody named things.*
 
+### 🔥 A shared message translated in ONE package broke tests in TWO others — and every per-package verify answered green (2026-09-07)
+
+`internal/config/env_alias.go:59` emits the deprecation warning for an old environment variable name.
+T-224 translated it — correctly, and exactly as its task required:
+
+```go
+- log.Printf("zapgw: variavel de ambiente %s esta obsoleta -- use %s no lugar (T-214)", oldName, newName)
++ log.Printf("zapgw: environment variable %s is deprecated -- use %s instead (T-214)", oldName, newName)
+```
+
+That line is **emitted** by `internal/config` and **asserted** by tests in two other packages: 11 sites across
+`cmd/zapgw/env_aliases_test.go` (6), `internal/outbound/ingress_test.go` (2), `internal/outbound/leadership_test.go`
+(2) and `internal/outbound/external_probe_test.go` (1), all matching the substring `obsoleta`. Eight test functions
+went red on merge.
+
+**The pitfall is not the breakage — it is that nothing looked.** The translation was split into five per-package
+tasks (T-223..T-227), and each implementer ran its own package's verify and got green, because the failure lives
+*outside* the package it edited. `go test ./internal/config/` passing is not evidence about a symbol `internal/config`
+**exports into other packages' expectations**. Only the repo-wide `go test ./...` saw it.
+
+➡️ **The rule, and it generalises past Go:** *the boundary you drew around the task is not the boundary of the
+effect.* When a task changes anything OTHER packages can observe — an exported string, a log line, an error text, a
+constant — the task's `Verify` has to be repo-wide, not package-wide. A narrow verify over a wide effect answers OK
+without looking, which is the same failure mode as the blind monitor.
+
+**Cost:** the `main` branch sat red across two merge commits until T-233 realigned the 11 assertions. Contained only
+because the planner ran `go test ./...` after each merge instead of trusting the four implementers' reports — all
+four of which were honest and all four of which were, individually, correct.
+
+*The sibling worth naming:* the same shape hides in any shared vocabulary. `ALARME`-prefixed log lines are grepped
+by `cmd/` and emitted by `internal/outbound`; the counter key names are written by `internal/config` and read by the
+consumer. Translating either in one place has the same reach, and the same silence.
+
+### 🔥 A leak guard that pinned field names renamed long ago — it passed vacuously, and would have passed on a real leak (2026-09-07)
+
+`internal/outbound/handler_test.go` and `internal/outbound/templates_handler_test.go` each carried a
+`strings.Contains` check proving that Meta's internal diagnostic fields never reach the consumer's response body.
+The fields it named — `subcodigo_meta`, `explicacao_meta`, `rastro_meta`, `detalhe_meta` — had been renamed to
+`meta_subcode`, `meta_explanation`, `meta_trace` and `meta_detail` **long before**. So the guard was asserting the
+absence of strings that could no longer appear under any circumstances: green forever, and green **on a real leak
+too**.
+
+Found by reading, not by failing — during T-226's line-by-line translation pass. Fixed to the live field names in
+the same commit.
+
+**Why this one is worth its own entry even though it charged nothing yet:** it is the exact shape this project
+already names elsewhere — *a check that cannot fail is indistinguishable from a check that does not look*. What
+makes THIS variant nasty is that renaming a field is the moment the guard silently dies, and a rename is precisely
+the change nobody thinks of as touching a test that does not mention it by symbol. A guard written as a **string**
+does not move with a rename; the compiler cannot help.
+
+➡️ **When you rename a wire field, grep the OLD name across `_test.go` before you finish.** A hit inside a
+`Contains`/`NotContains` is a guard that just went blind. Where the language allows it, pin the guard to the symbol
+(a constant, a struct tag read through reflection) rather than to a typed-out string, so the rename either updates
+it or breaks the build.
+
 ## Environment
 
 🔴 **`go test ./... | grep …` inside an `&&` HIDES a red suite, and that is how a red one reached `main`.** A

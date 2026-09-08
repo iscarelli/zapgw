@@ -4,6 +4,44 @@ Uma linha por versao entregue, no mesmo commit do bump. A entrada diz o **efeito
 
 ## Nao lancado
 
+- **T-233 — Re-align the tests that pin the old Portuguese deprecation warning** — realigned the 11
+  assertions in `cmd/zapgw/env_aliases_test.go` (6), `internal/outbound/ingress_test.go` (2),
+  `leadership_test.go` (2) and `external_probe_test.go` (1) that pinned the old Portuguese spelling of
+  `config.WarnOldEnvVar`'s message, plus the Portuguese subtest names next to them. The translated
+  message itself was NOT reverted — it was correct; the assertions were what had drifted. Returned
+  `main` to green after T-224's merge left it deliberately red. _Completed 2026-09-08 01:02._
+
+- **T-226 — Translate the remaining Portuguese in internal/outbound** — 52 files, +1926/−1924 lines,
+  the largest package of the batch and the only one that touched nothing outside itself. Every wire
+  literal stayed: the `respondError` messages, the error texts `Validate()` returns into the response
+  body, both columns of every pair in `input_aliases.go` (only its comments were translated), the
+  Portuguese `json:` tags, and the ~30 `ALARME`-prefixed lines that are shared grep vocabulary with
+  `cmd/`. Carried two fixes that are not translation: **two leak guards that pinned field names
+  renamed long ago and therefore passed vacuously**, and ~150 comments quoting output vocabulary the
+  gateway stopped emitting at T-209. _Completed 2026-09-08 00:41._
+
+- **T-225 — Translate the remaining Portuguese in internal/inbound** — 12 files, 390 lines. The TLS
+  gate's needle, assembled by concatenation so the test does not flag itself, was not touched, and its
+  24 tests stayed green. The HTTP error texts stayed in Portuguese with a measured reason: they are
+  published in `docs/CONTRATO-CONSUMIDOR.md:3886` as the literal response body, so they are contract,
+  not human text. _Completed 2026-09-07 23:24._
+
+- **T-224 — Translate the remaining Portuguese in internal/config** — 21 files, 990 lines. The name
+  gate still fails CLOSED and still distinguishes "failed" from "could not verify", now in English —
+  proved against a fake `USERPROFILE` so the real needle file was never touched. SQLite table and
+  column names, counter keys, the `entrada`/`saida` direction values and the HMAC domain-separation
+  prefix stayed in Portuguese: changing the last one would invalidate HMACs already computed in
+  production. Its merge deliberately left `main` red — see T-233 and the pitfall it produced.
+  _Completed 2026-09-08 00:11._
+
+- **T-223 — Translate the remaining Portuguese in internal/meta** — 29 of 31 files, 996 lines. The
+  event-id prefixes (`template_categoria:`, `qualidade_do_numero:`, `alerta_de_conta:`), the media
+  categories, the `[truncado]` suffix and the error texts other packages compare byte for byte all
+  stayed, verified one by one against `docs/CONTRATO-CONSUMIDOR.md`. Also fixed two dead comments: a
+  reference to an already-renamed function and a parameter name that no longer existed.
+  _Completed 2026-09-07 23:57._
+
+
 - **T-219 — Translate the operator-facing strings of the CLI** — traduziu para ingles as strings de
   saida e de erro de `cmd/zapgw/*.go` e `cmd/grafo-falso/*.go` (nao-teste), com os testes que casam
   ajustados junto (13 arquivos de producao + 9 de teste). Confirmado antes de tocar em cada arquivo

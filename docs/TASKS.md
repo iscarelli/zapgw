@@ -6,6 +6,47 @@
 > Escrito ao fim de 2026-08-30, o dia em que o repositorio virou publico. Bloco de retomada
 > mentindo e' pior que bloco nenhum: e' o primeiro texto que a proxima sessao le.
 
+### 📌 2026-09-07/08 — a traducao do codigo para ingles: 4 pacotes fechados, so' o que foi medido
+
+✅ **`internal/meta`, `internal/config`, `internal/inbound` e `internal/outbound` estao traduzidos e
+mesclados** (T-223, T-224, T-225, T-226), mais a T-233 que consertou o efeito colateral.
+**Medida do progresso, contada pela mesma varredura antes e depois:** linhas `.go` carregando palavra
+portuguesa cairam de **5.023** (`8997609`) para **2.635**. O que sobra e' quase todo deliberado —
+literal de fio, vocabulario de contrato — mais `cmd/`, que e' a T-227.
+**Verify de repo inteiro verde nos 7 pacotes** depois do ultimo merge.
+
+🔥 **A licao que custou, e ela e' sobre o RECORTE das tarefas, nao sobre os implementadores.** Eu
+dividi a traducao por pacote. A T-224 traduziu `config.WarnOldEnvVar` — certo, era o pedido — e
+quebrou **8 testes em `cmd/zapgw` e `internal/outbound`**, que prendiam o substring `obsoleta`.
+**Cada implementador rodou o verify do proprio pacote e passou verde**, porque a quebra mora fora
+dele. So' o `go test ./...` enxergou.
+➡️ *A fronteira que voce desenhou em volta da tarefa nao e' a fronteira do efeito.* Quando a tarefa
+mexe em algo que OUTROS pacotes observam, o `Verify` dela tem de ser de repo inteiro. Escrito em
+`docs/ARMADILHAS.md` com o custo.
+
+🔥 **Duas guardas de vazamento passavam vacuamente ha muito tempo**, achadas pela leitura linha a
+linha da T-226: `handler_test.go` e `templates_handler_test.go` checavam a ausencia de
+`subcodigo_meta`/`explicacao_meta`/`rastro_meta`/`detalhe_meta`, campos renomeados para
+`meta_subcode` e companhia. A guarda passava sempre — **e passaria num vazamento real**. Consertadas.
+Tambem em `docs/ARMADILHAS.md`.
+
+⚠️ **ARMADILHA DE PROCESSO, medida DUAS vezes hoje e ainda sem mecanismo:** worktree de implementador
+**nasce na base em que a sessao estava quando o agente foi criado**, nao no `main` atual. Nas duas
+levas os agentes nasceram em `8997609` e nao enxergavam o `docs/TASKS.md` com as proprias tarefas.
+Contornado mandando cada um ler por `git show main:docs/TASKS.md`. **O sintoma e' o agente reportar
+que a tarefa nao existe, ou pior, trabalhar com spec velho.** Antes de despachar, confira a base.
+
+📉 **O espelho pt-BR foi cortado de 11 para 4 docs** (`44b8a93`), −6.113 linhas. Criterio, escrito no
+`CLAUDE.md`: espelho existe quando um brasileiro que NAO le este codigo precisa do doc para AGIR, e
+errar custa FORA deste repositorio. Ficaram `README`, `CONTRATO-CONSUMIDOR`, `MANUAL-DO-INTEGRADOR` e
+`MIGRACAO-PARA-O-ZAPGW`. O maior ganho foi `ARMADILHAS` (4.490 linhas e o doc de maior ritmo de
+escrita).
+
+🙋 **DECISAO DO DONO, pendente e combinada:** a metade do CONTRATO ficou **fora** desta leva de
+proposito — tags `json:` portuguesas, os 18 nomes de contador (o consumidor alarma em 8), os verbos e
+as flags da CLI, e as seis `ZAPGW_*` obsoletas do CT. Ele pediu reavaliacao quando a primeira metade
+terminar. *Nada disso corre sozinho.*
+
 ### 📌 2026-09-06 — o que fica para amanha (escrito no fim do dia, so' o que foi medido)
 
 ✅ **`v0.65.0` ESTA EM PRODUCAO**, provada pelo proprio deploy: `SAUDE OK:
@@ -234,67 +275,6 @@ Verify:  Para cada nome novo, prove contra o codigo que ele e' o emitido:
          a uma, as que voce deixou e em qual dos casos (b)/(c) cada uma cai.
          `CGO_ENABLED=0 go build ./... && go test ./...` (nao deve mudar nada, e' so' garantia).
 
-## [ ] T-223  Translate the remaining Portuguese in internal/meta
-Why:     o repo e' publico e a decisao de 2026-08-20 e' codigo em INGLES. Os identificadores ja
-         viraram (3818 na passagem de 30/08) e a T-219 fez `cmd/`; o que sobrou em `internal/` sao
-         COMENTARIOS e MENSAGENS DE TESTE. Medido em 2026-09-07: 143 arquivos `.go`, ~5.370 linhas
-         com palavra portuguesa, das quais ~2.522 sao mensagem de teste (`t.Errorf`/`t.Fatalf`).
-Files:   internal/meta/*.go (producao e teste)
-Do:      Traduza para ingles TODO comentario e TODA string que seja texto humano.
-         🔴 NAO TOQUE em nada que seja LITERAL DE FIO. Em cada string, decida antes:
-         (a) mensagem de falha de teste / comentario -> traduza;
-         (b) chave ou valor JSON, tag de struct, nome de env, caminho de rota, nome de flag,
-             valor de vocabulario que a Meta ou o consumidor enxerga -> NAO TOQUE;
-         (c) string que e' comparada com (b) dentro do teste -> NAO TOQUE, ela e' o fio.
-         Na duvida entre (a) e (b), NAO traduza e liste a ocorrencia no relatorio.
-Verify:  CGO_ENABLED=0 go build ./... && go test ./... && go vet ./... && gofmt -l cmd internal
-         E o diff NAO pode conter linha alterada que case com tag json, `flag.`, `os.Getenv` ou
-         `HandleFunc` — prove rodando e colando a saida (tem de vir vazia):
-         `git diff -U0 -- internal/meta | grep -E '^[-+]' | grep -E 'json:|flag\.|os\.Getenv|HandleFunc'`
-         Liste no relatorio as ocorrencias que voce deixou em portugues e por que.
-
-## [ ] T-224  Translate the remaining Portuguese in internal/config
-After:   T-223
-Why:     mesma razao da T-223. Este pacote guarda os tres PORTOES (telefone, nome, pre-push) —
-         traduzir a mensagem de um portao sem quebra-lo e' parte do trabalho.
-Files:   internal/config/*.go (producao e teste)
-Do:      Igual a T-223, com uma restricao a mais:
-         🔴 As AGULHAS dos portoes e os nomes de env (`ZAPGW_FORBIDDEN_NAMES`) sao fio — nao toque.
-         🔴 A mensagem que distingue "reprovou" de "nao consegui verificar" tem de continuar
-         distinguindo os dois DEPOIS da traducao. E' o ponto inteiro do portao de nome.
-Verify:  o mesmo da T-223, trocando o caminho do diff para `internal/config`.
-         E MAIS: prove que o portao de nome ainda reprova por ausencia de agulha —
-         `ZAPGW_FORBIDDEN_NAMES= go test ./internal/config/ -run TestNames` tem de FALHAR dizendo,
-         em ingles, que nao conseguiu verificar. Cole a mensagem no relatorio.
-
-## [ ] T-225  Translate the remaining Portuguese in internal/inbound
-After:   T-224
-Why:     mesma razao da T-223. Aqui mora o portao de TLS (`deliver_test.go`), cuja agulha e'
-         montada por concatenacao para o teste nao se auto-acusar.
-Files:   internal/inbound/*.go (producao e teste)
-Do:      Igual a T-223.
-         🔴 NAO reescreva a montagem por concatenacao da agulha de TLS. Se traduzir um comentario
-         ao redor dela, confira depois que o teste ainda encontra a agulha plantada.
-Verify:  o mesmo da T-223, caminho `internal/inbound`. E `go test ./internal/inbound/ -v -run TLS`
-         tem de continuar verde com os 24 testes.
-
-## [ ] T-226  Translate the remaining Portuguese in internal/outbound
-After:   T-225
-Why:     mesma razao da T-223, e e' o maior volume (~1.900 ocorrencias medidas em 2026-09-07).
-         E' tambem o pacote mais perigoso: aqui moram as tags JSON do contrato e a tabela de
-         apelidos de entrada.
-Files:   internal/outbound/*.go (producao e teste)
-Do:      Igual a T-223, e leia isto antes de abrir o primeiro arquivo:
-         🔴 `input_aliases.go` e' uma TABELA DE FIO INTEIRA. Traduza os comentarios dela; nao toque
-         em nenhuma das duas colunas de nenhum par.
-         🔴 As tags json `instancia`, `tipo`, `texto`, `secoes`, `botoes`, `contatos`, `releituras`
-         e as outras 30 sao CONTRATO VIVO, nao traducao pendente — elas tem tarefa propria e dono
-         proprio (o dono do projeto). Nao encoste.
-         🔴 As rotas (`/v1/estado`, etc.) e a tabela de isolamento sao fio.
-Verify:  o mesmo da T-223, caminho `internal/outbound`.
-         E MAIS: `go test ./internal/outbound/ -run 'TestRequestTopLevelKeysAreAllAccountedFor|Isolamento|Isolation'`
-         verde, e o diff sem nenhuma linha tocando tag json.
-
 ## [ ] T-227  Translate the Portuguese comments left in cmd/
 After:   T-226
 Why:     a T-219 traduziu as STRINGS de `cmd/`, nao os comentarios. E' o resto do mesmo trabalho.
@@ -431,30 +411,3 @@ Verify:  CGO_ENABLED=0 go build ./... && go test ./... && go vet ./... && gofmt 
    dia, ou quebra na proxima rotacao de token.
 
 
-## [ ] T-233  Re-align the tests that pin the old Portuguese deprecation warning
-After:   T-226 (e o merge da T-224 e da T-226 no `main`)
-Why:     🔥 CUSTO JA MEDIDO, em 2026-09-07. A T-224 traduziu `config.WarnOldEnvVar`
-         (`internal/config/env_alias.go`): `"variavel de ambiente %s esta obsoleta"` virou
-         `"environment variable %s is deprecated"`. Isso estava CERTO e era exatamente o que a
-         tarefa pedia. Mas essa linha de log e' EMITIDA por `internal/config` e ASSERIDA por testes
-         de OUTROS DOIS pacotes: 11 sitios em 4 arquivos casam com o substring `obsoleta`.
-🔴 O QUE ISSO ENSINA, e e' maior que o conserto: **a fronteira por pacote das tarefas
-         T-223..T-227 nao e' a fronteira do efeito.** Cada implementador rodou o verify e passou —
-         o da T-224 passou `go test ./internal/config/` verde — porque a quebra mora fora do
-         pacote dele. Foi o `go test ./...` de repo inteiro que enxergou. *Verify de escopo
-         estreito num efeito de escopo largo responde OK sem olhar.*
-Files:   cmd/zapgw/env_aliases_test.go (6 sitios), internal/outbound/ingress_test.go (2),
-         internal/outbound/leadership_test.go (2), internal/outbound/external_probe_test.go (1)
-Do:      1. Ache os sitios: `git grep -n obsoleta -- cmd internal`
-         2. Em cada um, troque o substring esperado para casar com a mensagem que
-            `internal/config/env_alias.go` EMITE HOJE. Leia a linha do `log.Printf` de la primeiro
-            e cole-a no relatorio — nao deduza a grafia, copie.
-         3. 🔴 NAO mude a mensagem de `env_alias.go` de volta para portugues. A traducao esta certa;
-            o que esta desalinhado sao as assercoes.
-         4. NAO traduza mais nada nesses arquivos alem do necessario para o alinhamento — o resto
-            deles e' territorio da T-226 e da T-227, que ja passaram.
-Verify:  🔴 O VERIFY DESTA TAREFA E' O DE REPO INTEIRO, de proposito, porque foi um verify estreito
-         que deixou isso passar:
-         `CGO_ENABLED=0 go build ./... && go test ./... && go vet ./... && gofmt -l cmd internal`
-         `go test ./...` tem de vir com TODOS os pacotes `ok`. Cole a lista inteira no relatorio.
-         E `git grep -n obsoleta -- cmd internal` tem de vir vazio.
