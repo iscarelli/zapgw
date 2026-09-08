@@ -375,7 +375,7 @@ X-Hub-Signature-256:    sha256=<hex>    a assinatura ORIGINAL da Meta, repassada
   "recebido_em": "2026-07-23T14:05:00Z",
   "cru": "<os bytes EXATOS que a Meta enviou, em base64>",
   "eventos": [
-    { "tipo": "mensagem",
+    { "kind": "message",
       "id": "msg:wamid.ABC",
       "phone_number_id": "…", "waba_id": "…",
       "wa_message_id": "wamid.ABC",
@@ -417,16 +417,16 @@ por outra:
 | Nível | Vêm **SEMPRE**, mesmo vazios | Todo o resto |
 |---|---|---|
 | envelope | `instancia`, `recebido_em`, `cru`, `eventos`, `parse_error` | — |
-| um item de `eventos` | `tipo` e `id` | omitido quando não há valor |
-| dentro dos blocos aninhados | `reacao.alvo`; `localizacao.latitude` e `.longitude`; `erro.codigo` e `.mensagem`; `cobranca.categoria`; `template.estado`; `template_categoria.categoria_nova` | omitido quando não há valor |
+| um item de `eventos` | `kind` e `id` | omitido quando não há valor |
+| dentro dos blocos aninhados | `reacao.alvo`; `localizacao.latitude` e `.longitude`; `error.code` e `.message`; `cobranca.categoria`; `template.estado`; `template_categoria.categoria_nova` | omitido quando não há valor |
 
 Fora dessas linhas, **todo campo é omitido quando vazio**: uma mensagem de texto simples não ganha
 `reacao`, `voz`, `legenda`, `nome_arquivo`, `localizacao`, `responder_a`,
-`encaminhada`/`encaminhada_muitas_vezes` (desde 2026-07-28) nem `erro` (desde 2026-07-26). É o que a
+`encaminhada`/`encaminhada_muitas_vezes` (desde 2026-07-28) nem `error` (desde 2026-07-26). É o que a
 garantia "o envelope só cresce" (abaixo) exige, e há teste de não-regressão preso nos campos atuais.
 
 > ⚠️ **Os campos da primeira coluna vêm sempre porque a ausência deles seria ambígua ou fatal** —
-> `id` é a sua chave de dedup, `latitude: 0` é uma coordenada válida, `erro.codigo: 0` teria de ser
+> `id` é a sua chave de dedup, `latitude: 0` é uma coordenada válida, `error.code: 0` teria de ser
 > distinguível de "sem código". **Isso não é licença para você exigir presença**: um bloco que a Meta
 > mande num formato ilegível é descartado inteiro, e aí o evento chega sem ele (veja as entradas de
 > 2026-07-28 em *Mudanças que quebram*). A tabela diz o que o gateway garante **quando produz o
@@ -474,7 +474,7 @@ outro no payload real, confirmando que é o `id` que vira `responder_a`, não o 
 
 ```json
 {
-  "tipo": "mensagem",
+  "kind": "message",
   "id": "msg:wamid.TESTE015",
   "phone_number_id": "PNID_TESTE",
   "waba_id": "WABA_TESTE",
@@ -535,7 +535,7 @@ podem aparecer juntos.
 
 ```json
 {
-  "tipo": "mensagem",
+  "kind": "message",
   "id": "msg:wamid.TESTE018",
   "phone_number_id": "PNID_TESTE",
   "waba_id": "WABA_TESTE",
@@ -553,7 +553,7 @@ podem aparecer juntos.
 Note que `encaminhada_muitas_vezes` **não aparece**: neste payload ela é `false`, e `false` some do
 envelope.
 
-### `reacao`, `voz`, `legenda`/`nome_arquivo`, `localizacao`, `erro` — o que cada um significa
+### `reacao`, `voz`, `legenda`/`nome_arquivo`, `localizacao`, `error` — o que cada um significa
 
 Estes campos existem para que você **não precise reparsear o `cru`** para reação, localização,
 legenda, nome de arquivo, nota de voz e — desde 2026-07-26 — o motivo de a Meta não saber representar
@@ -576,15 +576,15 @@ o parser da Meta por conta própria.
 - **`localizacao` (`sub_tipo: "location"`)** — `latitude`, `longitude` (sempre presentes, mesmo
   quando `0` — o cruzamento do meridiano de Greenwich com o equador é uma coordenada válida) e,
   quando o remetente os mandou, `nome` e `endereco`.
-- **`erro` (`sub_tipo: "unsupported"`, 2026-07-26)** — **MESMO campo e MESMA forma** do
-  `erro` do evento de `status` (descrito logo abaixo: `codigo`, `mensagem`, `detalhes`), mas com
-  **SIGNIFICADO diferente**, e a diferença importa: no evento de status, `erro` quer dizer "a
+- **`error` (`sub_tipo: "unsupported"`, 2026-07-26)** — **MESMO campo e MESMA forma** do
+  `error` do evento de `status` (descrito logo abaixo: `code`, `message`, `details`), mas com
+  **SIGNIFICADO diferente**, e a diferença importa: no evento de status, `error` quer dizer "a
   entrega falhou"; aqui quer dizer **"a Meta recebeu algo e a Cloud API não sabe representar"** — a
   Meta não falhou em entregar nada, ela entregou e não soube decodificar o conteúdo (o caso
   observado é o código `131051`, `"Message type unknown"`). Sem este campo, uma mensagem
   `unsupported` chegava com `sub_tipo` e um `id`, e **nada mais** — indistinguível de "mensagem
   vazia" para quem só olha o envelope. Ausente quando a Meta não mandou `errors[]` na mensagem —
-  omitido, nunca `{"codigo": 0, "mensagem": ""}` (mesma regra do lado do status, ver abaixo).
+  omitido, nunca `{"code": 0, "message": ""}` (mesma regra do lado do status, ver abaixo).
 
 **Exemplos executados** (desserializados e revalidados contra o parser antes de entrar aqui —
 o parser do gateway sobre os payloads do corpus):
@@ -595,7 +595,7 @@ um codepoint só não prova que o parser preserva o par):
 
 ```json
 {
-  "tipo": "mensagem",
+  "kind": "message",
   "id": "msg:wamid.TESTE006",
   "phone_number_id": "PNID_TESTE",
   "waba_id": "WABA_TESTE",
@@ -614,7 +614,7 @@ ausência da chave `emoji` dentro de `reacao`, não uma string vazia:
 
 ```json
 {
-  "tipo": "mensagem",
+  "kind": "message",
   "id": "msg:wamid.TESTE007",
   "phone_number_id": "PNID_TESTE",
   "waba_id": "WABA_TESTE",
@@ -635,7 +635,7 @@ serem opcionais), mas isso não é o que a maioria dos usuários manda:
 
 ```json
 {
-  "tipo": "mensagem",
+  "kind": "message",
   "id": "msg:wamid.TESTE008",
   "phone_number_id": "PNID_TESTE",
   "waba_id": "WABA_TESTE",
@@ -655,7 +655,7 @@ Documento com legenda e nome de arquivo:
 
 ```json
 {
-  "tipo": "mensagem",
+  "kind": "message",
   "id": "msg:wamid.TESTE009",
   "phone_number_id": "PNID_TESTE",
   "waba_id": "WABA_TESTE",
@@ -676,7 +676,7 @@ dos dois mimes citada na obrigação 5):
 
 ```json
 {
-  "tipo": "mensagem",
+  "kind": "message",
   "id": "msg:wamid.TESTE004",
   "phone_number_id": "PNID_TESTE",
   "waba_id": "WABA_TESTE",
@@ -698,7 +698,7 @@ lido em 2026-07-26; não há corpus de captura real para este caso ainda):
 
 ```json
 {
-  "tipo": "mensagem",
+  "kind": "message",
   "id": "msg:wamid.TESTE016",
   "phone_number_id": "PNID_TESTE",
   "waba_id": "WABA_TESTE",
@@ -707,10 +707,10 @@ lido em 2026-07-26; não há corpus de captura real para este caso ainda):
   "sub_tipo": "unsupported",
   "de_cru": "5511999990000",
   "de_canonico": "5511999990000",
-  "erro": {
-    "codigo": 131051,
-    "mensagem": "Message type unknown",
-    "detalhes": "Message type is currently not supported."
+  "error": {
+    "code": 131051,
+    "message": "Message type unknown",
+    "details": "Message type is currently not supported."
   }
 }
 ```
@@ -720,7 +720,7 @@ Mensagem de texto simples, para comparação — **nenhum dos cinco campos novos
 
 ```json
 {
-  "tipo": "mensagem",
+  "kind": "message",
   "id": "msg:wamid.TESTE001",
   "phone_number_id": "PNID_TESTE",
   "waba_id": "WABA_TESTE",
@@ -734,7 +734,7 @@ Mensagem de texto simples, para comparação — **nenhum dos cinco campos novos
 }
 ```
 
-### `status` (`tipo: "status"`) — o que cada campo significa
+### `status` (`kind: "status"`) — o que cada campo significa
 
 O evento de status confirma o destino de uma mensagem que **você** mandou: `sent` → `delivered` →
 `read`, ou `failed`. Ele não tem `sub_tipo`; os campos que importam são estes:
@@ -744,7 +744,7 @@ O evento de status confirma o destino de uma mensagem que **você** mandou: `sen
 | `status` | `sent`, `delivered`, `read` ou `failed` — o vocabulário é da Meta, repassado sem tradução |
 | `wa_message_id` | o id da mensagem que você mandou (o mesmo que veio na resposta do `POST /v1/messages`) |
 | `para_cru` / `para_canonico` | o destinatário, nas duas formas — mesma razão do `de_cru`/`de_canonico` da mensagem: a Meta não garante a mesma grafia que você cadastrou |
-| `erro` | **só em `failed`, e só quando a Meta mandou o motivo** — ver abaixo |
+| `error` | **só em `failed`, e só quando a Meta mandou o motivo** — ver abaixo |
 | `cobranca` | **quando a Meta mandou `pricing`** — sob qual categoria ela cobrou esta entrega, ver abaixo |
 
 > 🔴 **NÃO ORDENE O HISTÓRICO DE UMA MENSAGEM PELO `timestamp` — o `sent` e o `delivered` da MESMA
@@ -767,27 +767,27 @@ O evento de status confirma o destino de uma mensagem que **você** mandou: `sen
 > `sent` e `delivered` do mesmo envio têm ids **diferentes**. O seu dedup não junta os dois — o que
 > o carimbo igual quebra é a ORDEM, não a unicidade.
 
-**`erro` (2026-07-26; `detalhes` acrescentado dias depois, no mesmo mês)** — `codigo` (inteiro),
-`mensagem` (texto) e `detalhes` (texto, **opcional**). Existe porque `failed` sozinho não diz **por
+**`error` (2026-07-26; `details` acrescentado dias depois, no mesmo mês)** — `code` (inteiro),
+`message` (texto) e `details` (texto, **opcional**). Existe porque `failed` sozinho não diz **por
 quê**: sem o motivo, o operador humano que um sistema como o seu avisa quando uma entrega falha (o
 gatilho original desta tarefa foi uma falha real, código `131026`, que ficou só gravada no banco
 porque ninguém a viu) não tem o que mostrar.
 
-> ⚠️ **`erro` é o MESMO campo, com a MESMA forma, em DOIS eventos diferentes — e o significado NÃO
-> é o mesmo.** Desde 2026-07-26, `erro` também aparece no evento de **mensagem**
+> ⚠️ **`error` é o MESMO campo, com a MESMA forma, em DOIS eventos diferentes — e o significado NÃO
+> é o mesmo.** Desde 2026-07-26, `error` também aparece no evento de **mensagem**
 > (`sub_tipo: "unsupported"` — ver a seção acima). Aqui (status) ele quer dizer "a entrega falhou";
 > lá (mensagem) quer dizer "a Meta recebeu algo e não soube representar" — a mensagem foi entregue,
-> não falhou. Tudo o que este bloco descreve sobre `codigo`/`mensagem`/`detalhes`, sobre a lista
+> não falhou. Tudo o que este bloco descreve sobre `code`/`message`/`details`, sobre a lista
 > `errors[]` e sobre "ausência é ausência, nunca zero" vale identicamente para os dois; **só o que
-> `erro` está DIZENDO sobre o evento muda**, e é o `tipo`/`sub_tipo` do evento que diz qual dos dois
+> `error` está DIZENDO sobre o evento muda**, e é o `kind`/`sub_tipo` do evento que diz qual dos dois
 > é.
 
 Formato confirmado em
 developers.facebook.com/documentation/business-messaging/whatsapp/webhooks/reference/messages/status/
 (lido em 2026-07-26): a Meta manda `errors[]` — uma lista — com `code`, `title`, `message`,
-`error_data.details` e `href` por item. **O gateway repassa `codigo` (de `code`), `mensagem` (de
-`title`) e `detalhes` (de `error_data.details`)** — não `message` (idêntico a `title` no exemplo da
-doc), não `href`. Não há tradução para português: traduzir o código de um terceiro é decisão sua, e
+`error_data.details` e `href` por item. **O gateway repassa `code` (o próprio `code` da Meta),
+`message` (de `title`) e `details` (de `error_data.details`)** — não o `message` da própria Meta
+(idêntico a `title` no exemplo da doc), não `href`. Não há tradução para português: traduzir o código de um terceiro é decisão sua, e
 uma tabela nossa apodreceria no dia em que a Meta acrescentasse um código novo.
 
 **Por que `message` e `href` ficam de fora e `error_data.details` não.** A pergunta "algum
@@ -798,10 +798,10 @@ dos outros dois: é a **única** parte da mensagem que **acrescenta** informaç�
 título. Sem ela, o aviso ao operador fica pobre exatamente nos casos em que o código genérico não
 explica nada — que são os casos em que a mensagem faz falta.
 
-**`detalhes` é opcional e pode faltar mesmo dentro de um `erro` presente.** A Meta só manda
-`error_data` em parte dos códigos; quando falta, `codigo` e `mensagem` continuam saindo normalmente —
-a ausência do objeto aninhado não derruba o resto do motivo. Quando falta, a chave `detalhes` some do
-JSON (nunca `"detalhes": ""`) — mesma razão de `erro` inteiro ficar omitido em vez de zerado, ver
+**`details` é opcional e pode faltar mesmo dentro de um `error` presente.** A Meta só manda
+`error_data` em parte dos códigos; quando falta, `code` e `message` continuam saindo normalmente —
+a ausência do objeto aninhado não derruba o resto do motivo. Quando falta, a chave `details` some do
+JSON (nunca `"details": ""`) — mesma razão de `error` inteiro ficar omitido em vez de zerado, ver
 abaixo.
 
 **`errors[]` pode trazer mais de um item; o gateway guarda só o PRIMEIRO.** Não é descarte em
@@ -810,8 +810,8 @@ há, até hoje, nenhum caso observado de itens conflitantes que justifique expor
 isso mudar, é mudança de contrato, não ajuste de detalhe.
 
 **Ausência é ausência, nunca zero.** Um `failed` sem `errors[]` no payload da Meta — ou com um item
-que o gateway não conseguiu interpretar — não ganha `erro`: o campo fica **omitido**, nunca
-`{"codigo": 0, "mensagem": ""}`. Código `0` não é um código real da Meta; se o gateway o inventasse,
+que o gateway não conseguiu interpretar — não ganha `error`: o campo fica **omitido**, nunca
+`{"code": 0, "message": ""}`. Código `0` não é um código real da Meta; se o gateway o inventasse,
 você não teria como distinguir "sem motivo relatado" de "erro genuíno de código zero".
 
 ### `cobranca` — sob qual categoria a Meta cobrou (2026-07-26)
@@ -859,7 +859,7 @@ ele precisou de um envelope ao redor para virar fixture):
 
 ```json
 {
-  "tipo": "status",
+  "kind": "status",
   "id": "status:wamid.TESTE017:read",
   "phone_number_id": "PNID_TESTE",
   "waba_id": "WABA_TESTE",
@@ -882,7 +882,7 @@ Envio aceito **sem** `cobranca` (**captura real**,
 
 ```json
 {
-  "tipo": "status",
+  "kind": "status",
   "id": "status:wamid.TESTE041:sent",
   "phone_number_id": "PNID_TESTE",
   "waba_id": "WABA_TESTE",
@@ -899,7 +899,7 @@ Envio aceito **com** `cobranca` (**captura real**,
 
 ```json
 {
-  "tipo": "status",
+  "kind": "status",
   "id": "status:wamid.TESTE042:sent",
   "phone_number_id": "PNID_TESTE",
   "waba_id": "WABA_TESTE",
@@ -916,13 +916,13 @@ Envio aceito **com** `cobranca` (**captura real**,
 ```
 
 Entrega confirmada (**captura real**,
-2026-07-28) — sem `erro`. **É o MESMO envio do exemplo acima**: repare no `wa_message_id`
+2026-07-28) — sem `error`. **É o MESMO envio do exemplo acima**: repare no `wa_message_id`
 igual, no `timestamp` **igual**, e no `id` do evento **diferente** — é exatamente o caso do aviso
 🔴 no começo desta seção:
 
 ```json
 {
-  "tipo": "status",
+  "kind": "status",
   "id": "status:wamid.TESTE042:delivered",
   "phone_number_id": "PNID_TESTE",
   "waba_id": "WABA_TESTE",
@@ -944,7 +944,7 @@ era derivado do exemplo genérico da doc):
 
 ```json
 {
-  "tipo": "status",
+  "kind": "status",
   "id": "status:wamid.TESTE010:failed",
   "phone_number_id": "PNID_TESTE",
   "waba_id": "WABA_TESTE",
@@ -953,10 +953,10 @@ era derivado do exemplo genérico da doc):
   "status": "failed",
   "para_cru": "551199990000",
   "para_canonico": "5511999990000",
-  "erro": {
-    "codigo": 131026,
-    "mensagem": "Message undeliverable",
-    "detalhes": "Message Undeliverable."
+  "error": {
+    "code": 131026,
+    "message": "Message undeliverable",
+    "details": "Message Undeliverable."
   }
 }
 ```
@@ -1012,7 +1012,7 @@ entrega. Os dois se complementam: este avisa que **mudou**, aquele confirma **o 
 
 ```json
 {
-  "tipo": "template_status",
+  "kind": "template_status",
   "id": "template_status:1384121316897444:APPROVED:1769000020",
   "waba_id": "WABA_TESTE",
   "timestamp": 1769000020,
@@ -1036,7 +1036,7 @@ entrega. Os dois se complementam: este avisa que **mudou**, aquele confirma **o 
 **Os demais webhooks de conta:** ver a seção *Webhook de CONTA*, mais abaixo, para a lista completa
 do que é modelado e do que chega com `eventos: []` de propósito.
 
-### `template_categoria` (`tipo: "template_categoria"`) — a Meta RECLASSIFICOU a categoria de um template (2026-07-28)
+### `template_categoria` (`kind: "template_category"`) — a Meta RECLASSIFICOU a categoria de um template (2026-07-28)
 
 **Este é o evento que avisa que a categoria mudou.** Ele vem do webhook `template_category_update`
 da Meta, e existe ao lado do `template_status` acima — os dois falam do mesmo template e **não** são
@@ -1096,7 +1096,7 @@ abaixo da tabela. O que ele dá e o `template_status` não dá:
 
 ```json
 {
-  "tipo": "template_categoria",
+  "kind": "template_category",
   "id": "template_categoria:12345678:MARKETING:UTILITY:1769000070",
   "waba_id": "WABA_TESTE",
   "timestamp": 1769000070,
@@ -1185,7 +1185,7 @@ abaixo da tabela. O que ele dá e o `template_status` não dá:
 > pelo canal continua valendo:** três eventos de uma conta congelam a forma, não a variação. A
 > segunda conta é que derruba ou confirma o que está escrito aqui.
 
-### `qualidade_do_numero` (`tipo: "qualidade_do_numero"`) — a COTA diária e a qualidade do número (2026-07-28)
+### `qualidade_do_numero` (`kind: "number_quality"`) — a COTA diária e a qualidade do número (2026-07-28)
 
 Vem do webhook `phone_number_quality_update`. **Este é o único canal pelo qual um rebaixamento de
 cota chega antes de doer.** Sem ele, a primeira notícia de que o teto caiu é o envio começando a
@@ -1219,7 +1219,7 @@ token e a rede) e que só aparece depois de as mensagens já terem sido recusada
 > `limite_diario_maximo` **não** são gravados lá: o estado responde *"em que tier o número está
 > AGORA"*, e a direção da mudança já viaja inteira aqui.
 
-### `alerta_de_conta` (`tipo: "alerta_de_conta"`) — a Meta avisando de um problema, com SEVERIDADE (2026-07-28)
+### `alerta_de_conta` (`kind: "account_alert"`) — a Meta avisando de um problema, com SEVERIDADE (2026-07-28)
 
 Vem do webhook `account_alerts`. **O campo que justifica o tipo existir é `severidade`:** o exemplo
 da Meta traz `INFORMATIONAL`, e a existência de um nível chamado "informativo" implica que há níveis
@@ -1269,10 +1269,10 @@ completa, e ela existe para você não tratar "evento que não vira nada" como f
 
 | `field` da Meta | Vira evento? | O que você recebe |
 |---|---|---|
-| `message_template_status_update` | ✅ `tipo: "template_status"` | ver a seção do evento |
-| `template_category_update` | ✅ `tipo: "template_categoria"` | ver a seção do evento |
-| `phone_number_quality_update` | ✅ `tipo: "qualidade_do_numero"` | ver a seção do evento |
-| `account_alerts` | ✅ `tipo: "alerta_de_conta"` | ver a seção do evento |
+| `message_template_status_update` | ✅ `kind: "template_status"` | ver a seção do evento |
+| `template_category_update` | ✅ `kind: "template_category"` | ver a seção do evento |
+| `phone_number_quality_update` | ✅ `kind: "number_quality"` | ver a seção do evento |
+| `account_alerts` | ✅ `kind: "account_alert"` | ver a seção do evento |
 | `message_template_quality_update` | ❌ **de propósito** | `cru` + `"eventos": []` |
 | `message_template_components_update` | ❌ **de propósito** | `cru` + `"eventos": []` |
 | `account_update` | ❌ **de propósito** | `cru` + `"eventos": []` |
@@ -1283,14 +1283,14 @@ completa, e ela existe para você não tratar "evento que não vira nada" como f
 | qualquer `field` que a Meta invente amanhã | ❌ | `cru` + `"eventos": []` |
 
 **"De propósito" quer dizer exatamente isto: ninguém pediu.** O envelope só **cresce** —
-acrescentar um campo depois é de graça, tirar depois é quebra de contrato —, então um `tipo` novo
+acrescentar um campo depois é de graça, tirar depois é quebra de contrato —, então um `kind` novo
 sem consumidor interessado seria vocabulário morto que o gateway passa a dever para sempre.
 
 🔴 **Se algum destes te serve, você NÃO fica sem ele: o `cru` chega inteiro.** O webhook é entregue
 normalmente, com os bytes exatos da Meta em base64 — só sem enriquecimento. Parseie o `cru` do seu
-lado e você tem o mesmo dado; o `tipo` modelado é conveniência, não acesso. **Deduplique esse lote
+lado e você tem o mesmo dado; o `kind` modelado é conveniência, não acesso. **Deduplique esse lote
 pela regra da seção *E quando o lote não tem evento nenhum*** (hash do `cru`), que é a chave certa
-justamente para este caso. Se um dia algum destes for modelado, ele nasce com `tipo` próprio, e isso
+justamente para este caso. Se um dia algum destes for modelado, ele nasce com `kind` próprio, e isso
 é **aditivo**: o seu parse do `cru` continua funcionando.
 
 E não é lacuna por esquecimento nem preguiça de parse: o `value` de cada um tem chaves diferentes, e
@@ -2701,10 +2701,10 @@ que recusam `400` numa instância de Instagram*, mais abaixo.
   "telefones": ["5511999990000", "5511999990001"] }   // ate 1.000 por chamada
 
 // resposta 200
-{ "instancia": "lojinha",
+{ "instance": "lojinha",
   "operacao": "bloquear",
-  "processados": [ {"telefone": "5511999990000", "wa_id": "5511999990000"} ],
-  "falhas": [
+  "processed": [ {"telefone": "5511999990000", "wa_id": "5511999990000"} ],
+  "failures": [
     { "telefone": "5511999990001", "wa_id": "5511999990001",
       "meta_code": 139001, "message": "…", "meta_detail": "…" }
   ] }
@@ -2714,14 +2714,14 @@ que recusam `400` numa instância de Instagram*, mais abaixo.
 mensagem para você nas **ÚLTIMAS 24 HORAS**. Bloqueio é **REATIVO**, nunca preventivo — não existe
 pré-bloquear um número antes de ele escrever. Também não é possível bloquear outra conta business.
 **As duas restrições são DA META, não do gateway**: ele não confere a janela por conta própria —
-quem decide, POR NÚMERO, é ela, e o resultado chega em `falhas[]`, no formato do parágrafo
+quem decide, POR NÚMERO, é ela, e o resultado chega em `failures[]`, no formato do parágrafo
 seguinte.
 
 🔴 **Sucesso PARCIAL não é caso raro nesta rota, e o corpo é desenhado para ele:** a Meta responde
 `200` no ENVELOPE e reporta erro POR NÚMERO dentro dele — 1.000 números podem virar 998 bloqueados
 e 2 recusados, todos debaixo do mesmo `200`. Por isso esta rota **nunca** devolve um sucesso liso:
-toda chamada volta com `processados` **e** `falhas` juntos, mesmo quando um dos dois vem vazio.
-**Confira `falhas` em toda chamada** — o status `200` sozinho não prova que todos os números foram
+toda chamada volta com `processed` **e** `failures` juntos, mesmo quando um dos dois vem vazio.
+**Confira `failures` em toda chamada** — o status `200` sozinho não prova que todos os números foram
 processados.
 
 ### Desbloquear — `DELETE /v1/bloqueios`
@@ -2766,7 +2766,7 @@ fracasso têm o mesmo sintoma: silêncio. Ninguém investiga alguém que parou d
 - **1.000 telefones por chamada** de `POST`/`DELETE` — acima disso o gateway recusa na ENTRADA
   (`400 permanent`), dizendo quantos vieram e o máximo aceito. A Meta nem chega a ser chamada.
 - **64.000 usuários bloqueados no total, por conta** — limite DA META, não espelhado aqui: quem
-  sabe o total é ela, e o erro chega junto do número que o estourou (`falhas[]`) ou, se a chamada
+  sabe o total é ela, e o erro chega junto do número que o estourou (`failures[]`) ou, se a chamada
   inteira for recusada por isso, em `error.meta_detail`.
   ⚠️ **Nunca vimos esse erro acontecer** (conferido em 2026-08-20: nenhuma ocorrência em código,
   teste ou registro nosso). Então **não sabemos o `meta_code` dele** — e não vamos inventar um.
@@ -2788,7 +2788,7 @@ fracasso têm o mesmo sintoma: silêncio. Ninguém investiga alguém que parou d
 | `502` | `unknown` | o gateway não obteve resposta utilizável da Meta para a **CHAMADA INTEIRA** — nenhum número foi processado; repetir é seguro (bloquear/desbloquear não tem efeito colateral por si só) |
 
 ⚠️ **Um `200` nunca é "erro" nesta rota — mesmo que TODOS os números tenham ido parar em
-`falhas[]`.** O envelope respondeu; o veredito por número está no corpo. A tabela acima descreve
+`failures[]`.** O envelope respondeu; o veredito por número está no corpo. A tabela acima descreve
 só a falha da CHAMADA INTEIRA (nenhum número processado) — não confunda com o sucesso parcial do
 parágrafo anterior.
 
@@ -3036,7 +3036,7 @@ prova contra o handler de verdade.)*
     { "dia": "2026-07-29", "dia_utc": "2026-07-29", "contadores": { "alarme_perda_definitiva": 0, /* as 7 chaves cobranca_* vêm aqui, todas 0 nesta captura — omitidas só nesta colagem */ "conta_descartada": 0, "entregues": 4, "enviadas": 2, "falhas_de_envio": 1, "falhas_de_leitura": 0, "leituras_marcadas": 3, "numero_descartado": 0, "recebidas": 4, "recusadas_pelo_consumidor": 0 } }
   ],
   "token_meta": {
-    "veredito": "ok",
+    "verdict": "ok",
     "medido_em": "2026-07-29T00:00:02Z",
     "conferido_em": "2026-07-29T00:00:02Z",
     "checagem_falhando_desde": null
@@ -3072,8 +3072,8 @@ prova contra o handler de verdade.)*
   },
   "entrada": {
     "via": "tunel",
-    "conector": {
-      "estado": "observado",
+    "connector": {
+      "state": "observed",
       "conexoes_prontas": 4,
       "medido_em": "2026-07-29T00:00:02Z",
       "falhando_desde": null
@@ -3405,40 +3405,40 @@ mediu.
 
 | campo | o que é |
 |---|---|
-| `veredito` | `"ok"` · `"recusado"` · `"desconhecido"` |
+| `verdict` | `"ok"` · `"refused"` · `"unknown"` |
 | `medido_em` | quando a Meta **respondeu** pela última vez (`null` = nunca) |
 | `conferido_em` | a última **tentativa**, com ou sem sucesso (`null` = nunca) |
 | `checagem_falhando_desde` | início da sequência atual de falhas de checagem (`null` = não está falhando) |
 
-**Por que dois carimbos, e não um.** `{"veredito":"ok","medido_em":"15:20"}` sozinho é **ambíguo
+**Por que dois carimbos, e não um.** `{"verdict":"ok","medido_em":"15:20"}` sozinho é **ambíguo
 entre dois estados opostos**: *"conferi às 15:20 e não precisei conferir de novo"* e *"conferi às
 15:20, e todas as tentativas desde então falharam"*. No segundo caso o seu painel pintaria verde com
 a Meta fora do ar. **`medido_em` e `conferido_em` divergindo é o sinal de que a checagem está
 falhando** — visível sem você saber nada da nossa implementação.
 
 **O `ok` velho EXPIRA.** Passados 15 minutos sem a Meta responder, o veredito degrada para
-`desconhecido` em vez de continuar `ok`: cache que nunca expira é mentira com carimbo. `medido_em`
+`unknown` em vez de continuar `ok`: cache que nunca expira é mentira com carimbo. `medido_em`
 continua apontando para a última resposta real — é ele que diz há quanto tempo o gateway não ouve a
 Meta.
 
-**`desconhecido` não é vocabulário novo:** é a mesma palavra da `class` de erro do envio, com o
+**`unknown` não é vocabulário novo:** é a mesma palavra da `class` de erro do envio, com o
 mesmo significado — *não sabemos*. Disfarçar "não sabemos" de qualquer das outras duas é que causa
 dano.
 
-- `recusado` = a Meta recusou a credencial, **ou** o `phone_number_id` cadastrado é inválido e a
+- `refused` = a Meta recusou a credencial, **ou** o `phone_number_id` cadastrado é inválido e a
   chamada nem saiu do gateway. Nos dois, **só gente conserta** — a ação é a mesma, por isso a palavra
   é a mesma;
-- `desconhecido` = ninguém mediu ainda (gateway recém-subido, instância pausada) ou a medição
+- `unknown` = ninguém mediu ainda (gateway recém-subido, instância pausada) ou a medição
   envelheceu.
 
 **Quem mede é um timer nosso, rodando por instância ATIVA a cada 5 minutos**, independente de haver
 tráfego e de alguém estar olhando. Isso é deliberado: se o veredito dependesse de tráfego, *ausência
 de tráfego* ficaria indistinguível de *sistema quebrado* — token revogado às 2h da manhã só apareceria
 às 8h, na frente da primeira cliente. **Instância pausada não é medida** (ela não envia), e por isso o
-veredito dela envelhece para `desconhecido`; use `pausada` para não confundir os dois.
+veredito dela envelhece para `unknown`; use `pausada` para não confundir os dois.
 
 **As duas regras de alarme que isto lhe dá, e nenhuma exige conhecer as nossas entranhas:**
-`veredito != "ok"`, ou `conferido_em` envelhecido.
+`verdict != "ok"`, ou `conferido_em` envelhecido.
 
 ### `certificado_do_callback` — a validade do **seu** certificado, como o gateway a viu
 
@@ -3644,12 +3644,12 @@ do lado do WhatsApp (seção seguinte), e as duas direções agora usam a **mesm
 }
 ```
 
-**E o mesmo vale para `token_meta.veredito`, que também sai `"nao_se_aplica"` numa instância
+**E o mesmo vale para `token_meta.verdict`, que também sai `"nao_se_aplica"` numa instância
 Instagram.** O motivo é mais sutil do que "o campo não se aplica por definição": a checagem viva
 (`watchdog.go`) mede chamando `GET /{phone_number_id}` na Graph API, e uma instância Instagram **nunca
 tem** `phone_number_id` (o cadastro recusa se vier preenchido). Sem este tratamento, a vigia mediria
 com o campo vazio, a Graph recusaria a chamada localmente (nem chega a haver requisição de rede), e o
-gateway classificaria isso como **credencial recusada** — um `veredito: "recusado"` **permanente e
+gateway classificaria isso como **credencial recusada** — um `verdict: "refused"` **permanente e
 falso** em toda instância Instagram saudável, porque a checagem nunca foi desenhada para medir nada
 por lá. Por isso o gateway não deixa esse resultado vazar: `token_meta` também vira `nao_se_aplica`.
 
@@ -3750,7 +3750,7 @@ Exemplo de uma instância Instagram falhando (colado de uma execução do handle
 ### `entrada` — por ONDE a entrada é publicada, e se o conector está de pé (2026-08-06)
 
 🔴 **LEIA ESTA FRASE ANTES DE USAR O BLOCO, porque ela é o que impede o mal-entendido caro:**
-`via` e `conector` descrevem **por onde a entrada é publicada** e **se o conector está de pé** —
+`via` e `connector` descrevem **por onde a entrada é publicada** e **se o conector está de pé** —
 eles **NÃO** prometem que a Meta está conseguindo entregar. **Quem responde essa pergunta é uma
 sonda, medindo de FORA.**
 
@@ -3765,34 +3765,34 @@ isso ele não existe aqui, e não vai passar a existir.
 
 | campo | é | serve para |
 |---|---|---|
-| `via` | **configuração**, não medição — `tunel`, `encaminhamento_de_porta` ou `desconhecido` | saber por onde a entrada deveria estar chegando quando você for reportar uma queda |
-| `conector` | **medição** do `/ready` do conector que publica a rota | distinguir "o túnel caiu" de "o gateway está quieto" |
+| `via` | **configuração**, não medição — `tunel`, `encaminhamento_de_porta` ou `unknown` | saber por onde a entrada deveria estar chegando quando você for reportar uma queda |
+| `connector` | **medição** do `/ready` do conector que publica a rota | distinguir "o túnel caiu" de "o gateway está quieto" |
 | `ultimo_webhook_em` | o **mesmo** valor de `contadores.recebidas.ultimo_em` | concluir **silêncio** por conta própria, sem ler a tabela de contadores |
 
-**`conector.estado` tem TRÊS valores, e a diferença entre dois deles é o ponto do bloco:**
+**`connector.state` tem TRÊS valores, e a diferença entre dois deles é o ponto do bloco:**
 
-- **`observado`** — o gateway perguntou e o conector respondeu. `conexoes_prontas` traz o número, e
+- **`observed`** — o gateway perguntou e o conector respondeu. `conexoes_prontas` traz o número, e
   ele **pode ser `0`**: zero é uma medição legítima ("o conector está de pé e não há túnel montado"),
   o sinal mais forte que este bloco consegue dar. `falhando_desde` vem `null`;
-- **`desconhecido`** — **não consegui medir**. `conexoes_prontas` vem **sempre `null`**, nunca um
+- **`unknown`** — **não consegui medir**. `conexoes_prontas` vem **sempre `null`**, nunca um
   zero que pareça veredito; `falhando_desde` diz desde quando a pergunta não volta (`null` se nunca
   houve tentativa), e `medido_em` continua apontando para a **última resposta real**, que é o que diz
   há quanto tempo o gateway não ouve o conector;
-- **`nao_configurado`** — ninguém disse ao gateway a quem perguntar (instalação sem túnel). Os três
+- **`not_configured`** — ninguém disse ao gateway a quem perguntar (instalação sem túnel). Os três
   campos vêm `null`.
 
-⚠️ **`observado` NÃO é um veredito de saúde.** O gateway publica o que mediu e quando mediu; quem
+⚠️ **`observed` NÃO é um veredito de saúde.** O gateway publica o que mediu e quando mediu; quem
 julga é você. É a mesma regra de `certificado_do_callback`, que também não tem estado "vencido".
 
-⚠️ **O bloco vem SEMPRE, com todas as chaves, em toda instância** — inclusive `nao_configurado` e
+⚠️ **O bloco vem SEMPRE, com todas as chaves, em toda instância** — inclusive `not_configured` e
 inclusive numa instância Instagram. Campo que some quebra parser estrito, e este contrato já pagou
 por isso com o `token_instagram`.
 
-ℹ️ **`via` e `conector` são do GATEWAY, não da instância:** duas instâncias do mesmo gateway leem
+ℹ️ **`via` e `connector` são do GATEWAY, não da instância:** duas instâncias do mesmo gateway leem
 exatamente os mesmos valores. Só `ultimo_webhook_em` é por instância.
 
-**A regra de alarme que isso te dá:** `conector.estado == "observado" && conexoes_prontas == 0` é
-*"o túnel caiu"* — aja. `conector.estado == "desconhecido"` é *"o gateway não está conseguindo
+**A regra de alarme que isso te dá:** `connector.state == "observed" && conexoes_prontas == 0` é
+*"o túnel caiu"* — aja. `connector.state == "unknown"` é *"o gateway não está conseguindo
 medir"* — outra urgência, outro lugar para procurar, e **nunca** o mesmo alarme.
 
 ### `alcance_externo` — o veredito da sonda pública, espelhado aqui (2026-08-07)
@@ -3821,7 +3821,7 @@ URL pública da sonda (seção acima) que sobrevive à nossa queda, nunca este c
 - 🔴 **`nao_consegui_verificar`** — a ÚLTIMA tentativa do gateway de perguntar à sonda externa não
   voltou (sem resposta, sem JSON legível, ou sem o campo esperado), OU a última resposta boa já
   passou da validade. **Isto NUNCA é `down`, e nunca é o campo ausente.** É uma palavra própria,
-  diferente de `desconhecido` usado em `token_meta`/`conector` — porque a decisão que você vai
+  diferente de `unknown` usado em `token_meta`/`connector` — porque a decisão que você vai
   automatizar em cima dela é diferente: "eu não consegui perguntar" não é "vocês estão fora do ar";
 - **`nao_configurado`** — este gateway ainda não tem `ZAPGW_SONDA_EXTERNA_URL` configurada. `veredito`,
   `medido_em` e `fonte` vêm `null`.
@@ -4466,12 +4466,12 @@ porque ele não é um telefone) e é o mesmo valor que você manda de volta em `
 
 ### Receber uma mensagem
 
-O evento chega no **mesmo formato** que uma mensagem de WhatsApp (`"tipo":"mensagem"`) — você não
+O evento chega no **mesmo formato** que uma mensagem de WhatsApp (`"kind":"message"`) — você não
 precisa aprender um vocabulário novo. A diferença é o que vem preenchido:
 
 ```json
 {
-  "tipo": "mensagem",
+  "kind": "message",
   "id": "msg:IGMID...",
   "wa_message_id": "IGMID...",
   "sub_tipo": "text",
@@ -4494,7 +4494,7 @@ evento em `eventos` (T-105).** A Meta reenvia, no mesmo `messaging[]`, uma notif
 mensagem que o seu próprio negócio manda (`message.is_echo: true`,
 [developers.facebook.com/docs/messenger-platform/instagram/features/webhook/](https://developers.facebook.com/docs/messenger-platform/instagram/features/webhook/)),
 com o remetente sendo **o seu próprio `ig_id`**, não um IGSID de cliente. O gateway filtra esse
-item: ele **não vira `tipo:"mensagem"`**, mas continua presente no `cru` (base64), inteiro, como
+item: ele **não vira `kind:"message"`**, mas continua presente no `cru` (base64), inteiro, como
 todo o resto do lote. Isso existe porque, sem o filtro, um sistema automático que responde a toda
 mensagem recebida acaba respondendo **à própria resposta que ele mesmo mandou** — a Meta recusa
 esse envio (ela não entrega mensagem de um negócio para ele mesmo), e cada resposta sua vira uma
@@ -4584,7 +4584,7 @@ confirme o token sem enviar mensagem — inventar um por analogia arriscaria uma
 | `token_meta` | sim, medido a cada 5 min | **sempre `nao_se_aplica`** (T-099) — a checagem mede por `phone_number_id`, que Instagram nunca tem |
 | `numero_na_meta` (`qualidade`, `limite_de_mensagens`) | sim, medido/empurrado | **sempre `nao_se_aplica`** (T-099) — qualidade e tier são conceitos do WhatsApp Business Number |
 | `token_instagram` | **sempre `nao_se_aplica`** (T-098) | sim — vencimento em 60 dias, ver a seção própria |
-| `entrada` (`via`, `conector`, `ultimo_webhook_em`) | sim | sim — ele é do **gateway**, não do produto Meta: os dois primeiros campos são iguais em toda instância deste gateway (T-120) |
+| `entrada` (`via`, `connector`, `ultimo_webhook_em`) | sim | sim — ele é do **gateway**, não do produto Meta: os dois primeiros campos são iguais em toda instância deste gateway (T-120) |
 
 🔴 **`tipo` e `ig_id` entraram na T-107 (2026-07-30) e aparecem SEMPRE, nos dois produtos** — a mesma
 cegueira que a T-103 já tinha consertado em `zapgw instancia mostrar`/`listar` continuava aqui: sem
