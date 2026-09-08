@@ -326,7 +326,7 @@ func TestExternalProbeWithoutURLComesOutNotConfiguredAndTheProcessStartsNormally
 
 // SHARED state: the timer goroutine writes while every GET /v1/estado
 // request reads. Without this test, `-race` is theater (docs/ARMADILHAS.md,
-// "Go / concorrência" — the `seq++` trap).
+// "Go / concurrency" — the `seq++` trap).
 func TestExternalProbeSupportsConcurrentReadAndWrite(t *testing.T) {
 	s := NewExternalProbe(fakeExternalProbe(t, "up"))
 

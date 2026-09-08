@@ -263,7 +263,7 @@ func TestWatchdogStartSurvivesAPanicAndContinuesOnTheNextTick(t *testing.T) {
 // one goroutine per request, while the timer writes from another. Without
 // a concurrent test, -race has nothing to detect — and this project
 // already paid a Critical for exactly this (docs/ARMADILHAS.md,
-// "Go / concorrência").
+// "Go / concurrency").
 func TestWatchdogConcurrentReadWithMeasurementDoesNotRace(t *testing.T) {
 	m := tokenAcceptingMeta()
 	v, _ := testWatchdog(t, m, "lojinha")

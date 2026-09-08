@@ -1085,7 +1085,7 @@ func TestHandlerCounterFailureDoesNotChangeTheStatus(t *testing.T) {
 	}
 }
 
-// docs/ARMADILHAS.md, "Go / concorrência": the counter is mutable state touched
+// docs/ARMADILHAS.md, "Go / concurrency": the counter is mutable state touched
 // by requests that http.Server serves in goroutines over the SAME
 // handler. Run with -race. Each goroutine uses a DIFFERENT Idempotency-Key —
 // otherwise the idempotency guard (not the counting) would be what decides the
@@ -1272,7 +1272,7 @@ func TestHandlerLogsUnknownInstanceAs404(t *testing.T) {
 }
 
 // throttleLog is mutable state touched by every request over the SAME
-// Handler (docs/ARMADILHAS.md, "Go / concorrência" — the same file already had
+// Handler (docs/ARMADILHAS.md, "Go / concurrency" — the same file already had
 // a race Critical exactly like this, `h.seq++`). Run with -race: each
 // goroutine deliberately sends the SAME invalid request (same consumer, same reason),
 // to hit the SAME throttle key at the same time.

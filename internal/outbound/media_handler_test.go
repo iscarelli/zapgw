@@ -594,7 +594,7 @@ func TestMediaDoesNotLogTheBytesNorTheSecrets(t *testing.T) {
 // Every handler in this project serves each request in a goroutine over
 // the SAME handler; without a concurrent test, `-race` has nothing to
 // detect — it already cost a Critical here (docs/ARMADILHAS.md,
-// "Go / concorrência").
+// "Go / concurrency").
 func TestMediaConcurrentDoesNotShareState(t *testing.T) {
 	const calls = 30
 	m := newFakeFileMeta()

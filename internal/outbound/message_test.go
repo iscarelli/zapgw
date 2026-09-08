@@ -1663,7 +1663,7 @@ func TestValidateLocationRequiresTheLocationField(t *testing.T) {
 	}
 }
 
-// Central pitfall of T-024 (docs/ARMADILHAS.md, "Validação"): 0 is a valid
+// Central pitfall of T-024 (docs/ARMADILHAS.md, "Validation"): 0 is a valid
 // coordinate (the crossing of the Greenwich meridian with the equator).
 // latitude/longitude NIL (absent) is an error; latitude/longitude ZERO is not.
 func TestValidateLocationAcceptsZeroLatitudeAndLongitude(t *testing.T) {

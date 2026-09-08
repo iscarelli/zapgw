@@ -679,7 +679,7 @@ func TestStateDoesNotMixTheCertificateOfAnotherInstance(t *testing.T) {
 
 // Every handler in this project serves each request in a goroutine over the
 // SAME handler; without a concurrent test, -race is theater
-// (docs/ARMADILHAS.md, "Go / concorrência"). Here the watchdog WRITES at the same
+// (docs/ARMADILHAS.md, "Go / concurrency"). Here the watchdog WRITES at the same
 // time, which is exactly what happens in production when the timer ticks with
 // a panel open.
 func TestStateConcurrentWithTheWatchdogMeasuring(t *testing.T) {

@@ -25,8 +25,8 @@ import (
 // that the verb the consumer requested (`PUT`) is not the one in Meta's doc
 // (`POST`), and a double that accepted any verb would leave that correction
 // with no guard at all — it would only reappear against the real Meta, which
-// this project's suite does not reach (see CLAUDE.md, "O que o verify NÃO
-// alcança").
+// this project's suite does not reach (see CLAUDE.md, "What the verify does NOT
+// reach").
 
 type readGraph struct {
 	srv   *httptest.Server
@@ -527,8 +527,8 @@ func TestReadsTransportFailureGives502TellingToRetry(t *testing.T) {
 // --- Secrets and personal data in the log ---------------------------------------------
 
 // The `wamid` CARRIES THE OTHER SIDE'S PHONE NUMBER encoded inside it
-// (docs/ARMADILHAS.md, "o wamid carrega o telefone do destinatário dentro
-// dele"). No log line on this route can contain it — not even on the rejection
+// (docs/ARMADILHAS.md, "the wamid carries the recipient's phone number
+// inside it"). No log line on this route can contain it — not even on the rejection
 // path, which is where the temptation to "log the whole request to debug" lives.
 func TestReadsNeverLogsTheWamidNorTheToken(t *testing.T) {
 	g := respondingGraph(t, http.StatusBadRequest, `{"error":{"message":"Parameter value is not valid","code":131009}}`)
