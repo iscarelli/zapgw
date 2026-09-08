@@ -18,7 +18,7 @@ import (
 // Mutable state under mutex and an atomic counter because httptest.Server
 // serves each request on a goroutine: a raw counter here is a data race, and
 // this project already paid a Critical for exactly that (docs/ARMADILHAS.md,
-// "Go / concorrência").
+// "Go / concurrency").
 type fakeHealthMeta struct {
 	mu     sync.Mutex
 	status int
@@ -122,31 +122,31 @@ func TestHealthAnswersOKWhenMetaAcceptsTheToken(t *testing.T) {
 
 	rec := askHealth(t, h, "token-do-a", "lojinha")
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, quero 200; corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, want 200; body = %s", rec.Code, rec.Body.String())
 	}
 	if n := m.gets.Load(); n != 1 {
-		t.Fatalf("chamadas a Graph API = %d, quero 1 — probe que nao pergunta nao acusa token revogado", n)
+		t.Fatalf("Graph API calls = %d, want 1 — a probe that does not ask does not flag a revoked token", n)
 	}
 
 	var resp testHealthResponse
 	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
-		t.Fatalf("corpo nao desserializa: %v (corpo = %q)", err, rec.Body.String())
+		t.Fatalf("body does not deserialize: %v (body = %q)", err, rec.Body.String())
 	}
 	if !resp.OK {
-		t.Errorf("ok = %v, quero true", resp.OK)
+		t.Errorf("ok = %v, want true", resp.OK)
 	}
 	if want := testDisplayNumbers["lojinha"]; resp.DisplayNumber != want {
-		t.Errorf("numero_exibido = %q, quero %q (o numero vem do STORE, nao do corpo da Meta)",
+		t.Errorf("display_number = %q, want %q (the number comes from the STORE, not from Meta's body)",
 			resp.DisplayNumber, want)
 	}
 	when, err := time.Parse(time.RFC3339, resp.VerifiedAt)
 	if err != nil {
-		t.Fatalf("verificado_em = %q nao e RFC3339: %v", resp.VerifiedAt, err)
+		t.Fatalf("verificado_em = %q is not RFC3339: %v", resp.VerifiedAt, err)
 	}
 	// Without cache, the timestamp is always the instant of THIS call. If
 	// it comes back stale, someone is serving a cached result.
 	if age := time.Since(when); age > time.Minute || age < -time.Minute {
-		t.Errorf("verificado_em = %q esta a %v de agora — o probe respondeu com resultado velho",
+		t.Errorf("verificado_em = %q is %v from now — the probe answered with a stale result",
 			resp.VerifiedAt, age)
 	}
 }
@@ -164,7 +164,7 @@ func TestHealthWith401FromMetaAnswers503WithoutLeakingTokenNorMetaBody(t *testin
 
 	rec := askHealth(t, h, "token-do-a", "lojinha")
 	if rec.Code != http.StatusServiceUnavailable {
-		t.Fatalf("status = %d, quero 503; corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, want 503; body = %s", rec.Code, rec.Body.String())
 	}
 
 	body := rec.Body.String()
@@ -177,22 +177,22 @@ func TestHealthWith401FromMetaAnswers503WithoutLeakingTokenNorMetaBody(t *testin
 		"access_token",
 	} {
 		if strings.Contains(body, mustNotLeak) {
-			t.Errorf("a resposta do probe vazou %q:\n%s", mustNotLeak, body)
+			t.Errorf("the probe's response leaked %q:\n%s", mustNotLeak, body)
 		}
 	}
 
 	var errBody errorResponse
 	if err := json.Unmarshal(rec.Body.Bytes(), &errBody); err != nil {
-		t.Fatalf("corpo de erro nao desserializa: %v (corpo = %q)", err, body)
+		t.Fatalf("error body does not deserialize: %v (body = %q)", err, body)
 	}
 	// Refused token is `config`: no retry fixes it, only a human. Calling it
 	// `retentavel` would send the operator to wait for something that
 	// doesn't change.
 	if errBody.Error.Class != string(meta.ClassConfig) {
-		t.Errorf("classe = %q, quero %q", errBody.Error.Class, meta.ClassConfig)
+		t.Errorf("class = %q, want %q", errBody.Error.Class, meta.ClassConfig)
 	}
 	if errBody.Error.MetaCode != 190 {
-		t.Errorf("codigo_meta = %d, quero 190", errBody.Error.MetaCode)
+		t.Errorf("meta_code = %d, want 190", errBody.Error.MetaCode)
 	}
 }
 
@@ -204,13 +204,13 @@ func TestHealthWithPausedInstanceAnswers503WithoutCallingMeta(t *testing.T) {
 
 	rec := askHealth(t, h, "token-do-a", "lojinha")
 	if rec.Code != http.StatusServiceUnavailable {
-		t.Fatalf("status = %d, quero 503; corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, want 503; body = %s", rec.Code, rec.Body.String())
 	}
 	if n := m.gets.Load(); n != 0 {
-		t.Errorf("o probe falou %d vez(es) com a Meta por uma instancia PAUSADA", n)
+		t.Errorf("the probe talked to Meta %d time(s) for a PAUSED instance", n)
 	}
 	if !strings.Contains(rec.Body.String(), "pausada") {
-		t.Errorf("a resposta nao diz que a instancia esta pausada: %s", rec.Body.String())
+		t.Errorf("the response does not say the instance is paused: %s", rec.Body.String())
 	}
 }
 
@@ -224,7 +224,7 @@ func TestHealthHasNoCache(t *testing.T) {
 	h := testHealthHandler(t, m, "lojinha")
 
 	if rec := askHealth(t, h, "token-do-a", "lojinha"); rec.Code != http.StatusOK {
-		t.Fatalf("primeira chamada: status = %d, quero 200; corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("first call: status = %d, want 200; body = %s", rec.Code, rec.Body.String())
 	}
 
 	// The client revokes the token on Meta between one probe and the next.
@@ -232,11 +232,11 @@ func TestHealthHasNoCache(t *testing.T) {
 
 	rec := askHealth(t, h, "token-do-a", "lojinha")
 	if rec.Code != http.StatusServiceUnavailable {
-		t.Fatalf("depois de a Meta passar a recusar o token o probe respondeu %d, quero 503 — "+
-			"ele esta servindo resultado guardado; corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("after Meta started refusing the token the probe answered %d, want 503 — "+
+			"it is serving a cached result; body = %s", rec.Code, rec.Body.String())
 	}
 	if n := m.gets.Load(); n != 2 {
-		t.Errorf("chamadas a Graph API = %d, quero 2 (uma por probe, sempre)", n)
+		t.Errorf("Graph API calls = %d, want 2 (one per probe, always)", n)
 	}
 }
 
@@ -253,10 +253,10 @@ func TestHealthRefusesInstanceNotOwnedByConsumer(t *testing.T) {
 
 	rec := askHealth(t, h, "token-do-a", "clinica")
 	if rec.Code != http.StatusForbidden {
-		t.Fatalf("status = %d, quero 403; corpo = %s", rec.Code, rec.Body.String())
+		t.Fatalf("status = %d, want 403; body = %s", rec.Code, rec.Body.String())
 	}
 	if n := m.gets.Load(); n != 0 {
-		t.Errorf("o probe falou %d vez(es) com a Meta pela instancia de outro sistema", n)
+		t.Errorf("the probe talked to Meta %d time(s) for another system's instance", n)
 	}
 }
 
@@ -265,13 +265,13 @@ func TestHealthRefusesWithoutTokenAndWithInvalidToken(t *testing.T) {
 	h := testHealthHandler(t, m, "lojinha")
 
 	if rec := askHealth(t, h, "", "lojinha"); rec.Code != http.StatusUnauthorized {
-		t.Errorf("sem token: status = %d, quero 401", rec.Code)
+		t.Errorf("no token: status = %d, want 401", rec.Code)
 	}
 	if rec := askHealth(t, h, "token-errado", "lojinha"); rec.Code != http.StatusUnauthorized {
-		t.Errorf("token errado: status = %d, quero 401", rec.Code)
+		t.Errorf("wrong token: status = %d, want 401", rec.Code)
 	}
 	if n := m.gets.Load(); n != 0 {
-		t.Errorf("o probe falou %d vez(es) com a Meta sem consumidor autenticado", n)
+		t.Errorf("the probe talked to Meta %d time(s) without an authenticated consumer", n)
 	}
 }
 
@@ -286,16 +286,16 @@ func TestHealthSendsTheTokenInTheHeaderNeverInTheURL(t *testing.T) {
 
 	urls, authorizations := m.seen()
 	if len(urls) != 1 {
-		t.Fatalf("requisicoes vistas = %d, quero 1", len(urls))
+		t.Fatalf("requests seen = %d, want 1", len(urls))
 	}
 	if strings.Contains(urls[0], "t-lojinha") {
-		t.Errorf("o token de envio foi para a URL: %q", urls[0])
+		t.Errorf("the send token went into the URL: %q", urls[0])
 	}
 	if !strings.Contains(urls[0], "P-lojinha") {
-		t.Errorf("o probe nao bateu no phone_number_id da instancia: %q", urls[0])
+		t.Errorf("the probe did not hit the instance's phone_number_id: %q", urls[0])
 	}
 	if want := "Bearer t-lojinha"; authorizations[0] != want {
-		t.Errorf("Authorization = %q, quero %q", authorizations[0], want)
+		t.Errorf("Authorization = %q, want %q", authorizations[0], want)
 	}
 }
 
@@ -322,10 +322,10 @@ func TestHealthConcurrentDoesNotShareState(t *testing.T) {
 
 	for i, c := range codes {
 		if c != http.StatusOK {
-			t.Fatalf("chamada %d: status = %d, quero 200", i, c)
+			t.Fatalf("call %d: status = %d, want 200", i, c)
 		}
 	}
 	if n := m.gets.Load(); n != calls {
-		t.Errorf("chamadas a Graph API = %d, quero %d — uma por probe, sem cache", n, calls)
+		t.Errorf("Graph API calls = %d, want %d — one per probe, no cache", n, calls)
 	}
 }
