@@ -311,6 +311,112 @@ instancias foram rotacionadas. Duas licoes que custaram na hora e valem alem des
 
 > A fila do periodo privado esta em `iscarelli/zapgw-dev`, congelada. Tarefa nova nasce aqui.
 
+## [ ] T-241  `POST /v1/uploads` — template header example handle via Meta's Resumable Upload
+Why:     Pedido do consumidor `consumer-b` em 2026-09-15 (vale-presente: cartao PNG gerado na hora,
+         enviado por template porque a janela de 24h pode estar fechada). Para criar um template com
+         `HEADER` de formato `IMAGE`/`VIDEO`/`DOCUMENT` a Meta exige `example.header_handle` no
+         componente, e esse handle so' sai da **Resumable Upload API** — o `media_id` do `POST
+         /v1/media` NAO serve. O `POST /v1/templates` repassa `componentes` cru, entao hoje o
+         consumidor nao tem como criar esse template, e ele nao pode chamar a Graph API direto
+         (regra deles: o gateway e' o unico caminho). Esta rota e' a primitiva que falta. Decisao
+         do planner: opcao (a) do pedido — rota propria que devolve o handle, e o consumidor poe o
+         handle no componente e chama o `POST /v1/templates` de sempre. E' a mesma doutrina do
+         `/v1/media`: o gateway carrega os bytes, o consumidor nao hospeda nada.
+Files:   internal/meta/upload.go (novo), internal/meta/upload_test.go (novo),
+         internal/outbound/uploads_handler.go (novo), internal/outbound/uploads_handler_test.go (novo),
+         internal/outbound/isolation_test.go, cmd/zapgw/main.go,
+         docs/CONTRATO-CONSUMIDOR.md, docs/CONTRATO-CONSUMIDOR.pt-BR.md, docs/CHANGELOG.md
+Do:      **Leia antes:** `internal/outbound/media_handler.go` inteiro (e' o irmao desta rota: mesma
+         ordem de guardas, mesmo `instanceAuthorized`, mesmo `cappedReader`, mesma disciplina de
+         nunca por token/URL/phone_number_id em log) e `internal/meta/media.go:210-335`
+         (`UploadMedia` — como o token vai no header e como a resposta e' classificada).
+         Fonte da Meta (lida em 2026-09-15): https://developers.facebook.com/docs/graph-api/guides/upload
+         — sessao: `POST /{app-id}/uploads?file_name=…&file_length=…&file_type=…` -> `{"id":
+         "upload:XXXX"}`; bytes: `POST /upload:XXXX` com headers `Authorization: OAuth <token>` e
+         `file_offset: 0`, corpo = bytes crus -> `{"h": "<handle>"}`. Tipos que a doc lista:
+         `application/pdf, image/jpeg, image/jpg, image/png, video/mp4`.
+
+         1. `internal/meta/upload.go`:
+            - `func (c *Client) AppID(ctx, token string) (string, error)` — `GET {base}/app?fields=id`
+              com `Authorization: Bearer <token>`; exige `id` string nao vazia (mesma armadilha do
+              `uploadID`: 2xx sem id nao e' sucesso). 🔴 **A instancia NAO guarda o App ID** (veja
+              `config.Instance`, `internal/config/store.go:328`), e e' por isso que ele e'
+              descoberto do token a cada chamada — a rota e' rara (criacao de template), o custo de
+              uma chamada a mais e' zero e nao ha estado novo para envelhecer. Se essa descoberta
+              falhar na Meta, o erro tem de dizer QUAL passo falhou (ver item 2).
+            - `func (c *Client) UploadHandle(ctx, appID, token, mimeType, fileName string, length
+              int64, content io.Reader) (string, error)` — os dois passos acima, em sequencia, com
+              os bytes cruzando em STREAMING (o `content` vai direto como corpo do segundo POST —
+              `http.NewRequestWithContext` com `req.ContentLength = length`; nada de ReadAll, nada
+              em disco). Na sessao, o token vai no header `Authorization: Bearer` (como todo o resto
+              do client); no passo dos bytes use `Authorization: OAuth <token>` **exatamente como a
+              doc escreve**, com comentario dizendo que e' a grafia documentada para esse endpoint.
+              Token NUNCA na query string. A resposta de cada passo passa por `ClassifyResponse`;
+              exige `h` string nao vazia. `appID` validado com `PhoneNumberIDValid` (mesma forma:
+              digitos) antes de virar segmento de URL.
+            - `upload_test.go` com `httptest` fingindo os tres endpoints: caminho feliz (confere
+              query `file_length`/`file_type`/`file_name`, header `file_offset: 0`, os bytes
+              chegaram inteiros, o token esta' no header e NAO na URL); `/app` sem `id`; sessao
+              sem `id`; upload sem `h`; erro 4xx da Meta classificado.
+         2. `internal/outbound/uploads_handler.go` — `NewUploadsHandler(store, auth, client, counter,
+            types AcceptedTypes) http.Handler`, rota **`POST /v1/uploads`**, registrada com
+            literal para o portao de isolamento enxergar. Corpo = **bytes crus** (nao multipart):
+            `Content-Type` da requisicao e' o mime; `Content-Length` e' obrigatorio (e' o
+            `file_length` que a Meta exige; sem ele -> `411`, classe `permanent`, mensagem dizendo
+            que esta rota precisa do tamanho declarado). Query: `?instancia={slug}` / `?instance=`
+            via `queryAlias` + `counter.Record` do nome velho, igual ao media; `?file_name=`
+            opcional — se ausente, use `header` + extensao derivada do mime (`.png`, `.jpg`, `.mp4`,
+            `.pdf`); e' campo obrigatorio da Meta sem efeito observavel, por isso tem default.
+            Guardas, NESTA ordem (copie a disciplina de `media_handler.go`): autenticar -> vinculo
+            (403) -> instancia existe (404) -> ativa (503) -> `checkType` -> mime aceito -> teto.
+            **Mime aceito = so' os que a doc da Resumable Upload lista** (`image/jpeg`, `image/png`,
+            `video/mp4`, `application/pdf`); `image/jpg` NAO (o `/v1/media` tambem nao aceita); o
+            resto -> `415` antes do fio. Teto: `meta.CategoryCap(meta.CategoryOfMime(...))`, o mesmo
+            do `/v1/media` (5 MB imagem, 16 MB video, 32 MB documento) — e' NOSSO, e a mensagem
+            diz isso; `Content-Length` acima -> `413` sem abrir conexao. Deadline `mediaDeadline`.
+            Sucesso -> `200 {"handle": "<h>"}` (nome do campo pedido pelo consumidor; casa com
+            `example.header_handle`). Erro da Meta -> mesmo tratamento de `respondMediaError`;
+            **se o passo que falhou foi a descoberta do App ID (`GET /app`), a mensagem tem de
+            nomear esse passo** — e' a unica parte deste desenho que nao foi medida contra a Meta
+            real, e se falhar em producao o canal precisa saber QUE foi ela.
+            🔴 **Reutilize `instanceAuthorized`** — se a assinatura dele estiver presa ao
+            `MediaHandler`, extraia para uma funcao de pacote que os dois handlers chamem; NAO copie
+            o bloco (a assimetria entre duas copias e' a armadilha-mae, `docs/ARMADILHAS.md`).
+            `types` = `outbound.WhatsAppOnly` (usa `inst.SendToken`, e template e' WhatsApp).
+         3. `internal/outbound/isolation_test.go`: linha nova na tabela para `POST /v1/uploads`
+            (o portao FALHA sem ela — confira que falha antes de acrescentar, e diga no relatorio).
+         4. `cmd/zapgw/main.go`: monte e registre ao lado do `media` (linhas ~444 e ~250 do
+            `mux.Handle`).
+         5. `uploads_handler_test.go`: 401/403/404/503 pela mesma matriz do media; `411` sem
+            Content-Length; `415` mime fora da lista; `413` acima do teto; feliz devolvendo
+            `{"handle": ...}`; falha em `GET /app` respondendo com mensagem que nomeia o passo;
+            e a guarda de vazamento: corpo da resposta e log SEM token, SEM phone_number_id, SEM
+            app id (escreva a guarda com os nomes de campo que EXISTEM hoje — veja o custo das
+            guardas vacuas em `docs/ARMADILHAS.md`).
+         6. Docs, nos DOIS idiomas (EN e' a fonte; o `.pt-BR.md` e' espelho deste doc de proposito):
+            - secao nova em `docs/CONTRATO-CONSUMIDOR.md`, ao lado de "Send and download media"
+              (linha ~4309), no mesmo estilo do `POST /v1/media` (`curl` de exemplo com valores
+              SINTETICOS, resposta, erros em tabela). Diga: para que serve (o `header_handle`),
+              que o `media_id` NAO serve como handle, os mimes aceitos, o teto (nosso), que o
+              `Content-Length` e' obrigatorio e por que, e — sem inventar — que **a validade do
+              handle NAO esta' documentada pela Meta** (escreva isso, nao um prazo).
+            - em "Create a template" (linha ~3991): um paragrafo dizendo que um `HEADER` de formato
+              `IMAGE`/`VIDEO`/`DOCUMENT` exige `example.header_handle`, com um exemplo de componente
+              completo, apontando para a secao nova.
+            - marque as duas como *assumido / medido contra a Meta em ___* seguindo a convencao da
+              secao 4 do proprio contrato ("How this document marks what is measured and what is
+              assumed"): **o exemplo real medido contra a Meta so' existe depois do deploy** — deixe
+              a marca de "ainda nao medido" onde couber; o planner troca depois da medicao.
+            - `grep -rn "v1/media" docs/MANUAL-DO-INTEGRADOR*.md README*.md` — se algum lista as
+              rotas, acrescente a nova na mesma tabela.
+         🔴 NAO re-delegue. NAO toque em `docs/TASKS.md` alem de remover esta tarefa. NAO bumpe
+         `VERSION` (o planner bumpa no release). Commits so' com `git commit <caminhos>`.
+Verify:  CGO_ENABLED=0 go build ./... && go test ./... && go vet ./... && gofmt -l cmd internal
+         (repo inteiro, nao so' o pacote). No relatorio: (1) a saida do portao de isolamento
+         FALHANDO antes da linha nova e passando depois; (2) o nome de cada teste novo e o que ele
+         prova; (3) o `curl` sintetico que ficou no contrato. Nao ha como medir contra a Meta real
+         nesta tarefa — diga isso, nao finja.
+
 ## [ ] T-240  The `GET /v1/estado` blocks the contract still names in Portuguese
 After:   T-239
 Why:     A T-237 consertou quatro familias do `docs/CONTRATO-CONSUMIDOR.md` e, no caminho, achou uma
