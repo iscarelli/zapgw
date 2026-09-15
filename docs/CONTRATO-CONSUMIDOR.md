@@ -5129,7 +5129,7 @@ answer".
 - **`de_cru` is what Meta sent; `de_canonico` went through the ninth-digit canonization.** Always
   compare by the canonical one — Meta does not guarantee the same spelling you registered.
 - **The gateway retains your counterparties' phone numbers for up to 30 days, in the clear (owner's
-  decision, 2026-07-30).** It is the internal transit log (`zapgw transito` / `zapgw log`, with no HTTP
+  decision, 2026-07-30).** It is the internal transit log (`zapgw transit` / `zapgw log`, with no HTTP
   route — you have no access to it), used only to answer "did this message pass through here?" when a
   specific message must be identified. The deadline is `ZAPGW_TTL_TRANSITO_DIAS` (default 30 days).
   **What is stored:** the timestamp, the instance, the counterparty's phone number, the direction, the

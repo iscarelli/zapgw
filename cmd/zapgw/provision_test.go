@@ -2529,12 +2529,15 @@ func TestDispatchRefusesRemovedSubVerbs(t *testing.T) {
 }
 
 // TestDispatchRefusesRemovedTopLevelVerbs is T-220's Verify, grown by
-// T-245 to also cover "estado": the six Portuguese top-level verbs
-// (provisionar, fumaca, diagnostico, instancia, consumidor, estado) no
-// longer dispatch to anything -- "silently ignored" is the failure mode
-// this task exists to close, so each one has to come back as an ERROR
-// that NAMES the English verb to use instead, not a generic "unknown
-// subcommand". T-245 also closed the sub-verbs one level below -- see
+// T-245 to also cover "estado" and by T-246 to close the last three
+// holdouts (transito, perdidas, versao -- the only three top-level verbs
+// that had NEVER had an English spelling at all): the nine Portuguese
+// top-level verbs (provisionar, fumaca, diagnostico, instancia,
+// consumidor, estado, transito, perdidas, versao) no longer dispatch to
+// anything -- "silently ignored" is the failure mode this task exists to
+// close, so each one has to come back as an ERROR that NAMES the English
+// verb to use instead, not a generic "unknown subcommand". T-245 also
+// closed the sub-verbs one level below -- see
 // TestDispatchRefusesRemovedSubVerbs above.
 func TestDispatchRefusesRemovedTopLevelVerbs(t *testing.T) {
 	env := fakeEnvironment(testEnvironment(t))
@@ -2545,6 +2548,9 @@ func TestDispatchRefusesRemovedTopLevelVerbs(t *testing.T) {
 		{"instancia", "instance"},
 		{"consumidor", "consumer"},
 		{"estado", "state"},
+		{"transito", "transit"},
+		{"perdidas", "lost"},
+		{"versao", "version"},
 	}
 	for _, c := range cases {
 		t.Run(c.oldVerb, func(t *testing.T) {

@@ -13,6 +13,12 @@ One line per version shipped, in the same commit as the bump. The entry states t
   correct as-is (request-body/query-param aliases, `operacao`, `hoje`, `definido_em`, the `dia`/
   `serie_7_dias` deprecation table, and the still-Portuguese `lideranca` block name, which stays a
   pending code-side item). _Completed 2026-09-15 04:22._
+- **Three top-level CLI verbs never got an English spelling: `transito`, `perdidas`, `versao`**
+  (T-246) — added `transit`/`lost`/`version` as the live English verbs (dispatching to the
+  existing `transit.go`/`lost.go`/`versionCommand`), retired the three Portuguese spellings the
+  same way T-220/T-245 retired the rest (`oldVerbRefused`, exit != 0 naming the English verb),
+  and updated every comment, error message and doc reference that named the old verbs; the
+  `/v1/health` and `/v1/estado` JSON (`json:"versao"`) is untouched. _Completed 2026-09-15 04:36._
 
 ## v0.67.0 — 2026-09-15
 

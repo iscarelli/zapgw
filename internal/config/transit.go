@@ -36,7 +36,7 @@
 // is ONE-WAY, there is no way to recover the phone number from the hash
 // T-091 wrote. NOT A BUG — it's the known price of the previous guard (see
 // the "transito.contraparte-e-wamid-em-claro" migration in store.go).
-// `zapgw transito`/`zapgw log` print "—" on those rows (cmd/zapgw/log.go,
+// `zapgw transit`/`zapgw log` print "—" on those rows (cmd/zapgw/log.go,
 // printLogRows), never an empty value that would look like "no sender".
 //
 // FIELDS, AND NOTHING ELSE (the list is the guarantee, not loose
@@ -259,7 +259,7 @@ func (s *Store) PurgeTransit(before time.Time) (int, error) {
 	return int(n), nil
 }
 
-// TransitLine is what `zapgw transito` shows — the search already
+// TransitLine is what `zapgw transit` shows — the search already
 // requires a number or a key IN HAND from whoever asks
 // (cmd/zapgw/transit.go), so echoing the counterpart back adds no
 // information; `zapgw log` (LogLine, further below) is what shows the

@@ -22,7 +22,7 @@ import (
 	"github.com/iscarelli/zapgw/internal/config"
 )
 
-// --- databasePath (shared by openStore and `zapgw perdidas`) --------------
+// --- databasePath (shared by openStore and `zapgw lost`) -------------------
 
 // TestDatabasePathRefusesOldName is T-244's Verify: (a) only the new name
 // -> read; (b) only the old one -> refused, naming the new name, value not

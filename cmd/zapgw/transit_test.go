@@ -15,12 +15,12 @@ func TestTransitCommandRequiresInstanceAndOneOfTheTwoIndexes(t *testing.T) {
 	env := fakeEnvironment(vars)
 
 	cases := [][]string{
-		{"transito"},
-		{"transito", "--telefone", "5511999990000"},
-		{"transito", "--instancia", "lojinha"},
+		{"transit"},
+		{"transit", "--telefone", "5511999990000"},
+		{"transit", "--instancia", "lojinha"},
 		// BOTH together are also rejected: they are different indexes, and
 		// accepting both would force deciding which prevails.
-		{"transito", "--instancia", "lojinha", "--telefone", "5511999990000", "--chave", "k1"},
+		{"transit", "--instancia", "lojinha", "--telefone", "5511999990000", "--chave", "k1"},
 	}
 	for _, args := range cases {
 		var out bytes.Buffer
@@ -33,7 +33,7 @@ func TestTransitCommandRequiresInstanceAndOneOfTheTwoIndexes(t *testing.T) {
 // TestTransitCommandFindsTheMessageAndDoesNOTLeakThePhone is the CLI end-to-end:
 // a row recorded with the counterparty in PLAIN TEXT (T-094) shows up in
 // the search under ANY spelling of the SAME number (via
-// meta.LastEightDigits), and the `zapgw transito` screen still does not
+// meta.LastEightDigits), and the `zapgw transit` screen still does not
 // print the phone number — not because it is a secret (the owner's
 // decision, 2026-07-30: it is not), but because whoever calls `--telefone`
 // already has the number IN HAND, and echoing it back adds no information
@@ -67,7 +67,7 @@ func TestTransitCommandFindsTheMessageAndDoesNOTLeakThePhone(t *testing.T) {
 	// typing the number the way they know it, not the way Meta recorded
 	// it.
 	var out bytes.Buffer
-	if err := dispatch([]string{"transito", "--instancia", "lojinha", "--telefone", "5511999990000"},
+	if err := dispatch([]string{"transit", "--instancia", "lojinha", "--telefone", "5511999990000"},
 		&out, env); err != nil {
 		t.Fatalf("dispatch: %v", err)
 	}
@@ -78,7 +78,7 @@ func TestTransitCommandFindsTheMessageAndDoesNOTLeakThePhone(t *testing.T) {
 		t.Fatalf("the output did not carry the expected line:\n%s", text)
 	}
 	if strings.Contains(text, numberWithoutNinth) || strings.Contains(text, "5511999990000") {
-		t.Fatalf("`zapgw transito`'s output leaked the phone number:\n%s", text)
+		t.Fatalf("`zapgw transit`'s output leaked the phone number:\n%s", text)
 	}
 }
 
@@ -113,7 +113,7 @@ func TestTransitCommandFindsTheSendByKeyAndDoesNOTLeakTheIdempotencyKey(t *testi
 	}
 
 	var out bytes.Buffer
-	if err := dispatch([]string{"transito", "--instancia", "lojinha", "--chave", sentinelKey},
+	if err := dispatch([]string{"transit", "--instancia", "lojinha", "--chave", sentinelKey},
 		&out, env); err != nil {
 		t.Fatalf("dispatch: %v", err)
 	}
@@ -131,7 +131,7 @@ func TestTransitCommandFindsTheSendByKeyAndDoesNOTLeakTheIdempotencyKey(t *testi
 }
 
 // TestTransitCommandPrintsTheWamidOrTheDash is Verify (a) of T-128: the
-// `zapgw transito` screen gets the `wamid` column — the missing piece for
+// `zapgw transit` screen gets the `wamid` column — the missing piece for
 // the two `ALARME ... PRECISA DE GENTE` in internal/outbound/handler.go,
 // which tell you to record the wa_message_id by hand without saying where
 // to get it from. Records TWO rows in the SAME search — one outbound WITH a
@@ -181,7 +181,7 @@ func TestTransitCommandPrintsTheWamidOrTheDash(t *testing.T) {
 	}
 
 	var outBuf bytes.Buffer
-	if err := dispatch([]string{"transito", "--instancia", "lojinha", "--telefone", number},
+	if err := dispatch([]string{"transit", "--instancia", "lojinha", "--telefone", number},
 		&outBuf, env); err != nil {
 		t.Fatalf("dispatch: %v", err)
 	}
@@ -222,7 +222,7 @@ func TestTransitCommandWithoutHitsIsNotAnError(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	if err := dispatch([]string{"transito", "--instancia", "lojinha", "--telefone", "5511999990000"},
+	if err := dispatch([]string{"transit", "--instancia", "lojinha", "--telefone", "5511999990000"},
 		&out, env); err != nil {
 		t.Fatalf("dispatch: %v — searching a number that never spoke is not an error", err)
 	}

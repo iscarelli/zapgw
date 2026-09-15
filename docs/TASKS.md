@@ -392,24 +392,6 @@ instancias foram rotacionadas. Duas licoes que custaram na hora e valem alem des
 
 > A fila do periodo privado esta em `iscarelli/zapgw-dev`, congelada. Tarefa nova nasce aqui.
 
-## [ ] T-246  Three top-level CLI verbs never got an English spelling: `transito`, `perdidas`, `versao`
-Why:     A T-220/T-245 aposentaram todo verbo que TINHA par ingles. Sobraram tres sem par
-         (`cmd/zapgw/provision.go:116,121,131`): `transito`, `perdidas`, `versao` — a CLI de um
-         projeto publico em ingles ainda responde a tres verbos portugueses, e so' a eles. Achado ao
-         conferir por que `/v1/health` responde `"versao"` (isso e' contrato HTTP, fica; a CLI nao).
-Files:   cmd/zapgw/provision.go, cmd/zapgw/env_aliases.go (oldVerbRefused), cmd/zapgw/*_test.go,
-         cmd/zapgw/menu.go (se enumerar), docs/*.md que mostrem os tres, docs/CHANGELOG.md
-Do:      Os nomes ingleses seguem os ARQUIVOS que ja existem: `transit` (`transit.go`), `lost`
-         (`lost.go`), `version`. Mesmo desenho da T-245: o verbo ingles despacha; o portugues cai
-         em `oldVerbRefused(old, new)` (exit != 0 nomeando o ingles). Nomes de flag-set idem.
-         Mensagens que enumeram verbos so' com o ingles. NAO toque no JSON de `/v1/health`
-         (`cmd/zapgw/main.go:51`, `deploy/deploy.sh:183` grepa `"versao"` — portao T-235).
-Verify:  CGO_ENABLED=0 go build ./... && go test ./... && go vet ./... && gofmt -l cmd internal
-         `grep -n 'case "\(transito\|perdidas\|versao\)"' cmd/zapgw/provision.go` so' nas linhas
-         que chamam `oldVerbRefused`. Prova manual: `./zapgw versao` sai != 0 nomeando `version`;
-         `./zapgw version` imprime a versao.
-After:   T-240
-
 ## [ ] T-247  The `GET /v1/estado` top-level scalars, the counters vocabulary and the health `verdict` in the contract are still Portuguese
 Why:     A T-240 (d75b02a) consertou os NOMES DOS BLOCOS e os quatro vizinhos, e no caminho mediu uma
          familia que nao estava na tabela dela: o exemplo executado do `GET /v1/estado` e a prosa em

@@ -2401,7 +2401,7 @@ positions between credentials was proven impossible to slip through.
 
 **A test that only looks at the DEFAULT value passes green even with the INJECTION mechanism entirely broken —
 because the success default and the bug default are the SAME value.** T-025 injects the binary's version with
-`-ldflags "-X main.versao=…"`; without the flag, the value is `"desenvolvimento"` on both paths (`zapgw versao` and
+`-ldflags "-X main.versao=…"`; without the flag, the value is `"desenvolvimento"` on both paths (`zapgw version` and
 `GET /v1/health`). A handler that **forgot** to read the `versao` variable in `/v1/health` and returned
 `"desenvolvimento"` by hand would keep passing both tests that only check the behaviour without `-ldflags` — the two
 agree with the hardcoded value by accident, not because they prove the variable is read. Only a test that **compiles

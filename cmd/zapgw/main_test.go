@@ -266,14 +266,14 @@ func TestHealthWithoutInjectionReturnsDevelopmentVersion(t *testing.T) {
 	}
 }
 
-// (a) the same, on the `zapgw versao` subcommand side.
+// (a) the same, on the `zapgw version` subcommand side.
 func TestVersionCommandWithoutInjectionPrintsDevelopment(t *testing.T) {
 	var out strings.Builder
-	if err := dispatch([]string{"versao"}, &out, os.Getenv); err != nil {
-		t.Fatalf("dispatch([]string{\"versao\"}, ...): %v", err)
+	if err := dispatch([]string{"version"}, &out, os.Getenv); err != nil {
+		t.Fatalf("dispatch([]string{\"version\"}, ...): %v", err)
 	}
 	if got := strings.TrimSpace(out.String()); got != "desenvolvimento" {
-		t.Fatalf(`zapgw versao = %q, quero "desenvolvimento"`, got)
+		t.Fatalf(`zapgw version = %q, quero "desenvolvimento"`, got)
 	}
 }
 
@@ -374,19 +374,19 @@ func startServerAndGetHealth(t *testing.T, bin string) []byte {
 }
 
 // (b) WITH `-ldflags "-X main.version=9.9.9"`, BOTH paths that depend on
-// the version return 9.9.9: `zapgw versao` and `GET /v1/health`. This is
+// the version return 9.9.9: `zapgw version` and `GET /v1/health`. This is
 // the proof T-025 explicitly asks for — the two above prove the default,
 // this one proves the INJECTION.
 func TestVersionInjectedByLdflagsPropagatesToBothPaths(t *testing.T) {
 	const injectedVersion = "9.9.9"
 	bin := buildWithVersion(t, injectedVersion)
 
-	out, err := exec.Command(bin, "versao").Output()
+	out, err := exec.Command(bin, "version").Output()
 	if err != nil {
-		t.Fatalf("%s versao: %v", bin, err)
+		t.Fatalf("%s version: %v", bin, err)
 	}
 	if got := strings.TrimSpace(string(out)); got != injectedVersion {
-		t.Fatalf("%s versao = %q, want %q", bin, got, injectedVersion)
+		t.Fatalf("%s version = %q, want %q", bin, got, injectedVersion)
 	}
 
 	body := startServerAndGetHealth(t, bin)

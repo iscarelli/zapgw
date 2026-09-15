@@ -5073,7 +5073,7 @@ respondeu".
 - **`de_cru` é o que a Meta mandou; `de_canonico` passou pela canonização do 9º dígito.** Compare
   sempre pelo canônico — a Meta não garante a mesma grafia que você cadastrou.
 - **O gateway retém o telefone das suas contrapartes por até 30 dias, em claro (decisão do dono,
-  2026-07-30).** É o log de trânsito interno (`zapgw transito` / `zapgw log`, sem rota HTTP — você
+  2026-07-30).** É o log de trânsito interno (`zapgw transit` / `zapgw log`, sem rota HTTP — você
   não tem acesso a ele), usado só para responder "esta mensagem passou por aqui?" quando é preciso
   identificar uma mensagem específica. O prazo é `ZAPGW_TTL_TRANSITO_DIAS` (default 30 dias).
   **O que fica gravado:** carimbo, instância, telefone da contraparte, direção, tipo do evento,

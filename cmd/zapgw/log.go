@@ -1,8 +1,8 @@
 // `zapgw log` — the last 200 transit rows, then it keeps printing what
 // arrives, until the operator quits with Ctrl-C (T-093).
 //
-// WHY THIS EXISTS, and why it is different from `zapgw transito`:
-// `transito` answers "did this message pass through here?" — a question
+// WHY THIS EXISTS, and why it is different from `zapgw transit`:
+// `transit` answers "did this message pass through here?" — a question
 // with a number or a key in hand. The normal question from whoever opens a
 // log is different: "what's going through?" — no number at all, just
 // wanting to see the traffic. The owner's request, 2026-07-30, in these

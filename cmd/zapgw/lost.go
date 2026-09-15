@@ -1,4 +1,4 @@
-// `zapgw perdidas` — the failover post-mortem: what the node that fell had
+// `zapgw lost` — the failover post-mortem: what the node that fell had
 // and never replicated.
 //
 // WHEN THIS IS USED: right after a failover of the high-availability pair.
@@ -23,7 +23,7 @@ import (
 )
 
 func lostCommand(args []string, out io.Writer, env environment) error {
-	fs := flag.NewFlagSet("perdidas", flag.ContinueOnError)
+	fs := flag.NewFlagSet("lost", flag.ContinueOnError)
 	fs.SetOutput(out)
 	old := fs.String("antigo", "", "database of the node that FELL, kept aside by the supervisor (required)")
 	current := fs.String("atual", "", "database in use now; empty uses the same one the gateway would open")
@@ -31,7 +31,7 @@ func lostCommand(args []string, out io.Writer, env environment) error {
 		return err
 	}
 	if *old == "" {
-		return fmt.Errorf("zapgw: perdidas: provide --antigo <path to the fallen node's database>.\n" +
+		return fmt.Errorf("zapgw: lost: provide --antigo <path to the fallen node's database>.\n" +
 			"  It is the copy the supervisor keeps BEFORE restoring. If it does not exist,\n" +
 			"  no forensics is possible — and that is exactly what the instruction to keep the file avoids")
 	}
@@ -46,7 +46,7 @@ func lostCommand(args []string, out io.Writer, env environment) error {
 
 	c, err := config.CompareFailover(*old, currentPath)
 	if err != nil {
-		return fmt.Errorf("zapgw: perdidas: %w", err)
+		return fmt.Errorf("zapgw: lost: %w", err)
 	}
 
 	fmt.Fprintf(out, "comparing\n  old:     %s (%d reservations)\n  current: %s (%d reservations)\n\n",
