@@ -6,6 +6,29 @@
 > Escrito ao fim de 2026-08-30, o dia em que o repositorio virou publico. Bloco de retomada
 > mentindo e' pior que bloco nenhum: e' o primeiro texto que a proxima sessao le.
 
+### 📌 2026-09-15 05:05 — `v0.68.0` EM PRODUCAO (timer das 04:04 retomou a fila). Fila: T-248 espera o dono; T-231 precisa ser FATIADA antes de despachar.
+
+**Medido pelo deploy:** `HEALTH OK: {"ok":true,"versao":"0.68.0"}` + `VERSION MATCHES: 0.68.0` as
+~05:00. `main` = `57103e4`, tag `v0.68.0`, no `origin`. Verify verde em cada merge. No CT, depois do
+swap: `zapgw instance list` ok e **nenhum** script (`/root/*.sh`, `/etc/cron.d/*`) usa verbo portugues.
+
+- **Quatro tarefas nesta versao:** T-240, T-247, T-249 (contrato passa a nomear as chaves que o codigo
+  emite — `GET /v1/estado`, `/v1/bloqueios`, health `verdict`, `/v1/cadastro`/`pausa`/`fumaca`) e
+  T-246 (`transito`/`perdidas`/`versao` -> `transit`/`lost`/`version`; a CLI nao tem mais verbo
+  portugues). Nenhuma rota HTTP mudou: NAO foi pedida validacao nova ao consumidor.
+- 🙋 **T-248 — DECISAO DO DONO.** Chaves de RESPOSTA ainda em portugues entre irmas inglesas, medidas
+  pelas tres tarefas de contrato: `hoje`, `definido_em`, `cursor_antes`/`cursor_depois`, `lideranca`
+  (bloco; dentro dele `armada`/`titular`), `campo`/`cadastrado`/`primeira_insercao_em`/`fecha_em`/
+  `proximo_passo` (cadastro), `destino`/`ja_estava_ativa`/`ativa_desde` (fumaca), literais
+  `medicao`/`sonda_externa`, e os VALORES de `state` (`ativa`/`pausada`) e as frases de
+  `instruction`. Renomear quebra quem le. Recomendacao: (1) de uma vez, bump MINOR, aviso no canal
+  ANTES do deploy com a tabela velho->novo. Escrever a decisao na spec antes de despachar.
+- 🔴 **T-231 NAO foi despachada de proposito:** 14 arquivos e ~1.200 ocorrencias numa tarefa so'
+  convida a subdivisao (regra 2 do trabalho concorrente). Fatiar em tarefas de UM arquivo, na ordem
+  do custo (CONTRATO-CONSUMIDOR primeiro: e' o que o consumidor le). O WIP `8d3fd43`
+  (`INVENTARIO-STRINGS.md`, worktree `agent-af905375f3c5ebcb1`) e' afirmacao nao revisada; a fatia
+  desse arquivo deve REBASEAR e revisar, nao mesclar as cegas.
+
 ### 📌 2026-09-15 03:40 — `v0.67.0` EM PRODUCAO: nomes velhos de env e verbos portugueses da CLI RECUSAM. Aguarda validacao do consumidor.
 
 **Medido pelo deploy, nao afirmado:** `HEALTH OK: {"ok":true,"versao":"0.67.0"}` +
