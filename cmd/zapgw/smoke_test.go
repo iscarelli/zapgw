@@ -79,7 +79,7 @@ func smokeScenario(t *testing.T, g *fakeGraph) map[string]string {
 }
 
 func smokeArgs() []string {
-	return []string{"fumaca", "--slug", "lojinha", "--destino", "5511999990000"}
+	return []string{"smoke", "--slug", "lojinha", "--destino", "5511999990000"}
 }
 
 func TestSmokeActivatesTheInstanceOnlyAFTERSendingAMessage(t *testing.T) {
@@ -164,7 +164,7 @@ func TestSmokeAbortsWhenTheInstanceDoesNotExist(t *testing.T) {
 	vars := smokeScenario(t, g)
 
 	var out bytes.Buffer
-	err := dispatch([]string{"fumaca", "--slug", "nao-existe", "--destino", "5511999990000"},
+	err := dispatch([]string{"smoke", "--slug", "nao-existe", "--destino", "5511999990000"},
 		&out, fakeEnvironment(vars))
 	if err == nil {
 		t.Fatal("the command accepted a nonexistent slug")
@@ -182,7 +182,7 @@ func TestSmokeRequiresDestinationWithNoDEFAULT(t *testing.T) {
 	vars := smokeScenario(t, g)
 
 	var out bytes.Buffer
-	if err := dispatch([]string{"fumaca", "--slug", "lojinha"}, &out, fakeEnvironment(vars)); err == nil {
+	if err := dispatch([]string{"smoke", "--slug", "lojinha"}, &out, fakeEnvironment(vars)); err == nil {
 		t.Fatal("the command accepted running with no --destino")
 	}
 	if g.posts.Load() != 0 {

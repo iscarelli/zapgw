@@ -10,9 +10,14 @@
 // 🔴 WHY THIS LAYER IS THE DANGEROUS ONE: a rename here does NOT reach
 // /etc/zapgw/env, which lives on the production machine, outside this
 // repository. Renaming with no alias would make the gateway boot on the
-// DEFAULT, in SILENCE. Every pair below is therefore ADDITIVE ONLY — the OLD
-// (Portuguese) name is never removed; that is a separate, owner-only
-// decision (docs/TASKS.md, T-214's Do item 4).
+// DEFAULT, in SILENCE. Every ZAPGW_* pair below is therefore ADDITIVE
+// ONLY — the OLD (Portuguese) name is never removed here (T-244 later made
+// it a hard refusal instead, in internal/config/env_alias.go). The CLI
+// verbs are a separate lifecycle: five of them (provisionar, fumaca,
+// diagnostico, instancia, consumidor) had their Portuguese spelling
+// REMOVED by T-220, once every in-repo caller was migrated — see
+// oldVerbRefused below. The rest (the sub-verbs, and "estado") are still
+// additive, per T-218.
 package main
 
 import (
@@ -82,4 +87,20 @@ func databasePath(env environment) (path string, err error) {
 // there is no separate startup phase to defer to.
 func warnOldVerb(out io.Writer, oldVerb, newVerb string) {
 	fmt.Fprintf(out, "zapgw: subcommand %q is deprecated -- use %q instead (T-214)\n", oldVerb, newVerb)
+}
+
+// oldVerbRefused is T-220's counterpart to warnOldVerb: for the five
+// top-level verbs T-220 retired (provisionar, fumaca, diagnostico,
+// instancia, consumidor), the Portuguese spelling no longer dispatches to
+// anything -- it REFUSES, naming the English verb to use instead, the same
+// "refuse, don't silently degrade" shape config.EnvRefusingOld already uses
+// for ZAPGW_* (T-244). "Silently ignored" is the failure mode this guards
+// against: an unknown-subcommand error that did not name the new verb would
+// leave whoever typed the old one guessing.
+//
+// The sub-verbs (rotacionar, listar, mostrar, ...) and the "estado" verb
+// still use warnOldVerb above, unchanged -- that migration is a separate,
+// still-open decision (T-218), out of T-220's sweep.
+func oldVerbRefused(oldVerb, newVerb string) error {
+	return fmt.Errorf("zapgw: subcommand %q no longer exists -- use %q instead", oldVerb, newVerb)
 }

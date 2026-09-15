@@ -44,7 +44,7 @@ type State struct {
 	Instance string `json:"instance"`
 	// Type is config.TypeWhatsApp or config.TypeInstagram (T-097/T-098), always
 	// present (T-107). Until now this route had the SAME blindness that T-103
-	// fixed in `zapgw instancia mostrar`/`listar`: without this field the
+	// fixed in `zapgw instance mostrar`/`listar`: without this field the
 	// consumer would have to DEDUCE the type from the absence of other blocks
 	// (instagram_token not_applicable, number_at_meta not_applicable...), which is
 	// guessing, never reading.
@@ -60,7 +60,7 @@ type State struct {
 	// route is the one the consumer reads, and it needs to be able to confirm
 	// the right account.
 	IgID string `json:"ig_id"`
-	// State is the SAME word from `zapgw instancia listar` ("ativa"/"pausada"),
+	// State is the SAME word from `zapgw instance listar` ("ativa"/"pausada"),
 	// via the SAME function (config.StateOf): two words for the same state
 	// would force whoever operates it to translate between their screen and ours.
 	State string `json:"state"`
@@ -587,7 +587,7 @@ type IGRenewalFailureReader interface {
 // would be a lie wearing a fact's face — and it would land exactly on the
 // value whoever reads it uses to NOT alarm. The caller distinguishes
 // config.ErrInstanceNotFound (404 on the route, message with
-// `zapgw instancia listar` on the CLI) from the rest (503 / error).
+// `zapgw instance listar` on the CLI) from the rest (503 / error).
 func BuildState(store *config.Store, watchdog VerdictReader, renewer IGRenewalFailureReader, ingress IngressSource, reach *ExternalProbe, leadership *Leadership, version, slug string, now time.Time) (State, error) {
 	return BuildStateWithSeries(store, watchdog, renewer, ingress, reach, leadership, version, slug, now, config.ShortSeriesDays)
 }

@@ -77,7 +77,7 @@ instance created and removed on the same day:
 **What this does NOT prove, and must not be read as if it did: Meta actually delivering on the second
 instance's path.** The traffic above originated from us, signing with a secret we chose ourselves —
 it is the same binary and the same code, not the same origin. That proof is about the real network
-and lives in gate 0.4 (`zapgw fumaca` of the real instance), not here.
+and lives in gate 0.4 (`zapgw smoke` of the real instance), not here.
 
 ### 0.2 — Is your deduplication ATOMIC? (consumer side — **blocking**)
 
@@ -126,7 +126,7 @@ falls apart.
 
 ### 0.4 — The instance exists, is paused, and the smoke test passed
 
-An instance is born **paused** (`ativo=0`) on purpose. Only `zapgw fumaca` activates it, and it sends
+An instance is born **paused** (`ativo=0`) on purpose. Only `zapgw smoke` activates it, and it sends
 a real message — which proves the token, the number and connectivity **before** any consumer depends
 on it.
 
@@ -195,7 +195,7 @@ Three things that bite on the first integration:
 ## Phase 2 — RECEIVING. The only step with no immediate way back.
 
 ```
-1. register the callback_url on the instance      ← zapgw instancia rotacionar --callback-url
+1. register the callback_url on the instance      ← zapgw instance rotacionar --callback-url
 2. rotate the real app_secret in the gateway      ← needs the value from YOUR App
 3. point YOUR App's Callback URL here             ← IRREVERSIBLE the instant you save
 4. test message from the handset, full cycle      ← the proof

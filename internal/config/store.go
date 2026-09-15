@@ -136,7 +136,7 @@ func ValidateInstanceType(typ, wabaID, phoneNumberID, displayNumber, igID string
 // 5b in internal/inbound/handler.go (removing the `waba == ""`), the suite
 // passed GREEN. The real defense there wasn't the type nor the comparison —
 // it was the fact that EVERY instance had waba_id filled in. And that was
-// true of TODAY'S PATH (at the time, `zapgw provisionar instancia` required
+// true of TODAY'S PATH (at the time, `zapgw provision instancia` required
 // both flags), not a guarantee: boundary validation covered slug,
 // callback_url and bundle_ca, and left out precisely the two identifiers.
 // Validating three fields and not the other two is this project's
@@ -154,7 +154,7 @@ func ValidateInstanceType(typ, wabaID, phoneNumberID, displayNumber, igID string
 //
 // AND THE INCOMPLETE INSTANCE ISN'T BORN DEAD BECAUSE OF THIS, which was
 // T-074's fear: it's born PAUSED (CreateInstance forces ativo = 0) and only
-// `zapgw fumaca` activates it, after a message has actually gone out — which
+// `zapgw smoke` activates it, after a message has actually gone out — which
 // is impossible without phone_number_id and token_envio registered. In
 // other words, an unregistered instance doesn't refuse traffic with an
 // ALARM: it responds 503 PAUSED, which is the state it actually has, and
@@ -597,7 +597,7 @@ var migrations = []migration{
 		// instance — a rare case here, because `tipo`/`ig_id` were born
 		// TOGETHER in the previous migration (T-097) and the ONLY entry
 		// point for tipo=instagram is CLI CREATION
-		// (`zapgw provisionar instancia --tipo instagram`), always manual.
+		// (`zapgw provision instancia --tipo instagram`), always manual.
 		// Even so the backfill runs on ALL rows (not just tipo=instagram),
 		// for the usual reason: a `WHERE tipo = ...` condition would
 		// duplicate the same question ValidateInstanceType already
@@ -980,7 +980,7 @@ const RegistrationWindow = 24 * time.Hour
 //
 // With no channel to ask, the error message IS the support: whoever wraps
 // this error has to say WHY it closed (when it opened, when it closed) and
-// WHAT TO DO (talk to the owner, who reopens it with `zapgw instancia
+// WHAT TO DO (talk to the owner, who reopens it with `zapgw instance
 // reabrir-cadastro`).
 var ErrRegistrationWindowClosed = errors.New("config: registration window closed")
 
@@ -1008,7 +1008,7 @@ var ErrIncompleteRegistration = errors.New("config: incomplete registration")
 // them change `segredo_entrega` through here would swap the HMAC key of a
 // delivery in progress without the other side knowing; changing
 // `verify_token` would break webhook re-verification with no immediate
-// symptom. Both swaps exist, and they are `zapgw instancia rotacionar`, on
+// symptom. Both swaps exist, and they are `zapgw instance rotacionar`, on
 // the owner's side.
 type MetaRegistration struct {
 	WabaID        string // identifier, NOT a secret
@@ -1124,7 +1124,7 @@ func WindowFrom(stamp string) Window {
 // nothing; SENDING proves. If registration activated it, a wrong
 // credential would turn into an "active" instance that refuses everything
 // — the defect T-074 found. The only path to `ativo = 1` remains
-// ActivateInstance, called only by `zapgw fumaca`.
+// ActivateInstance, called only by `zapgw smoke`.
 //
 // EVERYTHING IN A SINGLE TRANSACTION because the window is read and written
 // in the same movement: between a loose "is it still open?" and the
@@ -1555,7 +1555,7 @@ type RowsDeleted struct {
 // RemoveInstance deletes the instance and EVERY row that belongs to it,
 // in a single transaction.
 //
-// WHY THIS EXISTS (T-048): until 2026-07-28 there was no `zapgw instancia
+// WHY THIS EXISTS (T-048): until 2026-07-28 there was no `zapgw instance
 // remover`, and deleting a lab instance meant a `DELETE` typed by hand into
 // the PRODUCTION SQLite. The cost isn't typing SQL — it's WHERE it's
 // typed: a `DELETE ... WHERE slug = '…'` with the wrong slug, or without
@@ -1717,7 +1717,7 @@ type InstanceSummary struct {
 	// only on Instance, which carries the six fields IN THE CLEAR) for
 	// the SAME reason as Type: it's an IDENTIFIER, not a secret, and a
 	// secret-free read command has to be able to show it (T-103 — until
-	// then `zapgw instancia mostrar` had no way to confirm the stored
+	// then `zapgw instance mostrar` had no way to confirm the stored
 	// value, not even after fixing it).
 	IgID string
 	// TokenSetAt and TokenRenewedAt answer, without decrypting

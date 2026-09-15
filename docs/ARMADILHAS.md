@@ -231,7 +231,7 @@ lines still come out with slug, name and language, so what is lost is exactly th
 unanswered in production, *"foi timeout ou transporte?"*.
 
 **The EIGHTH way, and it is the cheapest of all: somebody OPERATING the system compared a number on the
-screen with a fact they had just witnessed.** On 2026-07-28, minutes after `zapgw fumaca` activated
+screen with a fact they had just witnessed.** On 2026-07-28, minutes after `zapgw smoke` activated
 `tenant-two`, the test message went out (wamid returned, and the owner confirmed **on the handset** that it
 arrived) and the next `zapgw estado` said `enviadas hoje 0`. There was no review, no new traffic and no
 test: there was a person with the message on their phone looking at a counter saying it did not exist.
@@ -309,7 +309,7 @@ process — "the same function" does not guarantee "the same data available", an
 precisely the one that only exists in memory.**
 
 **The same pitfall in secret GENERATION: generating silently is RIGHT for two fields and WRONG for the
-other two, and the failure mode is the ABSENCE of an error.** `zapgw provisionar instancia` generated the
+other two, and the failure mode is the ABSENCE of an error.** `zapgw provision instancia` generated the
 instance's four secrets without printing any of them — a single policy, applied uniformly, and wrong on
 half of them for exactly that reason. Two of them exist **only inside the gateway** (`app_secret`,
 `token_envio`) and printing them is gratuitous exposure. The other two need to exist **outside as well**:
@@ -335,7 +335,7 @@ therefore be generated silently. That was true while the Meta account belonged t
 delivered the model in which the Meta account belongs to the **consumer** — and on that path the two stopped
 being ours: they have one right value, which lives in the consumer's panel, and any other is garbage.
 Generating them started to **produce a false statement on the only reading surface that exists**: nothing is
-decrypted in this project (T-020), so `zapgw instancia mostrar` and the registration response say only
+decrypted in this project (T-020), so `zapgw instance mostrar` and the registration response say only
 `cadastrado: sim|não` — and with generation they said `app_secret=sim` about a secret the consumer's Meta had
 never seen. The question the owner and the consumer **can** ask ("has he registered it yet?") went
 unanswered, and the wrong answer was the reassuring one.
@@ -343,7 +343,7 @@ unanswered, and the wrong answer was the reassuring one.
 *How it showed up, and it is the file's fifth way (the author notices the asymmetry they have just created):
 it was not review nor traffic — it was an `instancia mostrar` test, written in T-079 itself, failing on
 `app_secret=nao` and showing `app_secret=sim` on a freshly created instance nobody had registered. **Cost:
-zero in production** — the instance is born PAUSED and `zapgw fumaca` is the only path to `ativo = 1`, and it
+zero in production** — the instance is born PAUSED and `zapgw smoke` is the only path to `ativo = 1`, and it
 requires a message that actually went out, impossible with a generated `token_envio`; the damage would be to
 DIAGNOSIS, not to traffic. Fix in the same commit: `cmd/zapgw/provision.go` marks the two as
 `fromConsumerMeta` and **does not generate them** when the instance is born without identification (the
@@ -367,7 +367,7 @@ command. **The consumer token had none** — and "there is no command" during an
 `UPDATE`, in production, with the clock running. *Real cost: the rotation went through, but the two wrong
 ways out that haste offers had to be refused in real time — creating `<nome>-2` (the exposed token stays
 valid) and deleting/recreating (the links disappear, and the consumer takes a `403` nobody can explain). Fix
-(T-055): `zapgw consumidor rotacionar` / `listar`, and the two wrong ways out became the two mandatory
+(T-055): `zapgw consumer rotacionar` / `listar`, and the two wrong ways out became the two mandatory
 mutations.* **The question that generalizes, and it fits every surface: for everything this system knows how
 to CREATE, does it know how to UNDO? And the answer has to be given before the incident, because during it
 there is no time to discover that the answer is no.**
@@ -1208,7 +1208,7 @@ that is the finding that counts.
 `"" != "WABA1"` refuses anyway. The real defence was not the `==""`, it was *"every instance has `waba_id`
 filled in"* — and that is true of **today's path**, not of the type: `config.Store.CreateInstance` validates
 slug, `callback_url` and `bundle_ca`, and does **not** validate `waba_id` (true until T-074, which closed it —
-see the following entry); the one that validates is `zapgw provisionar instancia`, which is only the FIRST
+see the following entry); the one that validates is `zapgw provision instancia`, which is only the FIRST
 creation path (`CreateInstance`'s own comment raises this scenario: *"o próximo — um endpoint de administração,
 um seed — nasceria sem eles"*). With `waba_id` empty on both sides, `"" != ""` is false and the guard passes
 **silently**. The fix was not removing the `== ""`: it was writing the missing test
@@ -1248,7 +1248,7 @@ cheap to catch in exactly one place: **at creation**. Hence (a): `config.Validat
 was this project's mother pitfall inside a single function.*
 
 **Checked BEFORE deciding, because the task ordered checking and because (a) would break working creation if the
-answer were otherwise:** there is no legitimate path with those fields empty. `zapgw provisionar instancia`
+answer were otherwise:** there is no legitimate path with those fields empty. `zapgw provision instancia`
 (`cmd/zapgw/provision.go`) already requires both flags — including for a **send-only** instance, where what is
 optional is the `callback_url` and not the identification, and including for the **laboratory** one, which since
 T-071 is born from the same command. The whole suite agreed: the new validation brought down **one** test, and it
@@ -1260,7 +1260,7 @@ was precisely T-068's.
 > `config.ValidateIdentification` still exists and is now called by `RegisterMeta` (`POST /v1/cadastro`), and
 > T-074's test was **moved**, not removed (`TestRegisterMetaRefusesEmptyIdentification`). What T-074 prevented — an
 > instance that silently refuses everything — remains impossible by another route: an instance without registration
-> is born and stays **PAUSED** (answering 503, which is the state it actually has) and only `zapgw fumaca`
+> is born and stays **PAUSED** (answering 503, which is the state it actually has) and only `zapgw smoke`
 > activates it, requiring a send that really worked. *The methodological lesson survives intact: the mutation that
 > passed green in T-068 is still the reason the validation exists.*
 
@@ -1782,7 +1782,7 @@ catches this whole family: if the result comes back smaller than it should, does
 
 **The SAME pitfall, in the "bench tool" version: `len(data)` without looking at `paging.next` is not a count, it is a
 page size — and printing it as if it were a total is false precision.** Measured in production on 2026-07-31, on the
-first real run of `zapgw diagnostico` (v0.42.0) against the real Meta: `countInstagramConversations`
+first real run of `zapgw diagnostics` (v0.42.0) against the real Meta: `countInstagramConversations`
 (`internal/meta/instagram_diagnostics.go`) built the `GET /me/conversations` query **without `limit`**, and the FIVE
 calls (default inbox + four folders) returned exactly **25** — the Graph API's default page ceiling, not a
 coincidence of real data. The label *"conversas na caixa padrão: 25"* read like a count; it was "at least 25, first
@@ -2650,6 +2650,19 @@ variable at all. Flagged for T-220 or a follow-up, not fixed here: `deploy/deplo
 `Files:` list, and retiring or relabeling `avisos_nome_obsoleto` is a judgment call about the deploy script, not
 a mechanical consequence of the resolver change.
 
+✅ **T-220 (2026-09-15) retired `avisos_nome_obsoleto` outright**, rather than relabeling it. By the time T-220
+removed five of the CLI's Portuguese top-level verbs (`provisionar`, `fumaca`, `diagnostico`, `instancia`,
+`consumidor`), the function's `grep` target had already been permanently unreachable for a startup journal since
+T-244 landed above: `warnOldVerb` is CLI-`dispatch`-only, and the server process (`main()` with no argument) never
+calls `dispatch` at all — so the check had been a blind monitor from the moment T-244 merged, independent of
+anything T-220 did to the CLI verbs. **The sibling this flag did not mention:** `estado` and eight sub-verb pairs
+(`rotacionar`, `listar`, `mostrar`, `pausar`, `remover`, `registrar`, `desregistrar`, `reabrir-cadastro`) still call
+`warnOldVerb` today — T-220 deliberately left them alone (T-218's separate, still-open decision) — but none of
+them run during server startup either, so relabeling instead of retiring would have kept the exact same blind
+spot under a more honest name. Retiring was the only fix that closes it. The shell/Go coupling gate (T-235) still
+passes with 8 markers (down from 9): a `# zapgw:log-coupling` marker was removed in the SAME commit as the
+function and its call site, so the gate never had a chance to find an orphaned marker.
+
 ## Environment
 
 🔴 **`go test ./... | grep …` inside an `&&` HIDES a red suite, and that is how a red one reached `main`.** A
@@ -3100,7 +3113,7 @@ subject from scratch. The reasons, in order of weight:
    typed it (`cmd/zapgw/main.go:241`). The error **never reaches the journal**. There, zero is *an absence of
    instrument*, not evidence — it is the blind-monitor pitfall in different clothes. What closes the gap is the
    owner's answer, asked directly on 2026-08-18: he has **never seen** `database is locked` running
-   `zapgw instancia remover` nor `zapgw log clear --telefone`. *That is testimony, not measurement, and it is noted as
+   `zapgw instance remover` nor `zapgw log clear --telefone`. *That is testimony, not measurement, and it is noted as
    testimony.*
 3. **The failure is noisy, and its price is one manual repetition.** The caller gets an error; nothing is left
    half-done (the `Rollback` was checked). In the CLI commands there is a person in front, who is exactly the one able
@@ -3883,7 +3896,7 @@ was born pointing at the broken value.** Whoever ran the check and trusted the t
 the state that discards all the traffic — and the symptom of that is silence: `200` to Meta, nothing to the consumer,
 no error anywhere.
 
-**It only showed up because the check was made against the MACHINE**, not against the text: `zapgw instancia mostrar`
+**It only showed up because the check was made against the MACHINE**, not against the text: `zapgw instance mostrar`
 printed `17841403678746353`, and the `conta_descartada` counter (4, last at `00:48:47 UTC`, zero after the reversion,
 with `recebidas 16 / entregues 16`) closed the proof by behaviour, without depending on which endpoint returns which
 id.
@@ -4002,7 +4015,7 @@ call" buys latency with a copy nobody remembers to update — and the day of div
 slug (`tenant-one`). The examples were *executed* before going into the doc — deserialized and validated — and passed:
 schema validation does not know which slugs exist, so a plausible non-existent slug is indistinguishable from a right
 one. **Executing the example proves the shape, never the value.** An example value that names something real (a slug,
-an id, a phone number) has to be checked against the real thing — here, `zapgw instancia listar`.
+an id, a phone number) has to be checked against the real thing — here, `zapgw instance listar`.
 *Cost: zero, because the consumer read the example before using it and asked. Had they not: the `callback_url` would
 be registered with the wrong slug, the consumer's multi-tenant guard would answer `503` to every delivery, Meta would
 requeue for 36 h — and a stubborn `503` **looks like a signature problem**, which is where the investigation would
@@ -4084,7 +4097,7 @@ break it for no reason.
 
 **A doc that describes a non-existent limitation sends people down the dangerous path — and nobody checks a
 limitation, only an instruction.** the deployment runbook (kept in the private repository) asserted that activating a laboratory instance "still has no
-CLI path: only `zapgw fumaca` activates, **and it talks to the real Graph API**", and therefore prescribed an
+CLI path: only `zapgw smoke` activates, **and it talks to the real Graph API**", and therefore prescribed an
 `UPDATE instancia SET ativo = 1` typed by hand into the **production** database. The sentence's second half had been
 false since `fumaca` was born: it calls `graphBase` (`cmd/zapgw/main.go`), which reads `ZAPGW_GRAPH_BASE` — pointing at
 another endpoint was always possible, and it is exactly what the suite does in `cmd/zapgw/smoke_test.go` from day

@@ -3,14 +3,14 @@
 //
 // WHY IT EXISTS: step 4 of the model (docs/MODELO-DE-USO.md, "The flow, and
 // who does each step" — the consumer "Proves the channel (`fumaca`)") wasn't
-// runnable by a THIRD-PARTY consumer: `zapgw fumaca` is a command line
+// runnable by a THIRD-PARTY consumer: `zapgw smoke` is a command line
 // that opens the local database, and a third party has no shell on the
 // gateway machine. Until this task, the OWNER did the proving, after the
 // consumer GAVE NOTICE — and there was no channel for that notice.
 //
 // ONE PATH, TWO FACADES: this route has no business logic of its own. It
 // authenticates, checks the link and calls SmokeWithInstagramBase()
-// (smoke.go) — the SAME function `cmd/zapgw fumaca` calls. Two copies would
+// (smoke.go) — the SAME function `cmd/zapgw smoke` calls. Two copies would
 // diverge, and the one that diverged would be the one nobody runs by hand.
 //
 // 🔴 `ativo = 1` REMAINS A CONSEQUENCE OF META HAVING ACCEPTED, NEVER OF
@@ -68,7 +68,7 @@ func NewSmokeHandler(store *config.Store, auth *Authenticator, client *meta.Clie
 
 // NewSmokeHandlerWithInstagramBase is NewSmokeHandler, above, with the
 // Instagram HOST INJECTABLE (T-104) — passed along to
-// outbound.SmokeWithInstagramBase, the SAME function `cmd/zapgw fumaca`
+// outbound.SmokeWithInstagramBase, the SAME function `cmd/zapgw smoke`
 // calls. Only in test or in the lab (T-071) does `baseInstagram` point
 // elsewhere; production uses meta.DefaultInstagramRenewalBase (via
 // NewSmokeHandler).

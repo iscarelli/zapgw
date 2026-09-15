@@ -69,42 +69,42 @@ func TestMenuBUILDSTheSubcommandArgs(t *testing.T) {
 			expected: []string{"estado", "--slug", "lojinha"},
 		},
 		{
-			name:     "instancia listar asks nothing",
+			name:     "instance list asks nothing",
 			in:       []string{"2"},
-			expected: []string{"instancia", "listar"},
+			expected: []string{"instance", "list"},
 		},
 		{
-			name:     "instancia mostrar",
+			name:     "instance show",
 			in:       []string{"3", "lojinha"},
-			expected: []string{"instancia", "mostrar", "--slug", "lojinha"},
+			expected: []string{"instance", "show", "--slug", "lojinha"},
 		},
 		{
-			name:     "consumidor listar",
+			name:     "consumer list",
 			in:       []string{"4"},
-			expected: []string{"consumidor", "listar"},
+			expected: []string{"consumer", "list"},
 		},
 		{
-			name: "provisionar instancia: what's left blank does not become a flag",
+			name: "provision instancia: what's left blank does not become a flag",
 			in: []string{"5", "lojinha", "WABA1", "PNID1", "5532999990000",
 				"", "https://consumidor.interno/hook", ""},
-			expected: []string{"provisionar", "instancia",
+			expected: []string{"provision", "instancia",
 				"--slug", "lojinha", "--waba-id", "WABA1", "--phone-number-id", "PNID1",
 				"--numero-exibido", "5532999990000", "--callback-url", "https://consumidor.interno/hook"},
 		},
 		{
-			name:     "provisionar consumidor",
+			name:     "provision consumidor",
 			in:       []string{"6", "consumer-a", "lojinha,outra"},
-			expected: []string{"provisionar", "consumidor", "--nome", "consumer-a", "--instancias", "lojinha,outra"},
+			expected: []string{"provision", "consumidor", "--nome", "consumer-a", "--instancias", "lojinha,outra"},
 		},
 		{
-			name:     "rotacionar instancia with no callback: the flag does NOT go (see the dedicated test below)",
+			name:     "rotate instance with no callback: the flag does NOT go (see the dedicated test below)",
 			in:       []string{"7", "lojinha", ""},
-			expected: []string{"instancia", "rotacionar", "--slug", "lojinha"},
+			expected: []string{"instance", "rotate", "--slug", "lojinha"},
 		},
 		{
-			name:     "consumidor rotacionar",
+			name:     "consumer rotate",
 			in:       []string{"8", "consumer-a"},
-			expected: []string{"consumidor", "rotacionar", "--nome", "consumer-a"},
+			expected: []string{"consumer", "rotate", "--nome", "consumer-a"},
 		},
 		{
 			name: "template criar",
@@ -113,19 +113,19 @@ func TestMenuBUILDSTheSubcommandArgs(t *testing.T) {
 				"--categoria", "UTILITY", "--idioma", "pt_BR", "--componentes", "comp.json"},
 		},
 		{
-			name:     "fumaca",
+			name:     "smoke",
 			in:       []string{"10", "lojinha", "5532999990000"},
-			expected: []string{"fumaca", "--slug", "lojinha", "--destino", "5532999990000"},
+			expected: []string{"smoke", "--slug", "lojinha", "--destino", "5532999990000"},
 		},
 		{
-			name:     "pausar",
+			name:     "pause",
 			in:       []string{"11", "lojinha"},
-			expected: []string{"instancia", "pausar", "--slug", "lojinha"},
+			expected: []string{"instance", "pause", "--slug", "lojinha"},
 		},
 		{
-			name:     "remover: the retyped slug goes VERBATIM into --confirmo",
+			name:     "remove: the retyped slug goes VERBATIM into --confirmo",
 			in:       []string{"99", "lojinha", "lojinha"},
-			expected: []string{"instancia", "remover", "--slug", "lojinha", "--confirmo", "lojinha"},
+			expected: []string{"instance", "remove", "--slug", "lojinha", "--confirmo", "lojinha"},
 		},
 	}
 
@@ -290,7 +290,7 @@ func TestMenuDoesEXACTLYWhatTheCommandLineDoes(t *testing.T) {
 	creationClock = func() time.Time { return frozen }
 	t.Cleanup(func() { creationClock = previous })
 
-	args := []string{"provisionar", "instancia",
+	args := []string{"provision", "instancia",
 		"--slug", "lojinha", "--waba-id", "WABA1", "--phone-number-id", "PNID1",
 		"--numero-exibido", "5532999990000", "--callback-url", "https://consumidor.interno/hook"}
 
@@ -444,7 +444,7 @@ func TestWithoutTTYDoesNotOpenMenu(t *testing.T) {
 	}{
 		// The deploy/deploy.sh case: called with an argument. Never a
 		// menu, not even when both sides are a terminal.
-		{"with an argument never opens", []string{"provisionar", "instancia"}, os.Stdin, os.Stdout},
+		{"with an argument never opens", []string{"provision", "instancia"}, os.Stdin, os.Stdout},
 		{"output to a file", nil, read, regular},
 		{"output to a pipe", nil, read, write},
 		// What systemd delivers: StandardInput=null. `/dev/null` IS a
@@ -584,7 +584,7 @@ func TestMenuOpensEvenWithTheDatabaseUnreachable(t *testing.T) {
 	if !strings.Contains(out.String(), "summary unavailable") {
 		t.Fatalf("the menu did not explain why there is no summary:\n%s", out.String())
 	}
-	if !strings.Contains(out.String(), "instancia listar") {
+	if !strings.Contains(out.String(), "instance list") {
 		t.Fatalf("the menu was not even shown:\n%s", out.String())
 	}
 }
@@ -614,8 +614,8 @@ func TestMenuSeparatesTheIrreversibleFromTheRead(t *testing.T) {
 			irreversibles = append(irreversibles, g.items...)
 		}
 	}
-	if len(irreversibles) != 1 || irreversibles[0].args[len(irreversibles[0].args)-1] != "remover" {
-		t.Fatalf("o grupo irreversivel tem de ter exatamente o `instancia remover`: %+v", irreversibles)
+	if len(irreversibles) != 1 || irreversibles[0].args[len(irreversibles[0].args)-1] != "remove" {
+		t.Fatalf("o grupo irreversivel tem de ter exatamente o `instance remove`: %+v", irreversibles)
 	}
 
 	// And its key cannot be a neighbor of any other: an adjacent number

@@ -400,7 +400,7 @@ func TestStateRouteReturnsTheSameNumbersAsTheStateCommand(t *testing.T) {
 	vars := activeInstanceWithFakeMeta(t, g)
 	var buf bytes.Buffer
 	if err := dispatch([]string{
-		"provisionar", "consumidor", "--nome", "consumer-a", "--instancias", "lojinha",
+		"provision", "consumidor", "--nome", "consumer-a", "--instancias", "lojinha",
 	}, &buf, fakeEnvironment(vars)); err != nil {
 		t.Fatalf("provision consumer: %v", err)
 	}

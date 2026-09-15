@@ -33,7 +33,7 @@ import (
 // WHY THIS ALARMS: a 413 does NOT fix itself. Meta redelivers the SAME body,
 // it blows past the SAME cap, and within 36h it gives up — a permanent loss,
 // which by mirror.go's criterion (ALARM = needs a person) is the most
-// expensive case. The fix is human: raise ZAPGW_MAX_CORPO_BYTES and restart,
+// expensive case. The fix is human: raise ZAPGW_MAX_BODY_BYTES and restart,
 // or trim the payload at the source. No redelivery does this on its own.
 //
 // WHY IT DOESN'T ALARM ON THE FIRST ONE: while Meta's redelivery window is
@@ -212,7 +212,7 @@ func (h *Handler) receive(w http.ResponseWriter, r *http.Request) {
 			if alarm {
 				log.Printf("ALARME zapgw: instance %q rejected %d bodies above the %d-byte cap within %s;"+
 					" Meta's redelivery brings the SAME body and gets 413 again, so the message is lost for"+
-					" good once it gives up. ACTION: raise ZAPGW_MAX_CORPO_BYTES and restart the service,"+
+					" good once it gives up. ACTION: raise ZAPGW_MAX_BODY_BYTES and restart the service,"+
 					" or trim the payload at the source",
 					slug, n, h.maxBytes, largeBodyWindow)
 			} else {

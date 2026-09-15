@@ -70,7 +70,7 @@ func storeFromEnvironment(t *testing.T, vars map[string]string) *config.Store {
 
 func instanceArgs(slug string) []string {
 	return []string{
-		"provisionar", "instancia",
+		"provision", "instancia",
 		"--slug", slug,
 		"--waba-id", "WABA1",
 		"--phone-number-id", "PNID1",
@@ -168,7 +168,7 @@ func TestProvisionInstanceRefusesRepeatedSlug(t *testing.T) {
 // case.
 func instanceArgsWith(slug, callback string) []string {
 	return []string{
-		"provisionar", "instancia",
+		"provision", "instancia",
 		"--slug", slug,
 		"--waba-id", "WABA1",
 		"--phone-number-id", "PNID1",
@@ -411,10 +411,10 @@ func TestProvisionInstancePrintsTheWebhookURL(t *testing.T) {
 // purpose.
 func TestProvisionInstanceRequiresTheSlugAndRefusesHalfIdentification(t *testing.T) {
 	cases := map[string][]string{
-		"sem slug":                       {"provisionar", "instancia", "--waba-id", "W", "--phone-number-id", "P", "--numero-exibido", "N"},
-		"waba-id sem phone-number-id":    {"provisionar", "instancia", "--slug", "lojinha", "--waba-id", "W"},
-		"phone-number-id sem waba-id":    {"provisionar", "instancia", "--slug", "lojinha", "--phone-number-id", "P"},
-		"identificacao so com o exibido": {"provisionar", "instancia", "--slug", "lojinha", "--waba-id", "W", "--numero-exibido", "N"},
+		"sem slug":                       {"provision", "instancia", "--waba-id", "W", "--phone-number-id", "P", "--numero-exibido", "N"},
+		"waba-id sem phone-number-id":    {"provision", "instancia", "--slug", "lojinha", "--waba-id", "W"},
+		"phone-number-id sem waba-id":    {"provision", "instancia", "--slug", "lojinha", "--phone-number-id", "P"},
+		"identificacao so com o exibido": {"provision", "instancia", "--slug", "lojinha", "--waba-id", "W", "--numero-exibido", "N"},
 	}
 	for name, args := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -438,7 +438,7 @@ func TestProvisionInstanceONLYWithTheSlugPrintsTheDeliveryPackage(t *testing.T) 
 	vars := testEnvironment(t)
 
 	var out bytes.Buffer
-	if err := dispatch([]string{"provisionar", "instancia", "--slug", "terceiro"}, &out, fakeEnvironment(vars)); err != nil {
+	if err := dispatch([]string{"provision", "instancia", "--slug", "terceiro"}, &out, fakeEnvironment(vars)); err != nil {
 		t.Fatalf("dispatch: %v — the owner doesn't have the consumer's Meta data", err)
 	}
 
@@ -463,8 +463,8 @@ func TestProvisionInstanceONLYWithTheSlugPrintsTheDeliveryPackage(t *testing.T) 
 		"https://zapgw.exemplo.test/v1/inbound/terceiro", // what it pastes into ITS OWN Meta
 		"verify_token",                                   // generated and printed (T-052)
 		"segredo_entrega",                                //          same
-		"zapgw provisionar consumidor",                   // where its token comes from
-		"reabrir-cadastro",                               // what to do when it gets stuck
+		"zapgw provision consumidor",                     // where its token comes from
+		"reopen-enrollment",                              // what to do when it gets stuck
 	} {
 		if !strings.Contains(text, required) {
 			t.Errorf("the delivery package does not mention %q:\n%s", required, text)
@@ -510,7 +510,7 @@ func TestProvisionInstanceWithIdentificationDoesNotPrintTheDeliveryPackage(t *te
 func TestProvisionInstanceONLYWithTheSlugDoesNOTDrawWhatBelongsToTheConsumerMeta(t *testing.T) {
 	vars := testEnvironment(t)
 	var out bytes.Buffer
-	if err := dispatch([]string{"provisionar", "instancia", "--slug", "terceiro"}, &out, fakeEnvironment(vars)); err != nil {
+	if err := dispatch([]string{"provision", "instancia", "--slug", "terceiro"}, &out, fakeEnvironment(vars)); err != nil {
 		t.Fatalf("dispatch: %v", err)
 	}
 
@@ -599,7 +599,7 @@ func TestProvisionConsumerPrintsATokenThatAUTHENTICATES(t *testing.T) {
 	out.Reset()
 
 	err := dispatch([]string{
-		"provisionar", "consumidor",
+		"provision", "consumidor",
 		"--nome", "consumer-a",
 		"--instancias", "lojinha",
 	}, &out, fakeEnvironment(vars))
@@ -635,7 +635,7 @@ func TestProvisionConsumerRefusesNonexistentInstanceWithoutCreatingANYTHING(t *t
 	out.Reset()
 
 	err := dispatch([]string{
-		"provisionar", "consumidor",
+		"provision", "consumidor",
 		"--nome", "consumer-a",
 		"--instancias", "lojinha,slug-que-nao-existe",
 	}, &out, fakeEnvironment(vars))
@@ -666,7 +666,7 @@ func TestProvisionConsumerWarnsTheTokenDoesNotComeBack(t *testing.T) {
 	out.Reset()
 
 	if err := dispatch([]string{
-		"provisionar", "consumidor", "--nome", "consumer-a", "--instancias", "lojinha",
+		"provision", "consumidor", "--nome", "consumer-a", "--instancias", "lojinha",
 	}, &out, fakeEnvironment(vars)); err != nil {
 		t.Fatalf("dispatch: %v", err)
 	}
@@ -681,8 +681,8 @@ func TestProvisionConsumerWarnsTheTokenDoesNotComeBack(t *testing.T) {
 
 func TestProvisionConsumerRequiresNameAndInstances(t *testing.T) {
 	cases := map[string][]string{
-		"sem nome":       {"provisionar", "consumidor", "--instancias", "lojinha"},
-		"sem instancias": {"provisionar", "consumidor", "--nome", "consumer-a"},
+		"sem nome":       {"provision", "consumidor", "--instancias", "lojinha"},
+		"sem instancias": {"provision", "consumidor", "--nome", "consumer-a"},
 	}
 	for name, args := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -893,7 +893,7 @@ func TestRotateInstanceChangesOnlyWhatCAMEInTheEnvironment(t *testing.T) {
 	vars["ZAPGW_APP_SECRET"] = "app-secret-REAL-do-painel"
 
 	var out bytes.Buffer
-	err := dispatch([]string{"instancia", "rotacionar", "--slug", "tenant-one"},
+	err := dispatch([]string{"instance", "rotacionar", "--slug", "tenant-one"},
 		&out, fakeEnvironment(vars))
 	if err != nil {
 		t.Fatalf("dispatch: %v", err)
@@ -928,7 +928,7 @@ func TestRotateInstanceDoesNotDRAWWhatDidNotCome(t *testing.T) {
 
 	var out bytes.Buffer
 	err := dispatch([]string{
-		"instancia", "rotacionar", "--slug", "tenant-one",
+		"instance", "rotacionar", "--slug", "tenant-one",
 		"--callback-url", "https://novo-consumidor.interno/hook",
 	}, &out, fakeEnvironment(vars))
 	if err != nil {
@@ -952,7 +952,7 @@ func TestRotateInstanceOnlyClearsTheCallbackWhenTheFlagCOMES(t *testing.T) {
 
 	var out bytes.Buffer
 	if err := dispatch([]string{
-		"instancia", "rotacionar", "--slug", "tenant-one", "--callback-url", "",
+		"instance", "rotacionar", "--slug", "tenant-one", "--callback-url", "",
 	}, &out, fakeEnvironment(vars)); err != nil {
 		t.Fatalf("dispatch: %v", err)
 	}
@@ -976,7 +976,7 @@ func TestRotateInstanceRefusesToChangeTheSLUG(t *testing.T) {
 
 			var out bytes.Buffer
 			err := dispatch([]string{
-				"instancia", "rotacionar", "--slug", "tenant-one", renameFlag, "outro-nome",
+				"instance", "rotacionar", "--slug", "tenant-one", renameFlag, "outro-nome",
 			}, &out, fakeEnvironment(vars))
 
 			if err == nil {
@@ -1002,7 +1002,7 @@ func TestRotateInstanceFlagsNonexistentSlug(t *testing.T) {
 	vars["ZAPGW_APP_SECRET"] = "app-secret-REAL-do-painel"
 
 	var out bytes.Buffer
-	err := dispatch([]string{"instancia", "rotacionar", "--slug", "lojinha-race"},
+	err := dispatch([]string{"instance", "rotacionar", "--slug", "lojinha-race"},
 		&out, fakeEnvironment(vars))
 
 	if !errors.Is(err, config.ErrInstanceNotFound) {
@@ -1020,7 +1020,7 @@ func TestRotateInstanceRefusesPlaintextCallback(t *testing.T) {
 
 	var out bytes.Buffer
 	err := dispatch([]string{
-		"instancia", "rotacionar", "--slug", "tenant-one",
+		"instance", "rotacionar", "--slug", "tenant-one",
 		"--callback-url", "http://consumidor.externo/hook",
 	}, &out, fakeEnvironment(vars))
 
@@ -1039,7 +1039,7 @@ func TestRotateInstanceWithNothingToChangeREFUSES(t *testing.T) {
 	vars := provisionedForRotation(t, "tenant-one")
 
 	var out bytes.Buffer
-	err := dispatch([]string{"instancia", "rotacionar", "--slug", "tenant-one"},
+	err := dispatch([]string{"instance", "rotacionar", "--slug", "tenant-one"},
 		&out, fakeEnvironment(vars))
 
 	if err == nil {
@@ -1053,7 +1053,7 @@ func TestRotateInstanceRequiresTheSlug(t *testing.T) {
 	vars["ZAPGW_APP_SECRET"] = "app-secret-REAL-do-painel"
 
 	var out bytes.Buffer
-	if err := dispatch([]string{"instancia", "rotacionar"}, &out, fakeEnvironment(vars)); err == nil {
+	if err := dispatch([]string{"instance", "rotacionar"}, &out, fakeEnvironment(vars)); err == nil {
 		t.Fatal("the command accepted rotating without saying WHICH instance")
 	}
 	checkIntact(t, instanceFromEnvironment(t, vars, "tenant-one"), "")
@@ -1081,7 +1081,7 @@ func TestRotateInstancePrintsNOSecretAtAll(t *testing.T) {
 
 	var out bytes.Buffer
 	if err := dispatch([]string{
-		"instancia", "rotacionar", "--slug", "tenant-one",
+		"instance", "rotacionar", "--slug", "tenant-one",
 		"--callback-url", "https://novo-consumidor.interno/hook",
 	}, &out, fakeEnvironment(vars)); err != nil {
 		t.Fatalf("dispatch: %v", err)
@@ -1128,7 +1128,7 @@ func TestRotateInstanceRemindsToUpdateMetaAFTERWARDS(t *testing.T) {
 	vars["ZAPGW_APP_SECRET"] = "app-secret-REAL-do-painel"
 
 	var out bytes.Buffer
-	if err := dispatch([]string{"instancia", "rotacionar", "--slug", "tenant-one"},
+	if err := dispatch([]string{"instance", "rotacionar", "--slug", "tenant-one"},
 		&out, fakeEnvironment(vars)); err != nil {
 		t.Fatalf("dispatch: %v", err)
 	}
@@ -1156,7 +1156,7 @@ func TestRotateInstanceWarnsAboutTheVerifyTokenOnlyWhenItChanges(t *testing.T) {
 		vars["ZAPGW_VERIFY_TOKEN"] = "verify-token-REAL"
 
 		var out bytes.Buffer
-		if err := dispatch([]string{"instancia", "rotacionar", "--slug", "tenant-one"},
+		if err := dispatch([]string{"instance", "rotacionar", "--slug", "tenant-one"},
 			&out, fakeEnvironment(vars)); err != nil {
 			t.Fatalf("dispatch: %v", err)
 		}
@@ -1170,7 +1170,7 @@ func TestRotateInstanceWarnsAboutTheVerifyTokenOnlyWhenItChanges(t *testing.T) {
 		vars["ZAPGW_APP_SECRET"] = "app-secret-REAL-do-painel"
 
 		var out bytes.Buffer
-		if err := dispatch([]string{"instancia", "rotacionar", "--slug", "tenant-one"},
+		if err := dispatch([]string{"instance", "rotacionar", "--slug", "tenant-one"},
 			&out, fakeEnvironment(vars)); err != nil {
 			t.Fatalf("dispatch: %v", err)
 		}
@@ -1205,7 +1205,7 @@ func instagramProvisionedForRotation(t *testing.T, slug, igID string) map[string
 
 	var out bytes.Buffer
 	args := []string{
-		"provisionar", "instancia",
+		"provision", "instancia",
 		"--slug", slug,
 		"--tipo", "instagram",
 		"--ig-id", igID,
@@ -1222,7 +1222,7 @@ func instagramProvisionedForRotation(t *testing.T, slug, igID string) map[string
 // not) on top of this same environment.
 func instagramInstanceArgs(slug, igID string) []string {
 	return []string{
-		"provisionar", "instancia",
+		"provision", "instancia",
 		"--slug", slug,
 		"--tipo", "instagram",
 		"--ig-id", igID,
@@ -1358,7 +1358,7 @@ func TestRotateInstanceIgIDChangesOnlyTheInstagramIgID(t *testing.T) {
 
 	var out bytes.Buffer
 	err := dispatch([]string{
-		"instancia", "rotacionar", "--slug", "insta-loja", "--ig-id", "IGID_NOVO_SINTETICO",
+		"instance", "rotacionar", "--slug", "insta-loja", "--ig-id", "IGID_NOVO_SINTETICO",
 	}, &out, fakeEnvironment(vars))
 	if err != nil {
 		t.Fatalf("dispatch: %v", err)
@@ -1395,7 +1395,7 @@ func TestRotateInstanceWithoutIgIDDoesNotTouchTheInstagramIgID(t *testing.T) {
 	vars["ZAPGW_APP_SECRET"] = "app-secret-REAL-do-painel"
 
 	var out bytes.Buffer
-	if err := dispatch([]string{"instancia", "rotacionar", "--slug", "insta-loja"},
+	if err := dispatch([]string{"instance", "rotacionar", "--slug", "insta-loja"},
 		&out, fakeEnvironment(vars)); err != nil {
 		t.Fatalf("dispatch: %v", err)
 	}
@@ -1416,7 +1416,7 @@ func TestRotateInstanceRefusesIgIDOnAWhatsAppInstance(t *testing.T) {
 
 	var out bytes.Buffer
 	err := dispatch([]string{
-		"instancia", "rotacionar", "--slug", "tenant-one", "--ig-id", "IGID_SINTETICO_RECUSADO",
+		"instance", "rotacionar", "--slug", "tenant-one", "--ig-id", "IGID_SINTETICO_RECUSADO",
 	}, &out, fakeEnvironment(vars))
 
 	if !errors.Is(err, config.ErrFieldDoesNotApplyToType) {
@@ -1445,7 +1445,7 @@ func TestRotateInstanceRefusesIgIDOnAWhatsAppInstance(t *testing.T) {
 
 func fullInstanceArgs(slug, pnid, waba, number, callback string) []string {
 	return []string{
-		"provisionar", "instancia",
+		"provision", "instancia",
 		"--slug", slug,
 		"--waba-id", waba,
 		"--phone-number-id", pnid,
@@ -1499,7 +1499,7 @@ func TestListInstancesPrintsOneRowPerInstanceWithTheSTATE(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	if err := dispatch([]string{"instancia", "listar"}, &out, fakeEnvironment(vars)); err != nil {
+	if err := dispatch([]string{"instance", "listar"}, &out, fakeEnvironment(vars)); err != nil {
 		t.Fatalf("dispatch: %v", err)
 	}
 
@@ -1540,7 +1540,7 @@ func TestListInstancesShowsTheTYPEOfBoth(t *testing.T) {
 	vars["ZAPGW_APP_SECRET"] = "app-secret-de-teste"
 	vars["ZAPGW_SEND_TOKEN"] = "token-envio-de-teste"
 	if err := dispatch([]string{
-		"provisionar", "instancia",
+		"provision", "instancia",
 		"--slug", "insta-loja",
 		"--tipo", "instagram",
 		"--ig-id", "IGID_SINTETICO_27807047495582675",
@@ -1550,7 +1550,7 @@ func TestListInstancesShowsTheTYPEOfBoth(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	if err := dispatch([]string{"instancia", "listar"}, &out, fakeEnvironment(vars)); err != nil {
+	if err := dispatch([]string{"instance", "listar"}, &out, fakeEnvironment(vars)); err != nil {
 		t.Fatalf("dispatch: %v", err)
 	}
 
@@ -1572,7 +1572,7 @@ func TestListInstancesSaysWhenThereIsNONE(t *testing.T) {
 	// command didn't run". On a freshly created database (the first
 	// provisioning) that doubt is expensive.
 	var out bytes.Buffer
-	if err := dispatch([]string{"instancia", "listar"}, &out, fakeEnvironment(testEnvironment(t))); err != nil {
+	if err := dispatch([]string{"instance", "listar"}, &out, fakeEnvironment(testEnvironment(t))); err != nil {
 		t.Fatalf("dispatch: %v", err)
 	}
 	if !strings.Contains(out.String(), "no instance registered") {
@@ -1594,7 +1594,7 @@ func TestShowInstanceSaysWhichFieldsAreRegistered(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	if err := dispatch([]string{"instancia", "mostrar", "--slug", "tenant-one"},
+	if err := dispatch([]string{"instance", "mostrar", "--slug", "tenant-one"},
 		&out, fakeEnvironment(vars)); err != nil {
 		t.Fatalf("dispatch: %v", err)
 	}
@@ -1642,7 +1642,7 @@ func TestShowInstanceWhatsAppStaysWithoutANewTypeLine(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	if err := dispatch([]string{"instancia", "mostrar", "--slug", "tenant-one"},
+	if err := dispatch([]string{"instance", "mostrar", "--slug", "tenant-one"},
 		&out, fakeEnvironment(vars)); err != nil {
 		t.Fatalf("dispatch: %v", err)
 	}
@@ -1665,7 +1665,7 @@ func TestShowInstanceInstagramShowsTypeAndIgID(t *testing.T) {
 	vars := instagramProvisionedForRotation(t, "insta-loja", "IGID_SINTETICO_27807047495582675")
 
 	var out bytes.Buffer
-	if err := dispatch([]string{"instancia", "mostrar", "--slug", "insta-loja"},
+	if err := dispatch([]string{"instance", "mostrar", "--slug", "insta-loja"},
 		&out, fakeEnvironment(vars)); err != nil {
 		t.Fatalf("dispatch: %v", err)
 	}
@@ -1699,7 +1699,7 @@ func TestShowInstanceFlagsNonexistentSlug(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	err := dispatch([]string{"instancia", "mostrar", "--slug", "lojinha-race"},
+	err := dispatch([]string{"instance", "mostrar", "--slug", "lojinha-race"},
 		&out, fakeEnvironment(vars))
 
 	if !errors.Is(err, config.ErrInstanceNotFound) {
@@ -1718,7 +1718,7 @@ func TestShowInstanceRequiresTheSlug(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	if err := dispatch([]string{"instancia", "mostrar"}, &out, fakeEnvironment(vars)); err == nil {
+	if err := dispatch([]string{"instance", "mostrar"}, &out, fakeEnvironment(vars)); err == nil {
 		t.Fatalf("the command accepted showing without saying WHICH instance:\n%s", out.String())
 	}
 }
@@ -1747,10 +1747,10 @@ func TestListInstancesPrintsNoSECRETAtAll(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	if err := dispatch([]string{"instancia", "listar"}, &out, fakeEnvironment(vars)); err != nil {
+	if err := dispatch([]string{"instance", "listar"}, &out, fakeEnvironment(vars)); err != nil {
 		t.Fatalf("listar: %v", err)
 	}
-	if err := dispatch([]string{"instancia", "mostrar", "--slug", "tenant-one"},
+	if err := dispatch([]string{"instance", "mostrar", "--slug", "tenant-one"},
 		&out, fakeEnvironment(vars)); err != nil {
 		t.Fatalf("mostrar: %v", err)
 	}
@@ -1828,10 +1828,10 @@ func TestListInstancesWorksWithTheWRONGCIPHERKEY(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	if err := dispatch([]string{"instancia", "listar"}, &out, fakeEnvironment(withAnotherKey)); err != nil {
+	if err := dispatch([]string{"instance", "listar"}, &out, fakeEnvironment(withAnotherKey)); err != nil {
 		t.Fatalf("list with the wrong key: %v — whoever operates it is blinded exactly during the incident", err)
 	}
-	if err := dispatch([]string{"instancia", "mostrar", "--slug", "tenant-one"},
+	if err := dispatch([]string{"instance", "mostrar", "--slug", "tenant-one"},
 		&out, fakeEnvironment(withAnotherKey)); err != nil {
 		t.Fatalf("show with the wrong key: %v", err)
 	}
@@ -1861,14 +1861,14 @@ func TestInstanceRemoveDELETESEVERYTHINGANDDOESNOTTOUCHTheNEIGHBOR(t *testing.T)
 		t.Fatalf("provisionar clinica: %v", err)
 	}
 	if err := dispatch([]string{
-		"provisionar", "consumidor", "--nome", "consumer-a", "--instancias", "lojinha,clinica",
+		"provision", "consumidor", "--nome", "consumer-a", "--instancias", "lojinha,clinica",
 	}, &out, fakeEnvironment(vars)); err != nil {
 		t.Fatalf("provision consumer: %v", err)
 	}
 	out.Reset()
 
 	if err := dispatch([]string{
-		"instancia", "remover", "--slug", "lojinha", "--confirmo", "lojinha",
+		"instance", "remover", "--slug", "lojinha", "--confirmo", "lojinha",
 	}, &out, fakeEnvironment(vars)); err != nil {
 		t.Fatalf("instance remove: %v", err)
 	}
@@ -1906,7 +1906,7 @@ func TestInstanceRemoveDELETESEVERYTHINGANDDOESNOTTOUCHTheNEIGHBOR(t *testing.T)
 func consumerToken(t *testing.T, vars map[string]string) string {
 	t.Helper()
 	var out bytes.Buffer
-	if err := dispatch([]string{"consumidor", "rotacionar", "--nome", "consumer-a"},
+	if err := dispatch([]string{"consumer", "rotacionar", "--nome", "consumer-a"},
 		&out, fakeEnvironment(vars)); err != nil {
 		t.Fatalf("consumer rotate: %v", err)
 	}
@@ -1917,12 +1917,12 @@ func TestInstanceRemoveWITHOUTCONFIRMATIONDeletesNOTHING(t *testing.T) {
 	// The confirmation is retyping the slug AGAIN. A `-y` would be one
 	// key, and whoever is on the wrong command hits the same key.
 	cases := map[string][]string{
-		"no --confirmo":             {"instancia", "remover", "--slug", "lojinha"},
-		"empty --confirmo":          {"instancia", "remover", "--slug", "lojinha", "--confirmo", ""},
-		"--confirmo with a typo":    {"instancia", "remover", "--slug", "lojinha", "--confirmo", "lojinah"},
-		"--confirmo from the other": {"instancia", "remover", "--slug", "lojinha", "--confirmo", "clinica"},
-		"--confirmo with no slug":   {"instancia", "remover", "--confirmo", "lojinha"},
-		"--confirmo with just a -y": {"instancia", "remover", "--slug", "lojinha", "--confirmo", "y"},
+		"no --confirmo":             {"instance", "remover", "--slug", "lojinha"},
+		"empty --confirmo":          {"instance", "remover", "--slug", "lojinha", "--confirmo", ""},
+		"--confirmo with a typo":    {"instance", "remover", "--slug", "lojinha", "--confirmo", "lojinah"},
+		"--confirmo from the other": {"instance", "remover", "--slug", "lojinha", "--confirmo", "clinica"},
+		"--confirmo with no slug":   {"instance", "remover", "--confirmo", "lojinha"},
+		"--confirmo with just a -y": {"instance", "remover", "--slug", "lojinha", "--confirmo", "y"},
 	}
 	for name, args := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -1953,7 +1953,7 @@ func TestInstanceRemoveREFUSESAnACTIVEInstanceAndSaysHowToProceed(t *testing.T) 
 	}
 	out.Reset()
 
-	err := dispatch([]string{"instancia", "remover", "--slug", "lojinha", "--confirmo", "lojinha"},
+	err := dispatch([]string{"instance", "remover", "--slug", "lojinha", "--confirmo", "lojinha"},
 		&out, fakeEnvironment(vars))
 	if err == nil {
 		t.Fatal("removing an ACTIVE instance was accepted")
@@ -1964,7 +1964,7 @@ func TestInstanceRemoveREFUSESAnACTIVEInstanceAndSaysHowToProceed(t *testing.T) 
 	// The rejection has to say the next step: without it, the path the
 	// person finds is going back to SQL by hand, which is what this task
 	// exists to end.
-	if !strings.Contains(err.Error(), "pausar") {
+	if !strings.Contains(err.Error(), "pause") {
 		t.Errorf("the refusal does not say how to proceed: %v", err)
 	}
 	if _, e := storeFromEnvironment(t, vars).FindInstance("lojinha"); e != nil {
@@ -1985,7 +1985,7 @@ func TestInstancePauseThenRemoveIsThePathThatWorks(t *testing.T) {
 	}
 	out.Reset()
 
-	if err := dispatch([]string{"instancia", "pausar", "--slug", "lojinha"},
+	if err := dispatch([]string{"instance", "pausar", "--slug", "lojinha"},
 		&out, fakeEnvironment(vars)); err != nil {
 		t.Fatalf("instance pause: %v", err)
 	}
@@ -2004,7 +2004,7 @@ func TestInstancePauseThenRemoveIsThePathThatWorks(t *testing.T) {
 	}
 
 	out.Reset()
-	if err := dispatch([]string{"instancia", "remover", "--slug", "lojinha", "--confirmo", "lojinha"},
+	if err := dispatch([]string{"instance", "remover", "--slug", "lojinha", "--confirmo", "lojinha"},
 		&out, fakeEnvironment(vars)); err != nil {
 		t.Fatalf("remover depois de pausar: %v", err)
 	}
@@ -2015,8 +2015,8 @@ func TestInstancePauseThenRemoveIsThePathThatWorks(t *testing.T) {
 
 func TestInstancePauseAndRemoveFlagNonexistentSlug(t *testing.T) {
 	cases := map[string][]string{
-		"pausar":  {"instancia", "pausar", "--slug", "nao-existe"},
-		"remover": {"instancia", "remover", "--slug", "nao-existe", "--confirmo", "nao-existe"},
+		"pausar":  {"instance", "pausar", "--slug", "nao-existe"},
+		"remover": {"instance", "remover", "--slug", "nao-existe", "--confirmo", "nao-existe"},
 	}
 	for name, args := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -2044,7 +2044,7 @@ func TestInstanceRemoveWarnsThatMetaDoesNotKnow(t *testing.T) {
 	}
 	out.Reset()
 
-	if err := dispatch([]string{"instancia", "remover", "--slug", "lojinha", "--confirmo", "lojinha"},
+	if err := dispatch([]string{"instance", "remover", "--slug", "lojinha", "--confirmo", "lojinha"},
 		&out, fakeEnvironment(vars)); err != nil {
 		t.Fatalf("instance remove: %v", err)
 	}
@@ -2300,7 +2300,7 @@ func labWithConsumer(t *testing.T, vars map[string]string) string {
 	}
 	out.Reset()
 	if err := dispatch([]string{
-		"provisionar", "consumidor", "--nome", "consumer-b", "--instancias", "lojinha",
+		"provision", "consumidor", "--nome", "consumer-b", "--instancias", "lojinha",
 	}, &out, fakeEnvironment(vars)); err != nil {
 		t.Fatalf("provision consumer: %v", err)
 	}
@@ -2325,7 +2325,7 @@ func TestConsumerRotateREVOKESThePreviousOneAndTheBindingsSURVIVE(t *testing.T) 
 	}
 
 	var out bytes.Buffer
-	if err := dispatch([]string{"consumidor", "rotacionar", "--nome", "consumer-b"},
+	if err := dispatch([]string{"consumer", "rotacionar", "--nome", "consumer-b"},
 		&out, fakeEnvironment(vars)); err != nil {
 		t.Fatalf("consumer rotate: %v", err)
 	}
@@ -2366,7 +2366,7 @@ func TestConsumerRotateWarnsTheTokenDoesNotComeBackAndThePreviousOneDied(t *test
 	labWithConsumer(t, vars)
 
 	var out bytes.Buffer
-	if err := dispatch([]string{"consumidor", "rotacionar", "--nome", "consumer-b"},
+	if err := dispatch([]string{"consumer", "rotacionar", "--nome", "consumer-b"},
 		&out, fakeEnvironment(vars)); err != nil {
 		t.Fatalf("consumer rotate: %v", err)
 	}
@@ -2391,7 +2391,7 @@ func TestConsumerRotateFlagsNonexistentNameInsteadOfFakingSuccess(t *testing.T) 
 	old := labWithConsumer(t, vars)
 
 	var out bytes.Buffer
-	err := dispatch([]string{"consumidor", "rotacionar", "--nome", "consumidorinexistentE"},
+	err := dispatch([]string{"consumer", "rotacionar", "--nome", "consumidorinexistentE"},
 		&out, fakeEnvironment(vars))
 	if err == nil {
 		t.Fatal("rotating a nonexistent name was accepted")
@@ -2409,7 +2409,7 @@ func TestConsumerRotateFlagsNonexistentNameInsteadOfFakingSuccess(t *testing.T) 
 
 func TestConsumerRotateRequiresName(t *testing.T) {
 	var out bytes.Buffer
-	if err := dispatch([]string{"consumidor", "rotacionar"}, &out,
+	if err := dispatch([]string{"consumer", "rotacionar"}, &out,
 		fakeEnvironment(testEnvironment(t))); err == nil {
 		t.Fatal("rotating with no --nome was accepted")
 	}
@@ -2422,7 +2422,7 @@ func TestConsumerListShowsTheBindingsAndNoSecret(t *testing.T) {
 	token := labWithConsumer(t, vars)
 
 	var out bytes.Buffer
-	if err := dispatch([]string{"consumidor", "listar"}, &out, fakeEnvironment(vars)); err != nil {
+	if err := dispatch([]string{"consumer", "listar"}, &out, fakeEnvironment(vars)); err != nil {
 		t.Fatalf("consumer list: %v", err)
 	}
 	text := out.String()
@@ -2443,7 +2443,7 @@ func TestConsumerListOnEmptyDatabaseIsNotAnError(t *testing.T) {
 	// An empty output cannot be told apart from "the command didn't
 	// run".
 	var out bytes.Buffer
-	if err := dispatch([]string{"consumidor", "listar"}, &out,
+	if err := dispatch([]string{"consumer", "listar"}, &out,
 		fakeEnvironment(testEnvironment(t))); err != nil {
 		t.Fatalf("list on an empty database: %v", err)
 	}
@@ -2464,7 +2464,7 @@ func TestConsumerListShowsWhoHasNOBINDINGAtAll(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	if err := dispatch([]string{"consumidor", "listar"}, &out, fakeEnvironment(vars)); err != nil {
+	if err := dispatch([]string{"consumer", "listar"}, &out, fakeEnvironment(vars)); err != nil {
 		t.Fatalf("consumer list: %v", err)
 	}
 	line := instanceLine(t, out.String(), "orfao")
@@ -2532,8 +2532,12 @@ func TestDispatchAcceptsEnglishSubVerbsSilently(t *testing.T) {
 		{"instance desregistrar/deregister", []string{"instance", "desregistrar"}, []string{"instance", "deregister"}, "desregistrar", "deregister"},
 		{"consumer listar/list", []string{"consumer", "listar"}, []string{"consumer", "list"}, "listar", "list"},
 		{"consumer rotacionar/rotate", []string{"consumer", "rotacionar"}, []string{"consumer", "rotate"}, "rotacionar", "rotate"},
-		{"provisionar/provision", []string{"provisionar"}, []string{"provision"}, "provisionar", "provision"},
-		{"diagnostico/diagnostics", []string{"diagnostico"}, []string{"diagnostics"}, "diagnostico", "diagnostics"},
+		// NOTE: "provisionar"/"diagnostico" used to be rows here too (T-218
+		// added their English pair at the same level as these sub-verbs).
+		// T-220 REMOVED their Portuguese spelling instead of just aliasing
+		// it -- see TestDispatchRefusesRemovedTopLevelVerbs below, which
+		// replaces this pair for exactly those two plus the three T-214
+		// top-level verbs T-220 also removed (fumaca, instancia, consumidor).
 	}
 
 	for _, c := range cases {
@@ -2567,6 +2571,41 @@ func TestDispatchAcceptsEnglishSubVerbsSilently(t *testing.T) {
 				}
 			default:
 				t.Errorf("one of the two failed and the other did not (old=%v, new=%v) -- the two spellings should behave identically", errOld, errNew)
+			}
+		})
+	}
+}
+
+// TestDispatchRefusesRemovedTopLevelVerbs is T-220's Verify: the five
+// Portuguese top-level verbs (provisionar, fumaca, diagnostico, instancia,
+// consumidor) no longer dispatch to anything -- "silently ignored" is the
+// failure mode this task exists to close, so each one has to come back as
+// an ERROR that NAMES the English verb to use instead, not a generic
+// "unknown subcommand". "estado" is deliberately NOT in this table: its
+// Portuguese spelling is a separate, still-open decision (T-218) and stays
+// on warnOldVerb, proved by TestDispatchAcceptsEnglishVerbsSilently in
+// env_aliases_test.go.
+func TestDispatchRefusesRemovedTopLevelVerbs(t *testing.T) {
+	env := fakeEnvironment(testEnvironment(t))
+	cases := []struct{ oldVerb, newVerb string }{
+		{"provisionar", "provision"},
+		{"fumaca", "smoke"},
+		{"diagnostico", "diagnostics"},
+		{"instancia", "instance"},
+		{"consumidor", "consumer"},
+	}
+	for _, c := range cases {
+		t.Run(c.oldVerb, func(t *testing.T) {
+			var out bytes.Buffer
+			err := dispatch([]string{c.oldVerb}, &out, env)
+			if err == nil {
+				t.Fatalf("%q was ACCEPTED -- it must be refused, naming %q", c.oldVerb, c.newVerb)
+			}
+			if !strings.Contains(err.Error(), c.newVerb) {
+				t.Errorf("the refusal for %q does not name %q: %v", c.oldVerb, c.newVerb, err)
+			}
+			if out.Len() != 0 {
+				t.Errorf("%q wrote to stdout instead of only returning an error: %q", c.oldVerb, out.String())
 			}
 		})
 	}
@@ -2674,7 +2713,7 @@ func registeredAt(t *testing.T, vars map[string]string, slug string, when time.T
 func TestInstanceReopenEnrollmentUNBLOCKSTheConsumerWithoutTouchingTheConfiguration(t *testing.T) {
 	vars := testEnvironment(t)
 	var out bytes.Buffer
-	if err := dispatch([]string{"provisionar", "instancia", "--slug", "terceiro"}, &out, fakeEnvironment(vars)); err != nil {
+	if err := dispatch([]string{"provision", "instancia", "--slug", "terceiro"}, &out, fakeEnvironment(vars)); err != nil {
 		t.Fatalf("provisionar: %v", err)
 	}
 	// The consumer registered 40 days ago: their window closed a while
@@ -2682,7 +2721,7 @@ func TestInstanceReopenEnrollmentUNBLOCKSTheConsumerWithoutTouchingTheConfigurat
 	registeredAt(t, vars, "terceiro", time.Now().Add(-40*24*time.Hour))
 
 	out.Reset()
-	if err := dispatch([]string{"instancia", "reabrir-cadastro", "--slug", "terceiro", "--confirmo", "terceiro"},
+	if err := dispatch([]string{"instance", "reabrir-cadastro", "--slug", "terceiro", "--confirmo", "terceiro"},
 		&out, fakeEnvironment(vars)); err != nil {
 		t.Fatalf("reabrir-cadastro: %v", err)
 	}
@@ -2713,17 +2752,17 @@ func TestInstanceReopenEnrollmentUNBLOCKSTheConsumerWithoutTouchingTheConfigurat
 func TestInstanceReopenEnrollmentWITHOUTCONFIRMATIONDoesNothing(t *testing.T) {
 	vars := testEnvironment(t)
 	var out bytes.Buffer
-	if err := dispatch([]string{"provisionar", "instancia", "--slug", "terceiro"}, &out, fakeEnvironment(vars)); err != nil {
+	if err := dispatch([]string{"provision", "instancia", "--slug", "terceiro"}, &out, fakeEnvironment(vars)); err != nil {
 		t.Fatalf("provisionar: %v", err)
 	}
 	closed := time.Now().Add(-40 * 24 * time.Hour)
 	registeredAt(t, vars, "terceiro", closed)
 
 	for name, args := range map[string][]string{
-		"no --confirmo":  {"instancia", "reabrir-cadastro", "--slug", "terceiro"},
-		"different slug": {"instancia", "reabrir-cadastro", "--slug", "terceiro", "--confirmo", "terceiros"},
-		"empty confirmo": {"instancia", "reabrir-cadastro", "--slug", "terceiro", "--confirmo", ""},
-		"no --slug":      {"instancia", "reabrir-cadastro", "--confirmo", "terceiro"},
+		"no --confirmo":  {"instance", "reabrir-cadastro", "--slug", "terceiro"},
+		"different slug": {"instance", "reabrir-cadastro", "--slug", "terceiro", "--confirmo", "terceiros"},
+		"empty confirmo": {"instance", "reabrir-cadastro", "--slug", "terceiro", "--confirmo", ""},
+		"no --slug":      {"instance", "reabrir-cadastro", "--confirmo", "terceiro"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			var s bytes.Buffer
@@ -2745,7 +2784,7 @@ func TestInstanceReopenEnrollmentWITHOUTCONFIRMATIONDoesNothing(t *testing.T) {
 func TestInstanceReopenEnrollmentFlagsNonexistentSlug(t *testing.T) {
 	vars := testEnvironment(t)
 	var out bytes.Buffer
-	err := dispatch([]string{"instancia", "reabrir-cadastro", "--slug", "nao-existe", "--confirmo", "nao-existe"},
+	err := dispatch([]string{"instance", "reabrir-cadastro", "--slug", "nao-existe", "--confirmo", "nao-existe"},
 		&out, fakeEnvironment(vars))
 	if !errors.Is(err, config.ErrInstanceNotFound) {
 		t.Fatalf("error = %v, want ErrInstanceNotFound — silent success would send the owner away thinking they unlocked it", err)
@@ -2758,14 +2797,14 @@ func TestInstanceReopenEnrollmentFlagsNonexistentSlug(t *testing.T) {
 func TestShowInstanceSaysWhetherTheEnrollmentWindowISOpen(t *testing.T) {
 	vars := testEnvironment(t)
 	var out bytes.Buffer
-	if err := dispatch([]string{"provisionar", "instancia", "--slug", "terceiro"}, &out, fakeEnvironment(vars)); err != nil {
+	if err := dispatch([]string{"provision", "instancia", "--slug", "terceiro"}, &out, fakeEnvironment(vars)); err != nil {
 		t.Fatalf("provisionar: %v", err)
 	}
 
 	// 1) Never registered: OPEN, and the text says the clock starts at
 	//    THEIR first insert — not at creation.
 	out.Reset()
-	if err := dispatch([]string{"instancia", "mostrar", "--slug", "terceiro"}, &out, fakeEnvironment(vars)); err != nil {
+	if err := dispatch([]string{"instance", "mostrar", "--slug", "terceiro"}, &out, fakeEnvironment(vars)); err != nil {
 		t.Fatalf("mostrar: %v", err)
 	}
 	if !strings.Contains(out.String(), "OPEN") || !strings.Contains(out.String(), "FIRST insertion") {
@@ -2781,13 +2820,13 @@ func TestShowInstanceSaysWhetherTheEnrollmentWindowISOpen(t *testing.T) {
 	//    next to it.
 	registeredAt(t, vars, "terceiro", time.Now().Add(-40*24*time.Hour))
 	out.Reset()
-	if err := dispatch([]string{"instancia", "mostrar", "--slug", "terceiro"}, &out, fakeEnvironment(vars)); err != nil {
+	if err := dispatch([]string{"instance", "mostrar", "--slug", "terceiro"}, &out, fakeEnvironment(vars)); err != nil {
 		t.Fatalf("mostrar: %v", err)
 	}
 	if !strings.Contains(out.String(), "CLOSED") {
 		t.Errorf("the expired window does not show up as closed:\n%s", out.String())
 	}
-	if !strings.Contains(out.String(), "reabrir-cadastro --slug terceiro --confirmo terceiro") {
+	if !strings.Contains(out.String(), "reopen-enrollment --slug terceiro --confirmo terceiro") {
 		t.Errorf("the closed-window line does not carry the command that unlocks it:\n%s", out.String())
 	}
 }
@@ -2838,7 +2877,7 @@ func TestRegisterInstanceReadsThePinFromZAPGWPinAndPostsTheRightBody(t *testing.
 	vars["ZAPGW_PIN"] = "123456"
 
 	var out bytes.Buffer
-	if err := dispatch([]string{"instancia", "registrar", "--slug", "lojinha"}, &out, fakeEnvironment(vars)); err != nil {
+	if err := dispatch([]string{"instance", "registrar", "--slug", "lojinha"}, &out, fakeEnvironment(vars)); err != nil {
 		t.Fatalf("dispatch: %v\n%s", err, out.String())
 	}
 
@@ -2875,7 +2914,7 @@ func TestRegisterInstanceAcceptsPinFromFile(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	err := dispatch([]string{"instancia", "registrar", "--slug", "lojinha", "--pin-arquivo", file},
+	err := dispatch([]string{"instance", "registrar", "--slug", "lojinha", "--pin-arquivo", file},
 		&out, fakeEnvironment(vars))
 	if err != nil {
 		t.Fatalf("dispatch: %v\n%s", err, out.String())
@@ -2890,7 +2929,7 @@ func TestRegisterInstanceWithoutPinRefusesWithoutTouchingTheNetwork(t *testing.T
 	// Neither ZAPGW_PIN nor --pin-arquivo.
 
 	var out bytes.Buffer
-	err := dispatch([]string{"instancia", "registrar", "--slug", "lojinha"}, &out, fakeEnvironment(vars))
+	err := dispatch([]string{"instance", "registrar", "--slug", "lojinha"}, &out, fakeEnvironment(vars))
 	if err == nil {
 		t.Fatal("registering with no pin was accepted")
 	}
@@ -2903,7 +2942,7 @@ func TestDeregisterInstanceWithoutConfirmFailsWithoutTouchingTheNetwork(t *testi
 	vars, requests := registrationScenario(t)
 
 	var out bytes.Buffer
-	err := dispatch([]string{"instancia", "desregistrar", "--slug", "lojinha"}, &out, fakeEnvironment(vars))
+	err := dispatch([]string{"instance", "desregistrar", "--slug", "lojinha"}, &out, fakeEnvironment(vars))
 	if err == nil {
 		t.Fatal("deregistering with no --confirmo was accepted")
 	}
@@ -2921,7 +2960,7 @@ func TestDeregisterInstanceWithConfirmCallsDeregister(t *testing.T) {
 	vars, requests := registrationScenario(t)
 
 	var out bytes.Buffer
-	err := dispatch([]string{"instancia", "desregistrar", "--slug", "lojinha", "--confirmo", "lojinha"},
+	err := dispatch([]string{"instance", "desregistrar", "--slug", "lojinha", "--confirmo", "lojinha"},
 		&out, fakeEnvironment(vars))
 	if err != nil {
 		t.Fatalf("dispatch: %v\n%s", err, out.String())
@@ -2939,7 +2978,7 @@ func TestChangeInstancePinPostsOnTheNumberPath(t *testing.T) {
 	vars["ZAPGW_PIN"] = "999999"
 
 	var out bytes.Buffer
-	if err := dispatch([]string{"instancia", "pin", "--slug", "lojinha"}, &out, fakeEnvironment(vars)); err != nil {
+	if err := dispatch([]string{"instance", "pin", "--slug", "lojinha"}, &out, fakeEnvironment(vars)); err != nil {
 		t.Fatalf("dispatch: %v\n%s", err, out.String())
 	}
 	if len(*requests) != 1 {
@@ -2967,9 +3006,9 @@ func TestChangeInstancePinPostsOnTheNumberPath(t *testing.T) {
 func TestNoSubcommandHasAFlagCalledPin(t *testing.T) {
 	flagName := regexp.MustCompile(`(?m)^\s*-pin(\s|$)`)
 	for _, args := range [][]string{
-		{"instancia", "registrar", "-h"},
-		{"instancia", "desregistrar", "-h"},
-		{"instancia", "pin", "-h"},
+		{"instance", "registrar", "-h"},
+		{"instance", "desregistrar", "-h"},
+		{"instance", "pin", "-h"},
 	} {
 		var out bytes.Buffer
 		_ = dispatch(args, &out, fakeEnvironment(nil))

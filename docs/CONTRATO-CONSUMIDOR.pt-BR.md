@@ -4642,7 +4642,7 @@ fora da janela **não há o que fazer** além de esperar o cliente escrever de n
 recusado por causa da janela, a Meta responde com um erro `permanent` ou `config` — o gateway
 repassa a mensagem dela tal como veio, sem inventar uma tradução que não foi conferida na fonte.
 
-### Provar o canal — `POST /v1/fumaca` / `zapgw fumaca`
+### Provar o canal — `POST /v1/fumaca` / `zapgw smoke`
 
 Funciona como no WhatsApp — a instância nasce **pausada** e só um envio de teste aceito a ativa —
 mas com duas diferenças honestas.
@@ -4700,7 +4700,7 @@ confirme o token sem enviar mensagem — inventar um por analogia arriscaria uma
 |---|---|---|
 | `estado` / `pausada` / `versao` / `gerado_em` / `carimbos_desde` / `contadores` / `serie_7_dias` / `serie_diaria` | sim | sim — genéricos, independem do produto Meta |
 | `tipo` | sim — sempre `"whatsapp"` | sim — sempre `"instagram"` |
-| `ig_id` | **sempre `nao_se_aplica`** (T-107) — identificador do Instagram, o WhatsApp não tem | sim — o Instagram-scoped Business Account ID desta instância, o mesmo valor de `zapgw instancia mostrar` |
+| `ig_id` | **sempre `nao_se_aplica`** (T-107) — identificador do Instagram, o WhatsApp não tem | sim — o Instagram-scoped Business Account ID desta instância, o mesmo valor de `zapgw instance mostrar` |
 | `certificado_do_callback` | sim | sim — é o TLS do **seu** endpoint, o mesmo nos dois produtos |
 | `token_meta` | sim, medido a cada 5 min | **sempre `nao_se_aplica`** (T-099) — a checagem mede por `phone_number_id`, que Instagram nunca tem |
 | `numero_na_meta` (`qualidade`, `limite_de_mensagens`) | sim, medido/empurrado | **sempre `nao_se_aplica`** (T-099) — qualidade e tier são conceitos do WhatsApp Business Number |
@@ -4708,7 +4708,7 @@ confirme o token sem enviar mensagem — inventar um por analogia arriscaria uma
 | `entrada` (`via`, `connector`, `ultimo_webhook_em`) | sim | sim — ele é do **gateway**, não do produto Meta: os dois primeiros campos são iguais em toda instância deste gateway (T-120) |
 
 🔴 **`tipo` e `ig_id` entraram na T-107 (2026-07-30) e aparecem SEMPRE, nos dois produtos** — a mesma
-cegueira que a T-103 já tinha consertado em `zapgw instancia mostrar`/`listar` continuava aqui: sem
+cegueira que a T-103 já tinha consertado em `zapgw instance mostrar`/`listar` continuava aqui: sem
 `tipo`, você tinha de deduzir o produto pela ausência dos outros blocos (`token_instagram
 nao_se_aplica` etc.), que é adivinhação; e sem `ig_id` você via o bloco `token_instagram` saudável
 **sem conseguir confirmar de qual conta Instagram ele fala** — foi exatamente um `ig_id` errado que
@@ -5042,7 +5042,7 @@ respondeu".
   chega até você** (veja *Webhook de CONTA*). O que continua sendo limite é a origem: como a Meta
   entrega todos eles na URL principal do App, é o gateway que precisa decidir de quem é cada um.
 - **Corpo acima do teto é recusado com `413`, e o teto é o MESMO nos dois sentidos.** Um único limite
-  (`ZAPGW_MAX_CORPO_BYTES`, **default 1 MiB**, ajustável por quem opera) vale para o corpo que a
+  (`ZAPGW_MAX_BODY_BYTES`, **default 1 MiB**, ajustável por quem opera) vale para o corpo que a
   **Meta** manda no webhook **e** para o corpo que **você** manda em `POST /v1/messages`,
   `/v1/cadastro`, `/v1/leituras`, `/v1/templates`, `/v1/fumaca`, `/v1/pausa` e `/v1/bloqueios`
   (`POST`/`DELETE`). Acima dele a resposta

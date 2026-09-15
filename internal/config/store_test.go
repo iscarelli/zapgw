@@ -348,7 +348,7 @@ func TestCreateInstanceAcceptsHTTPSCallbackAndTheTestLoopback(t *testing.T) {
 // (internal/inbound/handler.go) in T-068 left nothing red. That guard's
 // real defense wasn't the comparison — it was the fact that every instance
 // had waba_id filled in, and that was true of TODAY'S PATH (at the time
-// `zapgw provisionar instancia` required the flags), not of the store. A
+// `zapgw provision instancia` required the flags), not of the store. A
 // future seed or administration endpoint would be born without that check.
 //
 // T-068's test (TestHandlerRecusaWabaIDIlegivelAindaQueAInstanciaNaoTenhaWabaID)
@@ -961,7 +961,7 @@ func TestRotatingAcceptsHTTPSCallbackAndTheTestLoopback(t *testing.T) {
 }
 
 // NEVER SILENT SUCCESS. An UPDATE that matches no row is NOT an error to
-// SQLite: without checking RowsAffected, `zapgw instancia rotacionar`
+// SQLite: without checking RowsAffected, `zapgw instance rotacionar`
 // would print "swapped" over a mistyped slug, whoever operated it would
 // leave thinking the real app_secret was on the gateway, and the real
 // instance would keep the random one — the defect would only show up once

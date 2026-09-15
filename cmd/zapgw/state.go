@@ -86,7 +86,7 @@ func stateCommand(args []string, out io.Writer, env environment) error {
 		r, err := store.SummarizeInstance(who)
 		if err != nil {
 			if errors.Is(err, config.ErrInstanceNotFound) {
-				return fmt.Errorf("zapgw: instance %q does not exist (use `zapgw instancia listar` to see the slugs): %w", who, err)
+				return fmt.Errorf("zapgw: instance %q does not exist (use `zapgw instance list` to see the slugs): %w", who, err)
 			}
 			return fmt.Errorf("zapgw: look up instance %q: %w", who, err)
 		}

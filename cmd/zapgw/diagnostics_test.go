@@ -27,7 +27,7 @@ func withFolderResultForTest(t *testing.T, value meta.FolderFilterResult) {
 }
 
 // fakeInstagramGraph is a fake Instagram Graph API with the three
-// routes `zapgw diagnostico` uses (GET /me, GET /me/conversations, GET
+// routes `zapgw diagnostics` uses (GET /me, GET /me/conversations, GET
 // /me/subscribed_apps). Path-based, unlike fakeGraph (smoke_test.go),
 // which only distinguishes GET from POST — the diagnostic hits THREE
 // different GET paths in the same round, and each needs its own
@@ -123,7 +123,7 @@ func diagnosticScenario(t *testing.T, slug, igID string, g *fakeInstagramGraph) 
 }
 
 func diagnosticArgs(slug string) []string {
-	return []string{"diagnostico", "--slug", slug}
+	return []string{"diagnostics", "--slug", slug}
 }
 
 // TestDiagnosticInstagramHealthyInstanceAnswersEveryQuestion is case

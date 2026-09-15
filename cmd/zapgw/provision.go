@@ -1,5 +1,5 @@
-// Subcommands that WRITE configuration: `zapgw provisionar instancia`,
-// `zapgw provisionar consumidor` and `zapgw instancia rotacionar` (which
+// Subcommands that WRITE configuration: `zapgw provision instancia`,
+// `zapgw provision consumidor` and `zapgw instance rotate` (which
 // swaps an existing instance's secrets, without recreating it — the slug
 // is immutable).
 //
@@ -53,23 +53,22 @@ type environment func(name string) string
 // main(), not here.
 func dispatch(args []string, out io.Writer, env environment) error {
 	if len(args) == 0 {
-		return errors.New("zapgw: missing subcommand (provisionar/provision | fumaca/smoke | diagnostico/diagnostics |" +
-			" instancia/instance | consumidor/consumer | estado/state | template | transito | log | perdidas | versao)")
+		return errors.New("zapgw: missing subcommand (provision | smoke | diagnostics |" +
+			" instance | consumer | estado/state | template | transito | log | perdidas | versao)")
 	}
 	switch args[0] {
 	case "provisionar":
-		// T-218: OLD (Portuguese) spelling — see the "fumaca" case above.
-		warnOldVerb(out, "provisionar", "provision")
-		return provision(args[1:], out, env)
+		// T-220: the Portuguese spelling is RETIRED — refuse instead of
+		// dispatching, naming the English one. See instanceCommand's
+		// "listar" case for why the SUB-verbs are not touched by this same
+		// task: they are a separate decision (T-218), out of this sweep.
+		return oldVerbRefused("provisionar", "provision")
 	case "provision":
 		return provision(args[1:], out, env)
 	case "fumaca":
-		// T-214: OLD (Portuguese) spelling of the "smoke" verb — still the
-		// full command, just with a one-line notice pointing at the new
-		// one. Never remove this case: it is what an already-deployed
-		// script or an operator's muscle memory keeps calling.
-		warnOldVerb(out, "fumaca", "smoke")
-		return smoke(args[1:], out, env)
+		// T-220: the Portuguese spelling is RETIRED — see the "provisionar"
+		// case above.
+		return oldVerbRefused("fumaca", "smoke")
 	case "smoke":
 		// T-214: the English pair of "fumaca" — silent, this IS the name
 		// being migrated TO.
@@ -79,15 +78,15 @@ func dispatch(args []string, out io.Writer, env environment) error {
 		// write to the database. See diagnostics.go for why it is not
 		// the same path as fumaca.
 		//
-		// T-218: OLD (Portuguese) spelling — see the "fumaca" case above.
-		warnOldVerb(out, "diagnostico", "diagnostics")
-		return diagnose(args[1:], out, env)
+		// T-220: the Portuguese spelling is RETIRED — see the "provisionar"
+		// case above.
+		return oldVerbRefused("diagnostico", "diagnostics")
 	case "diagnostics":
 		return diagnose(args[1:], out, env)
 	case "instancia":
-		// T-214: OLD (Portuguese) spelling — see the "fumaca" case above.
-		warnOldVerb(out, "instancia", "instance")
-		return instanceCommand(args[1:], out, env)
+		// T-220: the Portuguese spelling is RETIRED — see the "provisionar"
+		// case above.
+		return oldVerbRefused("instancia", "instance")
 	case "instance":
 		return instanceCommand(args[1:], out, env)
 	case "consumidor":
@@ -96,9 +95,9 @@ func dispatch(args []string, out io.Writer, env environment) error {
 		// a DELETE by hand in the production SQLite — and the gap only
 		// showed up during a leak incident.
 		//
-		// T-214: OLD (Portuguese) spelling — see the "fumaca" case above.
-		warnOldVerb(out, "consumidor", "consumer")
-		return consumerCommand(args[1:], out, env)
+		// T-220: the Portuguese spelling is RETIRED — see the "provisionar"
+		// case above.
+		return oldVerbRefused("consumidor", "consumer")
 	case "consumer":
 		return consumerCommand(args[1:], out, env)
 	case "estado":
@@ -157,14 +156,14 @@ func dispatch(args []string, out io.Writer, env environment) error {
 			" invocable name could be put in a script and lock up waiting for input, punching through the guard" +
 			" that only lets the menu open with no argument and with a terminal on both sides")
 	default:
-		return fmt.Errorf("zapgw: unknown subcommand %q (I know: provisionar/provision, fumaca/smoke, diagnostico/diagnostics,"+
-			" instancia/instance, consumidor/consumer, estado/state, template, transito, log, versao)", args[0])
+		return fmt.Errorf("zapgw: unknown subcommand %q (I know: provision, smoke, diagnostics,"+
+			" instance, consumer, estado/state, template, transito, log, versao)", args[0])
 	}
 }
 
 func instanceCommand(args []string, out io.Writer, env environment) error {
 	if len(args) == 0 {
-		return errors.New("zapgw: instancia what? (listar/list | mostrar/show | rotacionar/rotate |" +
+		return errors.New("zapgw: instance what? (listar/list | mostrar/show | rotacionar/rotate |" +
 			" reabrir-cadastro/reopen-enrollment | pausar/pause | remover/remove | registrar/register |" +
 			" desregistrar/deregister | pin)")
 	}
@@ -255,7 +254,7 @@ func instanceCommand(args []string, out io.Writer, env environment) error {
 // sqlite3 wasn't even installed there.
 func consumerCommand(args []string, out io.Writer, env environment) error {
 	if len(args) == 0 {
-		return errors.New("zapgw: consumidor what? (listar/list | rotacionar/rotate)")
+		return errors.New("zapgw: consumer what? (listar/list | rotacionar/rotate)")
 	}
 	switch args[0] {
 	case "listar":
@@ -344,7 +343,7 @@ func windowAsText(r config.InstanceSummary, now time.Time) string {
 	}
 	return "CLOSED since " + j.ClosesAt.UTC().Format(time.RFC3339) +
 		" — the consumer gets 409 when registering. To reopen:" +
-		"  zapgw instancia reabrir-cadastro --slug " + r.Slug + " --confirmo " + r.Slug
+		"  zapgw instance reopen-enrollment --slug " + r.Slug + " --confirmo " + r.Slug
 }
 
 // absenceNote explains the TWO fields whose emptiness is a legitimate
@@ -366,7 +365,7 @@ var absenceNote = map[string]string{
 }
 
 func listInstances(args []string, out io.Writer, env environment) error {
-	fs := flag.NewFlagSet("instancia listar", flag.ContinueOnError)
+	fs := flag.NewFlagSet("instance listar", flag.ContinueOnError)
 	fs.SetOutput(out)
 	if keepGoing, err := parseFlags(fs, args); err != nil || !keepGoing {
 		return err
@@ -409,7 +408,7 @@ func listInstances(args []string, out io.Writer, env environment) error {
 }
 
 func showInstance(args []string, out io.Writer, env environment) error {
-	fs := flag.NewFlagSet("instancia mostrar", flag.ContinueOnError)
+	fs := flag.NewFlagSet("instance mostrar", flag.ContinueOnError)
 	fs.SetOutput(out)
 	slug := fs.String("slug", "", "instance to show")
 	if keepGoing, err := parseFlags(fs, args); err != nil || !keepGoing {
@@ -418,7 +417,7 @@ func showInstance(args []string, out io.Writer, env environment) error {
 
 	who := strings.TrimSpace(*slug)
 	if who == "" {
-		return errors.New("zapgw: --slug is required (use `zapgw instancia listar` to see the slugs)")
+		return errors.New("zapgw: --slug is required (use `zapgw instance list` to see the slugs)")
 	}
 
 	store, err := openStore(env)
@@ -514,7 +513,7 @@ func showInstance(args []string, out io.Writer, env environment) error {
 // missing secret is a convenience; in rotation it would mean swapping a
 // secret in use for a value no one knows.
 func rotateInstance(args []string, out io.Writer, env environment) error {
-	fs := flag.NewFlagSet("instancia rotacionar", flag.ContinueOnError)
+	fs := flag.NewFlagSet("instance rotacionar", flag.ContinueOnError)
 	fs.SetOutput(out)
 	// There is NO rename flag, and the absence is the guarantee: the
 	// slug becomes /v1/inbound/{slug} and is already pasted into Meta's
@@ -672,7 +671,7 @@ func rotateInstance(args []string, out io.Writer, env environment) error {
 // oversight. T-048 left `--sem-prova` out because the decision wasn't
 // its to make; T-071 made the decision and it was to NOT OPEN the second
 // door: `config.ActivateInstance` remains the only path to `ativo = 1`,
-// and `zapgw fumaca` remains the only one that calls it. A lab instance
+// and `zapgw smoke` remains the only one that calls it. A lab instance
 // activates through that SAME fumaca, with the Graph API pointed at the
 // fake in cmd/fakegraph/ (ZAPGW_GRAPH_BASE) — the requirement of a
 // successful send stays whole. The full reasoning is in
@@ -681,12 +680,12 @@ func rotateInstance(args []string, out io.Writer, env environment) error {
 // pauseInstance brings the instance down without deleting anything.
 //
 // NO CONFIRMATION, on purpose, and the asymmetry with `remover` is the
-// information: pausing has an undo (`zapgw fumaca` turns it back on),
+// information: pausing has an undo (`zapgw smoke` turns it back on),
 // removing has none. Asking for confirmation on both would train whoever
 // operates it to type "yes" on autopilot, and the confirmation that
 // matters would lose its effect.
 func pauseInstance(args []string, out io.Writer, env environment) error {
-	fs := flag.NewFlagSet("instancia pausar", flag.ContinueOnError)
+	fs := flag.NewFlagSet("instance pausar", flag.ContinueOnError)
 	fs.SetOutput(out)
 	slug := fs.String("slug", "", "instance to take down")
 	if keepGoing, err := parseFlags(fs, args); err != nil || !keepGoing {
@@ -695,7 +694,7 @@ func pauseInstance(args []string, out io.Writer, env environment) error {
 
 	who := strings.TrimSpace(*slug)
 	if who == "" {
-		return errors.New("zapgw: --slug is required (use `zapgw instancia listar` to see the slugs)")
+		return errors.New("zapgw: --slug is required (use `zapgw instance list` to see the slugs)")
 	}
 
 	store, err := openStore(env)
@@ -714,7 +713,7 @@ func pauseInstance(args []string, out io.Writer, env environment) error {
 	// 36h. A short pause loses no event; a long pause does, with no
 	// warning.
 	fmt.Fprintf(out, "Meta re-queues what arrives (503 is not 200) and retries for up to 36h — after that, it is lost.\n")
-	fmt.Fprintf(out, "to turn it back on:  zapgw fumaca --slug %s --destino <number in E.164>\n", who)
+	fmt.Fprintf(out, "to turn it back on:  zapgw smoke --slug %s --destino <number in E.164>\n", who)
 	return nil
 }
 
@@ -727,7 +726,7 @@ func pauseInstance(args []string, out io.Writer, env environment) error {
 // deleting — and the flag still has to MATCH `--slug`, otherwise the
 // rejection comes before any write.
 func removeInstance(args []string, out io.Writer, env environment) error {
-	fs := flag.NewFlagSet("instancia remover", flag.ContinueOnError)
+	fs := flag.NewFlagSet("instance remover", flag.ContinueOnError)
 	fs.SetOutput(out)
 	slug := fs.String("slug", "", "instance to delete. IRREVERSIBLE")
 	confirm := fs.String("confirmo", "", "type the slug AGAIN to confirm. There is no -y: deleting the wrong instance cannot be undone")
@@ -737,11 +736,11 @@ func removeInstance(args []string, out io.Writer, env environment) error {
 
 	who := strings.TrimSpace(*slug)
 	if who == "" {
-		return errors.New("zapgw: --slug is required (use `zapgw instancia listar` to see the slugs)")
+		return errors.New("zapgw: --slug is required (use `zapgw instance list` to see the slugs)")
 	}
 	if strings.TrimSpace(*confirm) != who {
 		return fmt.Errorf("zapgw: removing instance %q is IRREVERSIBLE — repeat the slug in --confirmo:"+
-			"  zapgw instancia remover --slug %s --confirmo %s", who, who, who)
+			"  zapgw instance remove --slug %s --confirmo %s", who, who, who)
 	}
 
 	store, err := openStore(env)
@@ -770,7 +769,7 @@ func removeInstance(args []string, out io.Writer, env environment) error {
 	if err != nil {
 		if errors.Is(err, config.ErrInstanceActive) {
 			return fmt.Errorf("zapgw: instance %q is ACTIVE and nothing was deleted."+
-				" Pause it first (`zapgw instancia pausar --slug %s`), check nothing broke, and only then remove it —"+
+				" Pause it first (`zapgw instance pause --slug %s`), check nothing broke, and only then remove it —"+
 				" pausing can be undone, removing cannot: %w", who, who, err)
 		}
 		return fmt.Errorf("zapgw: remove instance %q: %w", who, err)
@@ -865,7 +864,7 @@ func instanceForTalkingToMeta(env environment, who string) (config.Instance, *me
 	inst, err := store.FindInstance(who)
 	if err != nil {
 		if errors.Is(err, config.ErrInstanceNotFound) {
-			return config.Instance{}, nil, fmt.Errorf("zapgw: instance %q does not exist (use `zapgw instancia listar` to see the slugs): %w", who, err)
+			return config.Instance{}, nil, fmt.Errorf("zapgw: instance %q does not exist (use `zapgw instance list` to see the slugs): %w", who, err)
 		}
 		return config.Instance{}, nil, fmt.Errorf("zapgw: look up instance %q: %w", who, err)
 	}
@@ -880,7 +879,7 @@ func instanceForTalkingToMeta(env environment, who string) (config.Instance, *me
 // internal/meta/registration.go, sendRegistration, which guarantees the same on
 // the HTTP client side.
 func registerInstance(args []string, out io.Writer, env environment) error {
-	fs := flag.NewFlagSet("instancia registrar", flag.ContinueOnError)
+	fs := flag.NewFlagSet("instance registrar", flag.ContinueOnError)
 	fs.SetOutput(out)
 	slug := fs.String("slug", "", "instance to register with Meta (turns on two-step verification). REQUIRED")
 	pinFile := fs.String("pin-arquivo", "", "file with the 6-digit pin (the PATH, never the value)."+
@@ -891,7 +890,7 @@ func registerInstance(args []string, out io.Writer, env environment) error {
 
 	who := strings.TrimSpace(*slug)
 	if who == "" {
-		return errors.New("zapgw: --slug is required (use `zapgw instancia listar` to see the slugs)")
+		return errors.New("zapgw: --slug is required (use `zapgw instance list` to see the slugs)")
 	}
 	pin, err := readPin(env, strings.TrimSpace(*pinFile))
 	if err != nil {
@@ -922,7 +921,7 @@ func registerInstance(args []string, out io.Writer, env environment) error {
 // touching the network, so typing the command with no `--confirmo` fails
 // fast and with no effect at all.
 func deregisterInstance(args []string, out io.Writer, env environment) error {
-	fs := flag.NewFlagSet("instancia desregistrar", flag.ContinueOnError)
+	fs := flag.NewFlagSet("instance desregistrar", flag.ContinueOnError)
 	fs.SetOutput(out)
 	slug := fs.String("slug", "", "instance to take OFF THE AIR at Meta. REQUIRED")
 	confirm := fs.String("confirmo", "", "type the slug AGAIN to confirm. There is no -y")
@@ -932,12 +931,12 @@ func deregisterInstance(args []string, out io.Writer, env environment) error {
 
 	who := strings.TrimSpace(*slug)
 	if who == "" {
-		return errors.New("zapgw: --slug is required (use `zapgw instancia listar` to see the slugs)")
+		return errors.New("zapgw: --slug is required (use `zapgw instance list` to see the slugs)")
 	}
 	if strings.TrimSpace(*confirm) != who {
 		return fmt.Errorf("zapgw: deregistering %q TAKES THE PRODUCTION NUMBER OFF THE AIR at Meta — no message"+
-			" goes in or out through this phone_number_id until a new `zapgw instancia registrar`. Repeat the slug in"+
-			" --confirmo:  zapgw instancia desregistrar --slug %s --confirmo %s", who, who, who)
+			" goes in or out through this phone_number_id until a new `zapgw instance register`. Repeat the slug in"+
+			" --confirmo:  zapgw instance deregister --slug %s --confirmo %s", who, who, who)
 	}
 
 	inst, client, err := instanceForTalkingToMeta(env, who)
@@ -952,7 +951,7 @@ func deregisterInstance(args []string, out io.Writer, env environment) error {
 	fmt.Fprintf(out, "instance %q DEREGISTERED at Meta — the number is OFF THE AIR: no message goes in or out"+
 		" through it now.\n", who)
 	fmt.Fprintf(out, "this did NOT delete anything here on the gateway: the row is still in the database. To turn it back on, register"+
-		" it again with a pin:  zapgw instancia registrar --slug %s\n", who)
+		" it again with a pin:  zapgw instance register --slug %s\n", who)
 	return nil
 }
 
@@ -961,7 +960,7 @@ func deregisterInstance(args []string, out io.Writer, env environment) error {
 // swaps the key; see `registerInstance` to turn it on the first time,
 // and this section's header for why the reverse does NOT EXIST.
 func changeInstancePin(args []string, out io.Writer, env environment) error {
-	fs := flag.NewFlagSet("instancia pin", flag.ContinueOnError)
+	fs := flag.NewFlagSet("instance pin", flag.ContinueOnError)
 	fs.SetOutput(out)
 	slug := fs.String("slug", "", "instance whose two-step verification pin will be swapped. REQUIRED")
 	pinFile := fs.String("pin-arquivo", "", "file with the NEW 6-digit pin (the PATH, never the value)."+
@@ -972,7 +971,7 @@ func changeInstancePin(args []string, out io.Writer, env environment) error {
 
 	who := strings.TrimSpace(*slug)
 	if who == "" {
-		return errors.New("zapgw: --slug is required (use `zapgw instancia listar` to see the slugs)")
+		return errors.New("zapgw: --slug is required (use `zapgw instance list` to see the slugs)")
 	}
 	pin, err := readPin(env, strings.TrimSpace(*pinFile))
 	if err != nil {
@@ -994,7 +993,7 @@ func changeInstancePin(args []string, out io.Writer, env environment) error {
 
 func provision(args []string, out io.Writer, env environment) error {
 	if len(args) == 0 {
-		return errors.New("zapgw: provisionar what? (instancia | consumidor)")
+		return errors.New("zapgw: provision what? (instancia | consumidor)")
 	}
 	switch args[0] {
 	case "instancia":
@@ -1002,7 +1001,7 @@ func provision(args []string, out io.Writer, env environment) error {
 	case "consumidor":
 		return provisionConsumer(args[1:], out, env)
 	default:
-		return fmt.Errorf("zapgw: don't know how to provisionar %q (I know: instancia, consumidor)", args[0])
+		return fmt.Errorf("zapgw: don't know how to provision %q (I know: instancia, consumidor)", args[0])
 	}
 }
 
@@ -1083,10 +1082,10 @@ func parseFlags(fs *flag.FlagSet, args []string) (keepGoing bool, err error) {
 // T-074'S REQUIREMENT DID NOT DISAPPEAR, it moved: `waba_id` and
 // `phone_number_id` remain required — at REGISTRATION time
 // (config.ValidateMetaRegistration). What T-074 prevented was an ACTIVE and
-// incomplete instance; that stays impossible, because only `zapgw fumaca`
+// incomplete instance; that stays impossible, because only `zapgw smoke`
 // activates one and it requires a message that actually went out.
 func provisionInstance(args []string, out io.Writer, env environment) error {
-	fs := flag.NewFlagSet("provisionar instancia", flag.ContinueOnError)
+	fs := flag.NewFlagSet("provision instancia", flag.ContinueOnError)
 	fs.SetOutput(out)
 	slug := fs.String("slug", "", "instance identifier; becomes /v1/inbound/{slug}. IMMUTABLE. lowercase, digits and hyphen, 3 to 40. It is the ONLY required flag")
 	kind := fs.String("tipo", config.TypeWhatsApp, "\"whatsapp\" (default) or \"instagram\" (T-097). An Instagram instance does NOT use --waba-id/--phone-number-id/--numero-exibido — it uses --ig-id, and requires it AT CREATION TIME: this slice has no API registration for Instagram")
@@ -1252,7 +1251,7 @@ func provisionInstance(args []string, out io.Writer, env environment) error {
 	// the "toRegister" branch and be born with app_secret/token_envio
 	// LITERALLY EMPTY, with no generation at all. 🔴 The sentence that
 	// used to be here — "impossible to fix without SQL by hand" — was
-	// FALSE (T-114): `zapgw instancia rotacionar --slug <slug>` swaps
+	// FALSE (T-114): `zapgw instance rotate --slug <slug>` swaps
 	// either one without touching SQL. The real problem was never
 	// "impossible to fix": it was the instance being born BROKEN and the
 	// command finishing successfully with no warning — that is what the
@@ -1325,7 +1324,7 @@ func provisionInstance(args []string, out io.Writer, env environment) error {
 		// it".
 		//
 		// And the risk of being born "with no secret" does not exist:
-		// the instance is born PAUSED, `zapgw fumaca` is the only path to
+		// the instance is born PAUSED, `zapgw smoke` is the only path to
 		// activate it, and it requires a message that actually went out
 		// — impossible without a real token_envio.
 		if s.fromConsumerMeta && consumerMeta {
@@ -1389,9 +1388,9 @@ func provisionInstance(args []string, out io.Writer, env environment) error {
 	fmt.Fprintf(out, "webhook to paste into Meta: %s\n", webhook)
 	fmt.Fprintf(out, "the instance was born PAUSED: while ativo = 0, the webhook responds 503, and so does sending.\n")
 	if inst.Type == config.TypeInstagram {
-		fmt.Fprintf(out, "only the smoke test activates it:  zapgw fumaca --slug %s --destino <IGSID that sent you a message in the last 24h>\n", inst.Slug)
+		fmt.Fprintf(out, "only the smoke test activates it:  zapgw smoke --slug %s --destino <IGSID that sent you a message in the last 24h>\n", inst.Slug)
 	} else {
-		fmt.Fprintf(out, "only the smoke test activates it:  zapgw fumaca --slug %s --destino <number in E.164>\n", inst.Slug)
+		fmt.Fprintf(out, "only the smoke test activates it:  zapgw smoke --slug %s --destino <number in E.164>\n", inst.Slug)
 	}
 	// THE DELIVERY PACKAGE only applies to the THIRD-PARTY model with
 	// their own Meta account (T-079, docs/MODELO-DE-USO.md) — which is a
@@ -1425,7 +1424,7 @@ func provisionInstance(args []string, out io.Writer, env environment) error {
 // anyone.
 //
 // THE CONSUMER TOKEN IS NOT PRINTED HERE, and the absence is honest: it
-// is born in a different command (`zapgw provisionar consumidor`), which
+// is born in a different command (`zapgw provision consumidor`), which
 // requires the instance to already exist. Printing a placeholder in its
 // place would be worse than pointing at the command — the owner would
 // copy the entire list thinking it is complete.
@@ -1445,7 +1444,7 @@ func printDeliveryPackage(out io.Writer, env environment, slug string) error {
 	fmt.Fprintf(out, "                                 %s\n", webhook)
 	fmt.Fprintf(out, "  4. the verify_token and segredo_entrega printed above\n")
 	fmt.Fprintf(out, "  5. the consumer token, which comes out of the next command:\n")
-	fmt.Fprintf(out, "     zapgw provisionar consumidor --nome <their-name> --instancias %s\n", slug)
+	fmt.Fprintf(out, "     zapgw provision consumidor --nome <their-name> --instancias %s\n", slug)
 	fmt.Fprintf(out, "THEY are the one who registers waba_id, phone_number_id, number, app_secret, token_envio and callback_url,\n")
 	fmt.Fprintf(out, "via POST /v1/cadastro — you do not need these values and should not ask for them.\n")
 	// THE WINDOW, told to the owner at creation time, because he is the
@@ -1453,7 +1452,7 @@ func printDeliveryPackage(out io.Writer, env environment, slug string) error {
 	// receive the request when it closes.
 	fmt.Fprintf(out, "they have %s to register, counted from THEIR FIRST insertion (not from now).\n",
 		config.RegistrationWindow)
-	fmt.Fprintf(out, "if they get stuck after that:  zapgw instancia reabrir-cadastro --slug %s --confirmo %s\n", slug, slug)
+	fmt.Fprintf(out, "if they get stuck after that:  zapgw instance reopen-enrollment --slug %s --confirmo %s\n", slug, slug)
 	return nil
 }
 
@@ -1490,7 +1489,7 @@ func enrollmentURL(env environment) (string, error) {
 // nothing flags it, and the owner walks away thinking he unblocked the
 // consumer who complained (who is still stuck).
 func reopenEnrollment(args []string, out io.Writer, env environment) error {
-	fs := flag.NewFlagSet("instancia reabrir-cadastro", flag.ContinueOnError)
+	fs := flag.NewFlagSet("instance reabrir-cadastro", flag.ContinueOnError)
 	fs.SetOutput(out)
 	slug := fs.String("slug", "", "instance whose registration window will be reopened")
 	confirm := fs.String("confirmo", "", "type the slug AGAIN to confirm. Reopening the wrong slug gives that consumer 24h of write access to another instance, with nothing flagging it")
@@ -1500,11 +1499,11 @@ func reopenEnrollment(args []string, out io.Writer, env environment) error {
 
 	who := strings.TrimSpace(*slug)
 	if who == "" {
-		return errors.New("zapgw: --slug is required (use `zapgw instancia listar` to see the slugs)")
+		return errors.New("zapgw: --slug is required (use `zapgw instance list` to see the slugs)")
 	}
 	if strings.TrimSpace(*confirm) != who {
 		return fmt.Errorf("zapgw: reopening %q's window gives its consumer 24h of write access — repeat the slug in --confirmo:"+
-			"  zapgw instancia reabrir-cadastro --slug %s --confirmo %s", who, who, who)
+			"  zapgw instance reopen-enrollment --slug %s --confirmo %s", who, who, who)
 	}
 
 	store, err := openStore(env)
@@ -1580,7 +1579,7 @@ func reopenEnrollment(args []string, out io.Writer, env environment) error {
 // four secrets leaked on 2026-07-28. It is accepted because (a) it is the
 // same cost the consumer token has always paid, (b) the value has to be
 // copied one way or another, and (c) a cheap way out exists if it leaks:
-// `zapgw instancia rotacionar`. The alternative did not eliminate the
+// `zapgw instance rotate`. The alternative did not eliminate the
 // exposure, it only moved it to a weaker value.
 //
 // WHOEVER PASSED THE VALUE THROUGH THE ENVIRONMENT sees nothing here:
@@ -1607,7 +1606,7 @@ func printSharedSecrets(out io.Writer, slug string, pairs [][2]string) {
 	// possible. `rotacionar` does NOT generate: the new value comes from
 	// the environment, so whoever rotates it already knows what it is.
 	fmt.Fprintf(out, "lost it? there is no way to recover it — generate a new value and put it in the environment:\n")
-	fmt.Fprintf(out, "  ZAPGW_VERIFY_TOKEN=<new> zapgw instancia rotacionar --slug %s\n", slug)
+	fmt.Fprintf(out, "  ZAPGW_VERIFY_TOKEN=<new> zapgw instance rotate --slug %s\n", slug)
 }
 
 // webhookURL assembles the URL to paste into Meta's panel.
@@ -1631,7 +1630,7 @@ func webhookURL(env environment, slug string) (string, error) {
 }
 
 func provisionConsumer(args []string, out io.Writer, env environment) error {
-	fs := flag.NewFlagSet("provisionar consumidor", flag.ContinueOnError)
+	fs := flag.NewFlagSet("provision consumidor", flag.ContinueOnError)
 	fs.SetOutput(out)
 	name := fs.String("nome", "", "name of the consumer system")
 	list := fs.String("instancias", "", "slugs it may use, comma-separated")
@@ -1719,7 +1718,7 @@ func printConsumerToken(out io.Writer, token string) {
 // instances it can use live in a different table, which this command
 // does not touch.
 func rotateConsumer(args []string, out io.Writer, env environment) error {
-	fs := flag.NewFlagSet("consumidor rotacionar", flag.ContinueOnError)
+	fs := flag.NewFlagSet("consumer rotacionar", flag.ContinueOnError)
 	fs.SetOutput(out)
 	name := fs.String("nome", "", "consumer whose token will be swapped. The name does not change: it says WHO, never what to swap")
 	if keepGoing, err := parseFlags(fs, args); err != nil || !keepGoing {
@@ -1728,7 +1727,7 @@ func rotateConsumer(args []string, out io.Writer, env environment) error {
 
 	whoIs := strings.TrimSpace(*name)
 	if whoIs == "" {
-		return errors.New("zapgw: --nome is required (use `zapgw consumidor listar` to see the names)")
+		return errors.New("zapgw: --nome is required (use `zapgw consumer list` to see the names)")
 	}
 
 	store, err := openStore(env)
@@ -1763,7 +1762,7 @@ func rotateConsumer(args []string, out io.Writer, env environment) error {
 // opening the database by hand — a question that, until T-055, only had
 // an answer through SQL.
 func listConsumers(args []string, out io.Writer, env environment) error {
-	fs := flag.NewFlagSet("consumidor listar", flag.ContinueOnError)
+	fs := flag.NewFlagSet("consumer listar", flag.ContinueOnError)
 	fs.SetOutput(out)
 	if keepGoing, err := parseFlags(fs, args); err != nil || !keepGoing {
 		return err

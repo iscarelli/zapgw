@@ -1,7 +1,7 @@
 // `fakegraph` — a FAKE Graph API, for the lab.
 //
 // WHY IT EXISTS (T-071): a LAB instance has no number at Meta, and the only path
-// to `ativo = 1` is `zapgw fumaca`, which demands a successful send. Up to here,
+// to `ativo = 1` is `zapgw smoke`, which demands a successful send. Up to here,
 // the whole lab (create -> activate -> exercise -> delete) had a hole in the
 // middle, and docs/IMPLANTACAO.md prescribed closing that hole with
 // `UPDATE instancia SET ativo = 1` typed by hand into the PRODUCTION database.
