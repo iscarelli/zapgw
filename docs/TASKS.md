@@ -362,6 +362,44 @@ instancias foram rotacionadas. Duas licoes que custaram na hora e valem alem des
 
 > A fila do periodo privado esta em `iscarelli/zapgw-dev`, congelada. Tarefa nova nasce aqui.
 
+## [ ] T-245  Retire the remaining Portuguese CLI spellings: `estado` and the eight sub-verbs
+Why:     A T-220 (8c9a79c) leu o passo 1 ao pe' da letra e aposentou so' os CINCO verbos de topo que
+         o grep nomeava. Ficaram 11 chamadas a `warnOldVerb` (`cmd/zapgw/provision.go:108,174-268`):
+         `estado`->`state`, e os sub-verbos `listar`->`list`, `mostrar`->`show`,
+         `rotacionar`->`rotate`, `reabrir-cadastro`->`reopen-enrollment`, `pausar`->`pause`,
+         `remover`->`remove`, `registrar`->`register`, `desregistrar`->`deregister` (os dois
+         ultimos pares repetem em `consumer`). `zapgw instance listar` hoje avisa e FUNCIONA — a
+         mesma ponte que a T-220 existia para fechar, so' que um nivel abaixo. Vai no MESMO lote
+         (dono, 2026-09-15: "pode fazer uma de uma vez"): uma quebra, um bump MINOR, um deploy.
+Files:   cmd/zapgw/provision.go, cmd/zapgw/env_aliases.go, cmd/zapgw/env_aliases_test.go,
+         cmd/zapgw/provision_test.go, os outros cmd/zapgw/*_test.go que despacham sub-verbo em
+         portugues, docs/*.md e README* que mostrem `zapgw estado` ou `zapgw instance <pt>` como
+         comando vivo, docs/CHANGELOG.md
+Do:      1. VARRA e liste no relatorio:
+            `grep -rn "warnOldVerb(" cmd/zapgw/*.go | grep -v _test`  (11 esperadas) e
+            `grep -rn "zapgw estado\|instance \(listar\|mostrar\|rotacionar\|reabrir-cadastro\|pausar\|remover\)\|consumer \(registrar\|desregistrar\|listar\)" --include="*.md" --include="*.sh" --include="*.go" --exclude-dir=.claude .`
+            (ignore CHANGELOG, TASKS.md e `*.local.md`).
+         2. Atualize cada chamador/exemplo/doc para a grafia inglesa.
+         3. SO' ENTAO troque, em cada um dos 11 sitios, `warnOldVerb(out, old, new)` + o caminho
+            que segue executando por `return oldVerbRefused(old, new)` (helper que a T-220 criou em
+            `env_aliases.go:104`) — mesma mensagem, mesmo exit != 0. Apague `warnOldVerb`, que ai'
+            vira morto de verdade, e o comentario de cabecalho de `env_aliases.go` que diz que
+            "the rest are still accepted". Nomes de flag-set `instance listar` etc. viram
+            `instance list` etc.
+         4. Mensagens que ENUMERAM os sub-verbos ("instancia what?", ajuda do menu) ficam so' com
+            o ingles.
+         5. Testes: `TestDispatchAcceptsEnglishVerbsSilently` (so' `estado` sobrou nele) e o
+            irmao dos sub-verbos viram parte de `TestDispatchRefusesRemovedTopLevelVerbs` (ou um
+            novo `...RefusesRemovedSubVerbs`): cada um dos 9 pares -> recusa nomeando o ingles.
+            Todo `dispatch([]string{"instance", "listar", ...})` de setup vira `"list"`.
+         🔴 NAO toque em `GET /v1/estado` (rota HTTP; e' a T-240) nem em `VarIngressVia`/pares de
+         env (T-244 ja fechou). NAO bumpe VERSION.
+Verify:  CGO_ENABLED=0 go build ./... && go test ./... && go vet ./... && gofmt -l cmd internal
+         `grep -rn "warnOldVerb" cmd internal` VAZIO. O grep 2 do passo 1 rodado de novo VAZIO
+         (fora CHANGELOG/TASKS/`*.local.md`). Prova manual colada: `./zapgw instance listar` sai
+         != 0 nomeando `list`; `./zapgw estado` sai != 0 nomeando `state`; `./zapgw instance list`
+         responde.
+
 ## [ ] T-240  The `GET /v1/estado` blocks the contract still names in Portuguese
 After:   T-239
 Why:     A T-237 consertou quatro familias do `docs/CONTRATO-CONSUMIDOR.md` e, no caminho, achou uma
