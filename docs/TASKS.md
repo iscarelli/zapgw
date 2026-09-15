@@ -356,6 +356,7 @@ instancias foram rotacionadas. Duas licoes que custaram na hora e valem alem des
 > A fila do periodo privado esta em `iscarelli/zapgw-dev`, congelada. Tarefa nova nasce aqui.
 
 ## [ ] T-243  Comments, examples and docs still name the OLD `ZAPGW_*` variables as the live ones
+Vikunja: 1618
 Why:     Em 2026-09-15 01:32 o dono renomeou, no CT 125, os seis nomes obsoletos de `/etc/zapgw/env`
          para os ingleses (`ZAPGW_ENCRYPTION_KEY`, `ZAPGW_DATABASE`, `ZAPGW_ADDRESS`,
          `ZAPGW_INGRESS_VIA`, `ZAPGW_CONNECTOR_READY`, `ZAPGW_EXTERNAL_PROBE_URL`) — saude ok na
