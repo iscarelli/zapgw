@@ -203,15 +203,15 @@ Two fields may be sent **empty**, and empty is a legitimate state:
 
 ```jsonc
 {
-  "instancia": "lojinha",
-  "estado": "pausada",
-  "pausada": true,
-  "janela_de_cadastro": {
-    "aberta": true,
+  "instance": "lojinha",
+  "state": "pausada",
+  "paused": true,
+  "registration_window": {
+    "open": true,
     "primeira_insercao_em": "2026-07-20T09:00:00Z",
     "fecha_em": "2026-07-21T09:00:00Z"
   },
-  "cifrados": [
+  "encrypted": [
     { "campo": "app_secret",      "cadastrado": true  },
     { "campo": "verify_token",    "cadastrado": true  },
     { "campo": "token_envio",     "cadastrado": true  },
@@ -226,7 +226,7 @@ Two fields may be sent **empty**, and empty is a legitimate state:
 🔴 **A secret goes in and does not come back — and this route makes no exception.** The response says
 only **whether** each field is registered, never the value: not whole, not truncated, not hashed. An
 endpoint that returned a credential would turn a leaked consumer token into theft of **your** Meta
-account. Use `cifrados` to check that the set arrived complete — in particular that `callback_url`
+account. Use `encrypted` to check that the set arrived complete — in particular that `callback_url`
 is `true` if you expect to receive deliveries.
 
 🔴 **Registering does NOT activate.** The instance stays `pausada`, and while it is, the webhook
@@ -295,9 +295,9 @@ number chosen by us, not by you — and a sent message cannot be undone.
 
 ```jsonc
 {
-  "instancia": "lojinha",
-  "estado": "ativa",
-  "pausada": false,
+  "instance": "lojinha",
+  "state": "ativa",
+  "paused": false,
   "ja_estava_ativa": false,
   "wa_message_id": "wamid.HBgL…",
   "ativa_desde": "2026-07-28T21:40:00Z"
@@ -344,7 +344,7 @@ Content-Type: application/json
 
 ```jsonc
 // 200
-{ "instancia": "lojinha", "estado": "pausada", "pausada": true }
+{ "instance": "lojinha", "state": "pausada", "paused": true }
 ```
 
 While paused, the webhook answers `503` and so does sending — Meta re-queues whatever arrives and
