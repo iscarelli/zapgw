@@ -2,7 +2,7 @@
 
 One line per version shipped, in the same commit as the bump. The entry states the **effect**, not the diff.
 
-## Unreleased
+## v0.66.1 — 2026-09-15
 
 - **T-242 — `CompleteUpload` sends the Meta upload session id by concatenation, not `url.JoinPath`** —
   every real call to `POST /v1/uploads` failed at the byte-upload step (v0.66.0's first consumer
