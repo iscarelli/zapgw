@@ -1,4 +1,4 @@
-// `zapgw fumaca` — the COMMAND-LINE facade of the smoke test.
+// `zapgw smoke` — the COMMAND-LINE facade of the smoke test.
 //
 // THE WHOLE PATH (the four steps, and the guarantee that `ativo = 1` only
 // happens after a real send) lives in outbound.SmokeWithInstagramBase
@@ -7,7 +7,7 @@
 // flags, opens the store and prints progress; no business rule lives here.
 //
 // WHY THERE WAS A SINGLE PATH UNTIL T-084, AND WHY THERE ARE NOW TWO
-// FACADES: until this task, `zapgw fumaca` was a command line and nothing
+// FACADES: until this task, `zapgw smoke` was a command line and nothing
 // else — a third party with no shell on the gateway machine had no way to
 // prove their own channel, and step 4 of the model (docs/MODELO-DE-USO.md)
 // went unexecuted on its own. The new route is not a second implementation:
@@ -56,7 +56,7 @@ import (
 )
 
 func smoke(args []string, out io.Writer, env environment) error {
-	fs := flag.NewFlagSet("fumaca", flag.ContinueOnError)
+	fs := flag.NewFlagSet("smoke", flag.ContinueOnError)
 	fs.SetOutput(out)
 	slug := fs.String("slug", "", "instance to prove and activate")
 	// NO DEFAULT, on purpose: a default here sends a message to the wrong
@@ -100,7 +100,7 @@ func smoke(args []string, out io.Writer, env environment) error {
 
 	if result.AlreadyActive {
 		fmt.Fprintf(out, "instance %q was already ACTIVE — no message was sent. "+
-			"to prove it again, pause it first (`zapgw instancia pausar`).\n", result.Instance.Slug)
+			"to prove it again, pause it first (`zapgw instance pause`).\n", result.Instance.Slug)
 		return nil
 	}
 

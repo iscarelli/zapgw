@@ -4695,7 +4695,7 @@ the window **there is nothing to do** but wait for the customer to write again. 
 because of the window, Meta answers with a `permanent` or `config` error — the gateway passes its
 message on as it came, without inventing a translation that was not checked at the source.
 
-### Prove the channel — `POST /v1/fumaca` / `zapgw fumaca`
+### Prove the channel — `POST /v1/fumaca` / `zapgw smoke`
 
 It works as on WhatsApp — the instance is born **paused** and only an accepted test send activates it —
 but with two honest differences.
@@ -4754,7 +4754,7 @@ deceives.
 |---|---|---|
 | `estado` / `pausada` / `versao` / `gerado_em` / `carimbos_desde` / `contadores` / `serie_7_dias` / `serie_diaria` | yes | yes — generic, independent of the Meta product |
 | `tipo` | yes — always `"whatsapp"` | yes — always `"instagram"` |
-| `ig_id` | **always `nao_se_aplica`** (T-107) — an Instagram identifier, WhatsApp does not have one | yes — this instance's Instagram-scoped Business Account ID, the same value as `zapgw instancia mostrar` |
+| `ig_id` | **always `nao_se_aplica`** (T-107) — an Instagram identifier, WhatsApp does not have one | yes — this instance's Instagram-scoped Business Account ID, the same value as `zapgw instance mostrar` |
 | `certificado_do_callback` | yes | yes — it is **your** endpoint's TLS, the same in both products |
 | `token_meta` | yes, measured every 5 min | **always `nao_se_aplica`** (T-099) — the check measures by `phone_number_id`, which Instagram never has |
 | `numero_na_meta` (`qualidade`, `limite_de_mensagens`) | yes, measured/pushed | **always `nao_se_aplica`** (T-099) — quality and tier are WhatsApp Business Number concepts |
@@ -4762,7 +4762,7 @@ deceives.
 | `entrada` (`via`, `connector`, `ultimo_webhook_em`) | yes | yes — it belongs to the **gateway**, not the Meta product: the first two fields are identical on every instance of this gateway (T-120) |
 
 🔴 **`tipo` and `ig_id` came in with T-107 (2026-07-30) and appear ALWAYS, in both products** — the
-same blindness T-103 had already fixed in `zapgw instancia mostrar`/`listar` persisted here: without
+same blindness T-103 had already fixed in `zapgw instance mostrar`/`listar` persisted here: without
 `tipo`, you had to deduce the product from the absence of the other blocks (`token_instagram
 nao_se_aplica` etc.), which is guesswork; and without `ig_id` you saw a healthy `token_instagram`
 block **without being able to confirm which Instagram account it speaks of** — it was exactly a wrong
@@ -5099,7 +5099,7 @@ answer".
   *ACCOUNT webhook*). What remains a limit is the origin: since Meta delivers all of them to the App's
   main URL, it is the gateway that has to decide whose each one is.
 - **A body above the ceiling is refused with `413`, and the ceiling is the SAME in both directions.** A
-  single limit (`ZAPGW_MAX_CORPO_BYTES`, **default 1 MiB**, adjustable by whoever operates) applies to
+  single limit (`ZAPGW_MAX_BODY_BYTES`, **default 1 MiB**, adjustable by whoever operates) applies to
   the body **Meta** sends in the webhook **and** to the body **you** send in `POST /v1/messages`,
   `/v1/cadastro`, `/v1/leituras`, `/v1/templates`, `/v1/fumaca`, `/v1/pausa` and `/v1/bloqueios`
   (`POST`/`DELETE`). Above it the response is `413` class `permanent`, and repeating never solves it —

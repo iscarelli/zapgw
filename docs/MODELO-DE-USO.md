@@ -7,7 +7,7 @@ facades), `internal/outbound/smoke_handler.go` (`POST /v1/fumaca`, step 4 over t
 facade over the same path), `internal/config/store.go` (`RegisterMeta`, `RegistrationWindow`,
 `ReopenRegistrationWindow`, the `instancia.cadastro_em` migration, and
 `ActivateInstance`/`PauseInstance` — the only paths to `ativo`), `cmd/zapgw/provision.go`
-(creation with `--slug` only, the delivery bundle and `zapgw instancia reabrir-cadastro`),
+(creation with `--slug` only, the delivery bundle and `zapgw instance reabrir-cadastro`),
 `cmd/zapgw/state.go` (the line that says where the daily series lives), `internal/meta/instagram.go`
 (Instagram sending and parsing). Steps 1, 2, 3, 4 and item 8 shipped in T-079; item 1 (manual
 creation) and item 7 (registering does not activate) predate it and still hold. Step 4 over the API
@@ -134,7 +134,7 @@ for the complement to item 6).
 
 7. ✅ **Step 4 becomes executable by the consumer: the SMOKE TEST gets a route, and so does PAUSE.**
    Decided by the owner on 2026-07-28, 21:21, about the hole raised while implementing T-079 —
-   `zapgw fumaca` is a **command line**, a third party has no shell on the gateway machine, and there
+   `zapgw smoke` is a **command line**, a third party has no shell on the gateway machine, and there
    was no channel even to tell us it had registered. **Implemented in T-084**
    (`internal/outbound/smoke.go`, `smoke_handler.go`, `pause_handler.go`).
 
@@ -168,7 +168,7 @@ or `instagram`. Instagram uses the **OLD** model, from before T-079 — items 1 
 true — whoever brings the `ig_id` and the credentials is the owner of the channel, not the owner of
 the gateway. What changes is the **CHANNEL** those credentials take to reach the gateway: for
 WhatsApp it is an HTTP call (`POST /v1/cadastro`) the consumer makes after the instance exists; for
-Instagram in this slice it is a command-line flag (`zapgw provisionar instancia --tipo instagram
+Instagram in this slice it is a command-line flag (`zapgw provision instancia --tipo instagram
 --ig-id <IGID>`) the OWNER types, with the credentials arriving from the consumer out of band (the
 same human channel that delivers the provisioning bundle today).
 
@@ -181,7 +181,7 @@ Instagram instance, that is the next task — and it would extend `MetaRegistrat
 
 **What does NOT change, and it is what this document exists to protect:** the instance is born
 **paused** (`CreateInstance` writes `ativo = 0` for any type — the check is structural, not
-per-field), and only a test send **actually accepted by Meta** activates it (`zapgw fumaca` /
+per-field), and only a test send **actually accepted by Meta** activates it (`zapgw smoke` /
 `POST /v1/fumaca`, extended to call `SendInstagramMessage` when the type asks for it —
 `internal/outbound/smoke.go`). There is not, and cannot come to be, a force flag for either type.
 

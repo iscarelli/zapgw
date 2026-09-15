@@ -42,12 +42,12 @@ the one typing the values into the gateway is also them:
 
 | Path | Who creates the instance | Who fills in `waba_id`, `phone_number_id`, the number, `app_secret`, `token_envio`, `callback_url` |
 |---|---|---|
-| **owner's** Meta account (own production, lab) | the owner, with `--waba-id …` and the other flags | the owner, in the same command (or via `zapgw instancia rotacionar`) |
+| **owner's** Meta account (own production, lab) | the owner, with `--waba-id …` and the other flags | the owner, in the same command (or via `zapgw instance rotacionar`) |
 | **consumer's** Meta account (third party) | the owner, **with `--slug` only** | **the consumer**, via `POST /v1/cadastro`, within the 24 h window |
 
 On the second path the owner **does not know, does not store and does not ask for** those values —
 and the command **does not draw** an `app_secret` or a `token_envio` (drawing one would make
-`zapgw instancia mostrar` say `app_secret=sim` about a value the consumer's Meta has never seen; see
+`zapgw instance mostrar` say `app_secret=sim` about a value the consumer's Meta has never seen; see
 `docs/ARMADILHAS.md`). What the owner hands over is in `docs/CONTRATO-CONSUMIDOR.md`, *"O que você
 recebe ao ser provisionado"*.
 
@@ -73,7 +73,7 @@ follow the project rule: never in Git, transported via `C:\dev\github\secrets-tr
 
 ### Two of these secrets are SHARED, and that is why the CLI shows them (T-052)
 
-`zapgw provisionar instancia` draws every secret that does not arrive via an environment variable.
+`zapgw provision instancia` draws every secret that does not arrive via an environment variable.
 For `app_secret` and `token_envio` it says only **which** ones it drew, never the value — nobody
 needs to read them back.
 
@@ -90,7 +90,7 @@ keeps only the encrypted form and does not show them again:
 encrypted form and does NOT show them again.")*
 
 **What used to happen, and it is the reason this section exists:** both were drawn silently. The
-instance was born, `zapgw instancia mostrar` said `verify_token=sim segredo_entrega=sim` — it looked
+instance was born, `zapgw instance mostrar` said `verify_token=sim segredo_entrega=sim` — it looked
 complete — and it was **impossible to finish provisioning**, because nothing is decrypted back by any
 command. With no error pointing at the cause: the symptom showed up days later, in Meta's panel, as
 *"a verificação recusa"* ("the verification is refused"), which sends you looking in the wrong place.
@@ -100,7 +100,7 @@ It cost one extra rotation in T-046 (2026-07-28).
 the production path.
 
 **If you lost the value**, there is no recovery: generate another one and swap it with
-`ZAPGW_VERIFY_TOKEN=<new> zapgw instancia rotacionar --slug <slug>` (`rotacionar` does **not** draw —
+`ZAPGW_VERIFY_TOKEN=<new> zapgw instance rotacionar --slug <slug>` (`rotacionar` does **not** draw —
 the value comes from the environment, precisely so whoever rotates knows what it is).
 
 ## The phases, in order, with what blocks what
@@ -141,7 +141,7 @@ the value comes from the environment, precisely so whoever rotates knows what it
 ### Phase 4 — Webhook *(the ONLY phase that depends on zapgw being deployed — plan 4)*
 9. In the App's WhatsApp config, point the **Callback URL** at
    `https://zapgw.<domain>/v1/inbound/<slug>` and the **Verify Token** at the value
-   `zapgw provisionar instancia` printed (or the one you passed in `ZAPGW_VERIFY_TOKEN`) — see *"Two
+   `zapgw provision instancia` printed (or the one you passed in `ZAPGW_VERIFY_TOKEN`) — see *"Two
    of these secrets are SHARED"*, above. Meta makes a challenge `GET` right then — zapgw already
    answers it (`GET /v1/inbound/{slug}`).
 10. **Saving the Callback URL already subscribes a SET of fields — your job here is to review, not to

@@ -114,7 +114,7 @@ func templateCreate(args []string, out io.Writer, env environment) error {
 	inst, err := store.FindInstance(p.Instance)
 	if err != nil {
 		if errors.Is(err, config.ErrInstanceNotFound) {
-			return fmt.Errorf("zapgw: instance %q does not exist (use `zapgw instancia listar` to see the slugs): %w",
+			return fmt.Errorf("zapgw: instance %q does not exist (use `zapgw instance list` to see the slugs): %w",
 				p.Instance, err)
 		}
 		return fmt.Errorf("zapgw: look up instance %q: %w", p.Instance, err)

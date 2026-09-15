@@ -301,7 +301,7 @@ func TestStateSaysWhetherTheInstanceIsPaused(t *testing.T) {
 	if !r.Paused {
 		t.Errorf("paused = false on an instance that was never activated")
 	}
-	// The word is the SAME as `zapgw estado` and `zapgw instancia listar`
+	// The word is the SAME as `zapgw estado` and `zapgw instance listar`
 	// (config.StateOf): two spellings would make a `grep pausada` lie.
 	if r.State != "pausada" {
 		t.Errorf("state = %q, want %q", r.State, "pausada")

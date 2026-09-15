@@ -162,7 +162,7 @@ func TestRegisterMetaDoesNOTActivateTheInstance(t *testing.T) {
 		t.Fatalf("FindInstance: %v", err)
 	}
 	if i.Active {
-		t.Fatal("the instance became ACTIVE after registration — registering proves nothing, only `zapgw fumaca` activates")
+		t.Fatal("the instance became ACTIVE after registration — registering proves nothing, only `zapgw smoke` activates")
 	}
 
 	// And it also doesn't DEACTIVATE an instance that was already running:

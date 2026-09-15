@@ -484,7 +484,7 @@ func TestHandlerRejectsAccountWebhookWithUnreadableWabaID(t *testing.T) {
 // waba_id," and that is true of TODAY'S PATH, not of the type: until T-074,
 // `config.Store.CreateInstance` validated slug, callback_url and bundle_ca,
 // and did NOT validate waba_id — the only thing that validated it was
-// `zapgw provisionar instancia` (cmd/zapgw/provision.go), the FIRST
+// `zapgw provision instancia` (cmd/zapgw/provision.go), the FIRST
 // creation path. A future seed or admin endpoint would be born without that
 // check — the exact scenario CreateInstance's own comment raises.
 //
@@ -823,7 +823,7 @@ func TestHandlerAlarmsOnlyAfterLargeBodyThreshold(t *testing.T) {
 	if !strings.Contains(buf.String(), `"lojinha"`) {
 		t.Errorf("the ALARME does not say WHICH instance: log:\n%s", buf.String())
 	}
-	if !strings.Contains(buf.String(), "ZAPGW_MAX_CORPO_BYTES") {
+	if !strings.Contains(buf.String(), "ZAPGW_MAX_BODY_BYTES") {
 		t.Errorf("the ALARME does not say what the person needs to DO: log:\n%s", buf.String())
 	}
 	if strings.Contains(buf.String(), "marca-do-corpo-recusado") {

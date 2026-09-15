@@ -6,7 +6,7 @@
 // smoke.go), so pausing never reopens on its own.
 //
 // ONE PATH ONLY: this route calls store.PauseInstance directly, the SAME
-// function that `zapgw instancia pausar` (cmd/zapgw/provision.go) already
+// function that `zapgw instance pausar` (cmd/zapgw/provision.go) already
 // calls. There is no business logic to extract — PauseInstance is already
 // the only path, from both sides.
 package outbound

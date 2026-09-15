@@ -164,7 +164,7 @@ Confirmado que o texto só aparece em `log.Printf`/`log.Print`/`log.Fatalf` — 
 | `internal/outbound/leadership.go:194-196` | "a concessao de lideranca em %s esta velha..." (`reason`) | só chega a `logLeadershipRefusal`; a resposta ao consumidor usa texto fixo diferente |
 | `internal/outbound/profile_handler.go:285-287` | "ALARME zapgw: identificador de perfil invalido..." | log ALARME |
 | `internal/outbound/reads_handler.go:266-268` | "ALARME zapgw: phone_number_id invalido..." | log ALARME |
-| `internal/outbound/smoke.go:168-169,201-205` | textos de progresso do fumaça ("passo N/4...") | o parâmetro `report` chega `nil` na rota HTTP (`smoke_handler.go:205`) — só existe quando chamado por `cmd/zapgw fumaca` (CLI) |
+| `internal/outbound/smoke.go:168-169,201-205` | textos de progresso do fumaça ("passo N/4...") | o parâmetro `report` chega `nil` na rota HTTP (`smoke_handler.go:205`) — só existe quando chamado por `cmd/zapgw smoke` (CLI) |
 | `internal/outbound/smoke.go:65` (`ErrSmokeNoSlug`, `ErrSmokeNoDestination`) | | a rota HTTP valida `instancia`/`destino` ANTES de chamar `SmokeWithInstagramBase` (com sentinelas próprias, tabela 3) — este caminho só é alcançado pela CLI |
 | `internal/outbound/smoke_handler.go:279-281` | "ALARME zapgw: phone_number_id invalido... ao rodar o fumaca" | log ALARME |
 | `internal/outbound/state.go:616-628` (4 `fmt.Errorf`) | erros de montagem do `/v1/estado` | só chegam a `log.Printf("zapgw: erro ao montar o estado...")`, `state_handler.go:271`; a resposta usa `"indisponivel"` fixo |
@@ -201,7 +201,7 @@ em `cmd/fakegraph/main.go` (que o próprio arquivo documenta como "NÃO VAI PARA
 | **total** | **98** | — |
 
 Amostra conferida com `sed -n`: `cmd/zapgw/provision.go:1084` (mensagem de erro de tipo de
-instância, chamada por `zapgw instancia registrar`) e `cmd/zapgw/menu.go:8` (comentário, excluído
+instância, chamada por `zapgw instance registrar`) e `cmd/zapgw/menu.go:8` (comentário, excluído
 da contagem) — ambos confirmados como saída de terminal, nunca HTTP.
 
 ## "Nunca impressa" — strings construídas que não chegam a lugar nenhum

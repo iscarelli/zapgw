@@ -304,7 +304,7 @@ func TestRegistrationDoesNOTActivateTheInstance(t *testing.T) {
 		t.Fatalf("FindInstance: %v", err)
 	}
 	if i.Active {
-		t.Fatal("the instance became ACTIVE after registration — only `zapgw fumaca` activates")
+		t.Fatal("the instance became ACTIVE after registration — only `zapgw smoke` activates")
 	}
 
 	// And the RESPONSE has to say so, otherwise the consumer walks away

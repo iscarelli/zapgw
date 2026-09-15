@@ -479,7 +479,7 @@ func main() {
 	// The cadastro route does NOT receive metaClient, and the absence
 	// is the guarantee (T-079): this route records what the consumer
 	// sent and asks Meta nothing at all. What proves the credential
-	// works is `zapgw fumaca`, and that is why registering does not
+	// works is `zapgw smoke`, and that is why registering does not
 	// activate.
 	// T-111: WhatsAppOnly — this route records waba_id/phone_number_id/
 	// numero_exibido; Instagram has no cadastro by API in this slice
@@ -490,8 +490,8 @@ func main() {
 	// consumer "Prova o canal (`fumaca`)") becomes executable by a
 	// third-party consumer, with no shell on the gateway machine. fumaca
 	// calls the SAME outbound.SmokeWithInstagramBase function that
-	// `cmd/zapgw fumaca` calls (smoke.go); pausa calls the SAME
-	// store.PauseInstance that `zapgw instancia pausar` already calls.
+	// `cmd/zapgw smoke` calls (smoke.go); pausa calls the SAME
+	// store.PauseInstance that `zapgw instance pause` already calls.
 	// T-104: the SAME Instagram base as the sending route, above — the
 	// smoke test also sends SendInstagramMessage for real (step 3).
 	// T-111: AllTypes — the smoke test already knows how to activate

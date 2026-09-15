@@ -424,7 +424,7 @@ func TestRenewerChecksInstagramInstanceEvenWhenPaused(t *testing.T) {
 	setAt := now.Add(-31 * 24 * time.Hour)
 	store, slug := storeWithInstagram(t, setAt)
 	// storeWithInstagram creates the instance PAUSED (CreateInstance never
-	// activates — only `zapgw fumaca` activates). No need to pause it
+	// activates — only `zapgw smoke` activates). No need to pause it
 	// explicitly.
 
 	g := &renewalGraph{newToken: "token-novo-mesmo-pausada"}

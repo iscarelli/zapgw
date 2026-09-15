@@ -1,9 +1,9 @@
-// `zapgw diagnostico` — answers, READ-ONLY, the Meta panel state questions
+// `zapgw diagnostics` — answers, READ-ONLY, the Meta panel state questions
 // that do NOT show up in traffic (T-109): whose token it is, whether the
 // messaging permission was granted, and whether the account is subscribed
 // to receive `messages` on the webhook.
 //
-// NOT THE SAME AS `fumaca`. `zapgw fumaca` SENDS a real message and is the
+// NOT THE SAME AS `fumaca`. `zapgw smoke` SENDS a real message and is the
 // ONLY way to activate an instance (smoke.go); this command sends
 // nothing, does not change `ativo`, does not write to the database — it
 // only asks Meta and prints the verdict.
@@ -114,7 +114,7 @@ func foldersWithSameNumber(byFolder map[string]meta.ConversationCount) bool {
 }
 
 func diagnose(args []string, out io.Writer, env environment) error {
-	fs := flag.NewFlagSet("diagnostico", flag.ContinueOnError)
+	fs := flag.NewFlagSet("diagnostics", flag.ContinueOnError)
 	fs.SetOutput(out)
 	slug := fs.String("slug", "", "instance to diagnose. READ-ONLY. REQUIRED")
 	if keepGoing, err := parseFlags(fs, args); err != nil || !keepGoing {
@@ -135,7 +135,7 @@ func diagnose(args []string, out io.Writer, env environment) error {
 	inst, err := store.FindInstance(who)
 	if err != nil {
 		if errors.Is(err, config.ErrInstanceNotFound) {
-			return fmt.Errorf("zapgw: instance %q does not exist (use `zapgw instancia listar` to see the slugs): %w", who, err)
+			return fmt.Errorf("zapgw: instance %q does not exist (use `zapgw instance list` to see the slugs): %w", who, err)
 		}
 		return fmt.Errorf("zapgw: look up instance %q: %w", who, err)
 	}

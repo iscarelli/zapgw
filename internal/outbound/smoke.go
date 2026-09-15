@@ -1,7 +1,7 @@
 // Fumaca — the ONLY path that runs the smoke test's four steps and, IF Meta
 // accepts the send, activates the instance (T-084).
 //
-// ONE PATH, TWO FACADES: `cmd/zapgw fumaca` (command line, for whoever has
+// ONE PATH, TWO FACADES: `cmd/zapgw smoke` (command line, for whoever has
 // shell access on the gateway machine) and `POST /v1/fumaca`
 // (smoke_handler.go, for the third-party consumer who does NOT) call this
 // SAME function. Two copies would diverge, and the one that diverged would

@@ -244,37 +244,6 @@ conferir_versao() {
 	return 1
 }
 
-# avisos_nome_obsoleto reads the startup journal and shows, only on the
-# SUCCESS path, the lines that internal/config/env_alias.go:WarnOldEnvVar
-# emits when a ZAPGW_* variable with the old (PT) name was used instead of
-# the new (EN) one — T-216. It's the only way the operator finds out they
-# need to migrate /etc/zapgw/env without entering the CT by hand: the FAILURE
-# path already dumps the whole journal on purpose and doesn't change here.
-#
-# Filters by the same substring the log emits ("is deprecated -- use"), never
-# the whole journal: a dump becomes noise, and noise trains people to ignore
-# the deploy's output — which is where the version proof lives (T-184).
-#
-# Three outcomes, and they have to be DISTINGUISHABLE (the same requirement
-# T-184 set for the version check): there was a warning -> shows the lines;
-# there wasn't -> says there wasn't; couldn't read the journal -> says so,
-# never "there wasn't". Silence must never turn into "it was clean".
-avisos_nome_obsoleto() {
-	local jornal avisos
-	if ! jornal=$(ct "journalctl -u zapgw -n 200 --no-pager" 2>&1); then
-		erro "COULD NOT READ the journal to check for deprecated variable names"
-		return
-	fi
-	# zapgw:log-coupling "is deprecated -- use"
-	avisos=$(printf '%s\n' "$jornal" | grep -F 'is deprecated -- use' || true)
-	if [ -n "$avisos" ]; then
-		echo "WARNING: environment variable(s) with a deprecated name in use at startup:"
-		printf '%s\n' "$avisos" | sed 's/^/  /'
-	else
-		echo "no variable with a deprecated name in use"
-	fi
-}
-
 # reverter undoes the swap and returns the service to the previous binary.
 #
 # reset-failed is not decoration: with Restart=always, a binary that dies
@@ -421,7 +390,12 @@ if corpo=$(esperar_saude); then
 	conferir_versao "$corpo" "$VERSAO_DO_BUILD" || veredito=$?
 
 	if [ "$veredito" -ne 1 ]; then
-		avisos_nome_obsoleto
+		# T-216's obsolete-name journal check (T-220 retired it): T-244 turned
+		# the old ZAPGW_* names into a hard startup refusal instead of a
+		# warning, so the notice this check filtered the journal for went
+		# quiet FOR GOOD — it now only comes from a CLI subcommand, and the
+		# server process never runs one. A filter that can never match again
+		# is a blind monitor: see docs/ARMADILHAS.md.
 		passo "DEPLOY COMPLETE"
 		ct "systemctl is-active zapgw"
 		exit 0

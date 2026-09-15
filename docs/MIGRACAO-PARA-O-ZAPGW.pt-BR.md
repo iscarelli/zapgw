@@ -77,7 +77,7 @@ instância de teste criada e removida no mesmo dia:
 **O que isso NÃO prova, e não pode ser lido como se provasse: a Meta entregando de fato no caminho da
 segunda instância.** A origem do tráfego acima fomos nós, assinando com um segredo que nós mesmos
 escolhemos — é o mesmo binário e o mesmo código, não a mesma origem. Essa prova é de rede real e mora
-no portão 0.4 (`zapgw fumaca` da instância de verdade), não aqui.
+no portão 0.4 (`zapgw smoke` da instância de verdade), não aqui.
 
 ### 0.2 — A sua deduplicação é ATÔMICA? (lado do consumidor — **bloqueante**)
 
@@ -125,7 +125,7 @@ abandonado rodando no worker, a cada 60 s e 300 s, contra tabelas vazias.** Não
 
 ### 0.4 — A instância existe, está pausada, e o teste de fumaça passou
 
-Instância nasce **pausada** (`ativo=0`) de propósito. Só `zapgw fumaca` a ativa, e ele manda uma
+Instância nasce **pausada** (`ativo=0`) de propósito. Só `zapgw smoke` a ativa, e ele manda uma
 mensagem de verdade — o que prova token, número e conectividade **antes** de qualquer consumidor
 depender disso.
 
@@ -192,7 +192,7 @@ Três coisas que mordem na primeira integração:
 ## Fase 2 — RECEBIMENTO. O único passo sem volta imediata.
 
 ```
-1. cadastrar a callback_url na instância        ← zapgw instancia rotacionar --callback-url
+1. cadastrar a callback_url na instância        ← zapgw instance rotacionar --callback-url
 2. rotacionar o app_secret real no gateway      ← precisa do valor do SEU App
 3. apontar o Callback URL do SEU App para cá    ← IRREVERSÍVEL no instante em que salva
 4. mensagem de teste do celular, ciclo completo ← a prova

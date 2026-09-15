@@ -175,7 +175,7 @@ const (
 // runtime.
 //
 // ✅ MEASURED IN PRODUCTION (T-114, 2026-07-31 15:54 -03, `v0.42.2`,
-// `zapgw diagnostico --slug <instagram-ativa>` with
+// `zapgw diagnostics --slug <instagram-ativa>` with
 // `ZAPGW_DIAGNOSTICO_SONDAR_FOLDER=1`, via `ProbeInvalidInstagramFolder`):
 // a `folder=zzz-nao-exists-t113` — a value Meta has NEVER documented — was
 // ACCEPTED and returned the SAME `≥ 50` conversation(s) (first page) as the
@@ -209,7 +209,7 @@ const instagramProbeInvalidFolder = "zzz-nao-existe-t113"
 //
 // This call is MEASUREMENT, not part of the normal diagnostic — it only
 // runs when explicitly requested (`ZAPGW_DIAGNOSTICO_SONDAR_FOLDER`),
-// because spending one more request on every `zapgw diagnostico` helps no
+// because spending one more request on every `zapgw diagnostics` helps no
 // one once `MeasuredFolderResult` stops being FolderUnknown.
 func (c *Client) ProbeInvalidInstagramFolder(ctx context.Context, base, token string) (ConversationCount, error) {
 	return c.countInstagramConversations(ctx, base, token, instagramProbeInvalidFolder)

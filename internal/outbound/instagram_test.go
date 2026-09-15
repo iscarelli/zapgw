@@ -1,7 +1,7 @@
 // Tests for T-097 (Instagram, first slice) on the OUTBOUND SIDE — the
 // task's mandatory Verify item (d), the OUTBOUND half of (e) (the INBOUND
 // half is in internal/inbound/instagram_test.go), and an extra proof that
-// `zapgw fumaca` also knows how to activate an Instagram instance.
+// `zapgw smoke` also knows how to activate an Instagram instance.
 //
 // ALL SERVERS ARE LOCAL httptest.NewServer — the SAME technique
 // TestHandlerSendsAndReturnsTheID and this package's other WhatsApp tests already

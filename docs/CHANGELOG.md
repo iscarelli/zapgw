@@ -4,6 +4,23 @@ One line per version shipped, in the same commit as the bump. The entry states t
 
 ## Unreleased
 
+- **T-220 — remove the Portuguese spellings of five top-level CLI verbs** — `provisionar`, `fumaca`,
+  `diagnostico`, `instancia` and `consumidor` no longer dispatch: `dispatch()` now returns
+  `oldVerbRefused`, an error naming the English verb to use instead ("silently ignored" was the
+  failure mode this closes). Every in-repo caller of the old spelling (the interactive menu,
+  `cmd/zapgw`'s own help/error text, `docs/*.md`) was migrated to the English spelling first, per
+  the task's mandatory order. `estado` and the eight sub-verb pairs (`rotacionar`, `listar`,
+  `mostrar`, `pausar`, `remover`, `registrar`, `desregistrar`, `reabrir-cadastro`) are a separate,
+  still-open decision (T-218) and were deliberately left on `warnOldVerb`, unremoved. Also retired
+  two findings T-244 left behind: `deploy/deploy.sh`'s `avisos_nome_obsoleto` (its journal `grep`
+  had gone permanently blind once T-244 turned the env-var warning into a startup refusal) and the
+  stale `ZAPGW_MAX_CORPO_BYTES` name in two `internal/inbound/handler.go` operator-facing messages
+  (now `ZAPGW_MAX_BODY_BYTES`). New test `TestDispatchRefusesRemovedTopLevelVerbs`
+  (`cmd/zapgw/provision_test.go`) proves each of the five verbs is refused, naming its English pair.
+  Verify green across all 7 packages; `bash -n` clean on `deploy/*.sh`; the shell/Go log-coupling
+  gate (T-235) still passes with 8 markers. 🙋 Outside this task's reach: `/root/rotaciona-token.sh`
+  inside CT 125 still calls `zapgw instancia listar` — updating it is the planner's move, in the
+  same deploy that ships this change. _Completed 2026-09-15 03:03._
 - **T-244 — the old `ZAPGW_*` env-var names are retired: set at startup, they REFUSE, never read** —
   closes item 4 of T-214. `config.EnvOrOld`/`config.WarnOldEnvVar` (accept-and-warn) are replaced by
   `config.EnvRefusingOld`, which reads only the new (English) name and, if the OLD (Portuguese) one
