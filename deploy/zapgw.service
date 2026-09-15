@@ -1,7 +1,7 @@
 [Unit]
 Description=zapgw — WhatsApp Cloud API gateway
 Documentation=https://github.com/iscarelli/zapgw
-# The service binds to a FIXED IP (ZAPGW_ENDERECO=<gateway-internal-ip>:8080).
+# The service binds to a FIXED IP (ZAPGW_ADDRESS=<gateway-internal-ip>:8080).
 # Without waiting for the network, ListenAndServe dies with "cannot assign
 # requested address", Restart=always loops, and StartLimit shuts the service
 # down for good — the CT comes up "normal" and the gateway simply is not there.
@@ -15,7 +15,7 @@ Group=zapgw
 ExecStart=/usr/local/bin/zapgw
 WorkingDirectory=/var/lib/zapgw
 
-# The encryption key (ZAPGW_CHAVE_CIFRA) lives HERE, outside the database and
+# The encryption key (ZAPGW_ENCRYPTION_KEY) lives HERE, outside the database and
 # outside the repository. The file is 0600 zapgw:zapgw; PID 1 reads it before
 # dropping privilege. deploy.sh does NOT copy or touch this file.
 EnvironmentFile=/etc/zapgw/env

@@ -2,6 +2,19 @@
 
 One line per version shipped, in the same commit as the bump. The entry states the **effect**, not the diff.
 
+## Unreleased
+
+- **T-243 — comments, examples and docs updated to the new `ZAPGW_*` env-var names** — the CT 125
+  rename (2026-09-15 01:32) left 15 files describing the six variables by their old Portuguese
+  names as if still live. Updated `.env.example`, `README.md`/`README.pt-BR.md`,
+  `deploy/deploy.sh`, `deploy/profile-zapgw.sh`, `deploy/zapgw.service`,
+  `docs/CONTRATO-CONSUMIDOR.md`/`.pt-BR.md`, `docs/META-CAMPOS-DE-WEBHOOK.md`,
+  `docs/ONBOARDING-META.md` and `internal/config/crypto.go`, plus swapped
+  `deploy/check-leadership.sh`'s test exports to the new names. No executable behaviour changed;
+  the T-214 alias pairs in `cmd/zapgw/main.go`, `internal/outbound/ingress.go` and
+  `internal/outbound/external_probe.go` were left untouched, as they are the live alias mechanism,
+  not stale docs. _Completed 2026-09-15._
+
 ## v0.66.1 — 2026-09-15
 
 - **T-242 — `CompleteUpload` sends the Meta upload session id by concatenation, not `url.JoinPath`** —

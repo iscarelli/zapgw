@@ -64,7 +64,7 @@ No host de destino, tres coisas precisam estar no lugar:
 | a unit do systemd | `/etc/systemd/system/zapgw.service` | [`deploy/zapgw.service`](deploy/zapgw.service) |
 | as variaveis | `/etc/zapgw/env`, modo `0600` | copia de [`.env.example`](.env.example), preenchida |
 
-O `/etc/zapgw/env` e o unico lugar onde segredo mora — `ZAPGW_CHAVE_CIFRA` inclusive. Ele nao e
+O `/etc/zapgw/env` e o unico lugar onde segredo mora — `ZAPGW_ENCRYPTION_KEY` inclusive. Ele nao e
 versionado, o deploy nao o copia, e nada disso passa por linha de comando.
 
 ### O script de deploy

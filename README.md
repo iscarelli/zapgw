@@ -68,7 +68,7 @@ Three things have to be in place on the target host:
 | the systemd unit | `/etc/systemd/system/zapgw.service` | [`deploy/zapgw.service`](deploy/zapgw.service) |
 | the variables | `/etc/zapgw/env`, mode `0600` | a filled-in copy of [`.env.example`](.env.example) |
 
-`/etc/zapgw/env` is the only place secrets live — `ZAPGW_CHAVE_CIFRA` included. It is not version
+`/etc/zapgw/env` is the only place secrets live — `ZAPGW_ENCRYPTION_KEY` included. It is not version
 controlled, the deploy script does not copy it, and none of it ever travels on a command line.
 
 ### The deploy script

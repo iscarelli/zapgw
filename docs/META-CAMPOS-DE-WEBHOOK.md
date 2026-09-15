@@ -67,8 +67,8 @@ itself displays, which is what is in this doc.*
 > It is a read and changes nothing. The `app-id` is `869733115682937`.
 >
 > 🔴 **And it is not easy to run from here, which is part of the finding (T-057, 2026-07-28).** The
-> `app_secret` is **not** in `/etc/zapgw/env` on CT 125 — that file has `ZAPGW_CHAVE_CIFRA`,
-> `ZAPGW_BANCO` and `ZAPGW_ENDERECO`. It lives **encrypted in the database, per instance**, and no CLI
+> `app_secret` is **not** in `/etc/zapgw/env` on CT 125 — that file has `ZAPGW_ENCRYPTION_KEY`,
+> `ZAPGW_DATABASE` and `ZAPGW_ADDRESS`. It lives **encrypted in the database, per instance**, and no CLI
 > command decrypts it back — on purpose (T-052: of the instance's four secrets, only `verify_token`
 > and `segredo_entrega` are printed, because they need to exist outside the gateway). Whoever measures
 > it needs the value from another source; **measured on 2026-07-28 that it is not in the service's
