@@ -387,6 +387,97 @@ Verify:  CGO_ENABLED=0 go build ./... && go test ./... && go vet ./... && gofmt 
          `bash -n deploy/*.sh`. E o `grep` de partida rodado de novo: o que sobrar tem de ser so'
          caso (b), listado um a um no relatorio.
 
+## [ ] T-244  Retire the old `ZAPGW_*` env-var names: an old name set at startup is REFUSED, never read
+After:   T-243
+Why:     Decisao do dono em 2026-09-15 ("pode fazer uma de uma vez"), depois de o CT 125 ter sido
+         renomeado para os nomes ingleses (zero avisos `deprecated` na `v0.66.1`) e de a medicao
+         mostrar que nenhum chamador restante usa nome velho (`/root/rotaciona-token.sh` ja le
+         `ZAPGW_DATABASE`/`ZAPGW_SEND_TOKEN`, o profile so' faz `source`). Fecha o item 4 da T-214,
+         que estava reservado ao dono. 🔴 **O modo de falha desta mudanca e' "sobe no DEFAULT em
+         silencio"** (e' o aviso escrito no topo de `cmd/zapgw/env_aliases.go`): um `/etc/zapgw/env`
+         antigo em outro clone, ou um operador que ainda exporta `ZAPGW_CHAVE_CIFRA`, faria o
+         gateway abrir um banco vazio com outra chave, sem erro. Por isso o nome velho nao e'
+         simplesmente ignorado: **se estiver definido, o processo RECUSA subir**, nomeando o novo.
+Files:   internal/config/env_alias.go, internal/config/env_alias_test.go, cmd/zapgw/env_aliases.go,
+         cmd/zapgw/main.go, cmd/zapgw/diagnostics.go, cmd/zapgw/lost.go (se usar databasePath),
+         internal/config/counter.go, internal/config/transit.go, internal/outbound/external_probe.go,
+         internal/outbound/ingress.go, internal/outbound/leadership.go, os `_test.go` de cada um,
+         deploy/check-leadership.sh (so' se a T-243 nao tiver trocado os nomes la),
+         docs/ARMADILHAS.md, docs/CHANGELOG.md
+Do:      Inventario de partida (rode e cole no relatorio):
+         `grep -rn "EnvOrOld\|WarnOldEnvVar" --include="*.go" cmd internal | grep -v _test.go`
+         Sao ~14 chamadas de `config.EnvOrOld(getenv, new, old)` mais os `WarnOldEnvVar` que as
+         acompanham. A mudanca e' UMA, no resolvedor, e mecanica em cada chamador:
+         1. `internal/config/env_alias.go`: substitua `EnvOrOld` por
+            `EnvRefusingOld(getenv func(string) string, newName, oldName string) (string, error)`:
+            le SO' `newName`; se `getenv(oldName) != ""`, devolve `""` e um erro que embrulha
+            `ErrObsoleteEnvVar` (sentinela novo) com a mensagem
+            `environment variable ZAPGW_X is no longer read -- rename it to ZAPGW_Y (T-244)`.
+            Apague `WarnOldEnvVar` (vira morto) e o `oldNameUsed bool` de todo lugar.
+            🔴 Nao deixe `EnvOrOld` viva "por compatibilidade": duas funcoes com a mesma pergunta
+            e respostas diferentes e' a armadilha-mae.
+         2. Em cada chamador: erro -> falha de ARRANQUE (`log.Fatalf`/retorno de erro ate o `main`,
+            o que cada sitio ja usa para config invalida — siga o padrao vizinho, nao invente).
+            Nos verbos da CLI (`diagnostics.go`, `lost.go`), o erro sai em `stderr` com saida != 0.
+            Os pares de constantes `New`/`Old` FICAM (o `Old` e' o que a recusa nomeia); apague so'
+            o que nao for mais lido.
+         3. Teste, por chamador, tres casos: (a) so' o nome novo -> valor lido; (b) so' o velho ->
+            RECUSA com mensagem que contem o nome novo, e o valor NAO foi lido (o default nao
+            entra); (c) os dois -> recusa (o velho definido basta; nao ha "o novo vence" aqui).
+            Onde ja existe teste do par (T-214 escreveu varios), converta — nao duplique.
+            🔴 **O teste (b) tem de existir para a chave de cifra** (`cmd/zapgw/main.go:182`): e' o
+            caso que abriria banco vazio. Rode-o ANTES de mexer no resolvedor e cole a falha.
+         4. `deploy/check-leadership.sh:69-71`: confira que exporta os nomes NOVOS (a T-243 deve ter
+            trocado); se ainda exporta os velhos, troque — com a T-244 o binario de teste recusaria.
+         5. `docs/ARMADILHAS.md`: uma linha na entrada da T-214 (ou nova, se nao houver), sem 🔥:
+            *alias de variavel de ambiente se aposenta RECUSANDO o nome velho, nunca ignorando —
+            ignorar e' subir no default em silencio.* Ainda nao cobrou; diga isso.
+         6. `CLAUDE.md`/docs que digam "aceita os dois nomes" ficam falsos: `grep -rn "T-214" docs
+            README.md CLAUDE.md` e corrija o que descreve estado vivo; registro historico fica.
+         🔴 NAO toque nos verbos da CLI (`warnOldVerb`, dispatch em `main.go`) — e' a T-220, logo
+         abaixo. NAO bumpe `VERSION`.
+Verify:  CGO_ENABLED=0 go build ./... && go test ./... && go vet ./... && gofmt -l cmd internal
+         `bash -n deploy/*.sh`. `grep -rn "EnvOrOld\|WarnOldEnvVar" cmd internal` vazio.
+         E a prova manual, colada: `ZAPGW_CHAVE_CIFRA=x ZAPGW_DATABASE=/tmp/t.db ./zapgw` (ou o
+         verbo mais barato) sai != 0 com a mensagem nomeando `ZAPGW_ENCRYPTION_KEY`.
+
+## [ ] T-220  Remove the Portuguese spellings of the CLI verbs
+After:   T-244 — e o movimento sincronizado (mesclar + deployar + atualizar
+         /root/rotaciona-token.sh no CT 125, que hoje usa `zapgw instancia listar` e
+         `zapgw instancia rotacionar`) e do PLANNER, nao do implementador. Decisao do dono em
+         2026-09-15: "pode fazer uma de uma vez" — esta tarefa, a T-243 e a T-244 vao juntas.
+Why:     o projeto e' publico e a decisao de 2026-08-30 e' codigo em INGLES. A T-218 fez a ponte
+         (o ingles passou a funcionar); manter a grafia portuguesa para sempre transforma a ponte em
+         destino. O portao do contador NAO se aplica aqui: ele existe para o apelido de ENTRADA, que
+         tem um terceiro do outro lado. A CLI tem um operador so', e o dono confirmou em 2026-09-06
+         que NAO tem nada dele rodando por CLI nem por cron — e' tudo por API, que ja esta em ingles.
+🔥 O PERIGO REAL NAO E' "chamador desconhecido", E' `main` != IMPLANTADO. Custo medido em
+         2026-09-06 00:36, minutos depois desta tarefa ser escrita: migrei o /root/rotaciona-token.sh
+         para `zapgw instance list` porque a T-218 estava no main — e o binario no CT era a v0.64.0,
+         que responde `nao sei fazer "list" com uma instancia`. O script quebrou na hora. A grafia
+         nova so' existe onde o binario novo esta.
+Files:   cmd/zapgw/provision.go, cmd/zapgw/menu.go, cmd/zapgw/env_aliases.go (warnOldVerb),
+         cmd/zapgw/*_test.go, deploy/deploy.sh, deploy/profile-zapgw.sh, docs/*.md (os que mostram
+         comandos)
+Do:      🔴 A ORDEM E' A GARANTIA, e o inverso quebra calado — so' falha na proxima vez que alguem
+         rodar o script. Faca nesta ordem:
+         1. VARRA todos os chamadores dentro do repo e liste-os no relatorio:
+            `grep -rn "zapgw \(instancia\|consumidor\|provisionar\|fumaca\|diagnostico\)" --include="*.sh" --include="*.md" --include="*.go" .`
+            Inclua `deploy/`, `.github/`, os docs, e o menu interativo.
+         2. ATUALIZE cada chamador para a grafia inglesa.
+         3. SO' ENTAO remova as grafias portuguesas do dispatch e o `warnOldVerb` que virou morto.
+         4. Atualize as mensagens que ENUMERAM os verbos, de novo — elas mentem se ficarem com os dois.
+         Se encontrar chamador que voce nao pode alcancar (fora do repo), NAO remova o verbo que ele
+         usa: pare, liste no relatorio, e deixe esse par para o planner.
+Verify:  CGO_ENABLED=0 go build ./... && go test ./... && go vet ./... && gofmt -l cmd internal
+         E um teste que prove que a grafia portuguesa agora e' RECUSADA com erro que nomeia a
+         inglesa — "some silenciosamente" e' o modo de falha desta mudanca.
+         E a varredura do passo 1 rodada de novo deve vir vazia.
+🙋 PARTE QUE O IMPLEMENTADOR NAO ALCANCA, e o planner faz: `/root/rotaciona-token.sh` dentro do CT
+   125 usa `zapgw instancia listar`. Ele vive fora do repositorio e tem de ser atualizado no mesmo
+   dia, ou quebra na proxima rotacao de token.
+
+
 ## [ ] T-240  The `GET /v1/estado` blocks the contract still names in Portuguese
 After:   T-239
 Why:     A T-237 consertou quatro familias do `docs/CONTRATO-CONSUMIDOR.md` e, no caminho, achou uma
@@ -445,38 +536,4 @@ Do:      🔴 Boa parte das ocorrencias e' LEGITIMA e tem de ficar: e' o NOME PO
          Confira que o cabecalho `Código:` de cada doc ainda aponta para arquivo que existe.
 Verify:  liste no relatorio, por arquivo, quantas ocorrencias voce traduziu e quantas deixou em (b)
          ou (c). `go test ./internal/config/ -run TestDoc` verde (os ponteiros dos docs).
-
-## [ ] T-220  Remove the Portuguese spellings of the CLI verbs
-After:   T-232 — e o movimento sincronizado (mesclar + deployar + atualizar
-         /root/rotaciona-token.sh no CT 125) e do PLANNER, nao do implementador.
-Why:     o projeto e' publico e a decisao de 2026-08-30 e' codigo em INGLES. A T-218 fez a ponte
-         (o ingles passou a funcionar); manter a grafia portuguesa para sempre transforma a ponte em
-         destino. O portao do contador NAO se aplica aqui: ele existe para o apelido de ENTRADA, que
-         tem um terceiro do outro lado. A CLI tem um operador so', e o dono confirmou em 2026-09-06
-         que NAO tem nada dele rodando por CLI nem por cron — e' tudo por API, que ja esta em ingles.
-🔥 O PERIGO REAL NAO E' "chamador desconhecido", E' `main` != IMPLANTADO. Custo medido em
-         2026-09-06 00:36, minutos depois desta tarefa ser escrita: migrei o /root/rotaciona-token.sh
-         para `zapgw instance list` porque a T-218 estava no main — e o binario no CT era a v0.64.0,
-         que responde `nao sei fazer "list" com uma instancia`. O script quebrou na hora. A grafia
-         nova so' existe onde o binario novo esta.
-Files:   cmd/zapgw/provision.go, cmd/zapgw/menu.go, cmd/zapgw/*_test.go, implanta/deploy.sh,
-         implanta/profile-zapgw.sh, docs/*.md (os que mostram comandos)
-Do:      🔴 A ORDEM E' A GARANTIA, e o inverso quebra calado — so' falha na proxima vez que alguem
-         rodar o script. Faca nesta ordem:
-         1. VARRA todos os chamadores dentro do repo e liste-os no relatorio:
-            `grep -rn "zapgw \(instancia\|consumidor\|provisionar\|fumaca\|diagnostico\)" --include="*.sh" --include="*.md" --include="*.go" .`
-            Inclua `implanta/`, `.github/`, os docs, e o menu interativo.
-         2. ATUALIZE cada chamador para a grafia inglesa.
-         3. SO' ENTAO remova as grafias portuguesas do dispatch e o `warnOldVerb` que virou morto.
-         4. Atualize as mensagens que ENUMERAM os verbos, de novo — elas mentem se ficarem com os dois.
-         Se encontrar chamador que voce nao pode alcancar (fora do repo), NAO remova o verbo que ele
-         usa: pare, liste no relatorio, e deixe esse par para o planner.
-Verify:  CGO_ENABLED=0 go build ./... && go test ./... && go vet ./... && gofmt -l cmd internal
-         E um teste que prove que a grafia portuguesa agora e' RECUSADA com erro que nomeia a
-         inglesa — "some silenciosamente" e' o modo de falha desta mudanca.
-         E a varredura do passo 1 rodada de novo deve vir vazia.
-🙋 PARTE QUE O IMPLEMENTADOR NAO ALCANCA, e o planner faz: `/root/rotaciona-token.sh` dentro do CT
-   125 usa `zapgw instancia listar`. Ele vive fora do repositorio e tem de ser atualizado no mesmo
-   dia, ou quebra na proxima rotacao de token.
-
 
