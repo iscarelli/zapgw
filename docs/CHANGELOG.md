@@ -4,6 +4,16 @@ One line per version shipped, in the same commit as the bump. The entry states t
 
 ## Unreleased
 
+- **The `POST /v1/cadastro`, `/v1/pausa` and `/v1/fumaca` examples in the contract do not match the keys the handlers emit** (T-249) — measured `registration_handler.go`, `pause_handler.go` and
+  `smoke_handler.go` against the contract's request/response examples: the RESPONSE examples for all
+  three routes still showed `instancia`/`estado`/`pausada` and, on `/v1/cadastro`, `janela_de_cadastro`/
+  `aberta`/`cifrados`, none of which the handlers emit any more (`instance`/`state`/`paused`/
+  `registration_window`/`open`/`encrypted`); fixed both `docs/CONTRATO-CONSUMIDOR.md` and its pt-BR
+  mirror, left the still-Portuguese fields (`campo`, `cadastrado`, `primeira_insercao_em`, `fecha_em`,
+  `proximo_passo`, `destino`, `ja_estava_ativa`, `ativa_desde`) and the REQUEST examples as-is because
+  they already match the handlers' `json` tags, and fixed a stray `alcance_externo.veredito` left in
+  the pt-BR mirror by T-240 (now `external_reach.verdict`, matching the EN file). _Completed 2026-09-15
+  04:55._
 - **The `GET /v1/estado` blocks the contract still names in Portuguese** (T-240) — measured
   `docs/CONTRATO-CONSUMIDOR.md` and its pt-BR mirror against `state.go`, `ingress.go`,
   `block_handler.go` and `external_probe.go`, family by family, and renamed every block/field name

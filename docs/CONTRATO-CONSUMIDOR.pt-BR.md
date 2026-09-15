@@ -196,15 +196,15 @@ A `callback_url` tem de ser `https://` pela razão da seção *A sua `callback_u
 
 ```jsonc
 {
-  "instancia": "lojinha",
-  "estado": "pausada",
-  "pausada": true,
-  "janela_de_cadastro": {
-    "aberta": true,
+  "instance": "lojinha",
+  "state": "pausada",
+  "paused": true,
+  "registration_window": {
+    "open": true,
     "primeira_insercao_em": "2026-07-20T09:00:00Z",
     "fecha_em": "2026-07-21T09:00:00Z"
   },
-  "cifrados": [
+  "encrypted": [
     { "campo": "app_secret",      "cadastrado": true  },
     { "campo": "verify_token",    "cadastrado": true  },
     { "campo": "token_envio",     "cadastrado": true  },
@@ -219,7 +219,7 @@ A `callback_url` tem de ser `https://` pela razão da seção *A sua `callback_u
 🔴 **Segredo entra e não volta — e esta rota não abre exceção.** A resposta diz apenas **se** cada
 campo está cadastrado, nunca o valor: nem inteiro, nem truncado, nem em hash. Um endpoint que
 devolvesse credencial transformaria um token de consumidor vazado em roubo da **sua** conta Meta.
-Use `cifrados` para conferir que o conjunto chegou inteiro — em particular que `callback_url` está
+Use `encrypted` para conferir que o conjunto chegou inteiro — em particular que `callback_url` está
 `true` se você espera receber entregas.
 
 🔴 **Cadastrar NÃO ativa.** A instância continua `pausada`, e enquanto estiver assim o webhook
@@ -288,9 +288,9 @@ para um número escolhido por nós, não por você — e mensagem enviada não s
 
 ```jsonc
 {
-  "instancia": "lojinha",
-  "estado": "ativa",
-  "pausada": false,
+  "instance": "lojinha",
+  "state": "ativa",
+  "paused": false,
   "ja_estava_ativa": false,
   "wa_message_id": "wamid.HBgL…",
   "ativa_desde": "2026-07-28T21:40:00Z"
@@ -336,7 +336,7 @@ Content-Type: application/json
 
 ```jsonc
 // 200
-{ "instancia": "lojinha", "estado": "pausada", "pausada": true }
+{ "instance": "lojinha", "state": "pausada", "paused": true }
 ```
 
 Enquanto pausada, o webhook responde `503` e o envio também — a Meta reenfileira o que chegar e
@@ -2903,7 +2903,7 @@ completo é o jeito de alguém escrever um parser por igualdade exata.*
 
 **`status` é string aberta, não enum.** Só medimos `up` e `down` até hoje; tratar o campo como
 vocabulário fechado devolveria algo plausível para um valor que ninguém conferiu — a mesma razão pela
-qual `alcance_externo.veredito` viaja **sem tradução**.
+qual `external_reach.verdict` viaja **sem tradução**.
 
 ⚠️ **`GET`, e só nesta URL.** O healthchecks tem um segundo endereço, o de **ping** (escrita), que é o
 que a sonda usa para dizer "medi e está de pé". Ele é secreto, mora só aqui, e **não se deriva do UUID
