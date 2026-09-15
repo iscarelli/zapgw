@@ -961,7 +961,7 @@ func TestRotatingAcceptsHTTPSCallbackAndTheTestLoopback(t *testing.T) {
 }
 
 // NEVER SILENT SUCCESS. An UPDATE that matches no row is NOT an error to
-// SQLite: without checking RowsAffected, `zapgw instance rotacionar`
+// SQLite: without checking RowsAffected, `zapgw instance rotate`
 // would print "swapped" over a mistyped slug, whoever operated it would
 // leave thinking the real app_secret was on the gateway, and the real
 // instance would keep the random one — the defect would only show up once

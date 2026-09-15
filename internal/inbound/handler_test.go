@@ -270,7 +270,7 @@ func foreignNumberPayload() []byte {
 // counted nothing — the alarm was triggered with live traffic in T-042
 // (2026-07-26), came out correctly in the journal, and the instance kept
 // showing `recebidas 1` and `conta_descartada 0`: the isolation rejection
-// was invisible in `zapgw estado`.
+// was invisible in `zapgw state`.
 func TestHandlerRejectsPhoneNumberIDFromAnotherInstance(t *testing.T) {
 	delivered := false
 	consumer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -298,7 +298,7 @@ func TestHandlerRejectsPhoneNumberIDFromAnotherInstance(t *testing.T) {
 	}
 	if n := directCount(t, path, "lojinha", config.CounterNumberDiscarded); n != 1 {
 		t.Errorf("numero_descartado = %d, want 1 — the isolation rejection by phone_number_id"+
-			" has to show up in `zapgw estado`, not just in the journal", n)
+			" has to show up in `zapgw state`, not just in the journal", n)
 	}
 	// NON-REGRESSION: conta_descartada remains the EXCLUSIVE key for 5b
 	// (waba_id). If the new key were written to the wrong place — or if
@@ -425,7 +425,7 @@ func TestHandlerRejectsAccountWebhookFromAnotherWaba(t *testing.T) {
 //
 // The price is written down and accepted: an ACCOUNT webhook with a new
 // `entry.id` shape is lost. But it's an ANNOUNCED loss — ALARME in the
-// journal and `conta_descartada` in the `zapgw estado` table —, not a
+// journal and `conta_descartada` in the `zapgw state` table —, not a
 // silent one. Wrong routing fixes itself by repointing; data from an
 // account we can't confirm is ours, written into someone else's database,
 // doesn't undo itself.
@@ -470,7 +470,7 @@ func TestHandlerRejectsAccountWebhookWithUnreadableWabaID(t *testing.T) {
 	// account-level isolation rejection?", and the answer is the same in
 	// both cases.
 	if n := directCount(t, path, "lojinha", config.CounterAccountDiscarded); n != 1 {
-		t.Errorf("conta_descartada = %d, want 1 — the rejection has to be VISIBLE in `zapgw estado`", n)
+		t.Errorf("conta_descartada = %d, want 1 — the rejection has to be VISIBLE in `zapgw state`", n)
 	}
 }
 

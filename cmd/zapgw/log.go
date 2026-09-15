@@ -190,7 +190,7 @@ func runLog(ctx context.Context, store *config.Store, slug string, n int, out io
 	// FOLLOW: a SHORT read loop (WHERE rowid > ?), with no open
 	// transaction. The database is in WAL (internal/config/store.go,
 	// OpenStore), so reading concurrently with the service is safe —
-	// `zapgw estado` already does this.
+	// `zapgw state` already does this.
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 	for {

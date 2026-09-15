@@ -4700,7 +4700,7 @@ confirme o token sem enviar mensagem — inventar um por analogia arriscaria uma
 |---|---|---|
 | `estado` / `pausada` / `versao` / `gerado_em` / `carimbos_desde` / `contadores` / `serie_7_dias` / `serie_diaria` | sim | sim — genéricos, independem do produto Meta |
 | `tipo` | sim — sempre `"whatsapp"` | sim — sempre `"instagram"` |
-| `ig_id` | **sempre `nao_se_aplica`** (T-107) — identificador do Instagram, o WhatsApp não tem | sim — o Instagram-scoped Business Account ID desta instância, o mesmo valor de `zapgw instance mostrar` |
+| `ig_id` | **sempre `nao_se_aplica`** (T-107) — identificador do Instagram, o WhatsApp não tem | sim — o Instagram-scoped Business Account ID desta instância, o mesmo valor de `zapgw instance show` |
 | `certificado_do_callback` | sim | sim — é o TLS do **seu** endpoint, o mesmo nos dois produtos |
 | `token_meta` | sim, medido a cada 5 min | **sempre `nao_se_aplica`** (T-099) — a checagem mede por `phone_number_id`, que Instagram nunca tem |
 | `numero_na_meta` (`qualidade`, `limite_de_mensagens`) | sim, medido/empurrado | **sempre `nao_se_aplica`** (T-099) — qualidade e tier são conceitos do WhatsApp Business Number |
@@ -4708,7 +4708,7 @@ confirme o token sem enviar mensagem — inventar um por analogia arriscaria uma
 | `entrada` (`via`, `connector`, `ultimo_webhook_em`) | sim | sim — ele é do **gateway**, não do produto Meta: os dois primeiros campos são iguais em toda instância deste gateway (T-120) |
 
 🔴 **`tipo` e `ig_id` entraram na T-107 (2026-07-30) e aparecem SEMPRE, nos dois produtos** — a mesma
-cegueira que a T-103 já tinha consertado em `zapgw instance mostrar`/`listar` continuava aqui: sem
+cegueira que a T-103 já tinha consertado em `zapgw instance show`/`list` continuava aqui: sem
 `tipo`, você tinha de deduzir o produto pela ausência dos outros blocos (`token_instagram
 nao_se_aplica` etc.), que é adivinhação; e sem `ig_id` você via o bloco `token_instagram` saudável
 **sem conseguir confirmar de qual conta Instagram ele fala** — foi exatamente um `ig_id` errado que

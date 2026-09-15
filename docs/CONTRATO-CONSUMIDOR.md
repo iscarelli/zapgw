@@ -4754,7 +4754,7 @@ deceives.
 |---|---|---|
 | `estado` / `pausada` / `versao` / `gerado_em` / `carimbos_desde` / `contadores` / `serie_7_dias` / `serie_diaria` | yes | yes — generic, independent of the Meta product |
 | `tipo` | yes — always `"whatsapp"` | yes — always `"instagram"` |
-| `ig_id` | **always `nao_se_aplica`** (T-107) — an Instagram identifier, WhatsApp does not have one | yes — this instance's Instagram-scoped Business Account ID, the same value as `zapgw instance mostrar` |
+| `ig_id` | **always `nao_se_aplica`** (T-107) — an Instagram identifier, WhatsApp does not have one | yes — this instance's Instagram-scoped Business Account ID, the same value as `zapgw instance show` |
 | `certificado_do_callback` | yes | yes — it is **your** endpoint's TLS, the same in both products |
 | `token_meta` | yes, measured every 5 min | **always `nao_se_aplica`** (T-099) — the check measures by `phone_number_id`, which Instagram never has |
 | `numero_na_meta` (`qualidade`, `limite_de_mensagens`) | yes, measured/pushed | **always `nao_se_aplica`** (T-099) — quality and tier are WhatsApp Business Number concepts |
@@ -4762,7 +4762,7 @@ deceives.
 | `entrada` (`via`, `connector`, `ultimo_webhook_em`) | yes | yes — it belongs to the **gateway**, not the Meta product: the first two fields are identical on every instance of this gateway (T-120) |
 
 🔴 **`tipo` and `ig_id` came in with T-107 (2026-07-30) and appear ALWAYS, in both products** — the
-same blindness T-103 had already fixed in `zapgw instance mostrar`/`listar` persisted here: without
+same blindness T-103 had already fixed in `zapgw instance show`/`list` persisted here: without
 `tipo`, you had to deduce the product from the absence of the other blocks (`token_instagram
 nao_se_aplica` etc.), which is guesswork; and without `ig_id` you saw a healthy `token_instagram`
 block **without being able to confirm which Instagram account it speaks of** — it was exactly a wrong

@@ -62,7 +62,7 @@ import (
 )
 
 // VarExternalProbeURL is the ONLY environment variable of this slice — read
-// in `main` (and in `zapgw estado`), never on its own inside internal/, by
+// in `main` (and in `zapgw state`), never on its own inside internal/, by
 // the SAME discipline as VarConnectorReady (ingress.go): the environment
 // enters through a function that receives `getenv`, and the value flows
 // down as a parameter.
@@ -251,7 +251,7 @@ type ExternalProbe struct {
 }
 
 // NewExternalProbe builds the probe INERT: it only starts measuring in
-// Start (or in a standalone Measure, which is what `zapgw estado` does).
+// Start (or in a standalone Measure, which is what `zapgw state` does).
 // An empty URL returns a probe that never talks to anyone and always reads
 // `not_configured`.
 func NewExternalProbe(url string) *ExternalProbe {
@@ -296,7 +296,7 @@ func (s *ExternalProbe) Start() {
 
 // Measure runs ONE tick.
 //
-// WHO NEEDS IT STANDALONE IS `zapgw estado` (cmd/zapgw/state.go), for the
+// WHO NEEDS IT STANDALONE IS `zapgw state` (cmd/zapgw/state.go), for the
 // SAME reason as ConnectorProbe.Measure: the measurement lives in the
 // SERVER process's memory, and a command-line process that just started
 // would always read `could_not_verify` — which, on the screen of

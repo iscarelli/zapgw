@@ -292,7 +292,7 @@ func TestMessageFromAOnPathOfBDoesNotLEAKThroughPhoneNumberID(t *testing.T) {
 	requireNothingLeaked(t, a, b)
 
 	if n := directCount(t, path, slugB, config.CounterNumberDiscarded); n != 1 {
-		t.Errorf("numero_descartado for %q = %d, want 1 — the rejection has to be visible in `zapgw estado`", slugB, n)
+		t.Errorf("numero_descartado for %q = %d, want 1 — the rejection has to be visible in `zapgw state`", slugB, n)
 	}
 	// The NEIGHBORING axis's key stays put: whoever reads the table needs
 	// to know WHICH guard rejected it, otherwise they end up checking both

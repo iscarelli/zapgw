@@ -2,7 +2,7 @@
 // PRESENT it (T-065).
 //
 // WHY THIS FILE EXISTS, and the cost it closes: until T-064 the state was
-// built inside the `GET /v1/estado` handler, and `zapgw estado`
+// built inside the `GET /v1/estado` handler, and `zapgw state`
 // (cmd/zapgw/state.go) showed only the counter table. Four blocks the
 // CONSUMER saw and the OPERATOR didn't: `state`/`pausada`, `version`,
 // `meta_token` and `callback_certificate`. It wasn't DATA divergence (the
@@ -36,7 +36,7 @@ import (
 )
 
 // State is the published state of an instance — the body of `200` from
-// `GET /v1/estado` and the content of `zapgw estado`.
+// `GET /v1/estado` and the content of `zapgw state`.
 //
 // THE FORMAT ONLY GROWS, like /v1/health's does: a consumer reading
 // `contadores.recebidas.hoje` today must not break when a new field arrives.
@@ -44,7 +44,7 @@ type State struct {
 	Instance string `json:"instance"`
 	// Type is config.TypeWhatsApp or config.TypeInstagram (T-097/T-098), always
 	// present (T-107). Until now this route had the SAME blindness that T-103
-	// fixed in `zapgw instance mostrar`/`listar`: without this field the
+	// fixed in `zapgw instance show`/`list`: without this field the
 	// consumer would have to DEDUCE the type from the absence of other blocks
 	// (instagram_token not_applicable, number_at_meta not_applicable...), which is
 	// guessing, never reading.
@@ -60,7 +60,7 @@ type State struct {
 	// route is the one the consumer reads, and it needs to be able to confirm
 	// the right account.
 	IgID string `json:"ig_id"`
-	// State is the SAME word from `zapgw instance listar` ("ativa"/"pausada"),
+	// State is the SAME word from `zapgw instance list` ("ativa"/"pausada"),
 	// via the SAME function (config.StateOf): two words for the same state
 	// would force whoever operates it to translate between their screen and ours.
 	State string `json:"state"`
@@ -221,7 +221,7 @@ type State struct {
 }
 
 // CounterInState is one key of the vocabulary: the TWO windows that
-// `zapgw estado` shows, plus the timestamp.
+// `zapgw state` shows, plus the timestamp.
 //
 // THE TIMESTAMP IS THIS BLOCK'S MOST VALUABLE ITEM, and the cost that
 // motivated it is dated: on 2026-07-28, 11:07, delivery stopped and
@@ -447,7 +447,7 @@ type ObservedValue struct {
 //
 // IT IS AN INTERFACE, not *Watchdog, because of the two surfaces: the route
 // reads the watchdog running in the SERVER's process, with a history of several
-// ticks; `zapgw estado` runs in a process that just started and whose watchdog
+// ticks; `zapgw state` runs in a process that just started and whose watchdog
 // is empty — it does ONE tick before reading (see cmd/zapgw/state.go). The
 // narrow type makes this explicit: what the state needs is "someone who
 // knows the verdict", not "the timer".
@@ -563,7 +563,7 @@ const (
 // VerdictReader: the route reads the renewer running in the SERVER's
 // process, with a history of several ticks.
 //
-// CAN BE nil: `zapgw estado` (cmd/zapgw/state.go) has no way to give the
+// CAN BE nil: `zapgw state` (cmd/zapgw/state.go) has no way to give the
 // renewer a safe tick before reading — unlike the token's watchdog
 // (CheckCredential is READ-only), a renewal attempt MUTATES the
 // credential, and firing that as a side effect of a STATUS command would be
@@ -587,7 +587,7 @@ type IGRenewalFailureReader interface {
 // would be a lie wearing a fact's face — and it would land exactly on the
 // value whoever reads it uses to NOT alarm. The caller distinguishes
 // config.ErrInstanceNotFound (404 on the route, message with
-// `zapgw instance listar` on the CLI) from the rest (503 / error).
+// `zapgw instance list` on the CLI) from the rest (503 / error).
 func BuildState(store *config.Store, watchdog VerdictReader, renewer IGRenewalFailureReader, ingress IngressSource, reach *ExternalProbe, leadership *Leadership, version, slug string, now time.Time) (State, error) {
 	return BuildStateWithSeries(store, watchdog, renewer, ingress, reach, leadership, version, slug, now, config.ShortSeriesDays)
 }
@@ -596,7 +596,7 @@ func BuildState(store *config.Store, watchdog VerdictReader, renewer IGRenewalFa
 // whoever is asking (T-081) — today only the route, which reads
 // `?serie_dias=`.
 //
-// `zapgw estado` keeps calling BuildState and doesn't need to know a
+// `zapgw state` keeps calling BuildState and doesn't need to know a
 // window exists: its screen doesn't print any series (see Series7Days).
 // That's why the window came in through a NEW function instead of one more
 // parameter on the old one — the alternative would force the CLI to choose,
@@ -629,7 +629,7 @@ func BuildStateWithSeries(store *config.Store, watchdog VerdictReader, renewer I
 	}
 
 	// failingSince ONLY exists when `renewer` is available (see the comment
-	// on IGRenewalFailureReader: `zapgw estado` passes nil on purpose).
+	// on IGRenewalFailureReader: `zapgw state` passes nil on purpose).
 	var failingSince time.Time
 	if renewer != nil {
 		failingSince = renewer.FailingSince(slug)
@@ -915,7 +915,7 @@ func StateRows(e State) []StateRow {
 //   - the DISTANCE answers "is this fresh?" for whoever is reading the
 //     screen RIGHT NOW. It has no instant to share with anyone.
 //
-// `zapgw estado` had `now` in hand (the one that stamped `gerado_em`) and
+// `zapgw state` had `now` in hand (the one that stamped `gerado_em`) and
 // passed it in here — the most natural thing in the world, and wrong:
 // between one and the other the CLI MEASURES the token on the Graph API (it
 // measures before reading, because the watchdog's cache lives in the server's

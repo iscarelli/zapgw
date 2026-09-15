@@ -4,6 +4,25 @@ One line per version shipped, in the same commit as the bump. The entry states t
 
 ## Unreleased
 
+- **T-245 — retire the remaining Portuguese CLI spellings: `estado` and the eight sub-verbs** —
+  the bridge T-220 deliberately left standing (T-218's decision) is now closed: `estado` and the
+  eight sub-verb pairs (`rotacionar`, `listar`, `mostrar`, `pausar`, `remover`, `registrar`,
+  `desregistrar`, `reabrir-cadastro`) no longer dispatch with a deprecation warning — each one now
+  returns `oldVerbRefused`, naming the English verb, the same shape T-220 already used for the five
+  top-level verbs. `warnOldVerb` (`cmd/zapgw/env_aliases.go`) is now dead code and was deleted;
+  `oldVerbRefused` is the only helper left. Every in-repo caller that dispatched the old spelling as
+  a working setup call (`cmd/zapgw/provision_test.go`, `env_aliases_test.go`, `smoke_test.go`,
+  `state_test.go`, and the interactive menu's own "state" item in `menu.go`) was switched to the
+  English verb, since the old one now errors instead of running. `docs/*.md`,
+  `internal/config/*.go` and `internal/outbound/*.go`/`internal/inbound/*.go` comments naming
+  `zapgw estado` or `zapgw instance <pt-verb>` as a live example were updated to the English
+  spelling (the `GET /v1/estado` HTTP route itself is untouched — that is T-240's scope). Tests:
+  `TestDispatchAcceptsEnglishVerbsSilently` and `TestDispatchAcceptsEnglishSubVerbsSilently` (which
+  proved the old-spelling-still-works behavior this task removes) were deleted; their refusal
+  counterpart now lives in `TestDispatchRefusesRemovedTopLevelVerbs` (grown to include `estado`)
+  and a new `TestDispatchRefusesRemovedSubVerbs`, covering all nine retired pairs. Verify green
+  across all 7 packages. Manually confirmed with a built binary: `instance listar` and `estado`
+  both refuse naming the English verb; `instance list` answers. _Completed 2026-09-15 03:27._
 - **T-220 — remove the Portuguese spellings of five top-level CLI verbs** — `provisionar`, `fumaca`,
   `diagnostico`, `instancia` and `consumidor` no longer dispatch: `dispatch()` now returns
   `oldVerbRefused`, an error naming the English verb to use instead ("silently ignored" was the

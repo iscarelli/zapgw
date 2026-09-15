@@ -215,7 +215,7 @@ func TestSmokeTakesAnswerWithoutIDAsFAILURE(t *testing.T) {
 // --- T-054: the smoke test's message COUNTS -------------------------------------
 //
 // On 2026-07-28 the smoke test activated `tenant-two` with a real message
-// (confirmed on the device by the owner) and the following `zapgw estado`
+// (confirmed on the device by the owner) and the following `zapgw state`
 // said `enviadas hoje 0`. A message went out and the counter said zero —
 // and whoever reads that number to answer "has this instance sent
 // anything yet?" received a LYING zero, precisely on the just-activated
@@ -254,16 +254,16 @@ func TestSmokeCountsSENTUnderTheSAMEKeyAsTheProductionSend(t *testing.T) {
 
 	// AND THE NUMBER HAS TO SHOW UP WHERE THE QUESTION IS ASKED. This is
 	// the closing of the 2026-07-28 report: what was actually looked at
-	// was `zapgw estado`, not the database table. Counting into a made-up
+	// was `zapgw state`, not the database table. Counting into a made-up
 	// key would pass the block above and still be invisible here, because
 	// `estado` iterates over config.KeysInDisplayOrder (the CLOSED
 	// vocabulary, T-039) and not a separate list.
 	var state bytes.Buffer
-	if err := dispatch([]string{"estado", "--slug", "lojinha"}, &state, fakeEnvironment(vars)); err != nil {
-		t.Fatalf("zapgw estado: %v\n%s", err, state.String())
+	if err := dispatch([]string{"state", "--slug", "lojinha"}, &state, fakeEnvironment(vars)); err != nil {
+		t.Fatalf("zapgw state: %v\n%s", err, state.String())
 	}
 	if today, _ := rowValues(t, state.String(), config.CounterSent); today != 1 {
-		t.Errorf("`zapgw estado` shows sent today = %d, want 1:\n%s", today, state.String())
+		t.Errorf("`zapgw state` shows sent today = %d, want 1:\n%s", today, state.String())
 	}
 }
 

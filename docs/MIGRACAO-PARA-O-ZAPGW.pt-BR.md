@@ -192,7 +192,7 @@ Três coisas que mordem na primeira integração:
 ## Fase 2 — RECEBIMENTO. O único passo sem volta imediata.
 
 ```
-1. cadastrar a callback_url na instância        ← zapgw instance rotacionar --callback-url
+1. cadastrar a callback_url na instância        ← zapgw instance rotate --callback-url
 2. rotacionar o app_secret real no gateway      ← precisa do valor do SEU App
 3. apontar o Callback URL do SEU App para cá    ← IRREVERSÍVEL no instante em que salva
 4. mensagem de teste do celular, ciclo completo ← a prova

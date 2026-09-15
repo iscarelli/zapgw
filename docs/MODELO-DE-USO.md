@@ -7,7 +7,7 @@ facades), `internal/outbound/smoke_handler.go` (`POST /v1/fumaca`, step 4 over t
 facade over the same path), `internal/config/store.go` (`RegisterMeta`, `RegistrationWindow`,
 `ReopenRegistrationWindow`, the `instancia.cadastro_em` migration, and
 `ActivateInstance`/`PauseInstance` — the only paths to `ativo`), `cmd/zapgw/provision.go`
-(creation with `--slug` only, the delivery bundle and `zapgw instance reabrir-cadastro`),
+(creation with `--slug` only, the delivery bundle and `zapgw instance reopen-enrollment`),
 `cmd/zapgw/state.go` (the line that says where the daily series lives), `internal/meta/instagram.go`
 (Instagram sending and parsing). Steps 1, 2, 3, 4 and item 8 shipped in T-079; item 1 (manual
 creation) and item 7 (registering does not activate) predate it and still hold. Step 4 over the API
@@ -123,9 +123,9 @@ The first five were open and the owner decided all of them in the same conversat
 5. ✅ **Real numbers come out of the examples**, replaced by a declared convention. It fixes at the
    same time what the audit found: the examples alternate between two slugs and **one of them is the
    real one** — for someone who cannot ask, a placeholder that looks real is a coin flip.
-6. ✅ **`serie_diaria` stays OUT of `zapgw estado`** (owner's decision: *"mantenha fora"* — "keep it
+6. ✅ **`serie_diaria` stays OUT of `zapgw state`** (owner's decision: *"mantenha fora"* — "keep it
    out"). Dozens of lines per instance would make the terminal useless, and the short series stays on
-   screen, so the operator is not blind. **T-083 added two lines to `zapgw estado` saying that it
+   screen, so the operator is not blind. **T-083 added two lines to `zapgw state` saying that it
    exists and where it comes out** — omitting without saying where it lives was T-065's defect with
    the sign flipped.
 

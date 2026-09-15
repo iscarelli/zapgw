@@ -290,7 +290,7 @@ func (h *RegistrationHandler) register(w http.ResponseWriter, r *http.Request) {
 }
 
 // registrationResponse assembles the 200 body from the SUMMARY — the same source as
-// `zapgw instance mostrar`.
+// `zapgw instance show`.
 //
 // THE LIST OF ENCRYPTED FIELDS IS NOT WRITTEN HERE: it comes from
 // config.InstanceSummary.Encrypted, which is where the store says which columns are
@@ -347,7 +347,7 @@ func (h *RegistrationHandler) respondRegistrationError(w http.ResponseWriter, sl
 				" Ela dura "+config.RegistrationWindow.String()+" contados da PRIMEIRA vez que voce cadastrou algo aqui"+
 				" (nao da criacao da instancia, e ela NAO reinicia a cada mudanca)."+
 				" O que fazer: peca a quem te entregou o slug para reabrir a janela —"+
-				" e o comando `zapgw instance reabrir-cadastro`, do lado do gateway."+
+				" e o comando `zapgw instance reopen-enrollment`, do lado do gateway."+
 				" A configuracao que ja estava gravada continua valendo; nada foi perdido.", 0)
 	case errors.Is(err, config.ErrInstanceNotFound):
 		log.Printf("zapgw: consumer %q has a link to instance %q, which NO LONGER exists in the database", consumer, slug)

@@ -75,7 +75,7 @@ a fourth on the same day, found by a FIFTH way:**
 | here, Go | envelope of the **message** event (T-023) | the **status** event, which lost the failure reason (T-028) |
 | consumer, Python | `503` for a credential on the bilateral channel | the **contract**, which every future consumer would read (moved in PR #34) |
 | consumer, Python | incrementing the idempotency series in the **worker** | the admin's **"resend" button**, which rewrote the phone number without changing the key → `422` → the customer never received it |
-| here, Go | closed counter vocabulary (`internal/config/counter.go`) | the printout of `zapgw estado` (`cmd/zapgw/state.go`), which repeated the list by hand and did not know about the new key (T-038/T-039) |
+| here, Go | closed counter vocabulary (`internal/config/counter.go`) | the printout of `zapgw state` (`cmd/zapgw/state.go`), which repeated the list by hand and did not know about the new key (T-038/T-039) |
 
 In the first three, whoever wrote the rule was the one who left the hole, and in all three the suite was
 green. **What found the three was the same question, not the same person** — which suggests it works as
@@ -127,7 +127,7 @@ what separates tenants is the step-3 signature. What T-042 measured does not cha
 | **counted anything** (until T-047) | **no — nothing, not even `recebidas`** | yes, `config.CounterAccountDiscarded` |
 | counts today (T-047) | yes, `config.CounterNumberDiscarded` | yes, `config.CounterAccountDiscarded` |
 
-That is: an isolation rejection by `phone_number_id` **was invisible in `zapgw estado`** (the fix is
+That is: an isolation rejection by `phone_number_id` **was invisible in `zapgw state`** (the fix is
 T-047, further down); the only trace was one journal line, and this file already records (section *Errors
 and logging*) that nobody reads the journal out of habit. Measured in T-042 itself: after triggering the
 alarm, the test instance showed `recebidas 1` (only the accepted event) and `conta_descartada 0` — the
@@ -233,7 +233,7 @@ unanswered in production, *"foi timeout ou transporte?"*.
 **The EIGHTH way, and it is the cheapest of all: somebody OPERATING the system compared a number on the
 screen with a fact they had just witnessed.** On 2026-07-28, minutes after `zapgw smoke` activated
 `tenant-two`, the test message went out (wamid returned, and the owner confirmed **on the handset** that it
-arrived) and the next `zapgw estado` said `enviadas hoje 0`. There was no review, no new traffic and no
+arrived) and the next `zapgw state` said `enviadas hoje 0`. There was no review, no new traffic and no
 test: there was a person with the message on their phone looking at a counter saying it did not exist.
 
 The asymmetry has the exact shape of this section — *"every message that goes out is counted"* held in
@@ -253,7 +253,7 @@ has only the total never splits it back apart.*
 
 *Four mutations, done and reverted before the commit; the third is the informative one:* (1) removing the
 `Registrar(ContEnviadas)` leaves `TestSmokeCountsSENTUnderTheSAMEKeyAsTheProductionSend` red **reproducing
-the production symptom in full** — the `zapgw estado` table comes out with the instance `ativa` and every
+the production symptom in full** — the `zapgw state` table comes out with the instance `ativa` and every
 key at zero; (2) removing the `Registrar(ContFalhasDeEnvio)` leaves
 `TestSmokeCountsSENDFAILURESWhenMetaRefusesTheSend` red; (3) **moving the `Registrar(ContEnviadas)` to
 AFTER step 4 (`ActivateInstance`) passes GREEN** — nothing in the suite makes that step fail, so "count
@@ -269,7 +269,7 @@ discarded counting.
 **The same pitfall on the SURFACE, not on the data: the consumer saw four blocks the operator with an SSH
 session open did not see.** T-060 (route `GET /v1/estado`) and T-064 (`certificado_do_callback`) shipped on
 the same day, each with a green suite, and neither touched `cmd/zapgw/state.go`: the route published
-`estado`/`pausada`, `versao`, `token_meta` and `certificado_do_callback`, and `zapgw estado` showed **only
+`estado`/`pausada`, `versao`, `token_meta` and `certificado_do_callback`, and `zapgw state` showed **only
 the counter table**. It was not a data divergence — the numbers always came from `config.SummarizeCounters`,
 the single source since T-039, and the test that compares the two surfaces number by number passed. It was a
 **surface** asymmetry, which is the most expensive form in this section: the information **exists, is
@@ -290,13 +290,13 @@ saw **zero lines** and — instead of quietly fixing it outside scope, or leavin
 up on BOTH screens without editing either of them. Done and reverted before the commit
 (`campo_de_mutacao`), with `git status` showing **one** modified file.*
 ✅ **The guarantee exercised itself, with a real field, in T-120 (2026-08-06):** the `entrada` block
-entered the `Estado` struct and appeared in the route's JSON **and** on the `zapgw estado` screen — the
+entered the `Estado` struct and appeared in the route's JSON **and** on the `zapgw state` screen — the
 CLI (`cmd/zapgw/state.go`) did not gain a single line about it, only the source's construction. *It is
 not a new proof, it is the same proof charged by a real case instead of a made-up field.*
 
 ***And the finding that only showed up on implementation: extracting the common source IS NOT ENOUGH when
 the source is another process's MEMORY.*** The `token_meta` comes from the watcher's cache
-(`internal/outbound/watchdog.go`), which lives in the **server's** memory. `zapgw estado` is another process,
+(`internal/outbound/watchdog.go`), which lives in the **server's** memory. `zapgw state` is another process,
 and is born with an **empty** cache — publishing the block by reading that cache would have put
 `veredito: desconhecido` on the screen, with both stamps blank, **forever**. That is not "less
 information": it looks like a **broken watcher**, and it sends the operator to investigate a defect that
@@ -335,7 +335,7 @@ therefore be generated silently. That was true while the Meta account belonged t
 delivered the model in which the Meta account belongs to the **consumer** — and on that path the two stopped
 being ours: they have one right value, which lives in the consumer's panel, and any other is garbage.
 Generating them started to **produce a false statement on the only reading surface that exists**: nothing is
-decrypted in this project (T-020), so `zapgw instance mostrar` and the registration response say only
+decrypted in this project (T-020), so `zapgw instance show` and the registration response say only
 `cadastrado: sim|não` — and with generation they said `app_secret=sim` about a secret the consumer's Meta had
 never seen. The question the owner and the consumer **can** ask ("has he registered it yet?") went
 unanswered, and the wrong answer was the reassuring one.
@@ -2656,12 +2656,16 @@ removed five of the CLI's Portuguese top-level verbs (`provisionar`, `fumaca`, `
 T-244 landed above: `warnOldVerb` is CLI-`dispatch`-only, and the server process (`main()` with no argument) never
 calls `dispatch` at all — so the check had been a blind monitor from the moment T-244 merged, independent of
 anything T-220 did to the CLI verbs. **The sibling this flag did not mention:** `estado` and eight sub-verb pairs
-(`rotacionar`, `listar`, `mostrar`, `pausar`, `remover`, `registrar`, `desregistrar`, `reabrir-cadastro`) still call
-`warnOldVerb` today — T-220 deliberately left them alone (T-218's separate, still-open decision) — but none of
-them run during server startup either, so relabeling instead of retiring would have kept the exact same blind
+(`rotacionar`, `listar`, `mostrar`, `pausar`, `remover`, `registrar`, `desregistrar`, `reabrir-cadastro`) still called
+`warnOldVerb` at the time (T-220 deliberately left them alone — T-218's separate, still-open decision) — but none of
+them ran during server startup either, so relabeling instead of retiring would have kept the exact same blind
 spot under a more honest name. Retiring was the only fix that closes it. The shell/Go coupling gate (T-235) still
-passes with 8 markers (down from 9): a `# zapgw:log-coupling` marker was removed in the SAME commit as the
+passed with 8 markers (down from 9): a `# zapgw:log-coupling` marker was removed in the SAME commit as the
 function and its call site, so the gate never had a chance to find an orphaned marker.
+
+✅ **T-245 (same day) closed that sibling too:** `estado` and the eight sub-verbs above now go through
+`oldVerbRefused`, the same as the five verbs T-220 removed, and `warnOldVerb` itself is gone — there is no
+Portuguese CLI spelling left anywhere that still dispatches with a deprecation notice.
 
 ## Environment
 
@@ -3113,7 +3117,7 @@ subject from scratch. The reasons, in order of weight:
    typed it (`cmd/zapgw/main.go:241`). The error **never reaches the journal**. There, zero is *an absence of
    instrument*, not evidence — it is the blind-monitor pitfall in different clothes. What closes the gap is the
    owner's answer, asked directly on 2026-08-18: he has **never seen** `database is locked` running
-   `zapgw instance remover` nor `zapgw log clear --telefone`. *That is testimony, not measurement, and it is noted as
+   `zapgw instance remove` nor `zapgw log clear --telefone`. *That is testimony, not measurement, and it is noted as
    testimony.*
 3. **The failure is noisy, and its price is one manual repetition.** The caller gets an error; nothing is left
    half-done (the `Rollback` was checked). In the CLI commands there is a person in front, who is exactly the one able
@@ -3489,7 +3493,7 @@ covered one. It is this project's mother pitfall (*the rule holds in one place a
 **rules themselves**.
 
 **Variant 4 arrived the next day and is the missing piece: the stamp was RIGHT and the REFERENCE FRAME against which
-it is read was wrong.** `zapgw estado` in `v0.25.0` printed, against production (measured on CT 125 on 2026-07-28
+it is read was wrong.** `zapgw state` in `v0.25.0` printed, against production (measured on CT 125 on 2026-07-28
 18:22, minutes after the version shipped):
 
 ```
@@ -3896,7 +3900,7 @@ was born pointing at the broken value.** Whoever ran the check and trusted the t
 the state that discards all the traffic — and the symptom of that is silence: `200` to Meta, nothing to the consumer,
 no error anywhere.
 
-**It only showed up because the check was made against the MACHINE**, not against the text: `zapgw instance mostrar`
+**It only showed up because the check was made against the MACHINE**, not against the text: `zapgw instance show`
 printed `17841403678746353`, and the `conta_descartada` counter (4, last at `00:48:47 UTC`, zero after the reversion,
 with `recebidas 16 / entregues 16`) closed the proof by behaviour, without depending on which endpoint returns which
 id.
@@ -4015,7 +4019,7 @@ call" buys latency with a copy nobody remembers to update — and the day of div
 slug (`tenant-one`). The examples were *executed* before going into the doc — deserialized and validated — and passed:
 schema validation does not know which slugs exist, so a plausible non-existent slug is indistinguishable from a right
 one. **Executing the example proves the shape, never the value.** An example value that names something real (a slug,
-an id, a phone number) has to be checked against the real thing — here, `zapgw instance listar`.
+an id, a phone number) has to be checked against the real thing — here, `zapgw instance list`.
 *Cost: zero, because the consumer read the example before using it and asked. Had they not: the `callback_url` would
 be registered with the wrong slug, the consumer's multi-tenant guard would answer `503` to every delivery, Meta would
 requeue for 36 h — and a stubborn `503` **looks like a signature problem**, which is where the investigation would

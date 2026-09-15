@@ -190,6 +190,6 @@ func (a *unknownCategoryWarning) warn(slug, category string) {
 		" which is not in the counter vocabulary — its events are falling into %q"+
 		" and the cost-by-category measurement stays incomplete in the meantime."+
 		" ACTION: add the key in internal/config/counter.go (it shows up on its own in"+
-		" `zapgw estado` and in GET /v1/estado). This warning fires ONCE per category per process",
+		" `zapgw state` and in GET /v1/estado). This warning fires ONCE per category per process",
 		slug, category, config.CounterBillingOther)
 }

@@ -495,7 +495,7 @@ func TestStatePublishesNoFieldThatASSERTSReachability(t *testing.T) {
 	}
 }
 
-// The block ALSO has to appear on the `zapgw estado` screen, without anyone
+// The block ALSO has to appear on the `zapgw state` screen, without anyone
 // editing the CLI — the T-065 guarantee, checked on the new field.
 func TestTheIngressBlockAppearsOnTheCLIScreen(t *testing.T) {
 	withPrintClock(t, time.Now())

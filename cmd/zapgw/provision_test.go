@@ -13,7 +13,6 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"errors"
-	"fmt"
 	"math/big"
 	"net/http"
 	"net/http/httptest"
@@ -893,7 +892,7 @@ func TestRotateInstanceChangesOnlyWhatCAMEInTheEnvironment(t *testing.T) {
 	vars["ZAPGW_APP_SECRET"] = "app-secret-REAL-do-painel"
 
 	var out bytes.Buffer
-	err := dispatch([]string{"instance", "rotacionar", "--slug", "tenant-one"},
+	err := dispatch([]string{"instance", "rotate", "--slug", "tenant-one"},
 		&out, fakeEnvironment(vars))
 	if err != nil {
 		t.Fatalf("dispatch: %v", err)
@@ -928,7 +927,7 @@ func TestRotateInstanceDoesNotDRAWWhatDidNotCome(t *testing.T) {
 
 	var out bytes.Buffer
 	err := dispatch([]string{
-		"instance", "rotacionar", "--slug", "tenant-one",
+		"instance", "rotate", "--slug", "tenant-one",
 		"--callback-url", "https://novo-consumidor.interno/hook",
 	}, &out, fakeEnvironment(vars))
 	if err != nil {
@@ -952,7 +951,7 @@ func TestRotateInstanceOnlyClearsTheCallbackWhenTheFlagCOMES(t *testing.T) {
 
 	var out bytes.Buffer
 	if err := dispatch([]string{
-		"instance", "rotacionar", "--slug", "tenant-one", "--callback-url", "",
+		"instance", "rotate", "--slug", "tenant-one", "--callback-url", "",
 	}, &out, fakeEnvironment(vars)); err != nil {
 		t.Fatalf("dispatch: %v", err)
 	}
@@ -976,7 +975,7 @@ func TestRotateInstanceRefusesToChangeTheSLUG(t *testing.T) {
 
 			var out bytes.Buffer
 			err := dispatch([]string{
-				"instance", "rotacionar", "--slug", "tenant-one", renameFlag, "outro-nome",
+				"instance", "rotate", "--slug", "tenant-one", renameFlag, "outro-nome",
 			}, &out, fakeEnvironment(vars))
 
 			if err == nil {
@@ -1002,7 +1001,7 @@ func TestRotateInstanceFlagsNonexistentSlug(t *testing.T) {
 	vars["ZAPGW_APP_SECRET"] = "app-secret-REAL-do-painel"
 
 	var out bytes.Buffer
-	err := dispatch([]string{"instance", "rotacionar", "--slug", "lojinha-race"},
+	err := dispatch([]string{"instance", "rotate", "--slug", "lojinha-race"},
 		&out, fakeEnvironment(vars))
 
 	if !errors.Is(err, config.ErrInstanceNotFound) {
@@ -1020,7 +1019,7 @@ func TestRotateInstanceRefusesPlaintextCallback(t *testing.T) {
 
 	var out bytes.Buffer
 	err := dispatch([]string{
-		"instance", "rotacionar", "--slug", "tenant-one",
+		"instance", "rotate", "--slug", "tenant-one",
 		"--callback-url", "http://consumidor.externo/hook",
 	}, &out, fakeEnvironment(vars))
 
@@ -1039,7 +1038,7 @@ func TestRotateInstanceWithNothingToChangeREFUSES(t *testing.T) {
 	vars := provisionedForRotation(t, "tenant-one")
 
 	var out bytes.Buffer
-	err := dispatch([]string{"instance", "rotacionar", "--slug", "tenant-one"},
+	err := dispatch([]string{"instance", "rotate", "--slug", "tenant-one"},
 		&out, fakeEnvironment(vars))
 
 	if err == nil {
@@ -1053,7 +1052,7 @@ func TestRotateInstanceRequiresTheSlug(t *testing.T) {
 	vars["ZAPGW_APP_SECRET"] = "app-secret-REAL-do-painel"
 
 	var out bytes.Buffer
-	if err := dispatch([]string{"instance", "rotacionar"}, &out, fakeEnvironment(vars)); err == nil {
+	if err := dispatch([]string{"instance", "rotate"}, &out, fakeEnvironment(vars)); err == nil {
 		t.Fatal("the command accepted rotating without saying WHICH instance")
 	}
 	checkIntact(t, instanceFromEnvironment(t, vars, "tenant-one"), "")
@@ -1081,7 +1080,7 @@ func TestRotateInstancePrintsNOSecretAtAll(t *testing.T) {
 
 	var out bytes.Buffer
 	if err := dispatch([]string{
-		"instance", "rotacionar", "--slug", "tenant-one",
+		"instance", "rotate", "--slug", "tenant-one",
 		"--callback-url", "https://novo-consumidor.interno/hook",
 	}, &out, fakeEnvironment(vars)); err != nil {
 		t.Fatalf("dispatch: %v", err)
@@ -1128,7 +1127,7 @@ func TestRotateInstanceRemindsToUpdateMetaAFTERWARDS(t *testing.T) {
 	vars["ZAPGW_APP_SECRET"] = "app-secret-REAL-do-painel"
 
 	var out bytes.Buffer
-	if err := dispatch([]string{"instance", "rotacionar", "--slug", "tenant-one"},
+	if err := dispatch([]string{"instance", "rotate", "--slug", "tenant-one"},
 		&out, fakeEnvironment(vars)); err != nil {
 		t.Fatalf("dispatch: %v", err)
 	}
@@ -1156,7 +1155,7 @@ func TestRotateInstanceWarnsAboutTheVerifyTokenOnlyWhenItChanges(t *testing.T) {
 		vars["ZAPGW_VERIFY_TOKEN"] = "verify-token-REAL"
 
 		var out bytes.Buffer
-		if err := dispatch([]string{"instance", "rotacionar", "--slug", "tenant-one"},
+		if err := dispatch([]string{"instance", "rotate", "--slug", "tenant-one"},
 			&out, fakeEnvironment(vars)); err != nil {
 			t.Fatalf("dispatch: %v", err)
 		}
@@ -1170,7 +1169,7 @@ func TestRotateInstanceWarnsAboutTheVerifyTokenOnlyWhenItChanges(t *testing.T) {
 		vars["ZAPGW_APP_SECRET"] = "app-secret-REAL-do-painel"
 
 		var out bytes.Buffer
-		if err := dispatch([]string{"instance", "rotacionar", "--slug", "tenant-one"},
+		if err := dispatch([]string{"instance", "rotate", "--slug", "tenant-one"},
 			&out, fakeEnvironment(vars)); err != nil {
 			t.Fatalf("dispatch: %v", err)
 		}
@@ -1358,7 +1357,7 @@ func TestRotateInstanceIgIDChangesOnlyTheInstagramIgID(t *testing.T) {
 
 	var out bytes.Buffer
 	err := dispatch([]string{
-		"instance", "rotacionar", "--slug", "insta-loja", "--ig-id", "IGID_NOVO_SINTETICO",
+		"instance", "rotate", "--slug", "insta-loja", "--ig-id", "IGID_NOVO_SINTETICO",
 	}, &out, fakeEnvironment(vars))
 	if err != nil {
 		t.Fatalf("dispatch: %v", err)
@@ -1395,7 +1394,7 @@ func TestRotateInstanceWithoutIgIDDoesNotTouchTheInstagramIgID(t *testing.T) {
 	vars["ZAPGW_APP_SECRET"] = "app-secret-REAL-do-painel"
 
 	var out bytes.Buffer
-	if err := dispatch([]string{"instance", "rotacionar", "--slug", "insta-loja"},
+	if err := dispatch([]string{"instance", "rotate", "--slug", "insta-loja"},
 		&out, fakeEnvironment(vars)); err != nil {
 		t.Fatalf("dispatch: %v", err)
 	}
@@ -1416,7 +1415,7 @@ func TestRotateInstanceRefusesIgIDOnAWhatsAppInstance(t *testing.T) {
 
 	var out bytes.Buffer
 	err := dispatch([]string{
-		"instance", "rotacionar", "--slug", "tenant-one", "--ig-id", "IGID_SINTETICO_RECUSADO",
+		"instance", "rotate", "--slug", "tenant-one", "--ig-id", "IGID_SINTETICO_RECUSADO",
 	}, &out, fakeEnvironment(vars))
 
 	if !errors.Is(err, config.ErrFieldDoesNotApplyToType) {
@@ -1499,7 +1498,7 @@ func TestListInstancesPrintsOneRowPerInstanceWithTheSTATE(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	if err := dispatch([]string{"instance", "listar"}, &out, fakeEnvironment(vars)); err != nil {
+	if err := dispatch([]string{"instance", "list"}, &out, fakeEnvironment(vars)); err != nil {
 		t.Fatalf("dispatch: %v", err)
 	}
 
@@ -1550,7 +1549,7 @@ func TestListInstancesShowsTheTYPEOfBoth(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	if err := dispatch([]string{"instance", "listar"}, &out, fakeEnvironment(vars)); err != nil {
+	if err := dispatch([]string{"instance", "list"}, &out, fakeEnvironment(vars)); err != nil {
 		t.Fatalf("dispatch: %v", err)
 	}
 
@@ -1572,7 +1571,7 @@ func TestListInstancesSaysWhenThereIsNONE(t *testing.T) {
 	// command didn't run". On a freshly created database (the first
 	// provisioning) that doubt is expensive.
 	var out bytes.Buffer
-	if err := dispatch([]string{"instance", "listar"}, &out, fakeEnvironment(testEnvironment(t))); err != nil {
+	if err := dispatch([]string{"instance", "list"}, &out, fakeEnvironment(testEnvironment(t))); err != nil {
 		t.Fatalf("dispatch: %v", err)
 	}
 	if !strings.Contains(out.String(), "no instance registered") {
@@ -1594,7 +1593,7 @@ func TestShowInstanceSaysWhichFieldsAreRegistered(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	if err := dispatch([]string{"instance", "mostrar", "--slug", "tenant-one"},
+	if err := dispatch([]string{"instance", "show", "--slug", "tenant-one"},
 		&out, fakeEnvironment(vars)); err != nil {
 		t.Fatalf("dispatch: %v", err)
 	}
@@ -1642,7 +1641,7 @@ func TestShowInstanceWhatsAppStaysWithoutANewTypeLine(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	if err := dispatch([]string{"instance", "mostrar", "--slug", "tenant-one"},
+	if err := dispatch([]string{"instance", "show", "--slug", "tenant-one"},
 		&out, fakeEnvironment(vars)); err != nil {
 		t.Fatalf("dispatch: %v", err)
 	}
@@ -1665,7 +1664,7 @@ func TestShowInstanceInstagramShowsTypeAndIgID(t *testing.T) {
 	vars := instagramProvisionedForRotation(t, "insta-loja", "IGID_SINTETICO_27807047495582675")
 
 	var out bytes.Buffer
-	if err := dispatch([]string{"instance", "mostrar", "--slug", "insta-loja"},
+	if err := dispatch([]string{"instance", "show", "--slug", "insta-loja"},
 		&out, fakeEnvironment(vars)); err != nil {
 		t.Fatalf("dispatch: %v", err)
 	}
@@ -1699,7 +1698,7 @@ func TestShowInstanceFlagsNonexistentSlug(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	err := dispatch([]string{"instance", "mostrar", "--slug", "lojinha-race"},
+	err := dispatch([]string{"instance", "show", "--slug", "lojinha-race"},
 		&out, fakeEnvironment(vars))
 
 	if !errors.Is(err, config.ErrInstanceNotFound) {
@@ -1718,7 +1717,7 @@ func TestShowInstanceRequiresTheSlug(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	if err := dispatch([]string{"instance", "mostrar"}, &out, fakeEnvironment(vars)); err == nil {
+	if err := dispatch([]string{"instance", "show"}, &out, fakeEnvironment(vars)); err == nil {
 		t.Fatalf("the command accepted showing without saying WHICH instance:\n%s", out.String())
 	}
 }
@@ -1747,12 +1746,12 @@ func TestListInstancesPrintsNoSECRETAtAll(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	if err := dispatch([]string{"instance", "listar"}, &out, fakeEnvironment(vars)); err != nil {
-		t.Fatalf("listar: %v", err)
+	if err := dispatch([]string{"instance", "list"}, &out, fakeEnvironment(vars)); err != nil {
+		t.Fatalf("list: %v", err)
 	}
-	if err := dispatch([]string{"instance", "mostrar", "--slug", "tenant-one"},
+	if err := dispatch([]string{"instance", "show", "--slug", "tenant-one"},
 		&out, fakeEnvironment(vars)); err != nil {
-		t.Fatalf("mostrar: %v", err)
+		t.Fatalf("show: %v", err)
 	}
 	text := out.String()
 	// Without this, "no secret shows up" would be true about an empty
@@ -1828,10 +1827,10 @@ func TestListInstancesWorksWithTheWRONGCIPHERKEY(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	if err := dispatch([]string{"instance", "listar"}, &out, fakeEnvironment(withAnotherKey)); err != nil {
+	if err := dispatch([]string{"instance", "list"}, &out, fakeEnvironment(withAnotherKey)); err != nil {
 		t.Fatalf("list with the wrong key: %v — whoever operates it is blinded exactly during the incident", err)
 	}
-	if err := dispatch([]string{"instance", "mostrar", "--slug", "tenant-one"},
+	if err := dispatch([]string{"instance", "show", "--slug", "tenant-one"},
 		&out, fakeEnvironment(withAnotherKey)); err != nil {
 		t.Fatalf("show with the wrong key: %v", err)
 	}
@@ -1868,7 +1867,7 @@ func TestInstanceRemoveDELETESEVERYTHINGANDDOESNOTTOUCHTheNEIGHBOR(t *testing.T)
 	out.Reset()
 
 	if err := dispatch([]string{
-		"instance", "remover", "--slug", "lojinha", "--confirmo", "lojinha",
+		"instance", "remove", "--slug", "lojinha", "--confirmo", "lojinha",
 	}, &out, fakeEnvironment(vars)); err != nil {
 		t.Fatalf("instance remove: %v", err)
 	}
@@ -1906,7 +1905,7 @@ func TestInstanceRemoveDELETESEVERYTHINGANDDOESNOTTOUCHTheNEIGHBOR(t *testing.T)
 func consumerToken(t *testing.T, vars map[string]string) string {
 	t.Helper()
 	var out bytes.Buffer
-	if err := dispatch([]string{"consumer", "rotacionar", "--nome", "consumer-a"},
+	if err := dispatch([]string{"consumer", "rotate", "--nome", "consumer-a"},
 		&out, fakeEnvironment(vars)); err != nil {
 		t.Fatalf("consumer rotate: %v", err)
 	}
@@ -1917,12 +1916,12 @@ func TestInstanceRemoveWITHOUTCONFIRMATIONDeletesNOTHING(t *testing.T) {
 	// The confirmation is retyping the slug AGAIN. A `-y` would be one
 	// key, and whoever is on the wrong command hits the same key.
 	cases := map[string][]string{
-		"no --confirmo":             {"instance", "remover", "--slug", "lojinha"},
-		"empty --confirmo":          {"instance", "remover", "--slug", "lojinha", "--confirmo", ""},
-		"--confirmo with a typo":    {"instance", "remover", "--slug", "lojinha", "--confirmo", "lojinah"},
-		"--confirmo from the other": {"instance", "remover", "--slug", "lojinha", "--confirmo", "clinica"},
-		"--confirmo with no slug":   {"instance", "remover", "--confirmo", "lojinha"},
-		"--confirmo with just a -y": {"instance", "remover", "--slug", "lojinha", "--confirmo", "y"},
+		"no --confirmo":             {"instance", "remove", "--slug", "lojinha"},
+		"empty --confirmo":          {"instance", "remove", "--slug", "lojinha", "--confirmo", ""},
+		"--confirmo with a typo":    {"instance", "remove", "--slug", "lojinha", "--confirmo", "lojinah"},
+		"--confirmo from the other": {"instance", "remove", "--slug", "lojinha", "--confirmo", "clinica"},
+		"--confirmo with no slug":   {"instance", "remove", "--confirmo", "lojinha"},
+		"--confirmo with just a -y": {"instance", "remove", "--slug", "lojinha", "--confirmo", "y"},
 	}
 	for name, args := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -1953,7 +1952,7 @@ func TestInstanceRemoveREFUSESAnACTIVEInstanceAndSaysHowToProceed(t *testing.T) 
 	}
 	out.Reset()
 
-	err := dispatch([]string{"instance", "remover", "--slug", "lojinha", "--confirmo", "lojinha"},
+	err := dispatch([]string{"instance", "remove", "--slug", "lojinha", "--confirmo", "lojinha"},
 		&out, fakeEnvironment(vars))
 	if err == nil {
 		t.Fatal("removing an ACTIVE instance was accepted")
@@ -1985,7 +1984,7 @@ func TestInstancePauseThenRemoveIsThePathThatWorks(t *testing.T) {
 	}
 	out.Reset()
 
-	if err := dispatch([]string{"instance", "pausar", "--slug", "lojinha"},
+	if err := dispatch([]string{"instance", "pause", "--slug", "lojinha"},
 		&out, fakeEnvironment(vars)); err != nil {
 		t.Fatalf("instance pause: %v", err)
 	}
@@ -1994,19 +1993,19 @@ func TestInstancePauseThenRemoveIsThePathThatWorks(t *testing.T) {
 		t.Fatalf("FindInstance: %v", err)
 	}
 	if i.Active {
-		t.Error("the instance is still ACTIVE after pausar")
+		t.Error("the instance is still ACTIVE after pause")
 	}
 	// Pausing has to say the consequence: 503 is not 200, so Meta
 	// re-queues — and that is what decides whether the pause can last
 	// hours.
 	if !strings.Contains(out.String(), "36h") {
-		t.Errorf("pausar does not say for how long Meta requeues:\n%s", out.String())
+		t.Errorf("pause does not say for how long Meta requeues:\n%s", out.String())
 	}
 
 	out.Reset()
-	if err := dispatch([]string{"instance", "remover", "--slug", "lojinha", "--confirmo", "lojinha"},
+	if err := dispatch([]string{"instance", "remove", "--slug", "lojinha", "--confirmo", "lojinha"},
 		&out, fakeEnvironment(vars)); err != nil {
-		t.Fatalf("remover depois de pausar: %v", err)
+		t.Fatalf("remove after pause: %v", err)
 	}
 	if _, err := storeFromEnvironment(t, vars).FindInstance("lojinha"); !errors.Is(err, config.ErrInstanceNotFound) {
 		t.Errorf("the paused instance was not removed: %v", err)
@@ -2015,8 +2014,8 @@ func TestInstancePauseThenRemoveIsThePathThatWorks(t *testing.T) {
 
 func TestInstancePauseAndRemoveFlagNonexistentSlug(t *testing.T) {
 	cases := map[string][]string{
-		"pausar":  {"instance", "pausar", "--slug", "nao-existe"},
-		"remover": {"instance", "remover", "--slug", "nao-existe", "--confirmo", "nao-existe"},
+		"pausar":  {"instance", "pause", "--slug", "nao-existe"},
+		"remover": {"instance", "remove", "--slug", "nao-existe", "--confirmo", "nao-existe"},
 	}
 	for name, args := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -2044,7 +2043,7 @@ func TestInstanceRemoveWarnsThatMetaDoesNotKnow(t *testing.T) {
 	}
 	out.Reset()
 
-	if err := dispatch([]string{"instance", "remover", "--slug", "lojinha", "--confirmo", "lojinha"},
+	if err := dispatch([]string{"instance", "remove", "--slug", "lojinha", "--confirmo", "lojinha"},
 		&out, fakeEnvironment(vars)); err != nil {
 		t.Fatalf("instance remove: %v", err)
 	}
@@ -2325,7 +2324,7 @@ func TestConsumerRotateREVOKESThePreviousOneAndTheBindingsSURVIVE(t *testing.T) 
 	}
 
 	var out bytes.Buffer
-	if err := dispatch([]string{"consumer", "rotacionar", "--nome", "consumer-b"},
+	if err := dispatch([]string{"consumer", "rotate", "--nome", "consumer-b"},
 		&out, fakeEnvironment(vars)); err != nil {
 		t.Fatalf("consumer rotate: %v", err)
 	}
@@ -2366,7 +2365,7 @@ func TestConsumerRotateWarnsTheTokenDoesNotComeBackAndThePreviousOneDied(t *test
 	labWithConsumer(t, vars)
 
 	var out bytes.Buffer
-	if err := dispatch([]string{"consumer", "rotacionar", "--nome", "consumer-b"},
+	if err := dispatch([]string{"consumer", "rotate", "--nome", "consumer-b"},
 		&out, fakeEnvironment(vars)); err != nil {
 		t.Fatalf("consumer rotate: %v", err)
 	}
@@ -2391,7 +2390,7 @@ func TestConsumerRotateFlagsNonexistentNameInsteadOfFakingSuccess(t *testing.T) 
 	old := labWithConsumer(t, vars)
 
 	var out bytes.Buffer
-	err := dispatch([]string{"consumer", "rotacionar", "--nome", "consumidorinexistentE"},
+	err := dispatch([]string{"consumer", "rotate", "--nome", "consumidorinexistentE"},
 		&out, fakeEnvironment(vars))
 	if err == nil {
 		t.Fatal("rotating a nonexistent name was accepted")
@@ -2409,7 +2408,7 @@ func TestConsumerRotateFlagsNonexistentNameInsteadOfFakingSuccess(t *testing.T) 
 
 func TestConsumerRotateRequiresName(t *testing.T) {
 	var out bytes.Buffer
-	if err := dispatch([]string{"consumer", "rotacionar"}, &out,
+	if err := dispatch([]string{"consumer", "rotate"}, &out,
 		fakeEnvironment(testEnvironment(t))); err == nil {
 		t.Fatal("rotating with no --nome was accepted")
 	}
@@ -2422,7 +2421,7 @@ func TestConsumerListShowsTheBindingsAndNoSecret(t *testing.T) {
 	token := labWithConsumer(t, vars)
 
 	var out bytes.Buffer
-	if err := dispatch([]string{"consumer", "listar"}, &out, fakeEnvironment(vars)); err != nil {
+	if err := dispatch([]string{"consumer", "list"}, &out, fakeEnvironment(vars)); err != nil {
 		t.Fatalf("consumer list: %v", err)
 	}
 	text := out.String()
@@ -2443,7 +2442,7 @@ func TestConsumerListOnEmptyDatabaseIsNotAnError(t *testing.T) {
 	// An empty output cannot be told apart from "the command didn't
 	// run".
 	var out bytes.Buffer
-	if err := dispatch([]string{"consumer", "listar"}, &out,
+	if err := dispatch([]string{"consumer", "list"}, &out,
 		fakeEnvironment(testEnvironment(t))); err != nil {
 		t.Fatalf("list on an empty database: %v", err)
 	}
@@ -2464,7 +2463,7 @@ func TestConsumerListShowsWhoHasNOBINDINGAtAll(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	if err := dispatch([]string{"consumer", "listar"}, &out, fakeEnvironment(vars)); err != nil {
+	if err := dispatch([]string{"consumer", "list"}, &out, fakeEnvironment(vars)); err != nil {
 		t.Fatalf("consumer list: %v", err)
 	}
 	line := instanceLine(t, out.String(), "orfao")
@@ -2483,108 +2482,60 @@ func TestDispatchRefusesUnknownSubcommand(t *testing.T) {
 	}
 }
 
-// --- T-218: English aliases for the CLI sub-verbs, ONE LEVEL BELOW the
-// top-level verbs T-214 already migrated (fumaca/smoke, instancia/instance,
-// consumidor/consumer, estado/state -- see
-// TestDispatchAcceptsEnglishVerbsSilently in env_aliases_test.go). ---------
+// --- T-245: the Portuguese CLI sub-verbs, ONE LEVEL BELOW the top-level
+// verbs T-220 already retired (provisionar, fumaca, diagnostico,
+// instancia, consumidor), are retired the same way -- refused, naming the
+// English one, instead of dispatching with a deprecation notice. ---------
 
-// TestDispatchAcceptsEnglishSubVerbsSilently proves, for EVERY pair T-218
-// names (rotacionar/rotate, listar/list, mostrar/show, pausar/pause,
-// remover/remove, registrar/register, desregistrar/deregister,
-// reabrir-cadastro/reopen-enrollment, provisionar/provision,
-// diagnostico/diagnostics), the two halves the task requires:
-//
-//  1. the OLD (Portuguese) spelling still dispatches AND prints the
-//     warnOldVerb notice;
-//  2. the NEW (English) spelling dispatches to the EXACT SAME underlying
-//     function, silently.
-//
-// EVERY CASE deliberately stops at a "--slug/--nome e obrigatorio"-shaped
-// rejection (or the sub-verb's own "o que?" message): that text is written
-// by the underlying function itself, with no reference to which spelling
-// dispatch routed through (each flag.NewFlagSet name is a fixed literal,
-// e.g. "instancia remover", never args[0]) -- and it is reached before any
-// database or network call, so the case stays fast and offline for BOTH
-// spellings. That is what makes stripping the notice from the OLD output
-// and comparing it byte-for-byte with the NEW output a real proof that the
-// two spellings run the SAME code, not two copies that merely agree today.
-func TestDispatchAcceptsEnglishSubVerbsSilently(t *testing.T) {
+// TestDispatchRefusesRemovedSubVerbs is T-245's Verify for the eight
+// Portuguese sub-verbs (rotacionar, listar, mostrar, pausar, remover,
+// registrar, desregistrar, reabrir-cadastro): each one, under BOTH
+// top-level commands that carry it, no longer dispatches to anything --
+// it comes back as an ERROR that NAMES the English verb to use instead,
+// the same shape TestDispatchRefusesRemovedTopLevelVerbs already proves
+// for the top-level verbs (and, since T-245, for "estado" in that same
+// table).
+func TestDispatchRefusesRemovedSubVerbs(t *testing.T) {
 	env := fakeEnvironment(testEnvironment(t))
 	cases := []struct {
-		name             string
-		oldArgs, newArgs []string
-		oldVerb, newVerb string
+		topVerb, oldVerb, newVerb string
 	}{
-		// NOTE: the top-level verb below is always the ENGLISH one
-		// ("instance"/"consumer", not "instancia"/"consumidor"): T-214
-		// already made that layer warn on its own, and using the OLD
-		// top-level spelling here would add ITS notice on top of the
-		// sub-verb's, contaminating both the notice-count check and the
-		// stripped-output comparison below with a layer this test does
-		// not own.
-		{"instance listar/list", []string{"instance", "listar"}, []string{"instance", "list"}, "listar", "list"},
-		{"instance mostrar/show", []string{"instance", "mostrar"}, []string{"instance", "show"}, "mostrar", "show"},
-		{"instance rotacionar/rotate", []string{"instance", "rotacionar"}, []string{"instance", "rotate"}, "rotacionar", "rotate"},
-		{"instance reabrir-cadastro/reopen-enrollment", []string{"instance", "reabrir-cadastro"}, []string{"instance", "reopen-enrollment"}, "reabrir-cadastro", "reopen-enrollment"},
-		{"instance pausar/pause", []string{"instance", "pausar"}, []string{"instance", "pause"}, "pausar", "pause"},
-		{"instance remover/remove", []string{"instance", "remover"}, []string{"instance", "remove"}, "remover", "remove"},
-		{"instance registrar/register", []string{"instance", "registrar"}, []string{"instance", "register"}, "registrar", "register"},
-		{"instance desregistrar/deregister", []string{"instance", "desregistrar"}, []string{"instance", "deregister"}, "desregistrar", "deregister"},
-		{"consumer listar/list", []string{"consumer", "listar"}, []string{"consumer", "list"}, "listar", "list"},
-		{"consumer rotacionar/rotate", []string{"consumer", "rotacionar"}, []string{"consumer", "rotate"}, "rotacionar", "rotate"},
-		// NOTE: "provisionar"/"diagnostico" used to be rows here too (T-218
-		// added their English pair at the same level as these sub-verbs).
-		// T-220 REMOVED their Portuguese spelling instead of just aliasing
-		// it -- see TestDispatchRefusesRemovedTopLevelVerbs below, which
-		// replaces this pair for exactly those two plus the three T-214
-		// top-level verbs T-220 also removed (fumaca, instancia, consumidor).
+		{"instance", "listar", "list"},
+		{"instance", "mostrar", "show"},
+		{"instance", "rotacionar", "rotate"},
+		{"instance", "reabrir-cadastro", "reopen-enrollment"},
+		{"instance", "pausar", "pause"},
+		{"instance", "remover", "remove"},
+		{"instance", "registrar", "register"},
+		{"instance", "desregistrar", "deregister"},
+		{"consumer", "listar", "list"},
+		{"consumer", "rotacionar", "rotate"},
 	}
-
 	for _, c := range cases {
-		t.Run(c.name, func(t *testing.T) {
-			var outOld bytes.Buffer
-			errOld := dispatch(c.oldArgs, &outOld, env)
-
-			var outNew bytes.Buffer
-			errNew := dispatch(c.newArgs, &outNew, env)
-
-			notice := fmt.Sprintf("zapgw: subcommand %q is deprecated -- use %q instead (T-214)\n", c.oldVerb, c.newVerb)
-			if !strings.Contains(outOld.String(), notice) {
-				t.Fatalf("%q did not emit the expected T-214/T-218 notice: %s", c.oldVerb, outOld.String())
+		t.Run(c.topVerb+" "+c.oldVerb, func(t *testing.T) {
+			var out bytes.Buffer
+			err := dispatch([]string{c.topVerb, c.oldVerb}, &out, env)
+			if err == nil {
+				t.Fatalf("%q %q was ACCEPTED -- it must be refused, naming %q", c.topVerb, c.oldVerb, c.newVerb)
 			}
-			if strings.Contains(outNew.String(), "deprecated") {
-				t.Fatalf("%q (NEW spelling) warned needlessly: %s", c.newVerb, outNew.String())
+			if !strings.Contains(err.Error(), c.newVerb) {
+				t.Errorf("the refusal for %q %q does not name %q: %v", c.topVerb, c.oldVerb, c.newVerb, err)
 			}
-
-			rest := strings.Replace(outOld.String(), notice, "", 1)
-			if rest != outNew.String() {
-				t.Errorf("the old verb's output (without the notice) differs from the new verb's output -- a sign that"+
-					" the two spellings do NOT call the same function:\nold: %q\nnew:  %q", rest, outNew.String())
-			}
-			switch {
-			case errOld == nil && errNew == nil:
-				// Both quiet with no error -- ok (e.g. `listar`/`list`
-				// on an empty database).
-			case errOld != nil && errNew != nil:
-				if errOld.Error() != errNew.Error() {
-					t.Errorf("the old verb's error differs from the new verb's error:\nold: %v\nnew:  %v", errOld, errNew)
-				}
-			default:
-				t.Errorf("one of the two failed and the other did not (old=%v, new=%v) -- the two spellings should behave identically", errOld, errNew)
+			if out.Len() != 0 {
+				t.Errorf("%q %q wrote to stdout instead of only returning an error: %q", c.topVerb, c.oldVerb, out.String())
 			}
 		})
 	}
 }
 
-// TestDispatchRefusesRemovedTopLevelVerbs is T-220's Verify: the five
-// Portuguese top-level verbs (provisionar, fumaca, diagnostico, instancia,
-// consumidor) no longer dispatch to anything -- "silently ignored" is the
-// failure mode this task exists to close, so each one has to come back as
-// an ERROR that NAMES the English verb to use instead, not a generic
-// "unknown subcommand". "estado" is deliberately NOT in this table: its
-// Portuguese spelling is a separate, still-open decision (T-218) and stays
-// on warnOldVerb, proved by TestDispatchAcceptsEnglishVerbsSilently in
-// env_aliases_test.go.
+// TestDispatchRefusesRemovedTopLevelVerbs is T-220's Verify, grown by
+// T-245 to also cover "estado": the six Portuguese top-level verbs
+// (provisionar, fumaca, diagnostico, instancia, consumidor, estado) no
+// longer dispatch to anything -- "silently ignored" is the failure mode
+// this task exists to close, so each one has to come back as an ERROR
+// that NAMES the English verb to use instead, not a generic "unknown
+// subcommand". T-245 also closed the sub-verbs one level below -- see
+// TestDispatchRefusesRemovedSubVerbs above.
 func TestDispatchRefusesRemovedTopLevelVerbs(t *testing.T) {
 	env := fakeEnvironment(testEnvironment(t))
 	cases := []struct{ oldVerb, newVerb string }{
@@ -2593,6 +2544,7 @@ func TestDispatchRefusesRemovedTopLevelVerbs(t *testing.T) {
 		{"diagnostico", "diagnostics"},
 		{"instancia", "instance"},
 		{"consumidor", "consumer"},
+		{"estado", "state"},
 	}
 	for _, c := range cases {
 		t.Run(c.oldVerb, func(t *testing.T) {
@@ -2721,9 +2673,9 @@ func TestInstanceReopenEnrollmentUNBLOCKSTheConsumerWithoutTouchingTheConfigurat
 	registeredAt(t, vars, "terceiro", time.Now().Add(-40*24*time.Hour))
 
 	out.Reset()
-	if err := dispatch([]string{"instance", "reabrir-cadastro", "--slug", "terceiro", "--confirmo", "terceiro"},
+	if err := dispatch([]string{"instance", "reopen-enrollment", "--slug", "terceiro", "--confirmo", "terceiro"},
 		&out, fakeEnvironment(vars)); err != nil {
-		t.Fatalf("reabrir-cadastro: %v", err)
+		t.Fatalf("reopen-enrollment: %v", err)
 	}
 
 	// THE WINDOW CAME BACK: registering now goes through.
@@ -2759,10 +2711,10 @@ func TestInstanceReopenEnrollmentWITHOUTCONFIRMATIONDoesNothing(t *testing.T) {
 	registeredAt(t, vars, "terceiro", closed)
 
 	for name, args := range map[string][]string{
-		"no --confirmo":  {"instance", "reabrir-cadastro", "--slug", "terceiro"},
-		"different slug": {"instance", "reabrir-cadastro", "--slug", "terceiro", "--confirmo", "terceiros"},
-		"empty confirmo": {"instance", "reabrir-cadastro", "--slug", "terceiro", "--confirmo", ""},
-		"no --slug":      {"instance", "reabrir-cadastro", "--confirmo", "terceiro"},
+		"no --confirmo":  {"instance", "reopen-enrollment", "--slug", "terceiro"},
+		"different slug": {"instance", "reopen-enrollment", "--slug", "terceiro", "--confirmo", "terceiros"},
+		"empty confirmo": {"instance", "reopen-enrollment", "--slug", "terceiro", "--confirmo", ""},
+		"no --slug":      {"instance", "reopen-enrollment", "--confirmo", "terceiro"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			var s bytes.Buffer
@@ -2784,7 +2736,7 @@ func TestInstanceReopenEnrollmentWITHOUTCONFIRMATIONDoesNothing(t *testing.T) {
 func TestInstanceReopenEnrollmentFlagsNonexistentSlug(t *testing.T) {
 	vars := testEnvironment(t)
 	var out bytes.Buffer
-	err := dispatch([]string{"instance", "reabrir-cadastro", "--slug", "nao-existe", "--confirmo", "nao-existe"},
+	err := dispatch([]string{"instance", "reopen-enrollment", "--slug", "nao-existe", "--confirmo", "nao-existe"},
 		&out, fakeEnvironment(vars))
 	if !errors.Is(err, config.ErrInstanceNotFound) {
 		t.Fatalf("error = %v, want ErrInstanceNotFound — silent success would send the owner away thinking they unlocked it", err)
@@ -2804,8 +2756,8 @@ func TestShowInstanceSaysWhetherTheEnrollmentWindowISOpen(t *testing.T) {
 	// 1) Never registered: OPEN, and the text says the clock starts at
 	//    THEIR first insert — not at creation.
 	out.Reset()
-	if err := dispatch([]string{"instance", "mostrar", "--slug", "terceiro"}, &out, fakeEnvironment(vars)); err != nil {
-		t.Fatalf("mostrar: %v", err)
+	if err := dispatch([]string{"instance", "show", "--slug", "terceiro"}, &out, fakeEnvironment(vars)); err != nil {
+		t.Fatalf("show: %v", err)
 	}
 	if !strings.Contains(out.String(), "OPEN") || !strings.Contains(out.String(), "FIRST insertion") {
 		t.Errorf("the unregistered instance does not show up with an open window:\n%s", out.String())
@@ -2820,8 +2772,8 @@ func TestShowInstanceSaysWhetherTheEnrollmentWindowISOpen(t *testing.T) {
 	//    next to it.
 	registeredAt(t, vars, "terceiro", time.Now().Add(-40*24*time.Hour))
 	out.Reset()
-	if err := dispatch([]string{"instance", "mostrar", "--slug", "terceiro"}, &out, fakeEnvironment(vars)); err != nil {
-		t.Fatalf("mostrar: %v", err)
+	if err := dispatch([]string{"instance", "show", "--slug", "terceiro"}, &out, fakeEnvironment(vars)); err != nil {
+		t.Fatalf("show: %v", err)
 	}
 	if !strings.Contains(out.String(), "CLOSED") {
 		t.Errorf("the expired window does not show up as closed:\n%s", out.String())
@@ -2877,7 +2829,7 @@ func TestRegisterInstanceReadsThePinFromZAPGWPinAndPostsTheRightBody(t *testing.
 	vars["ZAPGW_PIN"] = "123456"
 
 	var out bytes.Buffer
-	if err := dispatch([]string{"instance", "registrar", "--slug", "lojinha"}, &out, fakeEnvironment(vars)); err != nil {
+	if err := dispatch([]string{"instance", "register", "--slug", "lojinha"}, &out, fakeEnvironment(vars)); err != nil {
 		t.Fatalf("dispatch: %v\n%s", err, out.String())
 	}
 
@@ -2914,7 +2866,7 @@ func TestRegisterInstanceAcceptsPinFromFile(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	err := dispatch([]string{"instance", "registrar", "--slug", "lojinha", "--pin-arquivo", file},
+	err := dispatch([]string{"instance", "register", "--slug", "lojinha", "--pin-arquivo", file},
 		&out, fakeEnvironment(vars))
 	if err != nil {
 		t.Fatalf("dispatch: %v\n%s", err, out.String())
@@ -2929,12 +2881,12 @@ func TestRegisterInstanceWithoutPinRefusesWithoutTouchingTheNetwork(t *testing.T
 	// Neither ZAPGW_PIN nor --pin-arquivo.
 
 	var out bytes.Buffer
-	err := dispatch([]string{"instance", "registrar", "--slug", "lojinha"}, &out, fakeEnvironment(vars))
+	err := dispatch([]string{"instance", "register", "--slug", "lojinha"}, &out, fakeEnvironment(vars))
 	if err == nil {
 		t.Fatal("registering with no pin was accepted")
 	}
 	if len(*requests) != 0 {
-		t.Errorf("registrar sem pin TOCOU a rede (%d chamada(s))", len(*requests))
+		t.Errorf("register without a pin TOUCHED the network (%d call(s))", len(*requests))
 	}
 }
 
@@ -2942,7 +2894,7 @@ func TestDeregisterInstanceWithoutConfirmFailsWithoutTouchingTheNetwork(t *testi
 	vars, requests := registrationScenario(t)
 
 	var out bytes.Buffer
-	err := dispatch([]string{"instance", "desregistrar", "--slug", "lojinha"}, &out, fakeEnvironment(vars))
+	err := dispatch([]string{"instance", "deregister", "--slug", "lojinha"}, &out, fakeEnvironment(vars))
 	if err == nil {
 		t.Fatal("deregistering with no --confirmo was accepted")
 	}
@@ -2952,7 +2904,7 @@ func TestDeregisterInstanceWithoutConfirmFailsWithoutTouchingTheNetwork(t *testi
 		t.Errorf("the message does not say what happens: %v", err)
 	}
 	if len(*requests) != 0 {
-		t.Errorf("desregistrar sem --confirmo TOCOU a rede (%d chamada(s))", len(*requests))
+		t.Errorf("deregister without --confirmo TOUCHED the network (%d call(s))", len(*requests))
 	}
 }
 
@@ -2960,7 +2912,7 @@ func TestDeregisterInstanceWithConfirmCallsDeregister(t *testing.T) {
 	vars, requests := registrationScenario(t)
 
 	var out bytes.Buffer
-	err := dispatch([]string{"instance", "desregistrar", "--slug", "lojinha", "--confirmo", "lojinha"},
+	err := dispatch([]string{"instance", "deregister", "--slug", "lojinha", "--confirmo", "lojinha"},
 		&out, fakeEnvironment(vars))
 	if err != nil {
 		t.Fatalf("dispatch: %v\n%s", err, out.String())
@@ -3006,8 +2958,8 @@ func TestChangeInstancePinPostsOnTheNumberPath(t *testing.T) {
 func TestNoSubcommandHasAFlagCalledPin(t *testing.T) {
 	flagName := regexp.MustCompile(`(?m)^\s*-pin(\s|$)`)
 	for _, args := range [][]string{
-		{"instance", "registrar", "-h"},
-		{"instance", "desregistrar", "-h"},
+		{"instance", "register", "-h"},
+		{"instance", "deregister", "-h"},
 		{"instance", "pin", "-h"},
 	} {
 		var out bytes.Buffer

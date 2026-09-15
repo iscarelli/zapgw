@@ -582,7 +582,7 @@ func (s *Store) LastLogLines(slug string, n int) ([]LogLine, error) {
 // follow repeats on every turn of the loop (T-093): a SHORT read loop,
 // with no open transaction, safe against the service because the database
 // is in WAL mode (OpenStore, `journal_mode(WAL)`) — the same reasoning
-// that already lets `zapgw estado` read concurrently with the writing process.
+// that already lets `zapgw state` read concurrently with the writing process.
 func (s *Store) LogLinesSince(slug string, rowid int64) ([]LogLine, error) {
 	if slug == "" {
 		return s.queryLog(`

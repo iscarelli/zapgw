@@ -1008,7 +1008,7 @@ var ErrIncompleteRegistration = errors.New("config: incomplete registration")
 // them change `segredo_entrega` through here would swap the HMAC key of a
 // delivery in progress without the other side knowing; changing
 // `verify_token` would break webhook re-verification with no immediate
-// symptom. Both swaps exist, and they are `zapgw instance rotacionar`, on
+// symptom. Both swaps exist, and they are `zapgw instance rotate`, on
 // the owner's side.
 type MetaRegistration struct {
 	WabaID        string // identifier, NOT a secret
@@ -1563,7 +1563,7 @@ type RowsDeleted struct {
 // the six encrypted fields nobody has memorized.
 //
 // IN A SINGLE TRANSACTION because half-deleted is the worst outcome: an
-// `instancia` removed with `counter` left over leaves rows `zapgw estado`
+// `instancia` removed with `counter` left over leaves rows `zapgw state`
 // doesn't show (it walks the registered instances) and that only disappear
 // on the 90-day TTL — invisible and alive. And if the slug gets reused,
 // they show back up, with numbers from another life.
@@ -1717,7 +1717,7 @@ type InstanceSummary struct {
 	// only on Instance, which carries the six fields IN THE CLEAR) for
 	// the SAME reason as Type: it's an IDENTIFIER, not a secret, and a
 	// secret-free read command has to be able to show it (T-103 — until
-	// then `zapgw instance mostrar` had no way to confirm the stored
+	// then `zapgw instance show` had no way to confirm the stored
 	// value, not even after fixing it).
 	IgID string
 	// TokenSetAt and TokenRenewedAt answer, without decrypting

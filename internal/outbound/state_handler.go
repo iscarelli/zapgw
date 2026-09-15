@@ -2,7 +2,7 @@
 // whoever already has a dashboard (T-060).
 //
 // WHY IT EXISTS, and it isn't visualization: until now these numbers only
-// existed for whoever went into the CT and ran `zapgw estado`. At
+// existed for whoever went into the CT and ran `zapgw state`. At
 // `consumer-b`'s cutover (2026-07-28) the ONLY observation available was the
 // operator checking a counter by hand over SSH. The real gain is ALARM: the
 // consumers already have a notification system, and with readable counters
@@ -16,7 +16,7 @@
 // web is the one who designs it.
 //
 // IT DOES NOT BUILD THE STATE, it only publishes it: outbound.BuildState
-// (state.go) builds it, the SAME function `zapgw estado` uses. The split is
+// (state.go) builds it, the SAME function `zapgw state` uses. The split is
 // from T-065: until then, the state was built right here and the CLI command
 // showed only the counter table — four blocks the consumer saw and the
 // operator didn't. This file handles what belongs ONLY to the route:
@@ -248,7 +248,7 @@ func (h *StateHandler) state(w http.ResponseWriter, r *http.Request) {
 
 	// One call, and the body is the entire State serialized — no field
 	// list in here. A new field in State (state.go) comes out in this
-	// response AND on the `zapgw estado` screen without anyone editing
+	// response AND on the `zapgw state` screen without anyone editing
 	// either surface, which is T-065's guarantee.
 	// h.renewer is *InstagramRenewer (a CONCRETE pointer); it only becomes
 	// an interface here, and ONLY when it isn't nil — passing the nil

@@ -375,7 +375,7 @@ func (h *Handler) receive(w http.ResponseWriter, r *http.Request) {
 	// Before T-047, 5a counted NOTHING — deliberately triggered with live
 	// traffic in T-042, the alarm came out correctly in the journal and the
 	// instance kept showing `recebidas 1` and `conta_descartada 0`, meaning
-	// the isolation rejection was invisible in `zapgw estado` and the only
+	// the isolation rejection was invisible in `zapgw state` and the only
 	// trace was a journal line, which docs/ARMADILHAS.md records that no
 	// one reads out of habit. Why there are TWO keys and not one: see the
 	// comment on CounterNumberDiscarded in internal/config/counter.go.
@@ -513,7 +513,7 @@ func (h *Handler) receive(w http.ResponseWriter, r *http.Request) {
 		// with live traffic in T-042, the alarm came out correctly in the
 		// journal and the instance kept showing `recebidas 1` and
 		// `conta_descartada 0`, meaning the isolation rejection was
-		// invisible in `zapgw estado` and the only trace was a journal
+		// invisible in `zapgw state` and the only trace was a journal
 		// line, which docs/ARMADILHAS.md records that no one reads out of
 		// habit. Why there are TWO keys and not one: see the comment on
 		// CounterNumberDiscarded in internal/config/counter.go.

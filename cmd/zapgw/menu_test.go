@@ -61,12 +61,12 @@ func TestMenuBUILDSTheSubcommandArgs(t *testing.T) {
 		{
 			name:     "state with no slug: the flag does NOT go, and it's the subcommand that decides 'all'",
 			in:       []string{"1", ""},
-			expected: []string{"estado"},
+			expected: []string{"state"},
 		},
 		{
 			name:     "state with slug",
 			in:       []string{"1", "lojinha"},
-			expected: []string{"estado", "--slug", "lojinha"},
+			expected: []string{"state", "--slug", "lojinha"},
 		},
 		{
 			name:     "instance list asks nothing",

@@ -390,7 +390,7 @@ func TestRegistrationAfterTheWindowIs409AndSaysWhatToDo(t *testing.T) {
 	body := strings.ToLower(rec.Body.String())
 	// WHY it closed, WHAT TO DO, and the NAME of the command that unlocks it.
 	// Without all three, the consumer is stuck in a dead end.
-	for _, required := range []string{"fechada", "primeira", "reabrir-cadastro"} {
+	for _, required := range []string{"fechada", "primeira", "reopen-enrollment"} {
 		if !strings.Contains(body, required) {
 			t.Errorf("the error message does not say %q — it is the only support this consumer has:\n%s", required, rec.Body.String())
 		}
