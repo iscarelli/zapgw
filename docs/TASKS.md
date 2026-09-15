@@ -6,6 +6,30 @@
 > Escrito ao fim de 2026-08-30, o dia em que o repositorio virou publico. Bloco de retomada
 > mentindo e' pior que bloco nenhum: e' o primeiro texto que a proxima sessao le.
 
+### 📌 2026-09-15 03:40 — `v0.67.0` EM PRODUCAO: nomes velhos de env e verbos portugueses da CLI RECUSAM. Aguarda validacao do consumidor.
+
+**Medido pelo deploy, nao afirmado:** `HEALTH OK: {"ok":true,"versao":"0.67.0"}` +
+`VERSION MATCHES: 0.67.0 (same as built)` as ~03:31. `main` = `e205487`, tag `v0.67.0`, os dois no
+`origin` (`git ls-remote --tags`). Verify de repo inteiro verde nos 7 pacotes em CADA merge.
+
+- **Quatro tarefas fechadas num lote** (dono: "pode fazer uma de uma vez"): T-243 (docs/comentarios),
+  T-244 (env velho -> RECUSA, `EnvOrOld`/`WarnOldEnvVar` apagadas; `ZAPGW_CHAVE_CIFRA=x ./zapgw`
+  sai 1 nomeando `ZAPGW_ENCRYPTION_KEY`), T-220 (cinco verbos de topo), T-245 (`estado` + oito
+  sub-verbos; `warnOldVerb` apagada). Provas re-rodadas no `main` mesclado, nao tiradas do relatorio.
+- ✅ **`/root/rotaciona-token.sh` no CT 125 migrado as ~03:33** (`instancia listar` -> `instance list`,
+  `instancia rotacionar` -> `instance rotate`), backup `/root/rotaciona-token.sh.antes-da-T-220`,
+  `bash -n` ok, `zapgw instance list` respondendo pelo binario novo via a funcao do profile. Janela de
+  quebra: ~2 min entre o swap e o sed. ⚠️ O script `~/.zapgw/migra-verbos-rotaciona.sh` primeiro
+  FALHOU chamando `/usr/local/bin/zapgw` direto (sem o env): a conferencia certa e' pela funcao
+  `zapgw` de `/etc/profile.d/zapgw.sh`, que carrega o env em subshell.
+- 🙏 **PENDENTE: validacao do consumidor.** Secao de 03:32 no canal (`STATUS: AGUARDANDO_VALIDACAO`)
+  pede: `GET /v1/estado` com `versao 0.67.0`, o fluxo do vale-presente sem mudar o script, um envio
+  de texto e um de template, e qualquer diferenca vs a `v0.66.1`. `SendMessage` "va ler" enviado a
+  sessao do consumidor (endereco esta no cabecalho do arquivo dele no canal). Nenhuma rota HTTP mudou nesta versao — a validacao e' de trafego real,
+  que o verify nao alcanca. Quando responderem `PRONTO`, fechar o lote com o dono.
+- 🧹 Quatro worktrees novas desta sessao (`agent-a12eac…`, `aeebd5…`, `a24372…`, `aa86d2…`) estao
+  MESCLADAS; entram na limpeza das 21 anteriores.
+
 ### 📌 2026-09-15 01:10 — `v0.66.1` EM PRODUCAO e MEDIDA pelo consumidor: `POST /v1/uploads` fechado
 
 **Atualiza o bloco logo abaixo (00:50), que ficou stale em 20 minutos:** a primeira chamada real do
@@ -50,7 +74,7 @@ de repo inteiro verde nos 7 pacotes antes do bump.
   aposentadas — `git worktree remove` uma a uma, conferindo `git log main..<branch>` vazio antes.
 
 #### 🔴 A FILA agora — DUAS tarefas, nesta ordem: T-240, T-231 (detalhe no bloco de 09-08 abaixo).
-T-220 (implementada em 2026-09-15, ver bloco logo abaixo) saiu da fila.
+T-220 e T-245 (mescladas e implantadas na `v0.67.0`, bloco de 03:40) sairam da fila.
 
 ### 📌 2026-09-08 06:35 — FIM DA SESSAO DA TRADUCAO. Leia este bloco inteiro antes de tocar em nada.
 
@@ -187,7 +211,8 @@ segunda vez, depois de 21/08. Contido: `git worktree list` deu tres arvores e na
 dividiu a arvore do pai, e `HEAD` da worktree seguia em `cb7be5a` (ninguem commitou por conta
 propria). *"Nao re-delegue" continua sendo pedido, nao mecanismo.*
 
-✅ **T-220 implementada em 2026-09-15** (worktree separada, ainda NAO mesclada em `main`). Removeu a
+✅ **T-220 implementada em 2026-09-15** — e MESCLADA + IMPLANTADA na `v0.67.0` (bloco de 03:40; o
+resto deste paragrafo e' o estado de antes do merge, mantido como registro). Removeu a
 grafia portuguesa de cinco verbos de topo (`provisionar`, `fumaca`, `diagnostico`, `instancia`,
 `consumidor`) — RECUSA agora, nomeando o verbo ingles, em vez de aceitar em silencio; `estado` e os
 oito sub-verbos (`rotacionar`, `listar`, `mostrar`, `pausar`, `remover`, `registrar`,
