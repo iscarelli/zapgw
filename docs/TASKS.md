@@ -6,6 +6,35 @@
 > Escrito ao fim de 2026-08-30, o dia em que o repositorio virou publico. Bloco de retomada
 > mentindo e' pior que bloco nenhum: e' o primeiro texto que a proxima sessao le.
 
+### 📌 2026-09-15 00:50 — `v0.66.0` EM PRODUCAO: a rota do consumidor subiu e levou a traducao junto
+
+**Medido pelo proprio deploy, nao afirmado:** `HEALTH OK: {"ok":true,"versao":"0.66.0"}` seguido de
+`VERSION MATCHES: 0.66.0 (same as built)`. Tag `v0.66.0` no `origin`, `main` = `37bc11b`, verify
+de repo inteiro verde nos 7 pacotes antes do bump.
+
+- **T-241 fechada** (`POST /v1/uploads`, o `example.header_handle` via Resumable Upload) — pedido
+  do `consumer-b` em 2026-09-15, respondido no canal com formato, versao e o que falta medir.
+  🔴 **Zero byte foi para a Meta real**: a rota foi provada contra Graph falso. O contrato marca a
+  rota como *assumida / nao medida*, e o passo `GET /app?fields=id` (descoberta do App ID a partir
+  do `token_envio`, porque a instancia NAO guarda App ID) em particular. **A medicao e' a primeira
+  chamada do consumidor**, combinada no canal: `200` + template `PENDING` -> tirar a marca do
+  contrato citando o arquivo deles; erro com `step: "app_id"` -> plano B ja decidido: aceitar o App
+  ID vindo do consumidor (identificador, nao segredo). Nao corre sozinho — espera o canal.
+- **As 17 tarefas da traducao (T-222..T-239) subiram nesta versao.** O aviso de "main NAO esta
+  implantado" do bloco anterior morreu aqui.
+- **A unit do systemd do CT 125 NAO cita `implanta/`** — medido em 2026-09-15 00:20 por
+  `systemctl cat zapgw`: so' `Documentation=` (URL do GitHub) e `ExecStart=/usr/local/bin/zapgw`.
+  A pergunta "ABERTA" do bloco anterior fecha.
+- ⚠️ **Seis `ZAPGW_*` obsoletas continuam gritadas a cada deploy** (`ZAPGW_ENTRADA_VIA`,
+  `ZAPGW_CHAVE_CIFRA`, `ZAPGW_BANCO`, `ZAPGW_ENDERECO`, `ZAPGW_CONECTOR_READY`,
+  `ZAPGW_SONDA_EXTERNA_URL`). E' o [1468], decisao do dono — uma delas e' a chave de cifra.
+- 🧹 **21 worktrees de implementador acumuladas em `.claude/worktrees/`** (medido por
+  `git worktree list` em 2026-09-15). So' uma tem trabalho nao mesclado conhecido: a da T-231
+  (`agent-af905375f3c5ebcb1`, commit `8d3fd43`, ver abaixo). As outras sao lixo de tarefas ja
+  aposentadas — `git worktree remove` uma a uma, conferindo `git log main..<branch>` vazio antes.
+
+#### 🔴 A FILA agora — TRES tarefas, nesta ordem: T-240, T-231, T-220 (detalhe no bloco de 09-08 abaixo)
+
 ### 📌 2026-09-08 06:35 — FIM DA SESSAO DA TRADUCAO. Leia este bloco inteiro antes de tocar em nada.
 
 **A sessao parou por orcamento do dono, nao por problema.** `main` = `a0b0d52`, empurrado, e o
@@ -36,7 +65,7 @@ T-230, T-232, T-233, T-234, T-235, T-236, T-237, T-238, T-239. Todas com entrada
 3. **T-220** — os verbos da CLI. E' a unica que termina em PRODUCAO, e a ordem e' a garantia:
    mesclar -> deployar -> atualizar `/root/rotaciona-token.sh` no CT 125, no mesmo movimento.
 
-#### 🔴 ANTES DE QUALQUER DEPLOY — duas coisas medidas hoje
+#### ~~🔴 ANTES DE QUALQUER DEPLOY — duas coisas medidas hoje~~ (RESOLVIDO em 2026-09-15: `v0.66.0` implantada, `VERSION` bumpado — ver bloco acima)
 
 - **`main` NAO esta implantado.** O CT roda a `v0.65.0`; tudo desta sessao esta no `main` e nao subiu.
 - **O `VERSION` continua `0.65.0` e nao foi bumpado.** As 17 entradas estao sob `## Unreleased`.
@@ -49,8 +78,8 @@ T-230, T-232, T-233, T-234, T-235, T-236, T-237, T-238, T-239. Todas com entrada
   linhas. A linha 25, que aponta para o repo PRIVADO antigo (`/c/dev/zapgw-dev/implanta/deploy.sh`),
   **nao foi tocada de proposito** — aquele repo nao foi renomeado, e um `sed` global quebraria ali.
   Backup em `~/.zapgw/deploy-zapgw.sh.antes-do-rename-2026-09-08`. `bash -n` limpo.
-- 🔴 **ABERTA:** a unit do systemd no CT 125 pode citar o caminho `implanta/`. **Ninguem foi ver.**
-  Isso e' pergunta, nao estado: confira antes do proximo deploy.
+- ✅ **Fechada em 2026-09-15:** a unit do systemd no CT 125 NAO cita `implanta/` (medido por
+  `systemctl cat zapgw` antes do deploy da `v0.66.0`).
 
 #### Tres mecanismos novos, todos com prova contra dado real
 
