@@ -37,9 +37,12 @@ de repo inteiro verde nos 7 pacotes antes do bump.
 - **A unit do systemd do CT 125 NAO cita `implanta/`** — medido em 2026-09-15 00:20 por
   `systemctl cat zapgw`: so' `Documentation=` (URL do GitHub) e `ExecStart=/usr/local/bin/zapgw`.
   A pergunta "ABERTA" do bloco anterior fecha.
-- ⚠️ **Seis `ZAPGW_*` obsoletas continuam gritadas a cada deploy** (`ZAPGW_ENTRADA_VIA`,
-  `ZAPGW_CHAVE_CIFRA`, `ZAPGW_BANCO`, `ZAPGW_ENDERECO`, `ZAPGW_CONECTOR_READY`,
-  `ZAPGW_SONDA_EXTERNA_URL`). E' o [1468], decisao do dono — uma delas e' a chave de cifra.
+- ✅ **As seis `ZAPGW_*` obsoletas do CT foram renomeadas em 2026-09-15 01:32** ([1468] fechado):
+  so' o NOME, valor intacto (317 -> 324 bytes = soma das diferencas de nome), backup
+  `/etc/zapgw/env.antes-do-rename-20260915`, saude ok na `v0.66.1`, **zero** avisos `deprecated`.
+  Rodado pelo dono via `~/.zapgw/rename-env-obsoleto.sh` (o classificador barra escrita remota
+  nesse arquivo). Os ALIASES continuam no codigo (T-214 item 4, decisao do dono); a T-243 limpa
+  os comentarios/docs que ainda citam os nomes velhos como vivos.
 - 🧹 **21 worktrees de implementador acumuladas em `.claude/worktrees/`** (medido por
   `git worktree list` em 2026-09-15). So' uma tem trabalho nao mesclado conhecido: a da T-231
   (`agent-af905375f3c5ebcb1`, commit `8d3fd43`, ver abaixo). As outras sao lixo de tarefas ja
@@ -351,6 +354,37 @@ instancias foram rotacionadas. Duas licoes que custaram na hora e valem alem des
 ## Active
 
 > A fila do periodo privado esta em `iscarelli/zapgw-dev`, congelada. Tarefa nova nasce aqui.
+
+## [ ] T-243  Comments, examples and docs still name the OLD `ZAPGW_*` variables as the live ones
+Why:     Em 2026-09-15 01:32 o dono renomeou, no CT 125, os seis nomes obsoletos de `/etc/zapgw/env`
+         para os ingleses (`ZAPGW_ENCRYPTION_KEY`, `ZAPGW_DATABASE`, `ZAPGW_ADDRESS`,
+         `ZAPGW_INGRESS_VIA`, `ZAPGW_CONNECTOR_READY`, `ZAPGW_EXTERNAL_PROBE_URL`) — saude ok na
+         `v0.66.1`, zero avisos `deprecated`. A partir dai, todo comentario, `.env.example` e doc que
+         diz "a chave vive em `ZAPGW_CHAVE_CIFRA`" descreve um estado que nao existe mais: doc falso,
+         no sentido de `docs/DOCUMENTACAO.md`. Medido com `grep` em 2026-09-15: 15 arquivos, 34
+         ocorrencias fora dos aliases, dos testes e do historico.
+Files:   .env.example, README.md, README.pt-BR.md, cmd/zapgw/main.go, deploy/check-leadership.sh,
+         deploy/deploy.sh, deploy/profile-zapgw.sh, deploy/zapgw.service, docs/CONTRATO-CONSUMIDOR.md,
+         docs/CONTRATO-CONSUMIDOR.pt-BR.md, docs/META-CAMPOS-DE-WEBHOOK.md, docs/ONBOARDING-META.md,
+         internal/config/crypto.go, internal/outbound/external_probe.go, internal/outbound/ingress.go,
+         docs/CHANGELOG.md
+Do:      Comando de partida (rode e cole no relatorio):
+         `grep -rn "ZAPGW_CHAVE_CIFRA\|ZAPGW_BANCO\|ZAPGW_ENDERECO\|ZAPGW_ENTRADA_VIA\|ZAPGW_CONECTOR_READY\|ZAPGW_SONDA_EXTERNA_URL" --include="*.go" --include="*.sh" --include="*.service" --include="*.md" --include="*.example" . | grep -v "_test.go\|^./.claude\|env_aliases.go\|CHANGELOG\|TASKS.md\|ARMADILHAS"`
+         Em cada ocorrencia decida, e liste no relatorio com o caso:
+         (a) descreve o estado VIVO (comentario "a chave vive em X", `.env.example`, README, unit,
+             doc de operacao) -> troque pelo nome novo;
+         (b) e' o PAR de migracao citado de proposito ("aceita X ou Y", tabela de aliases, T-214,
+             `config.EnvOrOld(..., new, old)`) -> NAO toque: o alias continua existindo no codigo;
+         (c) `deploy/check-leadership.sh:69-71` exporta os nomes velhos para um binario de TESTE ->
+             troque pelos novos (o binario aceita os dois; o script deve falar a lingua atual).
+         🔴 SO' COMENTARIO, EXEMPLO E DOC. Nenhuma linha de codigo executavel muda de comportamento:
+         `env_aliases.go` e os pares `New/Old` de `internal/config` e `internal/outbound` FICAM —
+         apagar o alias e' decisao do dono (T-214, Do item 4), nao desta tarefa. Se o `grep` de
+         partida apontar linha executavel que voce acha que deveria mudar, pare e relate.
+         `.env.example`: os placeholders continuam literais (`troque-pelo-...`), so' o nome muda.
+Verify:  CGO_ENABLED=0 go build ./... && go test ./... && go vet ./... && gofmt -l cmd internal
+         `bash -n deploy/*.sh`. E o `grep` de partida rodado de novo: o que sobrar tem de ser so'
+         caso (b), listado um a um no relatorio.
 
 ## [ ] T-240  The `GET /v1/estado` blocks the contract still names in Portuguese
 After:   T-239
