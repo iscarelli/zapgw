@@ -41,8 +41,9 @@ de repo inteiro verde nos 7 pacotes antes do bump.
   so' o NOME, valor intacto (317 -> 324 bytes = soma das diferencas de nome), backup
   `/etc/zapgw/env.antes-do-rename-20260915`, saude ok na `v0.66.1`, **zero** avisos `deprecated`.
   Rodado pelo dono via `~/.zapgw/rename-env-obsoleto.sh` (o classificador barra escrita remota
-  nesse arquivo). Os ALIASES continuam no codigo (T-214 item 4, decisao do dono); a T-243 limpa
-  os comentarios/docs que ainda citam os nomes velhos como vivos.
+  nesse arquivo). A T-243 limpou os comentarios/docs que ainda citavam os nomes velhos como vivos,
+  e a T-244 fechou o item 4 da T-214: os nomes velhos nao sao mais lidos — se estiverem
+  definidos, o processo RECUSA subir, nomeando o novo.
 - 🧹 **21 worktrees de implementador acumuladas em `.claude/worktrees/`** (medido por
   `git worktree list` em 2026-09-15). So' uma tem trabalho nao mesclado conhecido: a da T-231
   (`agent-af905375f3c5ebcb1`, commit `8d3fd43`, ver abaixo). As outras sao lixo de tarefas ja
@@ -354,60 +355,6 @@ instancias foram rotacionadas. Duas licoes que custaram na hora e valem alem des
 ## Active
 
 > A fila do periodo privado esta em `iscarelli/zapgw-dev`, congelada. Tarefa nova nasce aqui.
-
-## [ ] T-244  Retire the old `ZAPGW_*` env-var names: an old name set at startup is REFUSED, never read
-Vikunja: 1619
-Why:     Decisao do dono em 2026-09-15 ("pode fazer uma de uma vez"), depois de o CT 125 ter sido
-         renomeado para os nomes ingleses (zero avisos `deprecated` na `v0.66.1`) e de a medicao
-         mostrar que nenhum chamador restante usa nome velho (`/root/rotaciona-token.sh` ja le
-         `ZAPGW_DATABASE`/`ZAPGW_SEND_TOKEN`, o profile so' faz `source`). Fecha o item 4 da T-214,
-         que estava reservado ao dono. 🔴 **O modo de falha desta mudanca e' "sobe no DEFAULT em
-         silencio"** (e' o aviso escrito no topo de `cmd/zapgw/env_aliases.go`): um `/etc/zapgw/env`
-         antigo em outro clone, ou um operador que ainda exporta `ZAPGW_CHAVE_CIFRA`, faria o
-         gateway abrir um banco vazio com outra chave, sem erro. Por isso o nome velho nao e'
-         simplesmente ignorado: **se estiver definido, o processo RECUSA subir**, nomeando o novo.
-Files:   internal/config/env_alias.go, internal/config/env_alias_test.go, cmd/zapgw/env_aliases.go,
-         cmd/zapgw/main.go, cmd/zapgw/diagnostics.go, cmd/zapgw/lost.go (se usar databasePath),
-         internal/config/counter.go, internal/config/transit.go, internal/outbound/external_probe.go,
-         internal/outbound/ingress.go, internal/outbound/leadership.go, os `_test.go` de cada um,
-         deploy/check-leadership.sh (so' se a T-243 nao tiver trocado os nomes la),
-         docs/ARMADILHAS.md, docs/CHANGELOG.md
-Do:      Inventario de partida (rode e cole no relatorio):
-         `grep -rn "EnvOrOld\|WarnOldEnvVar" --include="*.go" cmd internal | grep -v _test.go`
-         Sao ~14 chamadas de `config.EnvOrOld(getenv, new, old)` mais os `WarnOldEnvVar` que as
-         acompanham. A mudanca e' UMA, no resolvedor, e mecanica em cada chamador:
-         1. `internal/config/env_alias.go`: substitua `EnvOrOld` por
-            `EnvRefusingOld(getenv func(string) string, newName, oldName string) (string, error)`:
-            le SO' `newName`; se `getenv(oldName) != ""`, devolve `""` e um erro que embrulha
-            `ErrObsoleteEnvVar` (sentinela novo) com a mensagem
-            `environment variable ZAPGW_X is no longer read -- rename it to ZAPGW_Y (T-244)`.
-            Apague `WarnOldEnvVar` (vira morto) e o `oldNameUsed bool` de todo lugar.
-            🔴 Nao deixe `EnvOrOld` viva "por compatibilidade": duas funcoes com a mesma pergunta
-            e respostas diferentes e' a armadilha-mae.
-         2. Em cada chamador: erro -> falha de ARRANQUE (`log.Fatalf`/retorno de erro ate o `main`,
-            o que cada sitio ja usa para config invalida — siga o padrao vizinho, nao invente).
-            Nos verbos da CLI (`diagnostics.go`, `lost.go`), o erro sai em `stderr` com saida != 0.
-            Os pares de constantes `New`/`Old` FICAM (o `Old` e' o que a recusa nomeia); apague so'
-            o que nao for mais lido.
-         3. Teste, por chamador, tres casos: (a) so' o nome novo -> valor lido; (b) so' o velho ->
-            RECUSA com mensagem que contem o nome novo, e o valor NAO foi lido (o default nao
-            entra); (c) os dois -> recusa (o velho definido basta; nao ha "o novo vence" aqui).
-            Onde ja existe teste do par (T-214 escreveu varios), converta — nao duplique.
-            🔴 **O teste (b) tem de existir para a chave de cifra** (`cmd/zapgw/main.go:182`): e' o
-            caso que abriria banco vazio. Rode-o ANTES de mexer no resolvedor e cole a falha.
-         4. `deploy/check-leadership.sh:69-71`: confira que exporta os nomes NOVOS (a T-243 deve ter
-            trocado); se ainda exporta os velhos, troque — com a T-244 o binario de teste recusaria.
-         5. `docs/ARMADILHAS.md`: uma linha na entrada da T-214 (ou nova, se nao houver), sem 🔥:
-            *alias de variavel de ambiente se aposenta RECUSANDO o nome velho, nunca ignorando —
-            ignorar e' subir no default em silencio.* Ainda nao cobrou; diga isso.
-         6. `CLAUDE.md`/docs que digam "aceita os dois nomes" ficam falsos: `grep -rn "T-214" docs
-            README.md CLAUDE.md` e corrija o que descreve estado vivo; registro historico fica.
-         🔴 NAO toque nos verbos da CLI (`warnOldVerb`, dispatch em `main.go`) — e' a T-220, logo
-         abaixo. NAO bumpe `VERSION`.
-Verify:  CGO_ENABLED=0 go build ./... && go test ./... && go vet ./... && gofmt -l cmd internal
-         `bash -n deploy/*.sh`. `grep -rn "EnvOrOld\|WarnOldEnvVar" cmd internal` vazio.
-         E a prova manual, colada: `ZAPGW_CHAVE_CIFRA=x ZAPGW_DATABASE=/tmp/t.db ./zapgw` (ou o
-         verbo mais barato) sai != 0 com a mensagem nomeando `ZAPGW_ENCRYPTION_KEY`.
 
 ## [ ] T-220  Remove the Portuguese spellings of the CLI verbs
 After:   T-244 — e o movimento sincronizado (mesclar + deployar + atualizar

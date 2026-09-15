@@ -4,6 +4,20 @@ One line per version shipped, in the same commit as the bump. The entry states t
 
 ## Unreleased
 
+- **T-244 — the old `ZAPGW_*` env-var names are retired: set at startup, they REFUSE, never read** —
+  closes item 4 of T-214. `config.EnvOrOld`/`config.WarnOldEnvVar` (accept-and-warn) are replaced by
+  `config.EnvRefusingOld`, which reads only the new (English) name and, if the OLD (Portuguese) one
+  is set, returns an error wrapping the new `config.ErrObsoleteEnvVar` sentinel naming the new name
+  to use — the old value is never read, not even as a fallback. Every caller across `cmd/zapgw` and
+  `internal/config`/`internal/outbound` now brings the process (or the CLI command) down on that
+  error instead of silently accepting the old name. The `New`/`Old` constant pairs stay declared —
+  the `Old` one is what the refusal names. CLI verb spellings (`warnOldVerb`) are untouched (T-220).
+  `deploy/check-leadership.sh`'s leadership-guard test exports (lines 78-176) still used the old
+  names and would have made its own test binary refuse to start; switched to the new ones and ran
+  the script end-to-end (all six cases pass). See `docs/ARMADILHAS.md` for why refusing (not
+  ignoring) is the safe shape, and for a residual `deploy/deploy.sh` log-coupling note left for
+  T-220. _Completed 2026-09-15 02:27._
+
 - **T-243 — comments, examples and docs updated to the new `ZAPGW_*` env-var names** — the CT 125
   rename (2026-09-15 01:32) left 15 files describing the six variables by their old Portuguese
   names as if still live. Updated `.env.example`, `README.md`/`README.pt-BR.md`,
