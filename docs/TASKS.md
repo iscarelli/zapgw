@@ -6,6 +6,18 @@
 > Escrito ao fim de 2026-08-30, o dia em que o repositorio virou publico. Bloco de retomada
 > mentindo e' pior que bloco nenhum: e' o primeiro texto que a proxima sessao le.
 
+### 📌 2026-09-15 01:10 — `v0.66.1` EM PRODUCAO e MEDIDA pelo consumidor: `POST /v1/uploads` fechado
+
+**Atualiza o bloco logo abaixo (00:50), que ficou stale em 20 minutos:** a primeira chamada real do
+consumidor na `v0.66.0` FALHOU (`400`, `step: "upload"`) — o id de sessao da Meta e'
+`upload:…?sig=…` e o `url.JoinPath` escapava o `?`. **T-242** consertou (concatenacao + validacao
+de forma; teste com o valor real reprovou antes e passou depois; entrada 🔥 em `ARMADILHAS.md`).
+`v0.66.1` implantada as 01:06 (`HEALTH OK` + `VERSION MATCHES`), e as 01:07 o consumidor mediu:
+`200` com handle, template `HEADER IMAGE` criado (`201`/`PENDING`). **A marca "nao medido" saiu
+do contrato (`6c6733b`) citando essa medicao**, com a fronteira: um mime, um consumidor. O `GET
+/app` com token de System User FUNCIONA — o plano B do App ID morreu. `main` = `6c6733b`, tags
+`v0.66.0` e `v0.66.1` no `origin`. Canal `PRONTO` dos dois lados, nada pendente.
+
 ### 📌 2026-09-15 00:50 — `v0.66.0` EM PRODUCAO: a rota do consumidor subiu e levou a traducao junto
 
 **Medido pelo proprio deploy, nao afirmado:** `HEALTH OK: {"ok":true,"versao":"0.66.0"}` seguido de
