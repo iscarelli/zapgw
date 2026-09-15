@@ -17,7 +17,7 @@
 # gateway that doesn't know its own version — and from there on every
 # production diagnosis leans on a wrong number.
 #
-# It does NOT copy /etc/zapgw/env and does NOT touch ZAPGW_CHAVE_CIFRA. The
+# It does NOT copy /etc/zapgw/env and does NOT touch ZAPGW_ENCRYPTION_KEY. The
 # key lives only on the CT; copying it would be creating a second copy to leak.
 #
 # It ALSO installs /etc/profile.d/zapgw.sh (T-090), which is what makes the

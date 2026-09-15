@@ -355,38 +355,6 @@ instancias foram rotacionadas. Duas licoes que custaram na hora e valem alem des
 
 > A fila do periodo privado esta em `iscarelli/zapgw-dev`, congelada. Tarefa nova nasce aqui.
 
-## [ ] T-243  Comments, examples and docs still name the OLD `ZAPGW_*` variables as the live ones
-Vikunja: 1618
-Why:     Em 2026-09-15 01:32 o dono renomeou, no CT 125, os seis nomes obsoletos de `/etc/zapgw/env`
-         para os ingleses (`ZAPGW_ENCRYPTION_KEY`, `ZAPGW_DATABASE`, `ZAPGW_ADDRESS`,
-         `ZAPGW_INGRESS_VIA`, `ZAPGW_CONNECTOR_READY`, `ZAPGW_EXTERNAL_PROBE_URL`) — saude ok na
-         `v0.66.1`, zero avisos `deprecated`. A partir dai, todo comentario, `.env.example` e doc que
-         diz "a chave vive em `ZAPGW_CHAVE_CIFRA`" descreve um estado que nao existe mais: doc falso,
-         no sentido de `docs/DOCUMENTACAO.md`. Medido com `grep` em 2026-09-15: 15 arquivos, 34
-         ocorrencias fora dos aliases, dos testes e do historico.
-Files:   .env.example, README.md, README.pt-BR.md, cmd/zapgw/main.go, deploy/check-leadership.sh,
-         deploy/deploy.sh, deploy/profile-zapgw.sh, deploy/zapgw.service, docs/CONTRATO-CONSUMIDOR.md,
-         docs/CONTRATO-CONSUMIDOR.pt-BR.md, docs/META-CAMPOS-DE-WEBHOOK.md, docs/ONBOARDING-META.md,
-         internal/config/crypto.go, internal/outbound/external_probe.go, internal/outbound/ingress.go,
-         docs/CHANGELOG.md
-Do:      Comando de partida (rode e cole no relatorio):
-         `grep -rn "ZAPGW_CHAVE_CIFRA\|ZAPGW_BANCO\|ZAPGW_ENDERECO\|ZAPGW_ENTRADA_VIA\|ZAPGW_CONECTOR_READY\|ZAPGW_SONDA_EXTERNA_URL" --include="*.go" --include="*.sh" --include="*.service" --include="*.md" --include="*.example" . | grep -v "_test.go\|^./.claude\|env_aliases.go\|CHANGELOG\|TASKS.md\|ARMADILHAS"`
-         Em cada ocorrencia decida, e liste no relatorio com o caso:
-         (a) descreve o estado VIVO (comentario "a chave vive em X", `.env.example`, README, unit,
-             doc de operacao) -> troque pelo nome novo;
-         (b) e' o PAR de migracao citado de proposito ("aceita X ou Y", tabela de aliases, T-214,
-             `config.EnvOrOld(..., new, old)`) -> NAO toque: o alias continua existindo no codigo;
-         (c) `deploy/check-leadership.sh:69-71` exporta os nomes velhos para um binario de TESTE ->
-             troque pelos novos (o binario aceita os dois; o script deve falar a lingua atual).
-         🔴 SO' COMENTARIO, EXEMPLO E DOC. Nenhuma linha de codigo executavel muda de comportamento:
-         `env_aliases.go` e os pares `New/Old` de `internal/config` e `internal/outbound` FICAM —
-         apagar o alias e' decisao do dono (T-214, Do item 4), nao desta tarefa. Se o `grep` de
-         partida apontar linha executavel que voce acha que deveria mudar, pare e relate.
-         `.env.example`: os placeholders continuam literais (`troque-pelo-...`), so' o nome muda.
-Verify:  CGO_ENABLED=0 go build ./... && go test ./... && go vet ./... && gofmt -l cmd internal
-         `bash -n deploy/*.sh`. E o `grep` de partida rodado de novo: o que sobrar tem de ser so'
-         caso (b), listado um a um no relatorio.
-
 ## [ ] T-244  Retire the old `ZAPGW_*` env-var names: an old name set at startup is REFUSED, never read
 Vikunja: 1619
 After:   T-243

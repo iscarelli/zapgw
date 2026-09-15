@@ -1,6 +1,6 @@
 // Encryption of credentials at rest.
 //
-// THE KEY LIVES OUTSIDE THE DATABASE (environment variable ZAPGW_CHAVE_CIFRA).
+// THE KEY LIVES OUTSIDE THE DATABASE (environment variable ZAPGW_ENCRYPTION_KEY).
 // That is what makes it safe for the SQLite file backup to exist: whoever
 // grabs the file without the key opens nothing. If the key went inside the
 // database, the backup would start carrying N businesses' credentials in
@@ -25,7 +25,7 @@ var ErrInvalidKey = errors.New("config: invalid encryption key (want 32 bytes in
 type Vault struct {
 	aead cipher.AEAD
 	// hmacKey is USED ONLY by the TRANSIT log (T-091, transit.go). It
-	// comes from the SAME encryption key (ZAPGW_CHAVE_CIFRA) but with DOMAIN
+	// comes from the SAME encryption key (ZAPGW_ENCRYPTION_KEY) but with DOMAIN
 	// SEPARATION (the fixed prefix below): never the same byte sequence that
 	// goes into AES, so that using this key elsewhere doesn't hand over the
 	// encryption key for free.

@@ -3864,7 +3864,7 @@ probe's public URL (the section above) that survives our outage, never this fiel
   validity. **This is NEVER `down`, and never the field being absent.** It is a word of its own,
   different from the `unknown` used in `token_meta`/`connector` — because the decision you are
   going to automate on top of it is different: "I could not ask" is not "you are down";
-- **`nao_configurado`** — this gateway does not have `ZAPGW_SONDA_EXTERNA_URL` configured yet.
+- **`nao_configurado`** — this gateway does not have `ZAPGW_EXTERNAL_PROBE_URL` configured yet.
   `veredito`, `medido_em` and `fonte` come `null`.
 
 ⚠️ **The block comes ALWAYS, with all four keys, on every instance** — the same rule as `entrada` and

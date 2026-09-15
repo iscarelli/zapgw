@@ -66,9 +66,9 @@ fi
 
 # The key is a test one and the database is disposable. There is no real
 # secret in this file, and there must never be one.
-export ZAPGW_CHAVE_CIFRA=0000000000000000000000000000000000000000000000000000000000000000
-export ZAPGW_BANCO="$RAIZ/teste.db"
-export ZAPGW_ENDERECO="127.0.0.1:${PORTA}"
+export ZAPGW_ENCRYPTION_KEY=0000000000000000000000000000000000000000000000000000000000000000
+export ZAPGW_DATABASE="$RAIZ/teste.db"
+export ZAPGW_ADDRESS="127.0.0.1:${PORTA}"
 
 if curl -s -o /dev/null --max-time 2 "$BASE/v1/health"; then
 	inconclusivo "something is already listening on $BASE — pick another one with ZAPGW_VALIDA_PORTA"

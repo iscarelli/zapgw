@@ -172,7 +172,7 @@ the value comes from the environment, precisely so whoever rotates knows what it
 
     > 🔴 **Where the `app_secret` does NOT come from: the machine running the gateway.** Measured on
     > 2026-07-28 (T-057): it is **not** in `/etc/zapgw/env` on CT 125 — that file has
-    > `ZAPGW_CHAVE_CIFRA`, `ZAPGW_BANCO` and `ZAPGW_ENDERECO`. The `app_secret` lives **encrypted in
+    > `ZAPGW_ENCRYPTION_KEY`, `ZAPGW_DATABASE` and `ZAPGW_ADDRESS`. The `app_secret` lives **encrypted in
     > the database, per instance**, and **no CLI command decrypts it back** — which is a decision, not
     > a gap: T-052 chose to print only the two secrets that need to exist OUTSIDE the gateway
     > (`verify_token` and `segredo_entrega`), and this is not one of them. Practical consequence:

@@ -3823,7 +3823,7 @@ URL pública da sonda (seção acima) que sobrevive à nossa queda, nunca este c
   passou da validade. **Isto NUNCA é `down`, e nunca é o campo ausente.** É uma palavra própria,
   diferente de `unknown` usado em `token_meta`/`connector` — porque a decisão que você vai
   automatizar em cima dela é diferente: "eu não consegui perguntar" não é "vocês estão fora do ar";
-- **`nao_configurado`** — este gateway ainda não tem `ZAPGW_SONDA_EXTERNA_URL` configurada. `veredito`,
+- **`nao_configurado`** — este gateway ainda não tem `ZAPGW_EXTERNAL_PROBE_URL` configurada. `veredito`,
   `medido_em` e `fonte` vêm `null`.
 
 ⚠️ **O bloco vem SEMPRE, com as quatro chaves, em toda instância** — mesma regra de `entrada` e
