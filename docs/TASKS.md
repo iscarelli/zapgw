@@ -393,14 +393,14 @@ instancias foram rotacionadas. Duas licoes que custaram na hora e valem alem des
 > A fila do periodo privado esta em `iscarelli/zapgw-dev`, congelada. Tarefa nova nasce aqui.
 
 ## [ ] T-240  The `GET /v1/estado` blocks the contract still names in Portuguese
-After:   T-239
 Why:     A T-237 consertou quatro familias do `docs/CONTRATO-CONSUMIDOR.md` e, no caminho, achou uma
          QUINTA — os NOMES DOS BLOCOS do `GET /v1/estado`, nao so' o vocabulario dentro deles.
          **Re-medido por mim contra o codigo em 2026-09-08**, chave por chave — e CONFIRMADO pelo
          consumidor em producao na `v0.67.0` (2026-09-15 03:34): o script dele leu `versao` e viu
          `None`; as chaves vivas sao `instance, kind, state, paused, version, generated_at, counters,
          daily_series, last_7_days_series, meta_token, callback_certificate, number_at_meta, ingress,
-         external_reach, lideranca` (esta ultima ainda em portugues no CODIGO — decida no mesmo passe):
+         external_reach, lideranca` (esta ultima ainda em portugues no CODIGO — o doc descreve o que SAI,
+         entao `lideranca` fica como esta no doc; relate-a como chave de codigo pendente):
          | o codigo emite | o doc ainda diz | onde |
          |---|---|---|
          | `instance` | `instancia` | `internal/outbound/state.go:44` |
