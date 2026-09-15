@@ -357,10 +357,10 @@ instancias foram rotacionadas. Duas licoes que custaram na hora e valem alem des
 > A fila do periodo privado esta em `iscarelli/zapgw-dev`, congelada. Tarefa nova nasce aqui.
 
 ## [ ] T-220  Remove the Portuguese spellings of the CLI verbs
-After:   T-244 — e o movimento sincronizado (mesclar + deployar + atualizar
-         /root/rotaciona-token.sh no CT 125, que hoje usa `zapgw instancia listar` e
-         `zapgw instancia rotacionar`) e do PLANNER, nao do implementador. Decisao do dono em
-         2026-09-15: "pode fazer uma de uma vez" — esta tarefa, a T-243 e a T-244 vao juntas.
+Nota:    a T-243 (d8005e8) e a T-244 (844ab22) ja estao no `main`; esta e' a terceira do lote
+         ("pode fazer uma de uma vez", dono, 2026-09-15). O movimento sincronizado (mesclar +
+         deployar + atualizar /root/rotaciona-token.sh no CT 125, que hoje usa `zapgw instancia
+         listar` e `zapgw instancia rotacionar`) e' do PLANNER, nao do implementador.
 Why:     o projeto e' publico e a decisao de 2026-08-30 e' codigo em INGLES. A T-218 fez a ponte
          (o ingles passou a funcionar); manter a grafia portuguesa para sempre transforma a ponte em
          destino. O portao do contador NAO se aplica aqui: ele existe para o apelido de ENTRADA, que
@@ -373,7 +373,7 @@ Why:     o projeto e' publico e a decisao de 2026-08-30 e' codigo em INGLES. A T
          nova so' existe onde o binario novo esta.
 Files:   cmd/zapgw/provision.go, cmd/zapgw/menu.go, cmd/zapgw/env_aliases.go (warnOldVerb),
          cmd/zapgw/*_test.go, deploy/deploy.sh, deploy/profile-zapgw.sh, docs/*.md (os que mostram
-         comandos)
+         comandos), internal/inbound/handler.go (+ o `_test.go` que casar a mensagem, se houver)
 Do:      🔴 A ORDEM E' A GARANTIA, e o inverso quebra calado — so' falha na proxima vez que alguem
          rodar o script. Faca nesta ordem:
          1. VARRA todos os chamadores dentro do repo e liste-os no relatorio:
@@ -384,6 +384,17 @@ Do:      🔴 A ORDEM E' A GARANTIA, e o inverso quebra calado — so' falha na 
          4. Atualize as mensagens que ENUMERAM os verbos, de novo — elas mentem se ficarem com os dois.
          Se encontrar chamador que voce nao pode alcancar (fora do repo), NAO remova o verbo que ele
          usa: pare, liste no relatorio, e deixe esse par para o planner.
+         5. `deploy/deploy.sh:247-270,424` — `avisos_nome_obsoleto()` grepa o journal por
+            `"is deprecated -- use"`. Com a T-244 essa frase so' sai de `warnOldVerb`
+            (`cmd/zapgw/env_aliases.go:84`), que o passo 3 apaga: a funcao vira monitor cego
+            (nunca casa, e "nada" e' a cara de um deploy saudavel). APOSENTE AS DUAS PONTAS: a
+            funcao, a chamada em :424 e o marcador `# zapgw:log-coupling` de :268 — nao deixe o
+            marcador orfao (o portao T-235 falharia nomeando-o). Sobram 9 marcadores em `deploy/`,
+            entao o portao continua com >= 1 e nao cai em "could not verify".
+         6. `internal/inbound/handler.go:36,215` — um comentario e uma mensagem ALARME de runtime
+            mandam o operador "raise ZAPGW_MAX_CORPO_BYTES": esse nome e' RECUSADO desde a T-244,
+            entao a instrucao derruba o servico de quem a segue. Troque pelo novo,
+            `ZAPGW_MAX_BODY_BYTES` (`cmd/zapgw/env_aliases.go:36`), nas duas linhas.
 Verify:  CGO_ENABLED=0 go build ./... && go test ./... && go vet ./... && gofmt -l cmd internal
          E um teste que prove que a grafia portuguesa agora e' RECUSADA com erro que nomeia a
          inglesa — "some silenciosamente" e' o modo de falha desta mudanca.
