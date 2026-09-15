@@ -195,7 +195,7 @@ Three things that bite on the first integration:
 ## Phase 2 — RECEIVING. The only step with no immediate way back.
 
 ```
-1. register the callback_url on the instance      ← zapgw instance rotacionar --callback-url
+1. register the callback_url on the instance      ← zapgw instance rotate --callback-url
 2. rotate the real app_secret in the gateway      ← needs the value from YOUR App
 3. point YOUR App's Callback URL here             ← IRREVERSIBLE the instant you save
 4. test message from the handset, full cycle      ← the proof

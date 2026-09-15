@@ -89,7 +89,7 @@ func valueFromState(t *testing.T, text, block, label string) string {
 // credential.
 //
 // The instance needs to be ACTIVE because a paused instance is not
-// checked — neither by the server's watcher nor by `zapgw estado` (see
+// checked — neither by the server's watcher nor by `zapgw state` (see
 // TestStateCommandDoesNotSpendACallOnMetaForAPausedInstance). With it
 // paused, every verdict test would pass green while measuring
 // `desconhecido`, which is the value that comes out even when nothing
@@ -124,7 +124,7 @@ func TestStateCommandShowsTheFourBlocksOnlyTheConsumerSaw(t *testing.T) {
 	vars := activeInstanceWithFakeMeta(t, workingGraph())
 
 	var out bytes.Buffer
-	if err := dispatch([]string{"estado", "--slug", "lojinha"}, &out, fakeEnvironment(vars)); err != nil {
+	if err := dispatch([]string{"state", "--slug", "lojinha"}, &out, fakeEnvironment(vars)); err != nil {
 		t.Fatalf("estado: %v", err)
 	}
 	text := out.String()
@@ -181,7 +181,7 @@ func TestStateCommandShowsStampInUTCWithTheDistanceBeside(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	if err := dispatch([]string{"estado", "--slug", "lojinha"}, &out, fakeEnvironment(vars)); err != nil {
+	if err := dispatch([]string{"state", "--slug", "lojinha"}, &out, fakeEnvironment(vars)); err != nil {
 		t.Fatalf("estado: %v", err)
 	}
 	text := out.String()
@@ -226,7 +226,7 @@ func TestStateCommandDoesNotAnnounceAsFutureAMeasurementThatALREADYHAPPENED(t *t
 	vars := activeInstanceWithFakeMeta(t, g)
 
 	var out bytes.Buffer
-	if err := dispatch([]string{"estado", "--slug", "lojinha"}, &out, fakeEnvironment(vars)); err != nil {
+	if err := dispatch([]string{"state", "--slug", "lojinha"}, &out, fakeEnvironment(vars)); err != nil {
 		t.Fatalf("estado: %v", err)
 	}
 	text := out.String()
@@ -259,7 +259,7 @@ func TestStateCommandShowsStampsSinceWithoutFieldListInTheCLI(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	if err := dispatch([]string{"estado", "--slug", "lojinha"}, &out, fakeEnvironment(vars)); err != nil {
+	if err := dispatch([]string{"state", "--slug", "lojinha"}, &out, fakeEnvironment(vars)); err != nil {
 		t.Fatalf("estado: %v", err)
 	}
 	text := out.String()
@@ -291,7 +291,7 @@ func TestStateCommandDoesNotSpendACallOnMetaForAPausedInstance(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	if err := dispatch([]string{"estado", "--slug", "lojinha"}, &out, fakeEnvironment(vars)); err != nil {
+	if err := dispatch([]string{"state", "--slug", "lojinha"}, &out, fakeEnvironment(vars)); err != nil {
 		t.Fatalf("estado: %v", err)
 	}
 	if n := g.gets.Load(); n != 0 {
@@ -313,7 +313,7 @@ func TestStateCommandWithoutTrafficPrintsZerosNotError(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	if err := dispatch([]string{"estado"}, &out, fakeEnvironment(vars)); err != nil {
+	if err := dispatch([]string{"state"}, &out, fakeEnvironment(vars)); err != nil {
 		t.Fatalf("estado: %v", err)
 	}
 
@@ -332,7 +332,7 @@ func TestStateCommandWithoutTrafficPrintsZerosNotError(t *testing.T) {
 	}
 }
 
-// T-039: `zapgw estado` had a SECOND key list, hand-written in
+// T-039: `zapgw state` had a SECOND key list, hand-written in
 // cmd/zapgw/state.go, separate from internal/config/counter.go's
 // vocabulary — T-038 added config.CounterAccountDiscarded to the vocabulary
 // and no one remembered to add it to the second list, so the counter kept
@@ -362,7 +362,7 @@ func TestStateCommandShowsEveryVocabularyKey(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	if err := dispatch([]string{"estado"}, &out, fakeEnvironment(vars)); err != nil {
+	if err := dispatch([]string{"state"}, &out, fakeEnvironment(vars)); err != nil {
 		t.Fatalf("estado: %v", err)
 	}
 
@@ -377,7 +377,7 @@ func TestStateCommandShowsEveryVocabularyKey(t *testing.T) {
 }
 
 // THE PROOF THAT THE SOURCE IS ONE (T-060, Verify): the GET /v1/estado
-// route returns the SAME numbers as `zapgw estado` for the same instance,
+// route returns the SAME numbers as `zapgw state` for the same instance,
 // key by key — and, since T-065, the SAME BLOCKS.
 //
 // WHY IT LIVES HERE, and not in the handler's package: it is the only
@@ -424,7 +424,7 @@ func TestStateRouteReturnsTheSameNumbersAsTheStateCommand(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	if err := dispatch([]string{"estado", "--slug", "lojinha"}, &out, fakeEnvironment(vars)); err != nil {
+	if err := dispatch([]string{"state", "--slug", "lojinha"}, &out, fakeEnvironment(vars)); err != nil {
 		t.Fatalf("estado: %v", err)
 	}
 
@@ -545,7 +545,7 @@ func TestStateCommandFlagsUnknownSlug(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	err := dispatch([]string{"estado", "--slug", "nao-existe"}, &out, fakeEnvironment(vars))
+	err := dispatch([]string{"state", "--slug", "nao-existe"}, &out, fakeEnvironment(vars))
 	if !errors.Is(err, config.ErrInstanceNotFound) {
 		t.Fatalf("error = %v, want ErrInstanceNotFound", err)
 	}
@@ -570,7 +570,7 @@ func TestStateCommandShowsTheAlarmBEFORETheTable(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	if err := dispatch([]string{"estado"}, &out, fakeEnvironment(vars)); err != nil {
+	if err := dispatch([]string{"state"}, &out, fakeEnvironment(vars)); err != nil {
 		t.Fatalf("estado: %v", err)
 	}
 
@@ -603,7 +603,7 @@ func TestStateCommandFiltersBySlug(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	if err := dispatch([]string{"estado", "--slug", "lojinha"}, &out, fakeEnvironment(vars)); err != nil {
+	if err := dispatch([]string{"state", "--slug", "lojinha"}, &out, fakeEnvironment(vars)); err != nil {
 		t.Fatalf("estado: %v", err)
 	}
 
@@ -638,7 +638,7 @@ func TestStateCommandSumsTodayAndLast7DaysSeparately(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	if err := dispatch([]string{"estado"}, &out, fakeEnvironment(vars)); err != nil {
+	if err := dispatch([]string{"state"}, &out, fakeEnvironment(vars)); err != nil {
 		t.Fatalf("estado: %v", err)
 	}
 
@@ -666,7 +666,7 @@ func TestStateCommandRefusesUnknownInboundPath(t *testing.T) {
 	vars["ZAPGW_INGRESS_VIA"] = "tunnel"
 
 	var out bytes.Buffer
-	err := dispatch([]string{"estado"}, &out, fakeEnvironment(vars))
+	err := dispatch([]string{"state"}, &out, fakeEnvironment(vars))
 	if err == nil {
 		t.Fatalf("the command should have REFUSED %q; output:\n%s", vars["ZAPGW_INGRESS_VIA"], out.String())
 	}
@@ -688,7 +688,7 @@ func TestStateCommandShowsTheInboundBlock(t *testing.T) {
 	vars["ZAPGW_INGRESS_VIA"] = outbound.ViaTunnel
 
 	var out bytes.Buffer
-	if err := dispatch([]string{"estado", "--slug", "lojinha"}, &out, fakeEnvironment(vars)); err != nil {
+	if err := dispatch([]string{"state", "--slug", "lojinha"}, &out, fakeEnvironment(vars)); err != nil {
 		t.Fatalf("estado: %v", err)
 	}
 	text := out.String()

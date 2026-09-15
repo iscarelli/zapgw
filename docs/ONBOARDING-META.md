@@ -42,12 +42,12 @@ the one typing the values into the gateway is also them:
 
 | Path | Who creates the instance | Who fills in `waba_id`, `phone_number_id`, the number, `app_secret`, `token_envio`, `callback_url` |
 |---|---|---|
-| **owner's** Meta account (own production, lab) | the owner, with `--waba-id …` and the other flags | the owner, in the same command (or via `zapgw instance rotacionar`) |
+| **owner's** Meta account (own production, lab) | the owner, with `--waba-id …` and the other flags | the owner, in the same command (or via `zapgw instance rotate`) |
 | **consumer's** Meta account (third party) | the owner, **with `--slug` only** | **the consumer**, via `POST /v1/cadastro`, within the 24 h window |
 
 On the second path the owner **does not know, does not store and does not ask for** those values —
 and the command **does not draw** an `app_secret` or a `token_envio` (drawing one would make
-`zapgw instance mostrar` say `app_secret=sim` about a value the consumer's Meta has never seen; see
+`zapgw instance show` say `app_secret=sim` about a value the consumer's Meta has never seen; see
 `docs/ARMADILHAS.md`). What the owner hands over is in `docs/CONTRATO-CONSUMIDOR.md`, *"O que você
 recebe ao ser provisionado"*.
 
@@ -90,7 +90,7 @@ keeps only the encrypted form and does not show them again:
 encrypted form and does NOT show them again.")*
 
 **What used to happen, and it is the reason this section exists:** both were drawn silently. The
-instance was born, `zapgw instance mostrar` said `verify_token=sim segredo_entrega=sim` — it looked
+instance was born, `zapgw instance show` said `verify_token=sim segredo_entrega=sim` — it looked
 complete — and it was **impossible to finish provisioning**, because nothing is decrypted back by any
 command. With no error pointing at the cause: the symptom showed up days later, in Meta's panel, as
 *"a verificação recusa"* ("the verification is refused"), which sends you looking in the wrong place.
@@ -100,7 +100,7 @@ It cost one extra rotation in T-046 (2026-07-28).
 the production path.
 
 **If you lost the value**, there is no recovery: generate another one and swap it with
-`ZAPGW_VERIFY_TOKEN=<new> zapgw instance rotacionar --slug <slug>` (`rotacionar` does **not** draw —
+`ZAPGW_VERIFY_TOKEN=<new> zapgw instance rotate --slug <slug>` (`rotacionar` does **not** draw —
 the value comes from the environment, precisely so whoever rotates knows what it is).
 
 ## The phases, in order, with what blocks what

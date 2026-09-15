@@ -136,8 +136,8 @@ var zapgwMenu = []menuGroup{
 		items: []menuItem{
 			{
 				key:   "1",
-				label: "estado — counters, token watchdog and callback certificate",
-				args:  []string{"estado"},
+				label: "state — counters, token watchdog and callback certificate",
+				args:  []string{"state"},
 				fields: []menuField{
 					{flag: "--slug", question: "slug", note: "ENTER = ALL instances"},
 				},

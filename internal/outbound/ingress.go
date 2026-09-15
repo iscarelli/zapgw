@@ -1,5 +1,5 @@
 // WHERE this gateway's ingress is served from — the `ingress` block of
-// GET /v1/estado and the SAME lines from `zapgw estado` (T-120).
+// GET /v1/estado and the SAME lines from `zapgw state` (T-120).
 //
 // 🔴 THE LIMIT THAT DECIDES THE ENTIRE DESIGN, and it is not a lack of
 // effort: THIS GATEWAY CANNOT SAY WHETHER IT IS REACHABLE FROM OUTSIDE. A
@@ -46,7 +46,7 @@ import (
 )
 
 // The TWO environment variables of this slice. They are read in `main` (and
-// in `zapgw estado`), never by a package under internal/ on its own — the
+// in `zapgw state`), never by a package under internal/ on its own — the
 // SAME discipline as config.CounterRetentionDays: the environment
 // enters through a function that receives `getenv`, and the value flows down
 // as a parameter.
@@ -358,7 +358,7 @@ type ConnectorProbe struct {
 }
 
 // NewConnectorProbe assembles the probe INERT: it only starts measuring in
-// Start (or in a standalone Measure, which is what `zapgw estado` does).
+// Start (or in a standalone Measure, which is what `zapgw state` does).
 // An empty URL returns a probe that never talks to anyone and always reads
 // `not_configured`.
 func NewConnectorProbe(url string) *ConnectorProbe {
@@ -404,7 +404,7 @@ func (s *ConnectorProbe) Start() {
 
 // Measure runs ONE tick.
 //
-// WHO NEEDS IT STANDALONE IS `zapgw estado` (cmd/zapgw/state.go), for the
+// WHO NEEDS IT STANDALONE IS `zapgw state` (cmd/zapgw/state.go), for the
 // SAME reason as Watchdog.CheckInstance: the measurement lives in the
 // SERVER process's memory, and a command-line process that just came to
 // life would always read `unknown` — which on the screen of someone in

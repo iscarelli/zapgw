@@ -246,7 +246,7 @@ func (v *Watchdog) Check(ctx context.Context) {
 
 // CheckInstance runs ONE tick for ONE instance.
 //
-// WHO NEEDS THIS IS `zapgw estado` (cmd/zapgw/state.go), and the reason
+// WHO NEEDS THIS IS `zapgw state` (cmd/zapgw/state.go), and the reason
 // is structural: the watcher keeps its measurements in MEMORY, in the
 // server's process — a command-line process that just started has an
 // EMPTY cache, and would read `unknown` for everything, always.

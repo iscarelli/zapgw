@@ -62,7 +62,7 @@ const (
 	//     and the registered phone_number_id. A number that SUMS the two
 	//     sends the person to check both places, every time.
 	//  2. "WHICH GUARD REFUSED?" IS THE FIRST QUESTION of whoever opens
-	//     `zapgw estado` and sees an isolation refusal. A summed key
+	//     `zapgw state` and sees an isolation refusal. A summed key
 	//     doesn't answer; it forces a trip to the journal — which is
 	//     exactly the trace this counter exists to not be the only one of
 	//     (docs/ARMADILHAS.md, "ninguém lê journal por hábito").
@@ -271,7 +271,7 @@ const (
 // this list, and `cmd/zapgw/state.go` WALKS it, never a copy of its own.
 // Before T-039, `cmd/zapgw/state.go` repeated this list by hand — T-038
 // added CounterAccountDiscarded here and nobody remembered to add it there, and
-// the counter kept incrementing in production without `zapgw estado` ever
+// the counter kept incrementing in production without `zapgw state` ever
 // showing it. A new key goes in ONLY here: the `estado` command (and any
 // other future consumer of the vocabulary) starts showing it without
 // needing any other edit, because there is no longer a second list to forget.
@@ -669,7 +669,7 @@ func (s *Store) SummarizeCounters(slug string, now time.Time) (CounterSummary, e
 //
 // WHY A SECOND FUNCTION, AND NOT ONE MORE PARAMETER ON THE FIRST: the two
 // readers want different things and neither should carry the other's
-// decision. `zapgw estado` always shows the short window (its table
+// decision. `zapgw state` always shows the short window (its table
 // doesn't print any series), and only the route has a consumer with a
 // 30-day chart. A mandatory parameter would make the CLI choose, on every
 // call, a number that isn't its business.

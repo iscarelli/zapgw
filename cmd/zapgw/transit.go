@@ -2,7 +2,7 @@
 //
 // WHY THIS EXISTS: the owner's request, 2026-07-29, after needing to
 // identify a message from a specific number and the gateway having no way
-// to answer. The counters (`zapgw estado`) say "how many today?"; no field
+// to answer. The counters (`zapgw state`) say "how many today?"; no field
 // of this gateway said "did this message pass?". See
 // internal/config/transit.go for the full design (retention, the exact
 // fields, what stays HMAC).

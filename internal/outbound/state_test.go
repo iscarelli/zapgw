@@ -38,7 +38,7 @@ func rowValue(t *testing.T, rows []StateRow, label string) string {
 // T-072'S RULE: an OBSERVATION timestamp never comes out in the future.
 //
 // Each timestamp's distance is measured against the now of the PRINTING, not
-// against `gerado_em`. `zapgw estado` measures the token on the Graph API
+// against `gerado_em`. `zapgw state` measures the token on the Graph API
 // AFTER stamping `gerado_em` (the watchdog's cache lives in the server's
 // process), so `medido_em` is legitimately later than the snapshot — and the
 // screen used to print "in 1s" about a fact that had already happened, a

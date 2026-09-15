@@ -54,14 +54,13 @@ type environment func(name string) string
 func dispatch(args []string, out io.Writer, env environment) error {
 	if len(args) == 0 {
 		return errors.New("zapgw: missing subcommand (provision | smoke | diagnostics |" +
-			" instance | consumer | estado/state | template | transito | log | perdidas | versao)")
+			" instance | consumer | state | template | transito | log | perdidas | versao)")
 	}
 	switch args[0] {
 	case "provisionar":
 		// T-220: the Portuguese spelling is RETIRED — refuse instead of
-		// dispatching, naming the English one. See instanceCommand's
-		// "listar" case for why the SUB-verbs are not touched by this same
-		// task: they are a separate decision (T-218), out of this sweep.
+		// dispatching, naming the English one. T-245 later closed the
+		// sub-verbs the same way — see instanceCommand's "listar" case.
 		return oldVerbRefused("provisionar", "provision")
 	case "provision":
 		return provision(args[1:], out, env)
@@ -104,9 +103,9 @@ func dispatch(args []string, out io.Writer, env environment) error {
 		// T-035: state (active/paused) + per-instance counters, with the
 		// permanent-loss alarm highlighted. See state.go.
 		//
-		// T-214: OLD (Portuguese) spelling — see the "fumaca" case above.
-		warnOldVerb(out, "estado", "state")
-		return stateCommand(args[1:], out, env)
+		// T-245: the Portuguese spelling is RETIRED — see the
+		// "provisionar" case above.
+		return oldVerbRefused("estado", "state")
 	case "state":
 		return stateCommand(args[1:], out, env)
 	case "template":
@@ -157,34 +156,34 @@ func dispatch(args []string, out io.Writer, env environment) error {
 			" that only lets the menu open with no argument and with a terminal on both sides")
 	default:
 		return fmt.Errorf("zapgw: unknown subcommand %q (I know: provision, smoke, diagnostics,"+
-			" instance, consumer, estado/state, template, transito, log, versao)", args[0])
+			" instance, consumer, state, template, transito, log, versao)", args[0])
 	}
 }
 
 func instanceCommand(args []string, out io.Writer, env environment) error {
 	if len(args) == 0 {
-		return errors.New("zapgw: instance what? (listar/list | mostrar/show | rotacionar/rotate |" +
-			" reabrir-cadastro/reopen-enrollment | pausar/pause | remover/remove | registrar/register |" +
-			" desregistrar/deregister | pin)")
+		return errors.New("zapgw: instance what? (list | show | rotate |" +
+			" reopen-enrollment | pause | remove | register |" +
+			" deregister | pin)")
 	}
 	switch args[0] {
 	case "listar":
-		// T-218: OLD (Portuguese) spelling — see dispatch's "fumaca" case
-		// for why this is never removed.
-		warnOldVerb(out, "listar", "list")
-		return listInstances(args[1:], out, env)
+		// T-245: the Portuguese spelling is RETIRED — see dispatch's
+		// "provisionar" case for why the same shape applies here, one
+		// level below the top-level verbs T-220 already closed.
+		return oldVerbRefused("listar", "list")
 	case "list":
 		return listInstances(args[1:], out, env)
 	case "mostrar":
-		// T-218: OLD (Portuguese) spelling — see dispatch's "fumaca" case.
-		warnOldVerb(out, "mostrar", "show")
-		return showInstance(args[1:], out, env)
+		// T-245: the Portuguese spelling is RETIRED — see the "listar"
+		// case above.
+		return oldVerbRefused("mostrar", "show")
 	case "show":
 		return showInstance(args[1:], out, env)
 	case "rotacionar":
-		// T-218: OLD (Portuguese) spelling — see dispatch's "fumaca" case.
-		warnOldVerb(out, "rotacionar", "rotate")
-		return rotateInstance(args[1:], out, env)
+		// T-245: the Portuguese spelling is RETIRED — see the "listar"
+		// case above.
+		return oldVerbRefused("rotacionar", "rotate")
 	case "rotate":
 		return rotateInstance(args[1:], out, env)
 	case "reabrir-cadastro":
@@ -192,9 +191,9 @@ func instanceCommand(args []string, out io.Writer, env environment) error {
 		// configuration. Without this command, a consumer stuck with the
 		// wrong credential = an UPDATE by hand in the production SQLite.
 		//
-		// T-218: OLD (Portuguese) spelling — see dispatch's "fumaca" case.
-		warnOldVerb(out, "reabrir-cadastro", "reopen-enrollment")
-		return reopenEnrollment(args[1:], out, env)
+		// T-245: the Portuguese spelling is RETIRED — see the "listar"
+		// case above.
+		return oldVerbRefused("reabrir-cadastro", "reopen-enrollment")
 	case "reopen-enrollment":
 		return reopenEnrollment(args[1:], out, env)
 	case "pausar":
@@ -202,15 +201,15 @@ func instanceCommand(args []string, out io.Writer, env environment) error {
 		// mandatory step before removing, and the only one of the two
 		// that has an undo.
 		//
-		// T-218: OLD (Portuguese) spelling — see dispatch's "fumaca" case.
-		warnOldVerb(out, "pausar", "pause")
-		return pauseInstance(args[1:], out, env)
+		// T-245: the Portuguese spelling is RETIRED — see the "listar"
+		// case above.
+		return oldVerbRefused("pausar", "pause")
 	case "pause":
 		return pauseInstance(args[1:], out, env)
 	case "remover":
-		// T-218: OLD (Portuguese) spelling — see dispatch's "fumaca" case.
-		warnOldVerb(out, "remover", "remove")
-		return removeInstance(args[1:], out, env)
+		// T-245: the Portuguese spelling is RETIRED — see the "listar"
+		// case above.
+		return oldVerbRefused("remover", "remove")
 	case "remove":
 		return removeInstance(args[1:], out, env)
 	case "registrar":
@@ -218,18 +217,18 @@ func instanceCommand(args []string, out io.Writer, env environment) error {
 		// Provisioning only — see the header of
 		// internal/meta/registration.go.
 		//
-		// T-218: OLD (Portuguese) spelling — see dispatch's "fumaca" case.
-		warnOldVerb(out, "registrar", "register")
-		return registerInstance(args[1:], out, env)
+		// T-245: the Portuguese spelling is RETIRED — see the "listar"
+		// case above.
+		return oldVerbRefused("registrar", "register")
 	case "register":
 		return registerInstance(args[1:], out, env)
 	case "desregistrar":
 		// T-151: takes the number OFF the air in production, at Meta.
-		// The same confirmation pattern as `remover`.
+		// The same confirmation pattern as `remove`.
 		//
-		// T-218: OLD (Portuguese) spelling — see dispatch's "fumaca" case.
-		warnOldVerb(out, "desregistrar", "deregister")
-		return deregisterInstance(args[1:], out, env)
+		// T-245: the Portuguese spelling is RETIRED — see the "listar"
+		// case above.
+		return oldVerbRefused("desregistrar", "deregister")
 	case "deregister":
 		return deregisterInstance(args[1:], out, env)
 	case "pin":
@@ -237,9 +236,9 @@ func instanceCommand(args []string, out io.Writer, env environment) error {
 		// registered.
 		return changeInstancePin(args[1:], out, env)
 	default:
-		return fmt.Errorf("zapgw: don't know how to do %q with an instance (I know: listar/list, mostrar/show,"+
-			" rotacionar/rotate, reabrir-cadastro/reopen-enrollment, pausar/pause, remover/remove,"+
-			" registrar/register, desregistrar/deregister, pin)", args[0])
+		return fmt.Errorf("zapgw: don't know how to do %q with an instance (I know: list, show,"+
+			" rotate, reopen-enrollment, pause, remove,"+
+			" register, deregister, pin)", args[0])
 	}
 }
 
@@ -254,23 +253,23 @@ func instanceCommand(args []string, out io.Writer, env environment) error {
 // sqlite3 wasn't even installed there.
 func consumerCommand(args []string, out io.Writer, env environment) error {
 	if len(args) == 0 {
-		return errors.New("zapgw: consumer what? (listar/list | rotacionar/rotate)")
+		return errors.New("zapgw: consumer what? (list | rotate)")
 	}
 	switch args[0] {
 	case "listar":
-		// T-218: OLD (Portuguese) spelling — see dispatch's "fumaca" case.
-		warnOldVerb(out, "listar", "list")
-		return listConsumers(args[1:], out, env)
+		// T-245: the Portuguese spelling is RETIRED — see instanceCommand's
+		// "listar" case.
+		return oldVerbRefused("listar", "list")
 	case "list":
 		return listConsumers(args[1:], out, env)
 	case "rotacionar":
-		// T-218: OLD (Portuguese) spelling — see dispatch's "fumaca" case.
-		warnOldVerb(out, "rotacionar", "rotate")
-		return rotateConsumer(args[1:], out, env)
+		// T-245: the Portuguese spelling is RETIRED — see instanceCommand's
+		// "listar" case.
+		return oldVerbRefused("rotacionar", "rotate")
 	case "rotate":
 		return rotateConsumer(args[1:], out, env)
 	default:
-		return fmt.Errorf("zapgw: don't know how to do %q with a consumer (I know: listar/list, rotacionar/rotate)", args[0])
+		return fmt.Errorf("zapgw: don't know how to do %q with a consumer (I know: list, rotate)", args[0])
 	}
 }
 
@@ -365,7 +364,7 @@ var absenceNote = map[string]string{
 }
 
 func listInstances(args []string, out io.Writer, env environment) error {
-	fs := flag.NewFlagSet("instance listar", flag.ContinueOnError)
+	fs := flag.NewFlagSet("instance list", flag.ContinueOnError)
 	fs.SetOutput(out)
 	if keepGoing, err := parseFlags(fs, args); err != nil || !keepGoing {
 		return err
@@ -408,7 +407,7 @@ func listInstances(args []string, out io.Writer, env environment) error {
 }
 
 func showInstance(args []string, out io.Writer, env environment) error {
-	fs := flag.NewFlagSet("instance mostrar", flag.ContinueOnError)
+	fs := flag.NewFlagSet("instance show", flag.ContinueOnError)
 	fs.SetOutput(out)
 	slug := fs.String("slug", "", "instance to show")
 	if keepGoing, err := parseFlags(fs, args); err != nil || !keepGoing {
@@ -513,7 +512,7 @@ func showInstance(args []string, out io.Writer, env environment) error {
 // missing secret is a convenience; in rotation it would mean swapping a
 // secret in use for a value no one knows.
 func rotateInstance(args []string, out io.Writer, env environment) error {
-	fs := flag.NewFlagSet("instance rotacionar", flag.ContinueOnError)
+	fs := flag.NewFlagSet("instance rotate", flag.ContinueOnError)
 	fs.SetOutput(out)
 	// There is NO rename flag, and the absence is the guarantee: the
 	// slug becomes /v1/inbound/{slug} and is already pasted into Meta's
@@ -685,7 +684,7 @@ func rotateInstance(args []string, out io.Writer, env environment) error {
 // operates it to type "yes" on autopilot, and the confirmation that
 // matters would lose its effect.
 func pauseInstance(args []string, out io.Writer, env environment) error {
-	fs := flag.NewFlagSet("instance pausar", flag.ContinueOnError)
+	fs := flag.NewFlagSet("instance pause", flag.ContinueOnError)
 	fs.SetOutput(out)
 	slug := fs.String("slug", "", "instance to take down")
 	if keepGoing, err := parseFlags(fs, args); err != nil || !keepGoing {
@@ -726,7 +725,7 @@ func pauseInstance(args []string, out io.Writer, env environment) error {
 // deleting — and the flag still has to MATCH `--slug`, otherwise the
 // rejection comes before any write.
 func removeInstance(args []string, out io.Writer, env environment) error {
-	fs := flag.NewFlagSet("instance remover", flag.ContinueOnError)
+	fs := flag.NewFlagSet("instance remove", flag.ContinueOnError)
 	fs.SetOutput(out)
 	slug := fs.String("slug", "", "instance to delete. IRREVERSIBLE")
 	confirm := fs.String("confirmo", "", "type the slug AGAIN to confirm. There is no -y: deleting the wrong instance cannot be undone")
@@ -879,7 +878,7 @@ func instanceForTalkingToMeta(env environment, who string) (config.Instance, *me
 // internal/meta/registration.go, sendRegistration, which guarantees the same on
 // the HTTP client side.
 func registerInstance(args []string, out io.Writer, env environment) error {
-	fs := flag.NewFlagSet("instance registrar", flag.ContinueOnError)
+	fs := flag.NewFlagSet("instance register", flag.ContinueOnError)
 	fs.SetOutput(out)
 	slug := fs.String("slug", "", "instance to register with Meta (turns on two-step verification). REQUIRED")
 	pinFile := fs.String("pin-arquivo", "", "file with the 6-digit pin (the PATH, never the value)."+
@@ -921,7 +920,7 @@ func registerInstance(args []string, out io.Writer, env environment) error {
 // touching the network, so typing the command with no `--confirmo` fails
 // fast and with no effect at all.
 func deregisterInstance(args []string, out io.Writer, env environment) error {
-	fs := flag.NewFlagSet("instance desregistrar", flag.ContinueOnError)
+	fs := flag.NewFlagSet("instance deregister", flag.ContinueOnError)
 	fs.SetOutput(out)
 	slug := fs.String("slug", "", "instance to take OFF THE AIR at Meta. REQUIRED")
 	confirm := fs.String("confirmo", "", "type the slug AGAIN to confirm. There is no -y")
@@ -1489,7 +1488,7 @@ func enrollmentURL(env environment) (string, error) {
 // nothing flags it, and the owner walks away thinking he unblocked the
 // consumer who complained (who is still stuck).
 func reopenEnrollment(args []string, out io.Writer, env environment) error {
-	fs := flag.NewFlagSet("instance reabrir-cadastro", flag.ContinueOnError)
+	fs := flag.NewFlagSet("instance reopen-enrollment", flag.ContinueOnError)
 	fs.SetOutput(out)
 	slug := fs.String("slug", "", "instance whose registration window will be reopened")
 	confirm := fs.String("confirmo", "", "type the slug AGAIN to confirm. Reopening the wrong slug gives that consumer 24h of write access to another instance, with nothing flagging it")
@@ -1718,7 +1717,7 @@ func printConsumerToken(out io.Writer, token string) {
 // instances it can use live in a different table, which this command
 // does not touch.
 func rotateConsumer(args []string, out io.Writer, env environment) error {
-	fs := flag.NewFlagSet("consumer rotacionar", flag.ContinueOnError)
+	fs := flag.NewFlagSet("consumer rotate", flag.ContinueOnError)
 	fs.SetOutput(out)
 	name := fs.String("nome", "", "consumer whose token will be swapped. The name does not change: it says WHO, never what to swap")
 	if keepGoing, err := parseFlags(fs, args); err != nil || !keepGoing {
@@ -1762,7 +1761,7 @@ func rotateConsumer(args []string, out io.Writer, env environment) error {
 // opening the database by hand — a question that, until T-055, only had
 // an answer through SQL.
 func listConsumers(args []string, out io.Writer, env environment) error {
-	fs := flag.NewFlagSet("consumer listar", flag.ContinueOnError)
+	fs := flag.NewFlagSet("consumer list", flag.ContinueOnError)
 	fs.SetOutput(out)
 	if keepGoing, err := parseFlags(fs, args); err != nil || !keepGoing {
 		return err

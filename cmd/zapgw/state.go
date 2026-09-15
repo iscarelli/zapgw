@@ -1,4 +1,4 @@
-// `zapgw estado` — the operator's dashboard, on the command line (T-035).
+// `zapgw state` — the operator's dashboard, on the command line (T-035).
 //
 // WHY THIS EXISTS: this gateway's most expensive signal —
 // "ALARME zapgw: instancia recusou; evento perdido em definitivo"
@@ -55,7 +55,7 @@ func stateCommand(args []string, out io.Writer, env environment) error {
 	}
 
 	// The SAME resolution the server does on startup (T-120), and it fails
-	// here for the SAME reason: `zapgw estado` is the screen the operator
+	// here for the SAME reason: `zapgw state` is the screen the operator
 	// opens in the middle of an incident, and a screen that publishes a
 	// wrong inbound path is worse than one screen fewer. Empty is not an
 	// error — it publishes `desconhecido`.
@@ -120,7 +120,7 @@ func stateCommand(args []string, out io.Writer, env environment) error {
 	// looks like a broken watcher. See Watchdog.CheckInstance.
 	//
 	// WHAT THIS COSTS, and it is written down because it changes the
-	// command's behavior: `zapgw estado` now talks to the Graph API (one
+	// command's behavior: `zapgw state` now talks to the Graph API (one
 	// READ call per active instance shown). It still does NOT fail because
 	// of that — an attempt with no response does not become a rejection,
 	// it becomes `desconhecido` with `checagem_falhando_desde` filled in,

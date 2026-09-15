@@ -143,7 +143,7 @@ var ErrUnknownNumberSource = errors.New("config: unknown number observation sour
 //
 // THE FRESHNESS COMPARISON IS DONE IN SQL, in a single UPSERT, and that's a
 // decision: a read-decide-write in Go would lose the race between the
-// server (which measures and receives webhooks) and the `zapgw estado`
+// server (which measures and receives webhooks) and the `zapgw state`
 // process (which also measures), because they are DIFFERENT processes and
 // one's mutex doesn't reach the other.
 //
@@ -285,7 +285,7 @@ type NumberObserverStore interface {
 // (the watcher, on a timer goroutine, and the webhook handler, on a
 // per-request goroutine), and this project has already paid a Critical for
 // shared mutable state (docs/ARMADILHAS.md, "Go / concorrência"). *It
-// doesn't reach the OTHER process (`zapgw estado` also measures) — what
+// doesn't reach the OTHER process (`zapgw state` also measures) — what
 // guarantees order between processes is the UPSERT with stamp comparison,
 // not this lock.*
 //

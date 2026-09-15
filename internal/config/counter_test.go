@@ -279,7 +279,7 @@ func TestLastEventPerKeySeparatesPerInstance(t *testing.T) {
 }
 
 // SummarizeCounters is THE SINGLE SOURCE of the numbers that come out of
-// the gateway: `zapgw estado` (cmd/zapgw/state.go) and GET /v1/estado
+// the gateway: `zapgw state` (cmd/zapgw/state.go) and GET /v1/estado
 // (internal/outbound/state_handler.go) read from here, and T-060 requires
 // both to return the SAME numbers for the same instance at the same instant.
 func TestSummarizeCountersJoinsTheTwoWindowsAndTheStamp(t *testing.T) {

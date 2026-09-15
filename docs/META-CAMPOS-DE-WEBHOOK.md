@@ -193,7 +193,7 @@ code. It is not a deferral by priority: it is that **the event has no way to arr
    Source: <https://developers.facebook.com/documentation/business-messaging/whatsapp/calling/call-settings>,
    read on 2026-07-30.
 3. **Both numbers are on `TIER_250`** — measured in production on 2026-07-31 02:22 UTC
-   (= 2026-07-30 23:22 -03), `zapgw estado --slug …`, `numero_na_meta.limite_de_mensagens`,
+   (= 2026-07-30 23:22 -03), `zapgw state --slug …`, `numero_na_meta.limite_de_mensagens`,
    `estado: observado`, `fonte: medicao`. `tenant-two` and `tenant-one`, both `TIER_250` and both
    `GREEN` on quality. **A quarter of the required minimum.**
 

@@ -16,13 +16,13 @@
 // verbs are a separate lifecycle: five of them (provisionar, fumaca,
 // diagnostico, instancia, consumidor) had their Portuguese spelling
 // REMOVED by T-220, once every in-repo caller was migrated — see
-// oldVerbRefused below. The rest (the sub-verbs, and "estado") are still
-// additive, per T-218.
+// oldVerbRefused below. T-245 removed the rest the same way: "estado" and
+// the eight sub-verbs (listar, mostrar, rotacionar, reabrir-cadastro,
+// pausar, remover, registrar, desregistrar).
 package main
 
 import (
 	"fmt"
-	"io"
 
 	"github.com/iscarelli/zapgw/internal/config"
 )
@@ -77,30 +77,20 @@ func databasePath(env environment) (path string, err error) {
 	return path, nil
 }
 
-// warnOldVerb prints the T-214 CLI-verb warning: the OLD (Portuguese) verb
-// still works exactly as before, but the operator should move to the new
-// (English) spelling — Do item 3, applied to a verb instead of a variable. It
-// writes to `out`, the SAME stream every other on-screen warning in this
-// command already uses (menu.go's secretsWarning, provision.go's
-// verify_token notice), not the log package: a `zapgw <verbo>` invocation IS
-// its own "arranque" — the operator is looking at `out` right there, and
-// there is no separate startup phase to defer to.
-func warnOldVerb(out io.Writer, oldVerb, newVerb string) {
-	fmt.Fprintf(out, "zapgw: subcommand %q is deprecated -- use %q instead (T-214)\n", oldVerb, newVerb)
-}
-
-// oldVerbRefused is T-220's counterpart to warnOldVerb: for the five
-// top-level verbs T-220 retired (provisionar, fumaca, diagnostico,
-// instancia, consumidor), the Portuguese spelling no longer dispatches to
-// anything -- it REFUSES, naming the English verb to use instead, the same
-// "refuse, don't silently degrade" shape config.EnvRefusingOld already uses
-// for ZAPGW_* (T-244). "Silently ignored" is the failure mode this guards
-// against: an unknown-subcommand error that did not name the new verb would
-// leave whoever typed the old one guessing.
+// oldVerbRefused is T-220's helper for a subcommand whose Portuguese
+// spelling no longer dispatches to anything -- it REFUSES, naming the
+// English verb to use instead, the same "refuse, don't silently degrade"
+// shape config.EnvRefusingOld already uses for ZAPGW_* (T-244).
+// "Silently ignored" is the failure mode this guards against: an
+// unknown-subcommand error that did not name the new verb would leave
+// whoever typed the old one guessing.
 //
-// The sub-verbs (rotacionar, listar, mostrar, ...) and the "estado" verb
-// still use warnOldVerb above, unchanged -- that migration is a separate,
-// still-open decision (T-218), out of T-220's sweep.
+// T-220 used it for the five top-level verbs (provisionar, fumaca,
+// diagnostico, instancia, consumidor). T-245 moved the last holdouts onto
+// this same helper too -- "estado" and the eight sub-verbs (listar,
+// mostrar, rotacionar, reabrir-cadastro, pausar, remover, registrar,
+// desregistrar) -- which is why the older warn-and-still-dispatch helper
+// that used to sit above this one is gone.
 func oldVerbRefused(oldVerb, newVerb string) error {
 	return fmt.Errorf("zapgw: subcommand %q no longer exists -- use %q instead", oldVerb, newVerb)
 }

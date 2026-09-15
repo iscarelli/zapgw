@@ -59,7 +59,7 @@ const (
 	//
 	// ONE LINE IN THE JOURNAL WOULD NOT BE ENOUGH — it only shows up for
 	// whoever reads that machine's journal that day. That's why the guard's
-	// state ALSO ships in GET /v1/estado and in `zapgw estado`, which is what
+	// state ALSO ships in GET /v1/estado and in `zapgw state`, which is what
 	// the panel and whoever operates it read (T-135, `lideranca` block — see
 	// LeadershipInState below).
 	//

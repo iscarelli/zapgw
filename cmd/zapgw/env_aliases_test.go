@@ -2,8 +2,9 @@
 // — an old name set at startup (or at command time) is REFUSED, naming the
 // new (English) one, and its value is NEVER read. (Five of the CLI verbs
 // were a separate, still-open decision at the time this file was written —
-// T-220 later removed them; see TestDispatchAcceptsEnglishVerbsSilently
-// below and TestDispatchRefusesRemovedTopLevelVerbs in provision_test.go.)
+// T-220 removed those, and T-245 later removed the rest -- "estado" and
+// the eight sub-verbs -- the same way; see TestDispatchRefusesRemovedTopLevelVerbs
+// and TestDispatchRefusesRemovedSubVerbs in provision_test.go.)
 package main
 
 import (
@@ -124,35 +125,13 @@ func TestOpenStoreRefusesOldDatabaseName(t *testing.T) {
 }
 
 // --- CLI verbs: estado/state ---
-// NOT TOUCHED by T-244, and NOT removed by T-220 either — kept as a
-// regression guard that neither task accidentally changed verb dispatch.
-// The other three T-214 top-level pairs this test used to cover (fumaca,
-// instancia, consumidor) had their Portuguese spelling REMOVED by T-220 —
-// see TestDispatchRefusesRemovedTopLevelVerbs in provision_test.go.
+// T-245 retired "estado" the same way T-220 retired the other four
+// top-level pairs this test used to cover (fumaca, instancia, consumidor,
+// and now estado) — the Portuguese spelling REFUSES, naming the English
+// one, instead of dispatching with a deprecation notice. See
+// TestDispatchRefusesRemovedTopLevelVerbs in provision_test.go.
 
-func TestDispatchAcceptsEnglishVerbsSilently(t *testing.T) {
-	env := fakeEnvironment(testEnvironment(t))
-	cases := []struct{ oldVerb, newVerb string }{
-		{"estado", "state"},
-	}
-	for _, c := range cases {
-		t.Run(c.oldVerb+"/"+c.newVerb, func(t *testing.T) {
-			var outOld bytes.Buffer
-			_ = dispatch([]string{c.oldVerb}, &outOld, env)
-			if !strings.Contains(outOld.String(), "deprecated") || !strings.Contains(outOld.String(), c.newVerb) {
-				t.Errorf("%q did not warn to use %q: %s", c.oldVerb, c.newVerb, outOld.String())
-			}
-
-			var outNew bytes.Buffer
-			_ = dispatch([]string{c.newVerb}, &outNew, env)
-			if strings.Contains(outNew.String(), "deprecated") {
-				t.Errorf("%q (the NEW verb) warned needlessly: %s", c.newVerb, outNew.String())
-			}
-		})
-	}
-}
-
-// --- provisionar/rotacionar: ZAPGW_SEND_TOKEN/ZAPGW_TOKEN_ENVIO and ZAPGW_DELIVERY_SECRET/ZAPGW_SEGREDO_ENTREGA ---
+// --- provision/rotate: ZAPGW_SEND_TOKEN/ZAPGW_TOKEN_ENVIO and ZAPGW_DELIVERY_SECRET/ZAPGW_SEGREDO_ENTREGA ---
 
 func TestCreateInstanceAcceptsTheNewSecretNames(t *testing.T) {
 	vars := testEnvironment(t)
@@ -221,7 +200,7 @@ func TestRotateInstanceAcceptsTheNewSecretNames(t *testing.T) {
 	vars[envDeliverySecretNew] = "entrega-NOVA"
 
 	var out bytes.Buffer
-	if err := dispatch([]string{"instance", "rotacionar", "--slug", "tenant-rotate-novo"},
+	if err := dispatch([]string{"instance", "rotate", "--slug", "tenant-rotate-novo"},
 		&out, fakeEnvironment(vars)); err != nil {
 		t.Fatalf("dispatch: %v\n%s", err, out.String())
 	}
@@ -235,13 +214,13 @@ func TestRotateInstanceAcceptsTheNewSecretNames(t *testing.T) {
 }
 
 // TestRotateInstanceRefusesOldSecretNames mirrors
-// TestCreateInstanceRefusesOldSecretNames for `instancia rotacionar`.
+// TestCreateInstanceRefusesOldSecretNames for `instance rotate`.
 func TestRotateInstanceRefusesOldSecretNames(t *testing.T) {
 	vars := provisionedForRotation(t, "tenant-rotate-refusa")
 	vars[envSendTokenOld] = "token-envio-VELHO"
 
 	var out bytes.Buffer
-	err := dispatch([]string{"instance", "rotacionar", "--slug", "tenant-rotate-refusa"},
+	err := dispatch([]string{"instance", "rotate", "--slug", "tenant-rotate-refusa"},
 		&out, fakeEnvironment(vars))
 	if err == nil {
 		t.Fatal("the rotation was ACCEPTED with the old send-token name set")
