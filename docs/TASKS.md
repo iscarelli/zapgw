@@ -22,7 +22,12 @@
   quebra: ~2 min entre o swap e o sed. ⚠️ O script `~/.zapgw/migra-verbos-rotaciona.sh` primeiro
   FALHOU chamando `/usr/local/bin/zapgw` direto (sem o env): a conferencia certa e' pela funcao
   `zapgw` de `/etc/profile.d/zapgw.sh`, que carrega o env em subshell.
-- 🙏 **PENDENTE: validacao do consumidor.** Secao de 03:32 no canal (`STATUS: AGUARDANDO_VALIDACAO`)
+- ✅ **Validado pelo consumidor as 03:34** (`STATUS: PRONTO` no arquivo dele): `GET /v1/estado`
+  com `version 0.67.0`, `POST /v1/uploads` `200` em 1,5 s com handle de 218 chars, texto `200` com
+  `wamid`, template gravado como enviado — "diferencas em relacao a v0.66.1: nenhuma". Lote FECHADO.
+  Dois residuos foram para a fila: T-240 ganhou a lista de chaves medida; T-246 (`transito`,
+  `perdidas`, `versao` sem par ingles). O pedido, como foi feito:
+  Secao de 03:32 no canal (`STATUS: AGUARDANDO_VALIDACAO`)
   pede: `GET /v1/estado` com `versao 0.67.0`, o fluxo do vale-presente sem mudar o script, um envio
   de texto e um de template, e qualquer diferenca vs a `v0.66.1`. `SendMessage` "va ler" enviado a
   sessao do consumidor (endereco esta no cabecalho do arquivo dele no canal). Nenhuma rota HTTP mudou nesta versao — a validacao e' de trafego real,
@@ -391,7 +396,11 @@ instancias foram rotacionadas. Duas licoes que custaram na hora e valem alem des
 After:   T-239
 Why:     A T-237 consertou quatro familias do `docs/CONTRATO-CONSUMIDOR.md` e, no caminho, achou uma
          QUINTA — os NOMES DOS BLOCOS do `GET /v1/estado`, nao so' o vocabulario dentro deles.
-         **Re-medido por mim contra o codigo em 2026-09-08**, chave por chave:
+         **Re-medido por mim contra o codigo em 2026-09-08**, chave por chave — e CONFIRMADO pelo
+         consumidor em producao na `v0.67.0` (2026-09-15 03:34): o script dele leu `versao` e viu
+         `None`; as chaves vivas sao `instance, kind, state, paused, version, generated_at, counters,
+         daily_series, last_7_days_series, meta_token, callback_certificate, number_at_meta, ingress,
+         external_reach, lideranca` (esta ultima ainda em portugues no CODIGO — decida no mesmo passe):
          | o codigo emite | o doc ainda diz | onde |
          |---|---|---|
          | `instance` | `instancia` | `internal/outbound/state.go:44` |
@@ -417,6 +426,24 @@ Do:      Mesmo metodo da T-237, que funcionou: familia por familia, prova contra
 Verify:  Por familia, a prova contra o codigo antes e o `grep` depois, coladas no relatorio.
          E a lista, uma a uma, das ocorrencias que voce deixou, com o caso (b)/(c) de cada.
          `CGO_ENABLED=0 go build ./... && go test ./...` (so' garantia).
+
+## [ ] T-246  Three top-level CLI verbs never got an English spelling: `transito`, `perdidas`, `versao`
+Why:     A T-220/T-245 aposentaram todo verbo que TINHA par ingles. Sobraram tres sem par
+         (`cmd/zapgw/provision.go:116,121,131`): `transito`, `perdidas`, `versao` — a CLI de um
+         projeto publico em ingles ainda responde a tres verbos portugueses, e so' a eles. Achado ao
+         conferir por que `/v1/health` responde `"versao"` (isso e' contrato HTTP, fica; a CLI nao).
+Files:   cmd/zapgw/provision.go, cmd/zapgw/env_aliases.go (oldVerbRefused), cmd/zapgw/*_test.go,
+         cmd/zapgw/menu.go (se enumerar), docs/*.md que mostrem os tres, docs/CHANGELOG.md
+Do:      Os nomes ingleses seguem os ARQUIVOS que ja existem: `transit` (`transit.go`), `lost`
+         (`lost.go`), `version`. Mesmo desenho da T-245: o verbo ingles despacha; o portugues cai
+         em `oldVerbRefused(old, new)` (exit != 0 nomeando o ingles). Nomes de flag-set idem.
+         Mensagens que enumeram verbos so' com o ingles. NAO toque no JSON de `/v1/health`
+         (`cmd/zapgw/main.go:51`, `deploy/deploy.sh:183` grepa `"versao"` — portao T-235).
+Verify:  CGO_ENABLED=0 go build ./... && go test ./... && go vet ./... && gofmt -l cmd internal
+         `grep -n 'case "\(transito\|perdidas\|versao\)"' cmd/zapgw/provision.go` so' nas linhas
+         que chamam `oldVerbRefused`. Prova manual: `./zapgw versao` sai != 0 nomeando `version`;
+         `./zapgw version` imprime a versao.
+After:   T-240
 
 ## [ ] T-231  Translate the English side of the docs that is still Portuguese
 After:   T-230
