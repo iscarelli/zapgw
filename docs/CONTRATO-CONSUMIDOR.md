@@ -1225,7 +1225,7 @@ refused.
 > piece is already enough for the event to come out.
 
 > **Since 2026-07-28 this event also FEEDS `GET /v1/estado`.** The `limite_atual` (`current_limit`) is
-> stored in the `numero_na_meta.limite_de_mensagens` block, with `fonte: "webhook"`. If you already
+> stored in the `number_at_meta.message_limit` block, with `source: "webhook"`. If you already
 > react to this event, you need change nothing — the state simply becomes a second place, **queryable
 > at any time**, where the same number appears. `limite_anterior` and `limite_diario_maximo` are
 > **not** stored there: the state answers *"which tier is the number in NOW"*, and the direction of
@@ -2755,9 +2755,9 @@ GET /v1/bloqueios?instancia=lojinha&limit=100&after=<cursor>&before=<cursor>
 
 ```jsonc
 // response 200
-{ "instancia": "lojinha",
+{ "instance": "lojinha",
   "total": 1,
-  "bloqueados": [ {"wa_id": "5511999990000"} ],
+  "blocked": [ {"wa_id": "5511999990000"} ],
   "cursor_antes": "…",
   "cursor_depois": "…" }
 ```
@@ -2768,7 +2768,7 @@ Meta does not return the phone number in the clear in this listing — only the 
 
 🔑 **What this route is really for: to DISAGREE with you.** Measured by `consumer-b` on 2026-08-20,
 and the lesson is theirs: their database said "blocked" and this `GET` answered
-`{"total":0,"bloqueados":[]}`. **Two sources disagreeing within fifteen seconds** turned an *"I think
+`{"total":0,"blocked":[]}`. **Two sources disagreeing within fifteen seconds** turned an *"I think
 it didn't work"* into a root cause — it was an `Enter` in their form submitting without a `submitter`,
 and therefore without the field that chose between blocking here and blocking at Meta.
 
@@ -2873,12 +2873,12 @@ different sources. Confusing the two is how an entire day of work on this projec
 | Your question | Where to answer it | Why |
 |---|---|---|
 | **"how is the gateway?"** — how many messages, is the token valid, when did the last one arrive | `GET /v1/estado`, just below | the gateway knows that, and knows it honestly |
-| **"are you reaching me?"** | an **external source**, in this section — and a convenience mirror of it in `GET /v1/estado` (`alcance_externo`, 2026-08-07) | 🔴 the gateway **cannot measure this on its own**; it can only REPEAT what a probe running outside our network has already measured |
+| **"are you reaching me?"** | an **external source**, in this section — and a convenience mirror of it in `GET /v1/estado` (`external_reach`, 2026-08-07) | 🔴 the gateway **cannot measure this on its own**; it can only REPEAT what a probe running outside our network has already measured |
 
 🔴 **THE MIRROR DOES NOT REPLACE THE EXTERNAL SOURCE, and that is a decision, not a gap.** The case
 where the probe matters most is a **silent gateway** — and that is exactly when asking the gateway
 returns nothing. A status that shares a failure domain with what it monitors is not a status. Use
-`alcance_externo` when `GET /v1/estado` is already on your screen (it avoids a second call); use this
+`external_reach` when `GET /v1/estado` is already on your screen (it avoids a second call); use this
 section's URL when you suspect the whole gateway is down — it is the only one of the two that survives
 our outage.
 
@@ -2891,7 +2891,7 @@ internal instruments stayed green throughout the entire outage**.
 
 And there is an even simpler reason: **any answer served by the gateway is unavailable exactly when the
 answer would be "no".** An `alcancavel: true` computed from inside would be true whenever you managed
-to read it — which makes it no information at all. That is why `alcance_externo` is never a measurement
+to read it — which makes it no information at all. That is why `external_reach` is never a measurement
 of its own: it is the gateway **asking the same external probe you could ask directly** and returning
 what it answered, by the same discipline of "nobody talks to Meta directly" applied here to a third
 party that is not Meta — an explicit request from the owner, so that you only need to talk to the
@@ -2922,7 +2922,7 @@ example that looks complete is how somebody comes to write a parser by exact equ
 
 **`status` is an open string, not an enum.** We have only measured `up` and `down` to date; treating the
 field as a closed vocabulary would return something plausible for a value nobody checked — the same
-reason `alcance_externo.veredito` travels **untranslated**.
+reason `external_reach.verdict` travels **untranslated**.
 
 ⚠️ **`GET`, and only on this URL.** healthchecks has a second address, the **ping** one (a write),
 which is what the probe uses to say "I measured and it is up". It is secret, lives only here, and
@@ -2977,7 +2977,7 @@ without a contract release. Treat an unknown key as a number, never as an error.
 
 **The read NEVER talks to Meta.** Call it as often as your dashboard likes: everything here comes from
 the database and from a cache the gateway updates at its own pace. A consequence worth knowing: Meta
-being down does **not** bring this route down — it shows up in `token_meta`, which is where it should.
+being down does **not** bring this route down — it shows up in `meta_token`, which is where it should.
 
 ### Executed example
 
@@ -2998,22 +2998,22 @@ appears, even with no event). Zero here is the guaranteed filling, not an invent
 **`carimbos_desde` appears here equal to `gerado_em` because this capture's instance had just been
 created**; on an instance that already existed it is the instant the migration ran, and on one created
 last month it is its birth.
-**SECOND EXCEPTION (T-098, 2026-07-30):** the `token_instagram` block was added BY HAND to this paste —
+**SECOND EXCEPTION (T-098, 2026-07-30):** the `instagram_token` block was added BY HAND to this paste —
 the original scenario is WhatsApp and did not have that field when it was captured. The SEVEN values
-(`nao_se_aplica` and the six `null`) are exactly what
+(`not_applicable` and the six `null`) are exactly what
 `TestGETStateWhatsappInstagramTokenIsNotApplicableInTheJSON`
 (`internal/outbound/state_instagram_test.go`) proves against the real handler — the guarantee is
 mechanical, only the paste here is manual.
-**THIRD EXCEPTION (T-107, 2026-07-30):** the `tipo` and `ig_id` fields were also added BY HAND — the
-original scenario predates both. The values (`"whatsapp"` and `"nao_se_aplica"`) are exactly what
+**THIRD EXCEPTION (T-107, 2026-07-30):** the `kind` and `ig_id` fields were also added BY HAND — the
+original scenario predates both. The values (`"whatsapp"` and `"not_applicable"`) are exactly what
 `TestGETStateWhatsappExposesTypeAndIgIDAsNotApplicableInTheJSON`
 (`internal/outbound/state_instagram_test.go`) proves against the real handler.)*
 
 ```jsonc
 {
-  "instancia": "lojinha",
-  "tipo": "whatsapp",
-  "ig_id": "nao_se_aplica",
+  "instance": "lojinha",
+  "kind": "whatsapp",
+  "ig_id": "not_applicable",
   "estado": "ativa",
   "pausada": false,
   "versao": "9.9.9-teste",
@@ -3052,58 +3052,58 @@ original scenario predates both. The values (`"whatsapp"` and `"nao_se_aplica"`)
     { "dia": "2026-07-28", "dia_utc": "2026-07-28", "contadores": { "alarme_perda_definitiva": 0, /* the 7 cobranca_* keys come here, all 0 in this capture — omitted only in this paste */ "conta_descartada": 0, "entregues": 9, "enviadas": 0, "falhas_de_envio": 0, "falhas_de_leitura": 0, "leituras_marcadas": 0, "numero_descartado": 0, "recebidas": 9, "recusadas_pelo_consumidor": 0 } },
     { "dia": "2026-07-29", "dia_utc": "2026-07-29", "contadores": { "alarme_perda_definitiva": 0, /* the 7 cobranca_* keys come here, all 0 in this capture — omitted only in this paste */ "conta_descartada": 0, "entregues": 4, "enviadas": 2, "falhas_de_envio": 1, "falhas_de_leitura": 0, "leituras_marcadas": 3, "numero_descartado": 0, "recebidas": 4, "recusadas_pelo_consumidor": 0 } }
   ],
-  "token_meta": {
+  "meta_token": {
     "verdict": "ok",
-    "medido_em": "2026-07-29T00:00:02Z",
-    "conferido_em": "2026-07-29T00:00:02Z",
-    "checagem_falhando_desde": null
+    "measured_at": "2026-07-29T00:00:02Z",
+    "checked_at": "2026-07-29T00:00:02Z",
+    "check_failing_since": null
   },
-  "certificado_do_callback": {
-    "estado": "observado",
-    "expira_em": "2026-10-21T00:00:02Z",
-    "observado_em": "2026-07-28T23:23:02Z"
+  "callback_certificate": {
+    "state": "observed",
+    "expires_at": "2026-10-21T00:00:02Z",
+    "observed_at": "2026-07-28T23:23:02Z"
   },
-  "numero_na_meta": {
-    "qualidade": {
-      "estado": "observado",
-      "valor": "GREEN",
-      "observado_em": "2026-07-29T00:00:02Z",
-      "fonte": "medicao"
+  "number_at_meta": {
+    "quality": {
+      "state": "observed",
+      "value": "GREEN",
+      "observed_at": "2026-07-29T00:00:02Z",
+      "source": "medicao"
     },
-    "limite_de_mensagens": {
-      "estado": "observado",
-      "valor": "TIER_1K",
-      "observado_em": "2026-07-29T00:00:02Z",
-      "fonte": "medicao"
+    "message_limit": {
+      "state": "observed",
+      "value": "TIER_1K",
+      "observed_at": "2026-07-29T00:00:02Z",
+      "source": "medicao"
     },
-    "conferido_em": "2026-07-29T00:00:02Z"
+    "checked_at": "2026-07-29T00:00:02Z"
   },
-  "token_instagram": {
-    "veredito": "nao_se_aplica",
+  "instagram_token": {
+    "verdict": "not_applicable",
     "definido_em": null,
-    "expira_em": null,
-    "dias_restantes": null,
-    "renovado_em": null,
-    "falhando_desde": null,
-    "instrucao": null
+    "expires_at": null,
+    "days_left": null,
+    "renewed_at": null,
+    "failing_since": null,
+    "instruction": null
   },
-  "entrada": {
+  "ingress": {
     "via": "tunel",
     "connector": {
       "state": "observed",
-      "conexoes_prontas": 4,
-      "medido_em": "2026-07-29T00:00:02Z",
-      "falhando_desde": null
+      "ready_connections": 4,
+      "measured_at": "2026-07-29T00:00:02Z",
+      "failing_since": null
     },
-    "ultimo_webhook_em": "2026-07-29T00:00:02Z"
+    "last_webhook_at": "2026-07-29T00:00:02Z"
   }
 }
 ```
 
-*(`token_instagram` comes out as `nao_se_aplica` in this capture because `lojinha` is WhatsApp — see
+*(`instagram_token` comes out as `not_applicable` in this capture because `lojinha` is WhatsApp — see
 the block's own section, further below, for the example on an Instagram instance.)*
 
-*(**FOURTH EXCEPTION (T-120, 2026-08-06):** the `entrada` block was added BY HAND to this paste — the
+*(**FOURTH EXCEPTION (T-120, 2026-08-06):** the `ingress` block was added BY HAND to this paste — the
 original scenario predates it. The shape and the states are exactly the ones
 `internal/outbound/ingress_test.go` proves against the real handler; the values shown are those of an
 installation that comes in through a tunnel with the connector answering.)*
@@ -3154,7 +3154,7 @@ know"* a range in which there might have been timestamps, never the other way ar
 > it is a constant written by hand in each consumer's code — which **rots on the first new instance**,
 > because that one does not timestamp from `v0.23.0`, but from when it was born. The request came from
 > a consumer, and the argument is the same one that already made us put **two** timestamps in
-> `token_meta` and in `certificado_do_callback`: the reader needs to know the age of the
+> `meta_token` and in `callback_certificate`: the reader needs to know the age of the
 > **instrument**, not just that of the data.
 
 #### 🔴 The rule above is INCOMPLETE without a reference window
@@ -3425,7 +3425,7 @@ your callback is down and we answer `5xx`, Meta resends — and nothing is count
 actually accepted. Without that rule, an incident on your side would inflate exactly the number you
 look at most during it.
 
-### `token_meta` — the live check, with TWO timestamps and THREE states
+### `meta_token` — the live check, with TWO timestamps and THREE states
 
 It answers *"does Meta still accept this instance's token?"* — the same question as
 `GET /v1/instances/{slug}/health`, but **without a per-call cost**: here you read what the gateway has
@@ -3434,19 +3434,19 @@ already measured.
 | field | what it is |
 |---|---|
 | `verdict` | `"ok"` · `"refused"` · `"unknown"` |
-| `medido_em` | when Meta last **answered** (`null` = never) |
-| `conferido_em` | the last **attempt**, successful or not (`null` = never) |
-| `checagem_falhando_desde` | the start of the current run of check failures (`null` = not failing) |
+| `measured_at` | when Meta last **answered** (`null` = never) |
+| `checked_at` | the last **attempt**, successful or not (`null` = never) |
+| `check_failing_since` | the start of the current run of check failures (`null` = not failing) |
 
-**Why two timestamps, and not one.** `{"verdict":"ok","medido_em":"15:20"}` on its own is **ambiguous
+**Why two timestamps, and not one.** `{"verdict":"ok","measured_at":"15:20"}` on its own is **ambiguous
 between two opposite states**: *"I checked at 15:20 and did not need to check again"* and *"I checked
 at 15:20, and every attempt since then has failed"*. In the second case your dashboard would paint
-green with Meta down. **`medido_em` and `conferido_em` diverging is the signal that the check is
+green with Meta down. **`measured_at` and `checked_at` diverging is the signal that the check is
 failing** — visible without you knowing anything about our implementation.
 
 **An old `ok` EXPIRES.** After 15 minutes without Meta answering, the verdict degrades to
 `unknown` instead of staying `ok`: a cache that never expires is a lie with a timestamp.
-`medido_em` still points at the last real answer — it is what says how long the gateway has gone
+`measured_at` still points at the last real answer — it is what says how long the gateway has gone
 without hearing from Meta.
 
 **`unknown` is not new vocabulary:** it is the same word as the send's error `class`, with the
@@ -3467,11 +3467,11 @@ measured** (it does not send), and that is why its verdict ages into `unknown`; 
 you do not confuse the two.
 
 **The two alarm rules this gives you, and neither requires knowing our innards:** `verdict != "ok"`,
-or an aged `conferido_em`.
+or an aged `checked_at`.
 
-### `certificado_do_callback` — the validity of **your** certificate, as the gateway saw it
+### `callback_certificate` — the validity of **your** certificate, as the gateway saw it
 
-The sibling of `token_meta` on the other side: that one answers *"does Meta still accept this
+The sibling of `meta_token` on the other side: that one answers *"does Meta still accept this
 instance's token?"*; this one answers *"will your callback's certificate still be valid next week?"*.
 **A consumer's certificate expiring brings down the whole delivery**, and the symptom arrives as a TLS
 failure in the small hours — knowing days in advance turns an incident into maintenance. Automatic
@@ -3479,9 +3479,9 @@ renewal exists precisely for that, but **automation fails silently**.
 
 | field | what it is |
 |---|---|
-| `estado` | `"observado"` · `"nunca_observado"` |
-| `expira_em` | the certificate's `NotAfter`, UTC/RFC3339 (`null` in `nunca_observado`) |
-| `observado_em` | when the gateway **saw** that certificate, UTC/RFC3339 (`null` in `nunca_observado`) |
+| `state` | `"observed"` · `"never_observed"` |
+| `expires_at` | the certificate's `NotAfter`, UTC/RFC3339 (`null` in `never_observed`) |
+| `observed_at` | when the gateway **saw** that certificate, UTC/RFC3339 (`null` in `never_observed`) |
 
 **It is not a probe: it is an observation.** The gateway opens no connection to look at your
 certificate — it reads what the **delivery's** handshake already carries, on the same connection that
@@ -3489,12 +3489,12 @@ was going to happen anyway. Two consequences you need to know, and the second is
 your alarm rule:
 
 - **without a delivery, there is no new observation.** The data ages when traffic stops (or when the
-  instance is paused). That is why `observado_em` travels alongside: a certificate observed three
+  instance is paused). That is why `observed_at` travels alongside: a certificate observed three
   weeks ago **is not current information**, and the gateway cannot pretend it is;
 - **it is the LEAF certificate** (yours), not the whole chain. It is the one that renews every ~90 days
   and the one that breaks when renewal fails. An intermediate of your CA expiring does not appear here.
 
-**`nunca_observado` is a state with a name, and that is deliberate — treat it as "no information",
+**`never_observed` is a state with a name, and that is deliberate — treat it as "no information",
 never as "expired".** It means that **no delivery from this instance has completed a handshake**: a
 freshly created instance, or a consumer that has not received anything yet. It is not a failure, and it
 is not on its own a reason to alarm.
@@ -3516,12 +3516,12 @@ much observation age you tolerate.
 **The suggested alarm rule**, and it uses both fields on purpose:
 
 ```
-estado == "observado"
-  AND expira_em - now < 14 days
-  AND now - observado_em < 24 h      # otherwise you are alarming about old information
+state == "observed"
+  AND expires_at - now < 14 days
+  AND now - observed_at < 24 h      # otherwise you are alarming about old information
 ```
 
-And, separately from that: `estado == "observado"` with a very old `observado_em` **on an active
+And, separately from that: `state == "observed"` with a very old `observed_at` **on an active
 instance with traffic** means delivery has stopped — but for that `entregues.ultimo_em` answers
 better, because it exists for exactly that question.
 
@@ -3529,16 +3529,16 @@ Example of the block on an instance that has not delivered anything yet (**paste
 as the example above, before the observation):
 
 ```json
-"certificado_do_callback": {
-  "estado": "nunca_observado",
-  "expira_em": null,
-  "observado_em": null
+"callback_certificate": {
+  "state": "never_observed",
+  "expires_at": null,
+  "observed_at": null
 }
 ```
 
-### `numero_na_meta` — your number's **quality** and **messaging limit** (2026-07-28)
+### `number_at_meta` — your number's **quality** and **messaging limit** (2026-07-28)
 
-The third sibling of `token_meta` and `certificado_do_callback`. The first two answer *"does this
+The third sibling of `meta_token` and `callback_certificate`. The first two answer *"does this
 credential still work?"*; this one answers the neighbouring and equally expensive question: **"can this
 number still send the volume I planned?"**
 
@@ -3546,40 +3546,40 @@ number still send the volume I planned?"**
 API with your token. The gateway's rule — *nobody talks to Meta directly* — closed that path, and this
 is the door that replaces it. What each one decides on your side:
 
-- **`limite_de_mensagens`** is the *tier* — the daily ceiling of initiated conversations. It **changes
+- **`message_limit`** is the *tier* — the daily ceiling of initiated conversations. It **changes
   on its own**: the account matures and it goes up, or it is downgraded and it falls. Planning the
   month with the old tier is planning wrong;
-- **`qualidade`** is the **early** warning that the account is heading for a restriction. Finding that
+- **`quality`** is the **early** warning that the account is heading for a restriction. Finding that
   out through the block is finding out late.
 
 ```jsonc
-"numero_na_meta": {
-  "qualidade": {
-    "estado": "observado",
-    "valor": "GREEN",
-    "observado_em": "2026-07-28T20:36:58Z",
-    "fonte": "medicao"
+"number_at_meta": {
+  "quality": {
+    "state": "observed",
+    "value": "GREEN",
+    "observed_at": "2026-07-28T20:36:58Z",
+    "source": "medicao"
   },
-  "limite_de_mensagens": {
-    "estado": "observado",
-    "valor": "TIER_50",          // downgraded, and the notice arrived PUSHED
-    "observado_em": "2026-07-28T20:40:03Z",
-    "fonte": "webhook"
+  "message_limit": {
+    "state": "observed",
+    "value": "TIER_50",          // downgraded, and the notice arrived PUSHED
+    "observed_at": "2026-07-28T20:40:03Z",
+    "source": "webhook"
   },
-  "conferido_em": "2026-07-28T20:36:58Z"
+  "checked_at": "2026-07-28T20:36:58Z"
 }
 ```
 
-*(Both examples in this block — this one and the `nunca_observado` one below — are **pasted from a run
+*(Both examples in this block — this one and the `never_observed` one below — are **pasted from a run
 of the real handler**, never typed.)*
 
 | field | what it is |
 |---|---|
-| `<value>.estado` | `"observado"` · `"nunca_observado"` — the **same** words as `certificado_do_callback`, because the question is the same |
-| `<value>.valor` | Meta's literal (`null` in `nunca_observado`) |
-| `<value>.observado_em` | when the **gateway** learned that value, UTC/RFC3339 (`null` in `nunca_observado`) |
-| `<value>.fonte` | `"medicao"` · `"webhook"` (`null` in `nunca_observado`) |
-| `conferido_em` | the last time the gateway **tried to measure**, UTC/RFC3339 (`null` if it never tried) |
+| `<value>.state` | `"observed"` · `"never_observed"` — the **same** words as `callback_certificate`, because the question is the same |
+| `<value>.value` | Meta's literal (`null` in `never_observed`) |
+| `<value>.observed_at` | when the **gateway** learned that value, UTC/RFC3339 (`null` in `never_observed`) |
+| `<value>.source` | `"medicao"` · `"webhook"` (`null` in `never_observed`) |
+| `checked_at` | the last time the gateway **tried to measure**, UTC/RFC3339 (`null` if it never tried) |
 
 #### 🔴 The values are Meta's LITERALS — `"TIER_250"` does not become `250`
 
@@ -3594,7 +3594,7 @@ literal.
 
 #### The TWO sources, and who wins when they disagree
 
-`limite_de_mensagens` arrives by two paths, and the `fonte` field says which one produced the value
+`message_limit` arrives by two paths, and the `source` field says which one produced the value
 you are reading:
 
 - **`medicao`** — the gateway asks the Graph API, per **active** instance, in the same cycle in which
@@ -3607,79 +3607,79 @@ you are reading:
 always wins" would let a Meta redelivery (it retries for up to 36 h) regress a value measured later;
 "the measurement always wins" would throw away exactly the pushed warning.
 
-**`qualidade` has only one source (`medicao`)**, and that is not a gap: the
+**`quality` has only one source (`medicao`)**, and that is not a gap: the
 `phone_number_quality_update` webhook **does not carry a quality rating** — it carries an `event`
 (`ONBOARDING`/`FLAGGED`/`UNFLAGGED`), which is a different fact. Inventing an equivalence between them
 would be asserting a translation Meta's documentation does not support.
 
-#### `observado_em` is the GATEWAY's clock, not Meta's
+#### `observed_at` is the GATEWAY's clock, not Meta's
 
 The timestamp says **when the gateway learned**, not when Meta recorded the change. It is the same
-definition as `certificado_do_callback.observado_em`. The reason is that the alternative would compare
+definition as `callback_certificate.observed_at`. The reason is that the alternative would compare
 two clocks nobody synchronized — and a drift of minutes would decide, silently, which source wins.
 
 #### The TWO timestamps, and what divergence between them means
 
-`conferido_em` moving while the `observado_em`s stand still means **"the gateway is measuring and
+`checked_at` moving while the `observed_at`s stand still means **"the gateway is measuring and
 coming back without the data"** — Meta stopped sending the fields, or the field request was refused. In
-that state the value you read is still true *for its date*, and `observado_em` is what tells you how
+that state the value you read is still true *for its date*, and `observed_at` is what tells you how
 old it is.
 
-**`conferido_em: null` on a `pausada` instance is expected**, not a failure: a paused instance is not
+**`checked_at: null` on a `pausada` instance is expected**, not a failure: a paused instance is not
 measured on purpose — it does not send, and spending a call on it would be measuring a channel that
 cannot fail.
 
-#### `nunca_observado` is a state with a name — treat it as "no information", never as "bad"
+#### `never_observed` is a state with a name — treat it as "no information", never as "bad"
 
 The state is **per value**, not per block, because the mixed case genuinely exists: a limit webhook can
 arrive before the first measurement, and then the limit is observed and the quality is not.
 
 ```json
-"numero_na_meta": {
-  "qualidade": {
-    "estado": "nunca_observado",
-    "valor": null,
-    "observado_em": null,
-    "fonte": null
+"number_at_meta": {
+  "quality": {
+    "state": "never_observed",
+    "value": null,
+    "observed_at": null,
+    "source": null
   },
-  "limite_de_mensagens": {
-    "estado": "nunca_observado",
-    "valor": null,
-    "observado_em": null,
-    "fonte": null
+  "message_limit": {
+    "state": "never_observed",
+    "value": null,
+    "observed_at": null,
+    "source": null
   },
-  "conferido_em": null
+  "checked_at": null
 }
 ```
 
 **The suggested alarm rule** — and it is yours, because the gateway publishes no judgement here:
 
 ```
-limite_de_mensagens.estado == "observado"
-  AND limite_de_mensagens.valor != <the tier you planned for>     # it went up or down without you knowing
-qualidade.estado == "observado" AND qualidade.valor != "GREEN"    # and treat an UNKNOWN value as unknown
+message_limit.state == "observed"
+  AND message_limit.value != <the tier you planned for>     # it went up or down without you knowing
+quality.state == "observed" AND quality.value != "GREEN"    # and treat an UNKNOWN value as unknown
 ```
 
-#### 🔴 On an Instagram instance, this block (and `token_meta`) say `nao_se_aplica` (T-099)
+#### 🔴 On an Instagram instance, this block (and `meta_token`) say `not_applicable` (T-099)
 
 **Quality and messaging tier are WhatsApp Business Number concepts — Instagram does not have them, and
-never will.** Until v0.36.0 this block came out as `nunca_observado` on an Instagram instance (measured
-in production, `tenant-two-ig`, 2026-07-30 21:11), which is the WRONG answer: `nunca_observado` says
-*"we have not measured yet, wait"*; the right answer is `nao_se_aplica`, which says *"it will never
-exist here, do not look"*. If you read `nunca_observado` in a field that will never be filled, you
+never will.** Until v0.36.0 this block came out as `never_observed` on an Instagram instance (measured
+in production, `tenant-two-ig`, 2026-07-30 21:11), which is the WRONG answer: `never_observed` says
+*"we have not measured yet, wait"*; the right answer is `not_applicable`, which says *"it will never
+exist here, do not look"*. If you read `never_observed` in a field that will never be filled, you
 either wait forever or alarm about something that does not exist — it is the same problem
-`token_instagram` already solves on the WhatsApp side (next section), and the two directions now use
+`instagram_token` already solves on the WhatsApp side (next section), and the two directions now use
 the **same word**.
 
 ```json
-"numero_na_meta": {
-  "qualidade": { "estado": "nao_se_aplica", "valor": null, "observado_em": null, "fonte": null },
-  "limite_de_mensagens": { "estado": "nao_se_aplica", "valor": null, "observado_em": null, "fonte": null },
-  "conferido_em": null
+"number_at_meta": {
+  "quality": { "state": "not_applicable", "value": null, "observed_at": null, "source": null },
+  "message_limit": { "state": "not_applicable", "value": null, "observed_at": null, "source": null },
+  "checked_at": null
 }
 ```
 
-**And the same applies to `token_meta.verdict`, which also comes out as `"nao_se_aplica"` on an
+**And the same applies to `meta_token.verdict`, which also comes out as `"not_applicable"` on an
 Instagram instance.** The reason is subtler than "the field does not apply by definition": the live
 check (`watchdog.go`) measures by calling `GET /{phone_number_id}` on the Graph API, and an Instagram
 instance **never has** a `phone_number_id` (registration refuses it if it comes filled in). Without
@@ -3687,9 +3687,9 @@ this handling, the watcher would measure with the field empty, the Graph would r
 (there would not even be a network request), and the gateway would classify that as a **refused
 credential** — a **permanent and false** `verdict: "refused"` on every healthy Instagram instance,
 because the check was never designed to measure anything over there. That is why the gateway does not
-let that result leak: `token_meta` also becomes `nao_se_aplica`.
+let that result leak: `meta_token` also becomes `not_applicable`.
 
-### `token_instagram` — the validity of Instagram's long-lived token (2026-07-30)
+### `instagram_token` — the validity of Instagram's long-lived token (2026-07-30)
 
 It answers *"will this Instagram channel keep working?"* — from the **token**'s side, which here has a
 hard difference from WhatsApp: it **expires in 60 days**, always, and past that deadline **there is no
@@ -3703,48 +3703,48 @@ consumer→instance link decides which). On a **WhatsApp** instance this block c
 always:
 
 ```json
-"token_instagram": {
-  "veredito": "nao_se_aplica",
+"instagram_token": {
+  "verdict": "not_applicable",
   "definido_em": null,
-  "expira_em": null,
-  "dias_restantes": null,
-  "renovado_em": null,
-  "falhando_desde": null,
-  "instrucao": null
+  "expires_at": null,
+  "days_left": null,
+  "renewed_at": null,
+  "failing_since": null,
+  "instruction": null
 }
 ```
 
 **This is NOT the block broken — it is the block telling the truth.** The System User token WhatsApp
-uses has no 60-day deadline (it is the same reason `numero_na_meta` and `token_meta` always come out
-`nao_se_aplica` on the Instagram side — see the corresponding subsection, above — and
-`token_instagram` always comes out `nao_se_aplica` on the WhatsApp side: each Meta product has the
+uses has no 60-day deadline (it is the same reason `number_at_meta` and `meta_token` always come out
+`not_applicable` on the Instagram side — see the corresponding subsection, above — and
+`instagram_token` always comes out `not_applicable` on the WhatsApp side: each Meta product has the
 credential it has, and the block ALWAYS exists in the response, saying which of the two is your case).
 A field that simply disappeared, or came with the numbers zeroed instead of `null`, would make you
 think automatic renewal is broken when it never existed there.
 
 | field | what it is |
 |---|---|
-| `veredito` | `"nao_se_aplica"` · `"aguardando"` · `"ok"` · `"falhando"` · `"expirado"` |
-| `definido_em` | when the CURRENT token was set — creation, your registration, a rotation by the owner, or the last automatic renewal (`null` in `nao_se_aplica`) |
-| `expira_em` | `definido_em` + 60 days (`null` in `nao_se_aplica`) |
-| `dias_restantes` | can be **negative** (expired N days ago) (`null` in `nao_se_aplica`) |
-| `renovado_em` | the last time the **automatic loop** renewed this token successfully — `null` until the first real renewal, even if the original token still has days of life |
-| `falhando_desde` | the start of the current run of renewal failures (`null` = not failing) |
-| `instrucao` | text explaining what to do — only present when `veredito` is `falhando` or `expirado` |
+| `verdict` | `"not_applicable"` · `"pending"` · `"ok"` · `"failing"` · `"expired"` |
+| `definido_em` | when the CURRENT token was set — creation, your registration, a rotation by the owner, or the last automatic renewal (`null` in `not_applicable`) |
+| `expires_at` | `definido_em` + 60 days (`null` in `not_applicable`) |
+| `days_left` | can be **negative** (expired N days ago) (`null` in `not_applicable`) |
+| `renewed_at` | the last time the **automatic loop** renewed this token successfully — `null` until the first real renewal, even if the original token still has days of life |
+| `failing_since` | the start of the current run of renewal failures (`null` = not failing) |
+| `instruction` | text explaining what to do — only present when `verdict` is `failing` or `expired` |
 
 **The five verdicts, and what each asks of you:**
 
-- **`aguardando`** — a valid token, still far from the renewal threshold (from 30 days of age).
+- **`pending`** — a valid token, still far from the renewal threshold (from 30 days of age).
   Normal, no action at all;
 - **`ok`** — the automatic loop **has already renewed this token successfully at least once**. It is
   the answer to *"does the mechanism really work?"* — and that is why it is a verdict of its OWN, and
-  not the same as `aguardando`: a token that never needed renewing has proven nothing about the
+  not the same as `pending`: a token that never needed renewing has proven nothing about the
   automation yet;
-- **`falhando`** — the most recent renewal attempt did not work (Meta refused, or storing the new
-  token failed) and the token **has not expired yet**. `falhando_desde` shows the HONEST first failure
+- **`failing`** — the most recent renewal attempt did not work (Meta refused, or storing the new
+  token failed) and the token **has not expired yet**. `failing_since` shows the HONEST first failure
   — there is no delay and no threshold here: if the gateway has been failing for 10 minutes, that is
   what the response has been saying for 10 minutes;
-- **`expirado`** — more than 60 days went by without renewal. **There is no automatic renewal possible
+- **`expired`** — more than 60 days went by without renewal. **There is no automatic renewal possible
   any more.**
 
 #### 🔴 You are the one who alarms — the gateway only records
@@ -3757,36 +3757,36 @@ exists on your side.**
 
 🔴 **And the reason this matters more here than in any other block: you cannot fix it yourself.** The
 token is not in your hands, by this gateway's design (nobody talks to Meta directly). That is why
-`instrucao` is not cosmetic — it is the only thing separating `veredito: "falhando"` from a dead end
+`instruction` is not cosmetic — it is the only thing separating `verdict: "failing"` from a dead end
 for someone with no access to the problem.
 
 **A practical alarm rule, yours:**
 
 ```
-veredito == "expirado"                                   # stop everything, it is manual
-  OR (veredito == "falhando" AND falhando_desde is more than a few days old)
+verdict == "expired"                                   # stop everything, it is manual
+  OR (verdict == "failing" AND failing_since is more than a few days old)
 ```
 
-If `falhando_desde` goes beyond a few days, get hold of the owner of the Instagram account at Meta —
-the resolution is **manual** and is not on the gateway's side. A freshly appeared `falhando` normally
+If `failing_since` goes beyond a few days, get hold of the owner of the Instagram account at Meta —
+the resolution is **manual** and is not on the gateway's side. A freshly appeared `failing` normally
 resolves itself on the next cycle (an unstable network, a passing `5xx` from Meta); it is the
 PERSISTENCE of the failure that calls for a human, not the first occurrence.
 
 Example of an Instagram instance failing (pasted from a run of the real handler):
 
 ```json
-"token_instagram": {
-  "veredito": "falhando",
+"instagram_token": {
+  "verdict": "failing",
   "definido_em": "2026-06-15T00:00:00Z",
-  "expira_em": "2026-08-14T00:00:00Z",
-  "dias_restantes": 12,
-  "renovado_em": null,
-  "falhando_desde": "2026-08-01T09:00:00Z",
-  "instrucao": "a renovacao automatica esta falhando; a resolucao e MANUAL, do lado de quem opera o gateway ou e dono da conta Instagram na Meta — o token nao esta ao alcance deste consumidor"
+  "expires_at": "2026-08-14T00:00:00Z",
+  "days_left": 12,
+  "renewed_at": null,
+  "failing_since": "2026-08-01T09:00:00Z",
+  "instruction": "a renovacao automatica esta falhando; a resolucao e MANUAL, do lado de quem opera o gateway ou e dono da conta Instagram na Meta — o token nao esta ao alcance deste consumidor"
 }
 ```
 
-### `entrada` — WHERE the inbound path is published, and whether the connector is up (2026-08-06)
+### `ingress` — WHERE the inbound path is published, and whether the connector is up (2026-08-06)
 
 🔴 **READ THIS SENTENCE BEFORE USING THE BLOCK, because it is what prevents the expensive
 misunderstanding:** `via` and `connector` describe **where the inbound path is published** and
@@ -3806,73 +3806,73 @@ is why it does not exist here, and will not come to exist.
 |---|---|---|
 | `via` | **configuration**, not measurement — `tunel`, `encaminhamento_de_porta` or `unknown` | knowing where the inbound path should be arriving through when you report an outage |
 | `connector` | a **measurement** of the `/ready` of the connector that publishes the route | telling "the tunnel went down" apart from "the gateway is quiet" |
-| `ultimo_webhook_em` | the **same** value as `contadores.recebidas.ultimo_em` | concluding **silence** on your own, without reading the counters table |
+| `last_webhook_at` | the **same** value as `contadores.recebidas.ultimo_em` | concluding **silence** on your own, without reading the counters table |
 
 **`connector.state` has THREE values, and the difference between two of them is the point of the
 block:**
 
-- **`observed`** — the gateway asked and the connector answered. `conexoes_prontas` carries the
+- **`observed`** — the gateway asked and the connector answered. `ready_connections` carries the
   number, and it **can be `0`**: zero is a legitimate measurement ("the connector is up and there is
-  no tunnel established"), the strongest signal this block can give. `falhando_desde` comes `null`;
-- **`unknown`** — **I could not measure**. `conexoes_prontas` comes **always `null`**, never a
-  zero that looks like a verdict; `falhando_desde` says since when the question has not been coming
-  back (`null` if there was never an attempt), and `medido_em` still points at the **last real
+  no tunnel established"), the strongest signal this block can give. `failing_since` comes `null`;
+- **`unknown`** — **I could not measure**. `ready_connections` comes **always `null`**, never a
+  zero that looks like a verdict; `failing_since` says since when the question has not been coming
+  back (`null` if there was never an attempt), and `measured_at` still points at the **last real
   answer**, which is what says how long the gateway has gone without hearing from the connector;
 - **`not_configured`** — nobody told the gateway whom to ask (an installation without a tunnel). All
   three fields come `null`.
 
 ⚠️ **`observed` is NOT a health verdict.** The gateway publishes what it measured and when it
-measured it; the one who judges is you. It is the same rule as `certificado_do_callback`, which also
+measured it; the one who judges is you. It is the same rule as `callback_certificate`, which also
 has no "expired" state.
 
 ⚠️ **The block comes ALWAYS, with all its keys, on every instance** — including `not_configured` and
 including on an Instagram instance. A field that disappears breaks a strict parser, and this contract
-already paid for that with `token_instagram`.
+already paid for that with `instagram_token`.
 
 ℹ️ **`via` and `connector` are the GATEWAY's, not the instance's:** two instances of the same gateway
-read exactly the same values. Only `ultimo_webhook_em` is per instance.
+read exactly the same values. Only `last_webhook_at` is per instance.
 
-**The alarm rule this gives you:** `connector.state == "observed" && conexoes_prontas == 0` is *"the
+**The alarm rule this gives you:** `connector.state == "observed" && ready_connections == 0` is *"the
 tunnel went down"* — act. `connector.state == "unknown"` is *"the gateway is not managing to
 measure"* — a different urgency, a different place to look, and **never** the same alarm.
 
-### `alcance_externo` — the public probe's verdict, mirrored here (2026-08-07)
+### `external_reach` — the public probe's verdict, mirrored here (2026-08-07)
 
 🔴 **READ THE SECTION "Two different questions" (above) BEFORE USING THIS BLOCK.** It is
 **convenience**, not a second source: when the gateway is silent, this block is too — it is the
 probe's public URL (the section above) that survives our outage, never this field.
 
 ```jsonc
-"alcance_externo": { "estado": "observado", "veredito": "up", "medido_em": "2026-08-07T13:05:00Z",
-                      "fonte": "sonda_externa" }
+"external_reach": { "state": "observed", "verdict": "up", "measured_at": "2026-08-07T13:05:00Z",
+                     "source": "sonda_externa" }
 ```
 
 | field | is |
 |---|---|
-| `estado` | `observado`, `nao_configurado` or `nao_consegui_verificar` — see below |
-| `veredito` | the literal the external probe answered (today, `"up"` or `"down"`), **untranslated** — `null` outside `observado` |
-| `medido_em` | the last time the external probe actually ANSWERED — it keeps pointing at that answer even after the state degrades, for the same reason as `token_meta.medido_em` |
-| `fonte` | today always `"sonda_externa"` when `observado`; it exists for the day a second mechanism comes in, without forcing you to reinterpret the contract |
+| `state` | `observed`, `not_configured` or `could_not_verify` — see below |
+| `verdict` | the literal the external probe answered (today, `"up"` or `"down"`), **untranslated** — `null` outside `observed` |
+| `measured_at` | the last time the external probe actually ANSWERED — it keeps pointing at that answer even after the state degrades, for the same reason as `meta_token.measured_at` |
+| `source` | today always `"sonda_externa"` when `observed`; it exists for the day a second mechanism comes in, without forcing you to reinterpret the contract |
 
-**`estado` has THREE values, and the distinction between the last two is the point of the block:**
+**`state` has THREE values, and the distinction between the last two is the point of the block:**
 
-- **`observado`** — the gateway asked the external probe and it answered. `veredito` carries its
-  literal, **including `"down"`** — a MEASURED down is `observado` with `veredito: "down"`, not a
+- **`observed`** — the gateway asked the external probe and it answered. `verdict` carries its
+  literal, **including `"down"`** — a MEASURED down is `observed` with `verdict: "down"`, not a
   separate state;
-- 🔴 **`nao_consegui_verificar`** — the gateway's LAST attempt to ask the external probe did not come
+- 🔴 **`could_not_verify`** — the gateway's LAST attempt to ask the external probe did not come
   back (no answer, no readable JSON, or no expected field), OR the last good answer is past its
   validity. **This is NEVER `down`, and never the field being absent.** It is a word of its own,
-  different from the `unknown` used in `token_meta`/`connector` — because the decision you are
+  different from the `unknown` used in `meta_token`/`connector` — because the decision you are
   going to automate on top of it is different: "I could not ask" is not "you are down";
-- **`nao_configurado`** — this gateway does not have `ZAPGW_EXTERNAL_PROBE_URL` configured yet.
-  `veredito`, `medido_em` and `fonte` come `null`.
+- **`not_configured`** — this gateway does not have `ZAPGW_EXTERNAL_PROBE_URL` configured yet.
+  `verdict`, `measured_at` and `source` come `null`.
 
-⚠️ **The block comes ALWAYS, with all four keys, on every instance** — the same rule as `entrada` and
-`token_instagram`: a field that disappears breaks a strict parser.
+⚠️ **The block comes ALWAYS, with all four keys, on every instance** — the same rule as `ingress` and
+`instagram_token`: a field that disappears breaks a strict parser.
 
-**The alarm rule this gives you:** `alcance_externo.estado == "observado" && veredito == "down"` is
+**The alarm rule this gives you:** `external_reach.state == "observed" && verdict == "down"` is
 *"the public inbound path went down"* — act, with the SAME urgency as a direct read of the probe.
-`alcance_externo.estado == "nao_consegui_verificar"` is *"the gateway could not ask the probe right
+`external_reach.state == "could_not_verify"` is *"the gateway could not ask the probe right
 now"* — it is no sign of an outage at all; if you want to know anyway, use this section's direct URL,
 which does not depend on the gateway answering.
 
@@ -4719,9 +4719,9 @@ final answer says, only when Meta is consulted.
 - Templates, buttons, media, reactions, location, story replies, read receipts.
 - Number quality / messaging tier — a WhatsApp concept, with no equivalent modelled here.
 - `GET /v1/estado` still works (it is generic, by slug), but the WhatsApp-specific blocks
-  (`token_meta`, `numero_na_meta`) always answer `nao_se_aplica` — **explicitly**, never empty and
+  (`meta_token`, `number_at_meta`) always answer `not_applicable` — **explicitly**, never empty and
   never absent (T-099) — on an Instagram instance. See the table just below.
-- 🔴 **The EXCEPTION is `token_instagram` (T-098): it is the block that ONLY exists on the Instagram
+- 🔴 **The EXCEPTION is `instagram_token` (T-098): it is the block that ONLY exists on the Instagram
   side** — the long-lived token expires in 60 days, with no WhatsApp equivalent (a System User token
   does not expire like that). That is where you watch whether this channel's token will still work
   tomorrow — see the block's own section, above.
@@ -4753,18 +4753,18 @@ deceives.
 | block | WhatsApp | Instagram |
 |---|---|---|
 | `estado` / `pausada` / `versao` / `gerado_em` / `carimbos_desde` / `contadores` / `serie_7_dias` / `serie_diaria` | yes | yes — generic, independent of the Meta product |
-| `tipo` | yes — always `"whatsapp"` | yes — always `"instagram"` |
-| `ig_id` | **always `nao_se_aplica`** (T-107) — an Instagram identifier, WhatsApp does not have one | yes — this instance's Instagram-scoped Business Account ID, the same value as `zapgw instance show` |
-| `certificado_do_callback` | yes | yes — it is **your** endpoint's TLS, the same in both products |
-| `token_meta` | yes, measured every 5 min | **always `nao_se_aplica`** (T-099) — the check measures by `phone_number_id`, which Instagram never has |
-| `numero_na_meta` (`qualidade`, `limite_de_mensagens`) | yes, measured/pushed | **always `nao_se_aplica`** (T-099) — quality and tier are WhatsApp Business Number concepts |
-| `token_instagram` | **always `nao_se_aplica`** (T-098) | yes — 60-day expiry, see its own section |
-| `entrada` (`via`, `connector`, `ultimo_webhook_em`) | yes | yes — it belongs to the **gateway**, not the Meta product: the first two fields are identical on every instance of this gateway (T-120) |
+| `kind` | yes — always `"whatsapp"` | yes — always `"instagram"` |
+| `ig_id` | **always `not_applicable`** (T-107) — an Instagram identifier, WhatsApp does not have one | yes — this instance's Instagram-scoped Business Account ID, the same value as `zapgw instance show` |
+| `callback_certificate` | yes | yes — it is **your** endpoint's TLS, the same in both products |
+| `meta_token` | yes, measured every 5 min | **always `not_applicable`** (T-099) — the check measures by `phone_number_id`, which Instagram never has |
+| `number_at_meta` (`quality`, `message_limit`) | yes, measured/pushed | **always `not_applicable`** (T-099) — quality and tier are WhatsApp Business Number concepts |
+| `instagram_token` | **always `not_applicable`** (T-098) | yes — 60-day expiry, see its own section |
+| `ingress` (`via`, `connector`, `last_webhook_at`) | yes | yes — it belongs to the **gateway**, not the Meta product: the first two fields are identical on every instance of this gateway (T-120) |
 
-🔴 **`tipo` and `ig_id` came in with T-107 (2026-07-30) and appear ALWAYS, in both products** — the
+🔴 **`kind` and `ig_id` came in with T-107 (2026-07-30) and appear ALWAYS, in both products** — the
 same blindness T-103 had already fixed in `zapgw instance show`/`list` persisted here: without
-`tipo`, you had to deduce the product from the absence of the other blocks (`token_instagram
-nao_se_aplica` etc.), which is guesswork; and without `ig_id` you saw a healthy `token_instagram`
+`kind`, you had to deduce the product from the absence of the other blocks (`instagram_token
+not_applicable` etc.), which is guesswork; and without `ig_id` you saw a healthy `instagram_token`
 block **without being able to confirm which Instagram account it speaks of** — it was exactly a wrong
 `ig_id` that caused the defect described in the instance rotation section (T-102). `ig_id` is an
 identifier, not a secret (the same decision as T-102): the value comes out, never a boolean

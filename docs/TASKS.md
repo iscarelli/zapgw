@@ -392,41 +392,6 @@ instancias foram rotacionadas. Duas licoes que custaram na hora e valem alem des
 
 > A fila do periodo privado esta em `iscarelli/zapgw-dev`, congelada. Tarefa nova nasce aqui.
 
-## [ ] T-240  The `GET /v1/estado` blocks the contract still names in Portuguese
-Why:     A T-237 consertou quatro familias do `docs/CONTRATO-CONSUMIDOR.md` e, no caminho, achou uma
-         QUINTA — os NOMES DOS BLOCOS do `GET /v1/estado`, nao so' o vocabulario dentro deles.
-         **Re-medido por mim contra o codigo em 2026-09-08**, chave por chave — e CONFIRMADO pelo
-         consumidor em producao na `v0.67.0` (2026-09-15 03:34): o script dele leu `versao` e viu
-         `None`; as chaves vivas sao `instance, kind, state, paused, version, generated_at, counters,
-         daily_series, last_7_days_series, meta_token, callback_certificate, number_at_meta, ingress,
-         external_reach, lideranca` (esta ultima ainda em portugues no CODIGO — o doc descreve o que SAI,
-         entao `lideranca` fica como esta no doc; relate-a como chave de codigo pendente):
-         | o codigo emite | o doc ainda diz | onde |
-         |---|---|---|
-         | `instance` | `instancia` | `internal/outbound/state.go:44` |
-         | `kind` | `tipo` | `internal/outbound/state.go:51` |
-         | `meta_token` | `token_meta` | `internal/outbound/state.go:169` |
-         | `ingress` | `entrada` | `internal/outbound/state.go:207` |
-         | `ready_connections` | `conexoes_prontas` | `internal/outbound/ingress.go:217` |
-         | `measured_at` | `medido_em` | `internal/outbound/ingress.go:223` |
-         | `failing_since` | `falhando_desde` | `internal/outbound/ingress.go:230` |
-         E a lista de bloqueios: `GET /v1/bloqueios` emite `instance`/`total`/`blocked`
-         (`internal/outbound/block_handler.go`), e o doc mostra `instancia`/`bloqueados`.
-Files:   docs/CONTRATO-CONSUMIDOR.md, docs/CONTRATO-CONSUMIDOR.pt-BR.md
-Do:      Mesmo metodo da T-237, que funcionou: familia por familia, prova contra o codigo antes e o
-         `grep` depois. Os tres casos continuam valendo — (a) descreve o que sai hoje, corrija;
-         (b) registro/tabela de migracao citando a forma velha de proposito, nao toque; (c) prosa
-         portuguesa no `.pt-BR.md` usando a palavra como palavra, nao toque.
-         🔴 **Confira os blocos vizinhos que a T-237 declarou fora de escopo e que ninguem mediu
-         ainda:** `certificado_do_callback`, `numero_na_meta`, `token_instagram`, `alcance_externo`.
-         Eles usam o mesmo vocabulario (`observado`, `nao_configurado`) mas vem de OUTROS arquivos
-         (`state.go`, `instagram_renewer.go`, `external_probe.go`). Meça cada um contra o seu proprio
-         arquivo antes de mexer — **nao presuma que seguem o mesmo padrao dos outros dois.**
-         🔴 NAO MEXA EM CODIGO. Se achar chave que parece errada no codigo, pare e relate.
-Verify:  Por familia, a prova contra o codigo antes e o `grep` depois, coladas no relatorio.
-         E a lista, uma a uma, das ocorrencias que voce deixou, com o caso (b)/(c) de cada.
-         `CGO_ENABLED=0 go build ./... && go test ./...` (so' garantia).
-
 ## [ ] T-246  Three top-level CLI verbs never got an English spelling: `transito`, `perdidas`, `versao`
 Why:     A T-220/T-245 aposentaram todo verbo que TINHA par ingles. Sobraram tres sem par
          (`cmd/zapgw/provision.go:116,121,131`): `transito`, `perdidas`, `versao` — a CLI de um
