@@ -441,9 +441,13 @@ func TestStateRouteReturnsTheSameNumbersAsTheStateCommand(t *testing.T) {
 	// IngressSource{} (T-120): this test does not exercise the `entrada`
 	// block, and the zero value is the honest one — `via: desconhecido`,
 	// `conector: nao_configurado`.
+	retentionDays, err := config.CounterRetentionDays(fakeEnvironment(vars))
+	if err != nil {
+		t.Fatalf("CounterRetentionDays: %v", err)
+	}
 	h := outbound.NewStateHandler(store, outbound.NewAuthenticator(store), watchdog, nil,
 		outbound.IngressSource{}, nil, nil, version,
-		config.CounterRetentionDays(fakeEnvironment(vars)), config.NewCounter(store), outbound.AllTypes)
+		retentionDays, config.NewCounter(store), outbound.AllTypes)
 
 	// T-208: `instance` (English), not `instancia` — this route now records
 	// config.CounterOldNameUsed on the OLD spelling (GET /v1/estado's own
@@ -648,7 +652,7 @@ func TestStateCommandSumsTodayAndLast7DaysSeparately(t *testing.T) {
 
 // --- T-120: which path serves inbound traffic ----------------------------------
 
-// 🔴 AN UNKNOWN VALUE IN ZAPGW_ENTRADA_VIA FAILS CLOSED — this is test
+// 🔴 AN UNKNOWN VALUE IN ZAPGW_INGRESS_VIA FAILS CLOSED — this is test
 // (a) of T-120, at the BINARY level. The server makes the SAME call
 // (outbound.IngressVia) before opening the database and before listening
 // on any port, and does not start up; here the command returns an error
@@ -659,14 +663,14 @@ func TestStateCommandSumsTodayAndLast7DaysSeparately(t *testing.T) {
 // it produces a field every consumer reads as checked configuration.
 func TestStateCommandRefusesUnknownInboundPath(t *testing.T) {
 	vars := testEnvironment(t)
-	vars["ZAPGW_ENTRADA_VIA"] = "tunnel"
+	vars["ZAPGW_INGRESS_VIA"] = "tunnel"
 
 	var out bytes.Buffer
 	err := dispatch([]string{"estado"}, &out, fakeEnvironment(vars))
 	if err == nil {
-		t.Fatalf("the command should have REFUSED %q; output:\n%s", vars["ZAPGW_ENTRADA_VIA"], out.String())
+		t.Fatalf("the command should have REFUSED %q; output:\n%s", vars["ZAPGW_INGRESS_VIA"], out.String())
 	}
-	if !strings.Contains(err.Error(), "ZAPGW_ENTRADA_VIA") {
+	if !strings.Contains(err.Error(), "ZAPGW_INGRESS_VIA") {
 		t.Errorf("the error does not name the variable: %v", err)
 	}
 }
@@ -681,7 +685,7 @@ func TestStateCommandRefusesUnknownInboundPath(t *testing.T) {
 // come in through?".
 func TestStateCommandShowsTheInboundBlock(t *testing.T) {
 	vars := activeInstanceWithFakeMeta(t, workingGraph())
-	vars["ZAPGW_ENTRADA_VIA"] = outbound.ViaTunnel
+	vars["ZAPGW_INGRESS_VIA"] = outbound.ViaTunnel
 
 	var out bytes.Buffer
 	if err := dispatch([]string{"estado", "--slug", "lojinha"}, &out, fakeEnvironment(vars)); err != nil {
@@ -692,7 +696,7 @@ func TestStateCommandShowsTheInboundBlock(t *testing.T) {
 	if want, has := outbound.ViaTunnel, valueFromState(t, text, "ingress", "via"); has != want {
 		t.Errorf("entrada.via = %q, want %q. output:\n%s", has, want, text)
 	}
-	// Without ZAPGW_CONECTOR_READY the block stays on screen, saying no
+	// Without ZAPGW_CONNECTOR_READY the block stays on screen, saying no
 	// one said who to ask — never a missing line, for the same reason the
 	// JSON never omits the field.
 	if !strings.Contains(text, outbound.ConnectorNotConfigured) {

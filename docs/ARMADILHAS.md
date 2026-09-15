@@ -2624,6 +2624,32 @@ the marker is stale and must be deleted with the check it described), because a 
 the fix that silences it. A permanent positive-control subtest re-proves the mechanism on a throwaway tree on every
 run, so the gate cannot rot into one that no longer looks.
 
+### An env-var alias retires by REFUSING the old name, never by ignoring it
+
+T-244 (2026-09-15) removed the last reader of each `ZAPGW_*` Portuguese name T-214 had aliased
+(`config.EnvOrOld`/`config.WarnOldEnvVar` → `config.EnvRefusingOld`). The one property that mattered most in the
+design: if the OLD name is still set when the new resolver runs, the process REFUSES to start (or the command
+refuses to run), naming the NEW name — the old value is never read, not even as a fallback.
+
+**Why ignoring would have been the wrong shape:** a rename with no safeguard makes the gateway boot on the
+DEFAULT, in SILENCE. The sharpest instance is the encryption key: an operator (or a stray `/etc/zapgw/env` on
+another clone) still exporting `ZAPGW_CHAVE_CIFRA` would make the gateway open an EMPTY database under a
+DIFFERENT key — no crash, no warning, and whatever depended on the old data simply stops being there until
+someone notices. A silent skip of the old name is indistinguishable, from the outside, from everything working.
+
+**This has not charged yet** — no incident is attached to it. It is written down anyway because the mechanism
+existed for exactly one release cycle (T-214 → T-244) with the DANGEROUS shape (accept-and-warn) before this task
+closed it, and the reasoning for closing it that way is worth keeping next to the code.
+
+⚠️ **One residual coupling this task's scope did NOT reach:** `deploy/deploy.sh`'s `avisos_nome_obsoleto` still
+`grep`s the journal for the literal `"is deprecated -- use"`, which used to be `WarnOldEnvVar`'s message. That
+function no longer exists — the only place left emitting that exact substring is `warnOldVerb` (the CLI-verb
+notice, T-220's territory), so the shell/Go coupling gate (T-235) still finds a match and passes, but the check's
+own label ("environment variable(s) with a deprecated name") can no longer be triggered by an environment
+variable at all. Flagged for T-220 or a follow-up, not fixed here: `deploy/deploy.sh` is outside this task's
+`Files:` list, and retiring or relabeling `avisos_nome_obsoleto` is a judgment call about the deploy script, not
+a mechanical consequence of the resolver change.
+
 ## Environment
 
 🔴 **`go test ./... | grep …` inside an `&&` HIDES a red suite, and that is how a red one reached `main`.** A

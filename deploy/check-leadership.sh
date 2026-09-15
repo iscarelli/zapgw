@@ -75,9 +75,9 @@ if curl -s -o /dev/null --max-time 2 "$BASE/v1/health"; then
 fi
 
 PID=""
-subir() { # $1 = value of ZAPGW_LIDERANCA_ARQUIVO ("" disarms)
-	if [ -n "$1" ]; then export ZAPGW_LIDERANCA_ARQUIVO="$1"; else unset ZAPGW_LIDERANCA_ARQUIVO; fi
-	export ZAPGW_LIDERANCA_VALIDADE=5s
+subir() { # $1 = value of ZAPGW_LEADERSHIP_FILE ("" disarms)
+	if [ -n "$1" ]; then export ZAPGW_LEADERSHIP_FILE="$1"; else unset ZAPGW_LEADERSHIP_FILE; fi
+	export ZAPGW_LEADERSHIP_VALIDITY=5s
 	"$BIN" > "$RAIZ/saida.log" 2>&1 &
 	PID=$!
 	for _ in $(seq 1 40); do
@@ -153,8 +153,8 @@ derrubar
 
 echo
 echo "== E) UNREADABLE validity -> the gateway MUST NOT COME UP"
-export ZAPGW_LIDERANCA_ARQUIVO="$CONCESSAO"
-export ZAPGW_LIDERANCA_VALIDADE="quinze"
+export ZAPGW_LEADERSHIP_FILE="$CONCESSAO"
+export ZAPGW_LEADERSHIP_VALIDITY="quinze"
 if "$BIN" > "$RAIZ/saida2.log" 2>&1; then
 	echo "E) FAILED: came up with an unreadable validity"
 	falhou=1
@@ -172,8 +172,8 @@ echo "== F) ARMED without validity -> the gateway MUST NOT COME UP"
 # the grant's TTL in etcd, which this process doesn't know, so any default is
 # a guess about someone else's configuration — and the wrong guess leaves two
 # nodes thinking they're the titular. This case guards that removal.
-export ZAPGW_LIDERANCA_ARQUIVO="$CONCESSAO"
-unset ZAPGW_LIDERANCA_VALIDADE
+export ZAPGW_LEADERSHIP_FILE="$CONCESSAO"
+unset ZAPGW_LEADERSHIP_VALIDITY
 if "$BIN" > "$RAIZ/saida3.log" 2>&1; then
 	echo "F) FAILED: came up armed without validity — a silent default came back"
 	falhou=1

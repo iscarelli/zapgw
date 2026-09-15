@@ -542,7 +542,7 @@ func TestStateWithoutRequestedWindowDeliversSevenDaysInBothSeries(t *testing.T) 
 // BOTH RETENTIONS ARE EXERCISED on purpose. With only the default of 90, the
 // test would not distinguish "cites the deadline in effect" from "prints a
 // compiled constant" — and an installation with
-// `ZAPGW_TTL_CONTADORES_DIAS=15` would receive a message lying about its own
+// `ZAPGW_TTL_COUNTERS_DAYS=15` would receive a message lying about its own
 // database.
 func TestStateRefusesWindowLargerThanRetentionSayingTheTermInForce(t *testing.T) {
 	m := tokenAcceptingMeta()

@@ -161,7 +161,11 @@ func stateCommand(args []string, out io.Writer, env environment) error {
 	// ASKING `/ready` IS PURE READING, so a STATUS command can do it —
 	// unlike the Instagram token renewer, which MUTATES the credential and
 	// therefore still gets passed `nil` below.
-	connector := outbound.NewConnectorProbe(outbound.ConnectorAddress(env))
+	connectorAddress, err := outbound.ConnectorAddress(env)
+	if err != nil {
+		return err
+	}
+	connector := outbound.NewConnectorProbe(connectorAddress)
 	connector.Measure(context.Background())
 	in := outbound.IngressSource{Via: via, Connector: connector}
 
@@ -170,7 +174,11 @@ func stateCommand(args []string, out io.Writer, env environment) error {
 	// no history. Asking is PURE READING (the external probe changes
 	// nothing, it just answers "up"/"down"), so the status command can do
 	// it directly.
-	externalProbe := outbound.NewExternalProbe(outbound.ExternalProbeURL(env))
+	externalProbeURL, err := outbound.ExternalProbeURL(env)
+	if err != nil {
+		return err
+	}
+	externalProbe := outbound.NewExternalProbe(externalProbeURL)
 	externalProbe.Measure(context.Background())
 
 	// A single reading per instance, stored here — the screen BELOW reads
@@ -212,6 +220,16 @@ func stateCommand(args []string, out io.Writer, env environment) error {
 		fmt.Fprintf(out, "Meta already answered 200 for these messages — it will NOT resend them.\n")
 		fmt.Fprintf(out, "Search for \"ALARME zapgw\" in the service log for each event's correlation.\n")
 		fmt.Fprintf(out, "======================================================================\n\n")
+	}
+
+	// Resolved ONCE, outside the per-instance loop below: the SAME number
+	// every "available at up to N days" line cites, and the SAME call
+	// config.CounterRetentionDays already makes for the purge in
+	// cmd/zapgw/main.go — two resolutions of the same deadline would
+	// diverge on the day someone changed the `env`.
+	counterRetentionDays, err := config.CounterRetentionDays(env)
+	if err != nil {
+		return err
 	}
 
 	for _, inst := range instances {
@@ -268,7 +286,7 @@ func stateCommand(args []string, out io.Writer, env environment) error {
 		// lives would reproduce exactly that defect, just in the opposite
 		// direction.
 		fmt.Fprintf(out, "  the DAILY series (day by day, up to %d days) does not fit on this screen and is available at\n",
-			config.CounterRetentionDays(env))
+			counterRetentionDays)
 		fmt.Fprintf(out, "  GET /v1/estado?instancia=%s&serie_dias=N — the SAME numbers, per day.\n",
 			inst.Slug)
 

@@ -322,7 +322,7 @@ func freeAddress(t *testing.T) string {
 }
 
 // startServerAndGetHealth starts `bin` (with NO argument at all — the
-// server path, main.go) as a real process, points ZAPGW_ENDERECO at a
+// server path, main.go) as a real process, points ZAPGW_ADDRESS at a
 // free port, waits for /v1/health to answer 200, and returns the body.
 // The process is killed at the end of the test.
 func startServerAndGetHealth(t *testing.T, bin string) []byte {
@@ -331,9 +331,9 @@ func startServerAndGetHealth(t *testing.T, bin string) []byte {
 
 	cmd := exec.Command(bin)
 	cmd.Env = append(os.Environ(),
-		"ZAPGW_CHAVE_CIFRA="+testKey,
-		"ZAPGW_BANCO="+filepath.Join(t.TempDir(), "zapgw.db"),
-		"ZAPGW_ENDERECO="+address,
+		"ZAPGW_ENCRYPTION_KEY="+testKey,
+		"ZAPGW_DATABASE="+filepath.Join(t.TempDir(), "zapgw.db"),
+		"ZAPGW_ADDRESS="+address,
 	)
 	var stderr strings.Builder
 	cmd.Stderr = &stderr

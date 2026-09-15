@@ -263,11 +263,11 @@ func TestMenuDoesNOTValidateDoesNOTConfirmDoesNOTWrite(t *testing.T) {
 func TestMenuDoesEXACTLYWhatTheCommandLineDoes(t *testing.T) {
 	withSecrets := func() map[string]string {
 		vars := testEnvironment(t)
-		vars["ZAPGW_BANCO"] = filepath.Join(t.TempDir(), "zapgw.db")
+		vars["ZAPGW_DATABASE"] = filepath.Join(t.TempDir(), "zapgw.db")
 		vars["ZAPGW_APP_SECRET"] = "app-secret-de-teste"
 		vars["ZAPGW_VERIFY_TOKEN"] = "verify-token-de-teste"
-		vars["ZAPGW_TOKEN_ENVIO"] = "token-envio-de-teste"
-		vars["ZAPGW_SEGREDO_ENTREGA"] = "segredo-entrega-de-teste"
+		vars["ZAPGW_SEND_TOKEN"] = "token-envio-de-teste"
+		vars["ZAPGW_DELIVERY_SECRET"] = "segredo-entrega-de-teste"
 		return vars
 	}
 
@@ -488,8 +488,8 @@ func TestMenuDoesNotPrintASecretTheCommandDoesNotPrint(t *testing.T) {
 	secrets := map[string]string{
 		"ZAPGW_APP_SECRET":      "app-secret-de-teste",
 		"ZAPGW_VERIFY_TOKEN":    "verify-token-de-teste",
-		"ZAPGW_TOKEN_ENVIO":     "token-envio-de-teste",
-		"ZAPGW_SEGREDO_ENTREGA": "segredo-entrega-de-teste",
+		"ZAPGW_SEND_TOKEN":      "token-envio-de-teste",
+		"ZAPGW_DELIVERY_SECRET": "segredo-entrega-de-teste",
 	}
 	for k, v := range secrets {
 		vars[k] = v
@@ -577,7 +577,7 @@ func TestMenuShowsStateSummaryOnOpening(t *testing.T) {
 // the menu. It cannot die because of the summary.
 func TestMenuOpensEvenWithTheDatabaseUnreachable(t *testing.T) {
 	var out bytes.Buffer
-	// With no ZAPGW_CHAVE_CIFRA at all: openStore rejects it.
+	// With no ZAPGW_ENCRYPTION_KEY at all: openStore rejects it.
 	if err := menu(answers("0"), &out, fakeEnvironment(map[string]string{})); err != nil {
 		t.Fatalf("menu: %v", err)
 	}

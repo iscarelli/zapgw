@@ -160,15 +160,18 @@ func diagnose(args []string, out io.Writer, env environment) error {
 	client := meta.NewClient(&http.Client{}, graphBase(env))
 	base := instagramRenewalBase(env)
 
-	// ZAPGW_DIAGNOSTIC_PROBE_FOLDER (old name ZAPGW_DIAGNOSTICO_SONDAR_FOLDER
-	// — T-214; any non-empty value) turns on the probe from item 1 of T-113
-	// — the "exercisable without recompiling" mechanism the task asked for,
-	// so the operator on the CT can run it without needing a new binary.
-	// Off by default: it is ONE extra request that only matters while
-	// MeasuredFolderResult is still FolderUnknown.
-	probeRaw, probeOldUsed := config.EnvOrOld(env, envDiagnosticProbeFolderNew, envDiagnosticProbeFolderOld)
+	// ZAPGW_DIAGNOSTIC_PROBE_FOLDER (any non-empty value) turns on the probe
+	// from item 1 of T-113 — the "exercisable without recompiling"
+	// mechanism the task asked for, so the operator on the CT can run it
+	// without needing a new binary. Off by default: it is ONE extra
+	// request that only matters while MeasuredFolderResult is still
+	// FolderUnknown. The OLD name (ZAPGW_DIAGNOSTICO_SONDAR_FOLDER) is no
+	// longer read (T-244): setting it REFUSES the command.
+	probeRaw, err := config.EnvRefusingOld(env, envDiagnosticProbeFolderNew, envDiagnosticProbeFolderOld)
+	if err != nil {
+		return err
+	}
 	probeFlag := strings.TrimSpace(probeRaw) != ""
-	config.WarnOldEnvVar(probeOldUsed && probeFlag, envDiagnosticProbeFolderOld, envDiagnosticProbeFolderNew)
 
 	return diagnoseInstagram(context.Background(), client, base, inst, out, probeFlag)
 }

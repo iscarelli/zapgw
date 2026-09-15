@@ -319,7 +319,7 @@ func TestSmokeDoesNotPrintTheSendToken(t *testing.T) {
 	g := workingGraph()
 	vars := testEnvironment(t)
 	vars["ZAPGW_GRAPH_BASE"] = g.server(t).URL
-	vars["ZAPGW_TOKEN_ENVIO"] = "token-de-envio-nao-pode-vazar"
+	vars["ZAPGW_SEND_TOKEN"] = "token-de-envio-nao-pode-vazar"
 
 	var out bytes.Buffer
 	if err := dispatch(instanceArgs("lojinha"), &out, fakeEnvironment(vars)); err != nil {

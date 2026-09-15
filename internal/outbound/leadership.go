@@ -64,12 +64,13 @@ const (
 	// LeadershipInState below).
 	//
 	// This is the OLD (Portuguese) name. T-214 (2026-08-31) added
-	// VarLeadershipFileNew as the English pair — this constant stays,
-	// unchanged and still read, because it is the ONLY name an
-	// already-deployed /etc/zapgw/env has; see NewLeadership.
+	// VarLeadershipFileNew as the English pair; T-244 (2026-09-15) stopped
+	// reading this name — it stays declared ONLY so EnvRefusingOld can
+	// recognize and REFUSE a stray export of it, never silently ignore one.
+	// See NewLeadership.
 	VarLeadershipFile = "ZAPGW_LIDERANCA_ARQUIVO"
-	// VarLeadershipFileNew is the English name of VarLeadershipFile (T-214).
-	// The NEW name wins when both are set — see config.EnvOrOld.
+	// VarLeadershipFileNew is the English name of VarLeadershipFile, and
+	// the ONLY one NewLeadership reads (T-244) — see config.EnvRefusingOld.
 	VarLeadershipFileNew = "ZAPGW_LEADERSHIP_FILE"
 
 	// VarLeadershipValidity is the maximum age of the lease file.
@@ -108,10 +109,10 @@ const (
 	// arrives.
 	//
 	// This is the OLD (Portuguese) name; VarLeadershipValidityNew (T-214) is
-	// the English pair — see NewLeadership.
+	// the English pair, and the ONLY one NewLeadership reads (T-244) — see
+	// NewLeadership.
 	VarLeadershipValidity = "ZAPGW_LIDERANCA_VALIDADE"
-	// VarLeadershipValidityNew is the English name of VarLeadershipValidity
-	// (T-214).
+	// VarLeadershipValidityNew is the English name of VarLeadershipValidity.
 	VarLeadershipValidityNew = "ZAPGW_LEADERSHIP_VALIDITY"
 
 	// refusalLogInterval keeps a lost leadership from turning into a
@@ -145,29 +146,25 @@ type Leadership struct {
 // same criterion as IngressVia: a value nobody can interpret has to bring down
 // the startup in front of whoever just edited the `env`, not turn into a
 // silent default that only shows up on failover day.
-// T-214: accepts VarLeadershipFileNew/VarLeadershipValidityNew in addition to
-// the old names (new wins if both are set, independently for each of the
-// two), and logs once per variable (config.WarnOldEnvVar) when the value
-// that armed the guard came from an OLD name.
+//
+// T-244: the OLD names (VarLeadershipFile/VarLeadershipValidity) are no
+// longer read — either one being set, independently, REFUSES startup
+// naming the new name to use instead (config.EnvRefusingOld), before this
+// function even asks whether the guard is armed.
 func NewLeadership(getenv func(string) string) (*Leadership, error) {
 	if getenv == nil {
 		return &Leadership{}, nil
 	}
-	fileRaw, fileOld := config.EnvOrOld(getenv, VarLeadershipFileNew, VarLeadershipFile)
+	fileRaw, err := config.EnvRefusingOld(getenv, VarLeadershipFileNew, VarLeadershipFile)
+	if err != nil {
+		return nil, err
+	}
 	file := strings.TrimSpace(fileRaw)
-	validityRaw, validityOld := config.EnvOrOld(getenv, VarLeadershipValidityNew, VarLeadershipValidity)
+	validityRaw, err := config.EnvRefusingOld(getenv, VarLeadershipValidityNew, VarLeadershipValidity)
+	if err != nil {
+		return nil, err
+	}
 	raw := strings.TrimSpace(validityRaw)
-
-	// The variable NAME to cite in an error — whichever spelling actually
-	// carried the value, old or new — so the message points at the exact
-	// line the operator needs to fix.
-	fileName, validityName := VarLeadershipFileNew, VarLeadershipValidityNew
-	if fileOld {
-		fileName = VarLeadershipFile
-	}
-	if validityOld {
-		validityName = VarLeadershipValidity
-	}
 
 	// Disarmed: the validity is not used, so it's neither required nor
 	// validated. A single-node install cannot be forced to configure a pair.
@@ -184,19 +181,17 @@ func NewLeadership(getenv func(string) string) (*Leadership, error) {
 				"    A = tempo ate uma acao ficar VISIVEL ao sucessor (aqui, o atraso da replicacao)\n"+
 				"    T = TTL da concessao no etcd\n"+
 				"  Violar a segunda faz os dois nos se acharem titulares AO MESMO TEMPO — mensagem duplicada.",
-			fileName, validityName)
+			VarLeadershipFileNew, VarLeadershipValidityNew)
 	}
 	d, err := time.ParseDuration(raw)
 	if err != nil {
 		return nil, fmt.Errorf("zapgw: %s = %q nao e uma duracao valida (ex.: %q)",
-			validityName, raw, "8s")
+			VarLeadershipValidityNew, raw, "8s")
 	}
 	if d <= 0 {
 		return nil, fmt.Errorf("zapgw: %s = %q tem de ser positivo — duracao zero ou negativa recusaria TODO envio",
-			validityName, raw)
+			VarLeadershipValidityNew, raw)
 	}
-	config.WarnOldEnvVar(fileOld, VarLeadershipFile, VarLeadershipFileNew)
-	config.WarnOldEnvVar(validityOld, VarLeadershipValidity, VarLeadershipValidityNew)
 	return &Leadership{file: file, validity: d}, nil
 }
 

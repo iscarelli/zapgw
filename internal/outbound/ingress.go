@@ -55,21 +55,23 @@ const (
 	// `encaminhamento_de_porta`.
 	//
 	// This is the OLD (Portuguese) name. T-214 (2026-08-31) added
-	// VarIngressViaNew as the English pair — this constant stays, unchanged
-	// and still read, because it is the ONLY name an already-deployed
-	// /etc/zapgw/env has; see IngressVia.
+	// VarIngressViaNew as the English pair; T-244 (2026-09-15) stopped
+	// reading this name — it stays declared ONLY so EnvRefusingOld can
+	// recognize and REFUSE a stray export of it, never silently ignore one.
+	// See IngressVia.
 	VarIngressVia = "ZAPGW_ENTRADA_VIA"
-	// VarIngressViaNew is the English name of VarIngressVia (T-214). The NEW
-	// name wins when both are set — see config.EnvOrOld.
+	// VarIngressViaNew is the English name of VarIngressVia, and the ONLY
+	// one IngressVia reads (T-244) — see config.EnvRefusingOld.
 	VarIngressViaNew = "ZAPGW_INGRESS_VIA"
 	// VarConnectorReady is the URL of the `/ready` of the connector that
 	// publishes this route (the `cloudflared`). EMPTY is a legitimate state
 	// — see ConnectorNotConfigured.
 	//
 	// This is the OLD (Portuguese) name; VarConnectorReadyNew (T-214) is the
-	// English pair — see ConnectorAddress.
+	// English pair, and the ONLY one ConnectorAddress reads (T-244) — see
+	// ConnectorAddress.
 	VarConnectorReady = "ZAPGW_CONECTOR_READY"
-	// VarConnectorReadyNew is the English name of VarConnectorReady (T-214).
+	// VarConnectorReadyNew is the English name of VarConnectorReady.
 	VarConnectorReadyNew = "ZAPGW_CONNECTOR_READY"
 )
 
@@ -116,25 +118,26 @@ const (
 //     defect in front of whoever just edited the `env` — which is the only
 //     time it is cheap.
 //
-// T-214: accepts VarIngressViaNew in addition to VarIngressVia (new wins if
-// both are set), and logs once (config.WarnOldEnvVar) when the value that
-// won came from the OLD name.
+// T-244: the OLD name (VarIngressVia) is no longer read — if it is set,
+// this refuses with an error naming VarIngressViaNew (via
+// config.EnvRefusingOld), the SAME way an unknown value on the new name
+// already refused.
 func IngressVia(getenv func(string) string) (string, error) {
 	if getenv == nil {
 		return ViaUnknown, nil
 	}
-	v, oldUsed := config.EnvOrOld(getenv, VarIngressViaNew, VarIngressVia)
+	v, err := config.EnvRefusingOld(getenv, VarIngressViaNew, VarIngressVia)
+	if err != nil {
+		return "", err
+	}
 	switch v {
 	case "":
 		return ViaUnknown, nil
 	case ViaTunnel, ViaPortForwarding:
-		config.WarnOldEnvVar(oldUsed, VarIngressVia, VarIngressViaNew)
 		return v, nil
 	default:
-		// Naming BOTH spellings (T-214): whichever one the operator wrote,
-		// this is the line in /etc/zapgw/env they need to find and fix.
-		return "", fmt.Errorf("zapgw: %s (or %s) = %q is not a known ingress path — use %q or %q (empty publishes %q)",
-			VarIngressViaNew, VarIngressVia, v, ViaTunnel, ViaPortForwarding, ViaUnknown)
+		return "", fmt.Errorf("zapgw: %s = %q is not a known ingress path — use %q or %q (empty publishes %q)",
+			VarIngressViaNew, v, ViaTunnel, ViaPortForwarding, ViaUnknown)
 	}
 }
 
@@ -150,17 +153,18 @@ func IngressVia(getenv func(string) string) (string, error) {
 // `failing_since` climbing: an ALARM THAT LIES, pointing at a connector
 // that is actually up. A false alarm is the fastest way to train someone to
 // ignore this block.
-// T-214: accepts VarConnectorReadyNew in addition to VarConnectorReady (new
-// wins if both are set), and logs once (config.WarnOldEnvVar) when the value
-// that won came from the OLD name.
-func ConnectorAddress(getenv func(string) string) string {
+// T-244: the OLD name (VarConnectorReady) is no longer read — if it is
+// set, this returns an error wrapping config.ErrObsoleteEnvVar instead of
+// an address, and the caller has to bring the startup down.
+func ConnectorAddress(getenv func(string) string) (string, error) {
 	if getenv == nil {
-		return ""
+		return "", nil
 	}
-	v, oldUsed := config.EnvOrOld(getenv, VarConnectorReadyNew, VarConnectorReady)
-	v = strings.TrimSpace(v)
-	config.WarnOldEnvVar(oldUsed && v != "", VarConnectorReady, VarConnectorReadyNew)
-	return v
+	v, err := config.EnvRefusingOld(getenv, VarConnectorReadyNew, VarConnectorReady)
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(v), nil
 }
 
 // The THREE states of ConnectorInState.

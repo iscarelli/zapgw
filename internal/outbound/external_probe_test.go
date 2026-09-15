@@ -10,10 +10,9 @@
 package outbound
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
-	"log"
+	"errors"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -93,59 +92,61 @@ func TestExternalProbeURLTrimsSurroundingSpace(t *testing.T) {
 		" https://x.example/y.json ": "https://x.example/y.json",
 	}
 	for ingress, want := range cases {
-		if got := ExternalProbeURL(func(string) string { return ingress }); got != want {
+		got, err := ExternalProbeURL(func(k string) string {
+			if k == VarExternalProbeURLNew {
+				return ingress
+			}
+			return ""
+		})
+		if err != nil {
+			t.Fatalf("ExternalProbeURL(%q): %v", ingress, err)
+		}
+		if got != want {
 			t.Errorf("ExternalProbeURL(%q) = %q, want %q", ingress, got, want)
 		}
 	}
-	if got := ExternalProbeURL(nil); got != "" {
-		t.Errorf("ExternalProbeURL(nil) = %q, want empty", got)
+	if got, err := ExternalProbeURL(nil); err != nil || got != "" {
+		t.Errorf("ExternalProbeURL(nil) = (%q, %v), want (\"\", nil)", got, err)
 	}
 }
 
-// TestExternalProbeURLAcceptsTheNewNameAndItWins is T-214's Verify for
-// ZAPGW_EXTERNAL_PROBE_URL/ZAPGW_SONDA_EXTERNA_URL.
-func TestExternalProbeURLAcceptsTheNewNameAndItWins(t *testing.T) {
+// TestExternalProbeURLRefusesOldName is T-244's Verify for
+// ZAPGW_EXTERNAL_PROBE_URL/ZAPGW_SONDA_EXTERNA_URL: (a) only the new name
+// -> read; (b) only the old one -> refused, naming the new name, value not
+// read; (c) both -> refused too.
+func TestExternalProbeURLRefusesOldName(t *testing.T) {
 	cases := []struct {
-		name string
-		vars map[string]string
-		want string
+		name    string
+		vars    map[string]string
+		want    string
+		wantErr bool
 	}{
-		{"only the new one", map[string]string{VarExternalProbeURLNew: "https://novo/status"}, "https://novo/status"},
-		{"only the old one", map[string]string{VarExternalProbeURL: "https://velho/status"}, "https://velho/status"},
-		{"both: the NEW one wins", map[string]string{
+		{"(a) only the new one -> read", map[string]string{VarExternalProbeURLNew: "https://novo/status"}, "https://novo/status", false},
+		{"(b) only the old one -> refused", map[string]string{VarExternalProbeURL: "https://velho/status"}, "", true},
+		{"(c) both -> refused too", map[string]string{
 			VarExternalProbeURLNew: "https://novo/status", VarExternalProbeURL: "https://velho/status",
-		}, "https://novo/status"},
+		}, "", true},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			if got := ExternalProbeURL(func(k string) string { return c.vars[k] }); got != c.want {
-				t.Errorf("ExternalProbeURL = %q, want %q", got, c.want)
+			got, err := ExternalProbeURL(func(k string) string { return c.vars[k] })
+			if c.wantErr {
+				if err == nil {
+					t.Fatalf("ExternalProbeURL = (%q, nil), want a refusal naming %s", got, VarExternalProbeURLNew)
+				}
+				if !errors.Is(err, config.ErrObsoleteEnvVar) {
+					t.Errorf("error does not wrap config.ErrObsoleteEnvVar: %v", err)
+				}
+				if !strings.Contains(err.Error(), VarExternalProbeURLNew) {
+					t.Errorf("the refusal does not name %s: %v", VarExternalProbeURLNew, err)
+				}
+				return
 			}
-		})
-	}
-}
-
-// TestExternalProbeURLWarnsOnlyWhenOldNameWins is T-214 Do item 3.
-func TestExternalProbeURLWarnsOnlyWhenOldNameWins(t *testing.T) {
-	cases := []struct {
-		name     string
-		vars     map[string]string
-		wantWarn bool
-	}{
-		{"only the old one: warns", map[string]string{VarExternalProbeURL: "https://velho/status"}, true},
-		{"only the new one: stays silent", map[string]string{VarExternalProbeURLNew: "https://novo/status"}, false},
-		{"neither: stays silent", map[string]string{}, false},
-	}
-	original := log.Writer()
-	for _, c := range cases {
-		t.Run(c.name, func(t *testing.T) {
-			var buf bytes.Buffer
-			log.SetOutput(&buf)
-			ExternalProbeURL(func(k string) string { return c.vars[k] })
-			log.SetOutput(original)
-			warned := strings.Contains(buf.String(), VarExternalProbeURL) && strings.Contains(buf.String(), "deprecated")
-			if warned != c.wantWarn {
-				t.Errorf("warning = %v (log: %q), want %v", warned, buf.String(), c.wantWarn)
+			if err != nil {
+				t.Fatalf("ExternalProbeURL: %v", err)
+			}
+			if got != c.want {
+				t.Errorf("ExternalProbeURL = %q, want %q", got, c.want)
 			}
 		})
 	}
