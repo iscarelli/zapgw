@@ -54,7 +54,7 @@ type environment func(name string) string
 func dispatch(args []string, out io.Writer, env environment) error {
 	if len(args) == 0 {
 		return errors.New("zapgw: missing subcommand (provision | smoke | diagnostics |" +
-			" instance | consumer | state | template | transito | log | perdidas | versao)")
+			" instance | consumer | state | template | transit | log | lost | version)")
 	}
 	switch args[0] {
 	case "provisionar":
@@ -114,11 +114,19 @@ func dispatch(args []string, out io.Writer, env environment) error {
 		// line. See template.go.
 		return templateCommand(args[1:], out, env)
 	case "transito":
+		// T-246: the Portuguese spelling is RETIRED — see the
+		// "provisionar" case above.
+		return oldVerbRefused("transito", "transit")
+	case "transit":
 		// T-091: "did this message pass through here?" without storing
 		// the phone number in plain text nor the content. See
 		// transit.go.
 		return transitCommand(args[1:], out, env)
 	case "perdidas":
+		// T-246: the Portuguese spelling is RETIRED — see the
+		// "provisionar" case above.
+		return oldVerbRefused("perdidas", "lost")
+	case "lost":
 		// The failover post-mortem: what the node that fell had and
 		// never replicated. Read-only, and it deliberately does NOT use
 		// OpenStore — see internal/config/forensics.go,
@@ -129,9 +137,13 @@ func dispatch(args []string, out io.Writer, env environment) error {
 		// arrives, until you quit with Ctrl-C. See log.go.
 		return logCommand(args[1:], out, env)
 	case "versao":
+		// T-246: the Portuguese spelling is RETIRED — see the
+		// "provisionar" case above.
+		return oldVerbRefused("versao", "version")
+	case "version":
 		// Does not use `env`: the version comes from the BUILD
 		// (-ldflags), never from the environment nor the database. See
-		// the `versao` var in main.go.
+		// the `version` var in main.go.
 		return versionCommand(out)
 	case "menu":
 		// T-089 (the owner's decision, 2026-07-29, reaffirming T-082):
@@ -156,7 +168,7 @@ func dispatch(args []string, out io.Writer, env environment) error {
 			" that only lets the menu open with no argument and with a terminal on both sides")
 	default:
 		return fmt.Errorf("zapgw: unknown subcommand %q (I know: provision, smoke, diagnostics,"+
-			" instance, consumer, state, template, transito, log, versao)", args[0])
+			" instance, consumer, state, template, transit, log, lost, version)", args[0])
 	}
 }
 

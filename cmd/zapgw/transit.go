@@ -1,4 +1,4 @@
-// `zapgw transito` — answers "did this message pass through here?" (T-091, T-094).
+// `zapgw transit` — answers "did this message pass through here?" (T-091, T-094).
 //
 // WHY THIS EXISTS: the owner's request, 2026-07-29, after needing to
 // identify a message from a specific number and the gateway having no way
@@ -58,7 +58,7 @@ func parseSince(raw string) (time.Time, error) {
 }
 
 func transitCommand(args []string, out io.Writer, env environment) error {
-	fs := flag.NewFlagSet("transito", flag.ContinueOnError)
+	fs := flag.NewFlagSet("transit", flag.ContinueOnError)
 	fs.SetOutput(out)
 	instance := fs.String("instancia", "", "instance slug (required)")
 	phone := fs.String("telefone", "", "the number to search for, in any spelling (with --chave, pick one of the two)")

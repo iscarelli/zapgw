@@ -16,9 +16,11 @@
 // verbs are a separate lifecycle: five of them (provisionar, fumaca,
 // diagnostico, instancia, consumidor) had their Portuguese spelling
 // REMOVED by T-220, once every in-repo caller was migrated — see
-// oldVerbRefused below. T-245 removed the rest the same way: "estado" and
-// the eight sub-verbs (listar, mostrar, rotacionar, reabrir-cadastro,
-// pausar, remover, registrar, desregistrar).
+// oldVerbRefused below. T-245 removed the next batch the same way:
+// "estado" and the eight sub-verbs (listar, mostrar, rotacionar,
+// reabrir-cadastro, pausar, remover, registrar, desregistrar). T-246
+// closed the last three top-level holdouts (transito, perdidas, versao),
+// which had never had an English spelling at all until that task.
 package main
 
 import (
@@ -59,7 +61,7 @@ const (
 
 // databasePath resolves the database file path — ZAPGW_DATABASE, with the
 // "zapgw.db" default applied here. THE ONE PLACE both openStore and `zapgw
-// perdidas` (lost.go) get this default from, so the two can never diverge
+// lost` (lost.go) get this default from, so the two can never diverge
 // on which file "no variable at all" opens — exactly the divergence class
 // CounterRetentionDays's own header warns against.
 //
@@ -86,11 +88,12 @@ func databasePath(env environment) (path string, err error) {
 // whoever typed the old one guessing.
 //
 // T-220 used it for the five top-level verbs (provisionar, fumaca,
-// diagnostico, instancia, consumidor). T-245 moved the last holdouts onto
+// diagnostico, instancia, consumidor). T-245 moved the next holdouts onto
 // this same helper too -- "estado" and the eight sub-verbs (listar,
 // mostrar, rotacionar, reabrir-cadastro, pausar, remover, registrar,
 // desregistrar) -- which is why the older warn-and-still-dispatch helper
-// that used to sit above this one is gone.
+// that used to sit above this one is gone. T-246 closed the last three
+// (transito, perdidas, versao).
 func oldVerbRefused(oldVerb, newVerb string) error {
 	return fmt.Errorf("zapgw: subcommand %q no longer exists -- use %q instead", oldVerb, newVerb)
 }

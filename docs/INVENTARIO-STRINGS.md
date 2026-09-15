@@ -172,7 +172,7 @@ Confirmado que o texto só aparece em `log.Printf`/`log.Print`/`log.Fatalf` — 
 | `internal/outbound/templates_handler.go` (13 pontos: 665,706,810,867,875,886,894,1019,1028,1077,1145,1155,1165,1191) | logs de auditoria de criação/exclusão/releitura de template | todos `log.Printf`, sem `respondError` pareado |
 | `internal/outbound/watchdog.go:313-316` | "ALARME zapgw: a Graph API recusou a leitura dos campos..." | log ALARME |
 | `internal/inbound/billing.go:189-192` | "ALARME zapgw: instancia... recebeu cobranca da Meta na categoria..." | log ALARME |
-| `internal/inbound/mirror.go:81-83` (campo `Reason` de `Verdict`) | | só vai para `log.Printf` e para o log de trânsito (`recordTransit`), lido por `zapgw transito`/`zapgw log` (CLI) — não há rota HTTP que exponha o log de trânsito ao consumidor |
+| `internal/inbound/mirror.go:81-83` (campo `Reason` de `Verdict`) | | só vai para `log.Printf` e para o log de trânsito (`recordTransit`), lido por `zapgw transit`/`zapgw log` (CLI) — não há rota HTTP que exponha o log de trânsito ao consumidor |
 | `internal/config/store.go:104-131` (`ValidateInstanceType`), linhas 119,124 | | só chamada por `CreateInstanceAt`/`RotateInstance`, ambos só usados por `cmd/zapgw/provision.go` (CLI) |
 | `internal/config/store.go:215-233` (`ValidateSlug`), linhas 222,227 | | só chamada por `CreateInstanceAt` (CLI) e diretamente por `provision.go` |
 | `internal/meta/registration.go:46` (`ErrInvalidPin`) | | `Register`/`SetPin` só chamados por `cmd/zapgw/provision.go` (CLI) |
