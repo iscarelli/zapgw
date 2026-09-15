@@ -340,6 +340,49 @@ instancias foram rotacionadas. Duas licoes que custaram na hora e valem alem des
 
 > A fila do periodo privado esta em `iscarelli/zapgw-dev`, congelada. Tarefa nova nasce aqui.
 
+## [ ] T-242  `CompleteUpload` escapes the `?sig=` of Meta's upload session id — every real upload fails at step `upload`
+Why:     🔥 Medido em producao em 2026-09-15 00:45 pela primeira chamada real do consumidor ao
+         `POST /v1/uploads` (v0.66.0): `400 {"error":{"class":"permanent","message":"enviar os
+         bytes (POST /upload:...): Bad Request","step":"upload"}}` — sem `meta_code`, ou seja, o
+         corpo da Meta NAO era o JSON de erro do Graph. Os passos `app_id` e `session` PASSARAM
+         (o `GET /app?fields=id` com token de System User funciona — medido). A causa: **o `id`
+         que a Meta devolve ao abrir a sessao tem a forma `upload:<base64>?sig=<assinatura>`**
+         (fonte: doc da 360dialog sobre a Resumable Upload — *"an upload-session-id (a string
+         similar to `upload:###?sig=###`)"*; a doc da Meta mostra so' `upload:<UPLOAD_SESSION_ID>`
+         e esconde o sufixo). `internal/meta/upload.go:159` faz `url.JoinPath(c.base, sessionID)`,
+         que trata o id como segmento de caminho e escapa o `?` para `%3F` — a Meta recebe
+         `/upload:XXX%3Fsig=YYY`, um caminho que nao existe, e responde 400 generico. O
+         `httptest` da T-241 nao pegou porque a fixture usava um id SEM `?sig=`.
+Files:   internal/meta/upload.go, internal/meta/upload_test.go, internal/outbound/uploads_handler_test.go
+         (so' se a fixture de la tambem precisar do `?sig=`), docs/ARMADILHAS.md, docs/CHANGELOG.md
+Do:      1. Em `CompleteUpload`, monte o alvo por CONCATENACAO, nao por `url.JoinPath`:
+            `strings.TrimSuffix(c.base, "/") + "/" + sessionID`. O id e' um fragmento de URL OPACO
+            emitido pela Meta (caminho + query, com assinatura) e vai para o fio EXATAMENTE como
+            veio — escapar, normalizar ou "limpar" qualquer byte dele e' o bug.
+         2. Antes de concatenar, valide a FORMA (e' o que impede o id de virar outro host ou outro
+            caminho): tem de comecar com `upload:`, nao pode conter espaco, controle, `#`, `/` nem
+            `\`, e o `?` so' pode aparecer uma vez. Falha -> erro proprio (`ErrUploadSessionIDShape`
+            ou nome no mesmo estilo dos sentinelas do arquivo), que o handler ja mapeia para
+            `step: "session"` — confira que mapeia; se cair no generico, ajuste o handler.
+         3. Teste, e ele e' a prova do mecanismo: a fixture do caminho feliz passa a devolver
+            `{"id":"upload:MTphdHRhY2htZW50OjEyMzQ1Njc4OTA=?sig=ARZqkGCA_uQMxC8nHKI"}` e o servidor
+            falso exige `r.URL.Path == "/upload:MTphdHRhY2htZW50OjEyMzQ1Njc4OTA="` **e**
+            `r.URL.RawQuery == "sig=ARZqkGCA_uQMxC8nHKI"` — qualquer outra coisa responde 400 com
+            corpo NAO-JSON (`Bad Request` em texto), reproduzindo a producao. 🔴 **Rode esse teste
+            ANTES do conserto e cole a falha no relatorio**: teste que nunca reprovou nao conta como
+            mecanismo nesta casa. Acrescente um teste para cada forma invalida do item 2.
+         4. `docs/ARMADILHAS.md`: entrada 🔥 com o custo (primeira chamada real do consumidor,
+            v0.66.0, 2026-09-15) — *`url.JoinPath` e' para SEGMENTOS; um identificador opaco que a
+            API do outro lado emite como fragmento de URL (caminho+query) vai por concatenacao, e a
+            fixture do teste tem de carregar a forma REAL do valor, nao uma simplificada.* Varra os
+            irmaos: os outros `url.JoinPath` de `internal/meta/` — diga na entrada quais recebem
+            valor emitido pela Meta (candidato ao mesmo furo) e quais recebem so' id numerico
+            (seguros). `grep -n "url.JoinPath" internal/meta/*.go`.
+         🔴 NAO re-delegue. NAO bumpe `VERSION`. Commits so' com `git commit <caminhos>`.
+Verify:  CGO_ENABLED=0 go build ./... && go test ./... && go vet ./... && gofmt -l cmd internal
+         No relatorio: a saida do teste do item 3 REPROVANDO antes do conserto e passando depois,
+         e a lista dos `url.JoinPath` irmaos com o veredito de cada um.
+
 ## [ ] T-240  The `GET /v1/estado` blocks the contract still names in Portuguese
 After:   T-239
 Why:     A T-237 consertou quatro familias do `docs/CONTRATO-CONSUMIDOR.md` e, no caminho, achou uma
