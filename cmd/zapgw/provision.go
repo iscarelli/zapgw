@@ -541,11 +541,13 @@ func rotateInstance(args []string, out io.Writer, env environment) error {
 	// lists would diverge, and the symptom would be a secret that
 	// "doesn't swap" with nothing flagging it.
 	//
-	// T-214: `variable` stays the name PRINTED to the operator (unchanged,
+	// T-244: `variable` stays the name PRINTED to the operator (unchanged,
 	// so an already-familiar "swapped: …" line does not start reading
 	// differently) — `newVar` is only the extra name this READS from, empty
 	// when the variable is already English (ZAPGW_APP_SECRET,
-	// ZAPGW_VERIFY_TOKEN) and has nothing to alias.
+	// ZAPGW_VERIFY_TOKEN) and has nothing to alias. When `newVar` is set,
+	// `variable` is the OLD (Portuguese) name, which is no longer read: if
+	// it is SET, the whole command refuses (config.EnvRefusingOld).
 	var r config.Rotation
 	secrets := []struct {
 		variable    string
@@ -560,9 +562,12 @@ func rotateInstance(args []string, out io.Writer, env environment) error {
 	var swapped []string
 	for _, s := range secrets {
 		var value string
-		var oldUsed bool
 		if s.newVar != "" {
-			value, oldUsed = config.EnvOrOld(env, s.newVar, s.variable)
+			v, err := config.EnvRefusingOld(env, s.newVar, s.variable)
+			if err != nil {
+				return err
+			}
+			value = v
 		} else {
 			value = env(s.variable)
 		}
@@ -571,17 +576,11 @@ func rotateInstance(args []string, out io.Writer, env environment) error {
 			continue // DO NOT TOUCH
 		}
 		*s.destination = &value
-		// Names whichever spelling actually supplied the value — the old
-		// one when that is what won (keeping today's message unchanged),
-		// the new one when the operator already moved.
 		printedName := s.variable
-		if s.newVar != "" && !oldUsed {
+		if s.newVar != "" {
 			printedName = s.newVar
 		}
 		swapped = append(swapped, printedName)
-		if s.newVar != "" {
-			config.WarnOldEnvVar(oldUsed, s.variable, s.newVar)
-		}
 	}
 
 	// The TYPED flag is what distinguishes "clear the callback" from
@@ -611,8 +610,8 @@ func rotateInstance(args []string, out io.Writer, env environment) error {
 
 	if len(swapped) == 0 {
 		return errors.New("zapgw: nothing to swap — set ZAPGW_APP_SECRET, ZAPGW_VERIFY_TOKEN," +
-			" " + envSendTokenNew + " (or " + envSendTokenOld + ") or " + envDeliverySecretNew +
-			" (or " + envDeliverySecretOld + ") in the environment, and/or pass --callback-url or --ig-id." +
+			" " + envSendTokenNew + " or " + envDeliverySecretNew +
+			" in the environment, and/or pass --callback-url or --ig-id." +
 			" Rotating nothing and printing success would leave you thinking the real secret is already on the gateway")
 	}
 	// The SAME function the store calls — not a second rule (two rules
@@ -1215,11 +1214,15 @@ func provisionInstance(args []string, out io.Writer, env environment) error {
 		if strings.TrimSpace(env("ZAPGW_APP_SECRET")) == "" {
 			missing = append(missing, "ZAPGW_APP_SECRET")
 		}
-		// T-214: also accepts envSendTokenNew (ZAPGW_SEND_TOKEN) — old wins
-		// the printed name here (unchanged message) when NEITHER is set,
-		// since there's nothing to attribute to either spelling.
-		if sendToken, _ := config.EnvOrOld(env, envSendTokenNew, envSendTokenOld); strings.TrimSpace(sendToken) == "" {
-			missing = append(missing, envSendTokenOld)
+		// T-244: envSendTokenOld (ZAPGW_TOKEN_ENVIO) is no longer read —
+		// if it is set, the whole command refuses (config.EnvRefusingOld),
+		// naming envSendTokenNew.
+		sendToken, err := config.EnvRefusingOld(env, envSendTokenNew, envSendTokenOld)
+		if err != nil {
+			return err
+		}
+		if strings.TrimSpace(sendToken) == "" {
+			missing = append(missing, envSendTokenNew)
 		}
 		if len(missing) > 0 {
 			return fmt.Errorf("zapgw: --tipo instagram requires %s in the environment — this slice has no "+
@@ -1287,17 +1290,19 @@ func provisionInstance(args []string, out io.Writer, env environment) error {
 	var drawnShared [][2]string
 	for _, s := range secrets {
 		var raw string
-		var oldUsed bool
 		if s.newVar != "" {
-			raw, oldUsed = config.EnvOrOld(env, s.newVar, s.variable)
+			// T-244: s.variable (the OLD name) is no longer read — if it
+			// is set, the whole command refuses (config.EnvRefusingOld).
+			v, err := config.EnvRefusingOld(env, s.newVar, s.variable)
+			if err != nil {
+				return err
+			}
+			raw = v
 		} else {
 			raw = env(s.variable)
 		}
 		if value := strings.TrimSpace(raw); value != "" {
 			*s.destination = value
-			if s.newVar != "" {
-				config.WarnOldEnvVar(oldUsed, s.variable, s.newVar)
-			}
 			continue
 		}
 		// --- T-079: DO NOT GENERATE A SECRET THAT BELONGS TO SOMEONE ELSE ---------------
@@ -1336,7 +1341,11 @@ func provisionInstance(args []string, out io.Writer, env environment) error {
 			drawnShared = append(drawnShared, [2]string{s.field, value})
 			continue
 		}
-		generated = append(generated, s.variable)
+		printedName := s.variable
+		if s.newVar != "" {
+			printedName = s.newVar
+		}
+		generated = append(generated, printedName)
 	}
 
 	store, err := openStore(env)
@@ -1373,7 +1382,11 @@ func provisionInstance(args []string, out io.Writer, env environment) error {
 		// head.
 		fmt.Fprintf(out, "custom CA bundle registered for this instance: certificate verification stays STRICT, only the trust anchor changes.\n")
 	}
-	fmt.Fprintf(out, "webhook to paste into Meta: %s\n", webhookURL(env, inst.Slug))
+	webhook, err := webhookURL(env, inst.Slug)
+	if err != nil {
+		return err
+	}
+	fmt.Fprintf(out, "webhook to paste into Meta: %s\n", webhook)
 	fmt.Fprintf(out, "the instance was born PAUSED: while ativo = 0, the webhook responds 503, and so does sending.\n")
 	if inst.Type == config.TypeInstagram {
 		fmt.Fprintf(out, "only the smoke test activates it:  zapgw fumaca --slug %s --destino <IGSID that sent you a message in the last 24h>\n", inst.Slug)
@@ -1388,7 +1401,9 @@ func provisionInstance(args []string, out io.Writer, env environment) error {
 	// ValidateInstanceType) would print a package pointing at a
 	// registration route it will never be able to use.
 	if inst.Type != config.TypeInstagram && inst.WabaID == "" {
-		printDeliveryPackage(out, env, inst.Slug)
+		if err := printDeliveryPackage(out, env, inst.Slug); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -1414,12 +1429,20 @@ func provisionInstance(args []string, out io.Writer, env environment) error {
 // requires the instance to already exist. Printing a placeholder in its
 // place would be worse than pointing at the command — the owner would
 // copy the entire list thinking it is complete.
-func printDeliveryPackage(out io.Writer, env environment, slug string) {
+func printDeliveryPackage(out io.Writer, env environment, slug string) error {
+	enrollment, err := enrollmentURL(env)
+	if err != nil {
+		return err
+	}
+	webhook, err := webhookURL(env, slug)
+	if err != nil {
+		return err
+	}
 	fmt.Fprintf(out, "\nDELIVERY PACKAGE — what the CONSUMER needs to receive, and nothing beyond this:\n")
 	fmt.Fprintf(out, "  1. the slug:                   %s\n", slug)
-	fmt.Fprintf(out, "  2. the registration URL (POST): %s\n", enrollmentURL(env))
+	fmt.Fprintf(out, "  2. the registration URL (POST): %s\n", enrollment)
 	fmt.Fprintf(out, "  3. the webhook URL, which THEY paste into THEIR Meta panel:\n")
-	fmt.Fprintf(out, "                                 %s\n", webhookURL(env, slug))
+	fmt.Fprintf(out, "                                 %s\n", webhook)
 	fmt.Fprintf(out, "  4. the verify_token and segredo_entrega printed above\n")
 	fmt.Fprintf(out, "  5. the consumer token, which comes out of the next command:\n")
 	fmt.Fprintf(out, "     zapgw provisionar consumidor --nome <their-name> --instancias %s\n", slug)
@@ -1431,27 +1454,30 @@ func printDeliveryPackage(out io.Writer, env environment, slug string) {
 	fmt.Fprintf(out, "they have %s to register, counted from THEIR FIRST insertion (not from now).\n",
 		config.RegistrationWindow)
 	fmt.Fprintf(out, "if they get stuck after that:  zapgw instancia reabrir-cadastro --slug %s --confirmo %s\n", slug, slug)
+	return nil
 }
 
 // enrollmentURL assembles the POST /v1/cadastro URL through the SAME
-// path as webhookURL — and with the same honesty: without
-// ZAPGW_PUBLIC_URL (old name ZAPGW_URL_PUBLICA — T-214) it prints a
-// VISIBLE placeholder, never a guessed domain.
+// path as webhookURL — and with the same honesty: without ZAPGW_PUBLIC_URL
+// it prints a VISIBLE placeholder, never a guessed domain. The OLD name
+// (ZAPGW_URL_PUBLICA) is no longer read (T-244): setting it REFUSES the
+// command.
 //
 // ⚠️ THIS URL IS ON THE LAN TODAY (docs/IMPLANTACAO.md: :8443 matches by
 // EXCLUDING /v1/inbound). A real third party cannot reach it from the
 // internet, and that is an owner decision still OPEN
 // (docs/MODELO-DE-USO.md). Until it's decided, whoever registers is
 // whoever has access to the gateway's network.
-func enrollmentURL(env environment) string {
-	raw, oldUsed := config.EnvOrOld(env, envPublicURLNew, envPublicURLOld)
+func enrollmentURL(env environment) (string, error) {
+	raw, err := config.EnvRefusingOld(env, envPublicURLNew, envPublicURLOld)
+	if err != nil {
+		return "", err
+	}
 	base := strings.TrimRight(strings.TrimSpace(raw), "/")
 	if base == "" {
 		base = "https://<set " + envPublicURLNew + ">"
-	} else {
-		config.WarnOldEnvVar(oldUsed, envPublicURLOld, envPublicURLNew)
 	}
-	return base + "/v1/cadastro"
+	return base + "/v1/cadastro", nil
 }
 
 // reopenEnrollment gives the consumer back the right to write their own
@@ -1586,20 +1612,22 @@ func printSharedSecrets(out io.Writer, slug string, pairs [][2]string) {
 
 // webhookURL assembles the URL to paste into Meta's panel.
 //
-// The public host is NOT guessed: it comes from ZAPGW_PUBLIC_URL (old name
-// ZAPGW_URL_PUBLICA — T-214). Without it the command prints a VISIBLE
-// placeholder instead of guessing a domain — a wrong URL pasted into Meta
-// makes the webhook fail silently on both sides, which is exactly the
-// failure mode recorded in docs/ARMADILHAS.md.
-func webhookURL(env environment, slug string) string {
-	raw, oldUsed := config.EnvOrOld(env, envPublicURLNew, envPublicURLOld)
+// The public host is NOT guessed: it comes from ZAPGW_PUBLIC_URL. Without
+// it the command prints a VISIBLE placeholder instead of guessing a
+// domain — a wrong URL pasted into Meta makes the webhook fail silently on
+// both sides, which is exactly the failure mode recorded in
+// docs/ARMADILHAS.md. The OLD name (ZAPGW_URL_PUBLICA) is no longer read
+// (T-244): setting it REFUSES the command.
+func webhookURL(env environment, slug string) (string, error) {
+	raw, err := config.EnvRefusingOld(env, envPublicURLNew, envPublicURLOld)
+	if err != nil {
+		return "", err
+	}
 	base := strings.TrimRight(strings.TrimSpace(raw), "/")
 	if base == "" {
 		base = "https://<set " + envPublicURLNew + ">"
-	} else {
-		config.WarnOldEnvVar(oldUsed, envPublicURLOld, envPublicURLNew)
 	}
-	return base + "/v1/inbound/" + slug
+	return base + "/v1/inbound/" + slug, nil
 }
 
 func provisionConsumer(args []string, out io.Writer, env environment) error {

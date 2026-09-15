@@ -175,23 +175,27 @@ func routes(inboundHandler, outboundHandler, healthHandler, templatesHandler, me
 // The key lives OUTSIDE the database. Without it nothing starts up:
 // refusing loud and early is what prevents running "working" with no
 // encryption at all.
-// T-214: ZAPGW_CHAVE_CIFRA/ZAPGW_BANCO accept their English pair
-// (ZAPGW_ENCRYPTION_KEY/ZAPGW_DATABASE), new wins if both are set, and using
-// the old name is logged once — see env_aliases.go and databasePath.
+//
+// T-244: ZAPGW_CHAVE_CIFRA/ZAPGW_BANCO are no longer read — either one
+// being set REFUSES startup, naming the English pair
+// (ZAPGW_ENCRYPTION_KEY/ZAPGW_DATABASE) to use instead. This is the
+// MOST DANGEROUS of the retired pairs: silently ignoring the old
+// encryption-key name would open an EMPTY database under a DIFFERENT key,
+// with no error at all — see env_aliases.go and databasePath.
 func openStore(env environment) (*config.Store, error) {
-	keyRaw, keyOldUsed := config.EnvOrOld(env, envEncryptionKeyNew, envEncryptionKeyOld)
-	keyName := envEncryptionKeyNew
-	if keyOldUsed {
-		keyName = envEncryptionKeyOld
+	keyRaw, err := config.EnvRefusingOld(env, envEncryptionKeyNew, envEncryptionKeyOld)
+	if err != nil {
+		return nil, fmt.Errorf("zapgw: %w", err)
 	}
 	vault, err := config.NewVault(keyRaw)
 	if err != nil {
-		return nil, fmt.Errorf("zapgw: %s: %w", keyName, err)
+		return nil, fmt.Errorf("zapgw: %s: %w", envEncryptionKeyNew, err)
 	}
-	config.WarnOldEnvVar(keyOldUsed, envEncryptionKeyOld, envEncryptionKeyNew)
 
-	path, pathOldUsed := databasePath(env)
-	config.WarnOldEnvVar(pathOldUsed, envDatabaseOld, envDatabaseNew)
+	path, err := databasePath(env)
+	if err != nil {
+		return nil, fmt.Errorf("zapgw: %w", err)
+	}
 
 	store, err := config.OpenStore(path, vault)
 	if err != nil {
@@ -303,12 +307,12 @@ func main() {
 
 	// WHICH PATH INBOUND IS PUBLISHED THROUGH (T-120), resolved BEFORE
 	// opening the database and BEFORE listening on any port: an unknown
-	// value in ZAPGW_INGRESS_VIA (old name ZAPGW_ENTRADA_VIA — T-214)
-	// brings the startup down, and the cheap place to discover that is in
-	// front of whoever just edited /etc/zapgw/env — not three weeks later,
-	// in a contract field no one checked. Empty is NOT an error: it
-	// publishes `desconhecido` (see outbound.IngressVia for the two answers
-	// and why they differ).
+	// value in ZAPGW_INGRESS_VIA brings the startup down, and so does the
+	// OLD name (ZAPGW_ENTRADA_VIA) simply being SET (T-244) — the cheap
+	// place to discover either is in front of whoever just edited
+	// /etc/zapgw/env, not three weeks later, in a contract field no one
+	// checked. Empty is NOT an error: it publishes `desconhecido` (see
+	// outbound.IngressVia for the two answers and why they differ).
 	via, err := outbound.IngressVia(os.Getenv)
 	if err != nil {
 		log.Fatalf("%v", err)
@@ -316,9 +320,9 @@ func main() {
 
 	// SENDING SINGLETON GUARD — resolved BEFORE opening the database and
 	// BEFORE listening on any port, for the same reason as
-	// ZAPGW_ENTRADA_VIA above: an unreadable value brings the startup
-	// down in front of whoever just edited /etc/zapgw/env, and not three
-	// weeks later, on failover day.
+	// ZAPGW_ENTRADA_VIA above: an unreadable value, or either OLD name
+	// being set (T-244), brings the startup down in front of whoever just
+	// edited /etc/zapgw/env, and not three weeks later, on failover day.
 	//
 	// It wraps ONLY /v1/messages. Receiving, health, state and
 	// registration keep responding on a non-leader by design: what
@@ -333,14 +337,14 @@ func main() {
 	// forgot the variable on the pair" is the defect that sends a
 	// duplicate message — and both are invisible if no one prints them.
 	if leadership.Armed() {
-		// T-214: whichever spelling armed the guard (old or new) is what
-		// this line prints — resolved the SAME way NewLeadership resolved
-		// it, so the two can never disagree about which file is in effect.
-		fileValue, _ := config.EnvOrOld(os.Getenv, outbound.VarLeadershipFileNew, outbound.VarLeadershipFile)
+		// T-244: only the NEW name can ever be what armed the guard now —
+		// the old one would have already brought the startup down inside
+		// NewLeadership above.
+		fileValue, _ := config.EnvRefusingOld(os.Getenv, outbound.VarLeadershipFileNew, outbound.VarLeadershipFile)
 		log.Printf("zapgw: leadership guard ARMED (%s)", fileValue)
 	} else {
-		log.Printf("zapgw: leadership guard DISARMED — single node; set %s (or %s) to arm",
-			outbound.VarLeadershipFileNew, outbound.VarLeadershipFile)
+		log.Printf("zapgw: leadership guard DISARMED — single node; set %s to arm",
+			outbound.VarLeadershipFileNew)
 	}
 
 	store, err := openStore(os.Getenv)
@@ -353,10 +357,13 @@ func main() {
 	// (consumer, key) -> id") from turning into history. Short on
 	// purpose: a DELIVERY record, not a message record.
 	ttl := 72 * time.Hour
-	if v, oldUsed := config.EnvOrOld(os.Getenv, envIdempotencyTTLHoursNew, envIdempotencyTTLHoursOld); v != "" {
+	v, err := config.EnvRefusingOld(os.Getenv, envIdempotencyTTLHoursNew, envIdempotencyTTLHoursOld)
+	if err != nil {
+		log.Fatalf("%v", err)
+	}
+	if v != "" {
 		if n, err := strconv.Atoi(v); err == nil && n > 0 {
 			ttl = time.Duration(n) * time.Hour
-			config.WarnOldEnvVar(oldUsed, envIdempotencyTTLHoursOld, envIdempotencyTTLHoursNew)
 		}
 	}
 	startPeriodicPurge("idempotencia", time.Hour, func() (int, error) {
@@ -376,7 +383,10 @@ func main() {
 	// variable —, and two resolutions of the same deadline would diverge
 	// on the day someone changed the `env`, with the route accepting a
 	// 30-day series over a database that keeps 15.
-	counterDays := config.CounterRetentionDays(os.Getenv)
+	counterDays, err := config.CounterRetentionDays(os.Getenv)
+	if err != nil {
+		log.Fatalf("%v", err)
+	}
 	counterTTL := time.Duration(counterDays) * 24 * time.Hour
 	startPeriodicPurge("contadores", time.Hour, func() (int, error) {
 		return store.PurgeCounters(time.Now().Add(-counterTTL))
@@ -390,7 +400,10 @@ func main() {
 	// the wider the window in which an HMAC could someday be correlated
 	// with the number through some other external path (a network
 	// capture, an address-book leak).
-	transitDays := config.TransitRetentionDays(os.Getenv)
+	transitDays, err := config.TransitRetentionDays(os.Getenv)
+	if err != nil {
+		log.Fatalf("%v", err)
+	}
 	transitTTL := time.Duration(transitDays) * 24 * time.Hour
 	startPeriodicPurge("transito", time.Hour, func() (int, error) {
 		return store.PurgeTransit(time.Now().Add(-transitTTL))
@@ -398,15 +411,20 @@ func main() {
 	transit := config.NewTransit(store)
 
 	maxBytes := 1 << 20
-	if v, oldUsed := config.EnvOrOld(os.Getenv, envMaxBodyBytesNew, envMaxBodyBytesOld); v != "" {
-		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+	maxBytesRaw, err := config.EnvRefusingOld(os.Getenv, envMaxBodyBytesNew, envMaxBodyBytesOld)
+	if err != nil {
+		log.Fatalf("%v", err)
+	}
+	if maxBytesRaw != "" {
+		if n, err := strconv.Atoi(maxBytesRaw); err == nil && n > 0 {
 			maxBytes = n
-			config.WarnOldEnvVar(oldUsed, envMaxBodyBytesOld, envMaxBodyBytesNew)
 		}
 	}
 
-	address, addressOldUsed := config.EnvOrOld(os.Getenv, envAddressNew, envAddressOld)
-	config.WarnOldEnvVar(addressOldUsed, envAddressOld, envAddressNew)
+	address, err := config.EnvRefusingOld(os.Getenv, envAddressNew, envAddressOld)
+	if err != nil {
+		log.Fatalf("%v", err)
+	}
 	if address == "" {
 		address = "127.0.0.1:8080"
 	}
@@ -516,25 +534,35 @@ func main() {
 	// template — its own timer, measurement in memory, consumer read
 	// served from what has already been measured. It asks the `/ready`
 	// of the `cloudflared` that publishes this route. Without
-	// ZAPGW_CONNECTOR_READY (or its old name, ZAPGW_CONECTOR_READY —
-	// T-214) it is born inert and the block comes out `nao_configurado`,
-	// which is the honest answer for an installation with no tunnel.
+	// ZAPGW_CONNECTOR_READY it is born inert and the block comes out
+	// `nao_configurado`, which is the honest answer for an installation
+	// with no tunnel. The OLD name (ZAPGW_CONECTOR_READY) is no longer
+	// read (T-244): setting it REFUSES startup.
 	//
 	// ⚠️ IT DOES NOT MEASURE, AND CANNOT START MEASURING, WHETHER THE
 	// GATEWAY IS REACHABLE FROM OUTSIDE — only the public probe answers
 	// that, from outside. See ingress.go.
-	connector := outbound.NewConnectorProbe(outbound.ConnectorAddress(os.Getenv))
+	connectorAddress, err := outbound.ConnectorAddress(os.Getenv)
+	if err != nil {
+		log.Fatalf("%v", err)
+	}
+	connector := outbound.NewConnectorProbe(connectorAddress)
 	connector.Start()
 
 	// The external probe (T-121) is the FOURTH sensor with this same
-	// template: it asks the ZAPGW_EXTERNAL_PROBE_URL URL (old name
-	// ZAPGW_SONDA_EXTERNA_URL — T-214; the public verdict of the probe that
-	// measures inbound access FROM OUTSIDE the network — sonda-worker/), on
-	// its own cadence, and publishes what it has already measured in
-	// `alcance_externo`. Without the variable it is born inert and the
-	// block comes out `nao_configurado` — the same honest answer `conector`
-	// gives for an installation with no tunnel.
-	externalProbe := outbound.NewExternalProbe(outbound.ExternalProbeURL(os.Getenv))
+	// template: it asks the ZAPGW_EXTERNAL_PROBE_URL URL (the public
+	// verdict of the probe that measures inbound access FROM OUTSIDE the
+	// network — sonda-worker/), on its own cadence, and publishes what it
+	// has already measured in `alcance_externo`. Without the variable it
+	// is born inert and the block comes out `nao_configurado` — the same
+	// honest answer `conector` gives for an installation with no tunnel.
+	// The OLD name (ZAPGW_SONDA_EXTERNA_URL) is no longer read (T-244):
+	// setting it REFUSES startup.
+	externalProbeURL, err := outbound.ExternalProbeURL(os.Getenv)
+	if err != nil {
+		log.Fatalf("%v", err)
+	}
+	externalProbe := outbound.NewExternalProbe(externalProbeURL)
 	externalProbe.Start()
 
 	// T-111: AllTypes — GET /v1/estado already publishes both types,

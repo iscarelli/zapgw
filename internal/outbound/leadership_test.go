@@ -10,10 +10,9 @@
 package outbound
 
 import (
-	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -22,6 +21,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/iscarelli/zapgw/internal/config"
 )
 
 // leaseFile creates a lease file with the requested age.
@@ -52,7 +53,7 @@ func TestLeadershipDisarmedLetsThroughAndMatchesThePreviousBehavior(t *testing.T
 		t.Fatalf("NewLeadership: %v", err)
 	}
 	if l.Armed() {
-		t.Fatal("without ZAPGW_LIDERANCA_ARQUIVO the guard has to stay DISARMED — it is the single-node install")
+		t.Fatal("without ZAPGW_LEADERSHIP_FILE the guard has to stay DISARMED — it is the single-node install")
 	}
 	if ok, reason := l.Holder(); !ok {
 		t.Fatalf("a disarmed guard has to answer titular=true; got false (%s)", reason)
@@ -158,9 +159,9 @@ func TestNewLeadershipRefusesToStartWithUnreadableOrNonPositiveValidity(t *testi
 		t.Run(c.name, func(t *testing.T) {
 			_, err := NewLeadership(func(k string) string {
 				switch k {
-				case VarLeadershipFile:
+				case VarLeadershipFileNew:
 					return "/run/zapgw/lider"
-				case VarLeadershipValidity:
+				case VarLeadershipValidityNew:
 					return c.value
 				}
 				return ""
@@ -168,7 +169,7 @@ func TestNewLeadershipRefusesToStartWithUnreadableOrNonPositiveValidity(t *testi
 			if err == nil {
 				t.Fatalf("%s = %q had to BRING DOWN startup; an unreadable value turning into a silent default "+
 					"only shows up on failover day",
-					VarLeadershipValidity, c.value)
+					VarLeadershipValidityNew, c.value)
 			}
 		})
 	}
@@ -179,13 +180,13 @@ func TestNewLeadershipRefusesToStartWithUnreadableOrNonPositiveValidity(t *testi
 // guess allows TWO titulars. Now arming without a validity does not come up.
 func TestNewLeadershipRefusesToStartArmedWithoutValidity(t *testing.T) {
 	_, err := NewLeadership(func(k string) string {
-		if k == VarLeadershipFile {
+		if k == VarLeadershipFileNew {
 			return "/run/zapgw/lider"
 		}
 		return ""
 	})
 	if err == nil {
-		t.Fatal("an ARMED guard without ZAPGW_LIDERANCA_VALIDADE had to BRING DOWN startup: any default is a guess about someone else's TTL, and the wrong guess overlaps two holders")
+		t.Fatal("an ARMED guard without ZAPGW_LEADERSHIP_VALIDITY had to BRING DOWN startup: any default is a guess about someone else's TTL, and the wrong guess overlaps two holders")
 	}
 	for _, required := range []string{"V + A < T", "duplicada"} {
 		if !strings.Contains(err.Error(), required) {
@@ -209,9 +210,9 @@ func TestNewLeadershipDisarmedDoesNotRequireValidity(t *testing.T) {
 func TestNewLeadershipReadsFileAndValidity(t *testing.T) {
 	l, err := NewLeadership(func(k string) string {
 		switch k {
-		case VarLeadershipFile:
+		case VarLeadershipFileNew:
 			return "  /run/zapgw/lider  " // heredoc whitespace must not break it
-		case VarLeadershipValidity:
+		case VarLeadershipValidityNew:
 			return "7s"
 		}
 		return ""
@@ -230,45 +231,64 @@ func TestNewLeadershipReadsFileAndValidity(t *testing.T) {
 	}
 }
 
-// TestNewLeadershipAcceptsTheNewNamesAndTheyWin is T-214's Verify for
+// TestNewLeadershipRefusesOldNames is T-244's Verify for
 // ZAPGW_LEADERSHIP_FILE/ZAPGW_LIDERANCA_ARQUIVO and
-// ZAPGW_LEADERSHIP_VALIDITY/ZAPGW_LIDERANCA_VALIDADE — each pair resolved
-// INDEPENDENTLY (one can come from the old name while the other comes from
-// the new one).
-func TestNewLeadershipAcceptsTheNewNamesAndTheyWin(t *testing.T) {
+// ZAPGW_LEADERSHIP_VALIDITY/ZAPGW_LIDERANCA_VALIDADE — each pair checked
+// INDEPENDENTLY (b): (a) both new -> read; (b) either OLD name alone ->
+// refused, naming the corresponding new name; (c) both present in a pair
+// -> refused too.
+func TestNewLeadershipRefusesOldNames(t *testing.T) {
 	cases := []struct {
 		name         string
 		vars         map[string]string
 		wantFile     string
 		wantValidity time.Duration
+		wantErr      string // substring the refusal has to name; "" = no error
 	}{
 		{
-			"both new",
+			"(a) both new -> read",
 			map[string]string{VarLeadershipFileNew: "/run/novo/lider", VarLeadershipValidityNew: "9s"},
-			"/run/novo/lider", 9 * time.Second,
+			"/run/novo/lider", 9 * time.Second, "",
 		},
 		{
-			"both old",
-			map[string]string{VarLeadershipFile: "/run/velho/lider", VarLeadershipValidity: "9s"},
-			"/run/velho/lider", 9 * time.Second,
+			"(b) only the old file -> refused naming the new file var",
+			map[string]string{VarLeadershipFile: "/run/velho/lider", VarLeadershipValidityNew: "9s"},
+			"", 0, VarLeadershipFileNew,
 		},
 		{
-			"new file, old validity: each wins on its own",
+			"(b) only the old validity -> refused naming the new validity var",
 			map[string]string{VarLeadershipFileNew: "/run/novo/lider", VarLeadershipValidity: "9s"},
-			"/run/novo/lider", 9 * time.Second,
+			"", 0, VarLeadershipValidityNew,
 		},
 		{
-			"both present in each pair: the NEW one wins on both",
+			"(c) both old -> refused",
+			map[string]string{VarLeadershipFile: "/run/velho/lider", VarLeadershipValidity: "9s"},
+			"", 0, VarLeadershipFileNew,
+		},
+		{
+			"(c) file pair has both -> refused even though validity is new-only",
 			map[string]string{
 				VarLeadershipFileNew: "/run/novo/lider", VarLeadershipFile: "/run/velho/lider",
-				VarLeadershipValidityNew: "9s", VarLeadershipValidity: "99s",
+				VarLeadershipValidityNew: "9s",
 			},
-			"/run/novo/lider", 9 * time.Second,
+			"", 0, VarLeadershipFileNew,
 		},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			l, err := NewLeadership(func(k string) string { return c.vars[k] })
+			if c.wantErr != "" {
+				if err == nil {
+					t.Fatalf("NewLeadership accepted an old name — want a refusal naming %s", c.wantErr)
+				}
+				if !errors.Is(err, config.ErrObsoleteEnvVar) {
+					t.Errorf("error does not wrap config.ErrObsoleteEnvVar: %v", err)
+				}
+				if !strings.Contains(err.Error(), c.wantErr) {
+					t.Errorf("the refusal does not name %s: %v", c.wantErr, err)
+				}
+				return
+			}
 			if err != nil {
 				t.Fatalf("NewLeadership: %v", err)
 			}
@@ -277,53 +297,6 @@ func TestNewLeadershipAcceptsTheNewNamesAndTheyWin(t *testing.T) {
 			}
 			if l.validity != c.wantValidity {
 				t.Errorf("validity = %v, want %v", l.validity, c.wantValidity)
-			}
-		})
-	}
-}
-
-// TestNewLeadershipWarnsOnlyWhenOldNamesWin is T-214 Do item 3, checked
-// independently for each of the two variables.
-func TestNewLeadershipWarnsOnlyWhenOldNamesWin(t *testing.T) {
-	cases := []struct {
-		name                           string
-		vars                           map[string]string
-		wantFileWarn, wantValidityWarn bool
-	}{
-		{
-			"both new: silent",
-			map[string]string{VarLeadershipFileNew: "/run/lider", VarLeadershipValidityNew: "9s"},
-			false, false,
-		},
-		{
-			"both old: both warn",
-			map[string]string{VarLeadershipFile: "/run/lider", VarLeadershipValidity: "9s"},
-			true, true,
-		},
-		{
-			"only the file is old",
-			map[string]string{VarLeadershipFile: "/run/lider", VarLeadershipValidityNew: "9s"},
-			true, false,
-		},
-	}
-	original := log.Writer()
-	for _, c := range cases {
-		t.Run(c.name, func(t *testing.T) {
-			var buf bytes.Buffer
-			log.SetOutput(&buf)
-			if _, err := NewLeadership(func(k string) string { return c.vars[k] }); err != nil {
-				log.SetOutput(original)
-				t.Fatalf("NewLeadership: %v", err)
-			}
-			log.SetOutput(original)
-			text := buf.String()
-			fileWarned := strings.Contains(text, VarLeadershipFile) && strings.Contains(text, "deprecated")
-			validityWarned := strings.Contains(text, VarLeadershipValidity) && strings.Contains(text, "deprecated")
-			if fileWarned != c.wantFileWarn {
-				t.Errorf("file warning = %v (log: %q), want %v", fileWarned, text, c.wantFileWarn)
-			}
-			if validityWarned != c.wantValidityWarn {
-				t.Errorf("validity warning = %v (log: %q), want %v", validityWarned, text, c.wantValidityWarn)
 			}
 		})
 	}

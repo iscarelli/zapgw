@@ -1,10 +1,8 @@
 package config
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
-	"log"
 	"strings"
 	"sync"
 	"testing"
@@ -601,55 +599,44 @@ func TestClearTransitByPhoneUnderConcurrencyTheCountMatchesWhatActuallyDisappear
 	}
 }
 
-// TestTransitRetentionDaysAcceptsNewNameAndItWins is T-214's Verify for
-// ZAPGW_TTL_TRANSIT_DAYS/ZAPGW_TTL_TRANSITO_DIAS: both names work alone, and
-// the NEW one wins when both are set — same idiom as
-// TestCounterRetentionDaysAcceptsNewNameAndItWins (counter_test.go).
-func TestTransitRetentionDaysAcceptsNewNameAndItWins(t *testing.T) {
+// TestTransitRetentionDaysRefusesOldName is T-244's Verify for
+// ZAPGW_TTL_TRANSIT_DAYS/ZAPGW_TTL_TRANSITO_DIAS: (a) only the new name ->
+// read; (b) only the old one -> refused, naming the new name, value not
+// read; (c) both -> refused too.
+func TestTransitRetentionDaysRefusesOldName(t *testing.T) {
 	cases := []struct {
-		name string
-		vars map[string]string
-		want int
+		name    string
+		vars    map[string]string
+		want    int
+		wantErr bool
 	}{
-		{"default with neither", map[string]string{}, DefaultTransitRetentionDays},
-		{"only the new one", map[string]string{TransitRetentionEnvVarNew: "9"}, 9},
-		{"only the old one", map[string]string{TransitRetentionEnvVar: "14"}, 14},
-		{"both: the NEW one wins", map[string]string{
+		{"default with neither", map[string]string{}, DefaultTransitRetentionDays, false},
+		{"(a) only the new one -> read", map[string]string{TransitRetentionEnvVarNew: "9"}, 9, false},
+		{"(b) only the old one -> refused", map[string]string{TransitRetentionEnvVar: "14"}, 0, true},
+		{"(c) both -> refused too", map[string]string{
 			TransitRetentionEnvVarNew: "9", TransitRetentionEnvVar: "14",
-		}, 9},
+		}, 0, true},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			if has := TransitRetentionDays(func(k string) string { return c.vars[k] }); has != c.want {
-				t.Errorf("TransitRetentionDays = %d, want %d", has, c.want)
+			has, err := TransitRetentionDays(func(k string) string { return c.vars[k] })
+			if c.wantErr {
+				if err == nil {
+					t.Fatalf("TransitRetentionDays = (%d, nil), want a refusal naming %s", has, TransitRetentionEnvVarNew)
+				}
+				if !errors.Is(err, ErrObsoleteEnvVar) {
+					t.Errorf("error does not wrap ErrObsoleteEnvVar: %v", err)
+				}
+				if !strings.Contains(err.Error(), TransitRetentionEnvVarNew) {
+					t.Errorf("the refusal does not name %s: %v", TransitRetentionEnvVarNew, err)
+				}
+				return
 			}
-		})
-	}
-}
-
-// TestTransitRetentionDaysWarnsOnlyWhenOldNameWins mirrors
-// TestCounterRetentionDaysWarnsOnlyWhenOldNameWins for the transit pair.
-func TestTransitRetentionDaysWarnsOnlyWhenOldNameWins(t *testing.T) {
-	cases := []struct {
-		name     string
-		vars     map[string]string
-		wantWarn bool
-	}{
-		{"only the old one: warns", map[string]string{TransitRetentionEnvVar: "10"}, true},
-		{"only the new one: stays silent", map[string]string{TransitRetentionEnvVarNew: "10"}, false},
-		{"neither: stays silent", map[string]string{}, false},
-	}
-	original := log.Writer()
-	for _, c := range cases {
-		t.Run(c.name, func(t *testing.T) {
-			var buf bytes.Buffer
-			log.SetOutput(&buf)
-			TransitRetentionDays(func(k string) string { return c.vars[k] })
-			log.SetOutput(original)
-			warned := strings.Contains(buf.String(), TransitRetentionEnvVar) &&
-				strings.Contains(buf.String(), "deprecated")
-			if warned != c.wantWarn {
-				t.Errorf("warned = %v (log: %q), want %v", warned, buf.String(), c.wantWarn)
+			if err != nil {
+				t.Fatalf("TransitRetentionDays: %v", err)
+			}
+			if has != c.want {
+				t.Errorf("TransitRetentionDays = %d, want %d", has, c.want)
 			}
 		})
 	}

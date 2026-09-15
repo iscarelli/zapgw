@@ -1,12 +1,13 @@
-// Tests for T-214 (CAMADA 4): the ZAPGW_* variables and the CLI verbs
-// accept both their old (Portuguese) and new (English) spelling, the new
-// one wins when both are set, and using the old one is logged once.
+// Tests for T-244: the old (Portuguese) ZAPGW_* env-var names are RETIRED
+// — an old name set at startup (or at command time) is REFUSED, naming the
+// new (English) one, and its value is NEVER read. (The CLI verbs are a
+// separate, still-open decision — T-220 — and are not touched here.)
 package main
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"os/exec"
@@ -14,46 +15,83 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/iscarelli/zapgw/internal/config"
 )
 
 // --- databasePath (shared by openStore and `zapgw perdidas`) --------------
 
-func TestDatabasePathAcceptsBothNamesNewWins(t *testing.T) {
+// TestDatabasePathRefusesOldName is T-244's Verify: (a) only the new name
+// -> read; (b) only the old one -> refused, naming the new name, value not
+// read (the default does not kick in either); (c) both -> refused too.
+func TestDatabasePathRefusesOldName(t *testing.T) {
 	cases := []struct {
-		name        string
-		vars        map[string]string
-		wantPath    string
-		wantOldUsed bool
+		name    string
+		vars    map[string]string
+		want    string
+		wantErr bool
 	}{
 		{"no variable at all: default", map[string]string{}, "zapgw.db", false},
-		{"only the new one", map[string]string{envDatabaseNew: "novo.db"}, "novo.db", false},
-		{"only the old one", map[string]string{envDatabaseOld: "velho.db"}, "velho.db", true},
-		{"both: the NEW one wins", map[string]string{
+		{"(a) only the new one -> read", map[string]string{envDatabaseNew: "novo.db"}, "novo.db", false},
+		{"(b) only the old one -> refused", map[string]string{envDatabaseOld: "velho.db"}, "", true},
+		{"(c) both -> refused too", map[string]string{
 			envDatabaseNew: "novo.db", envDatabaseOld: "velho.db",
-		}, "novo.db", false},
+		}, "", true},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			path, oldUsed := databasePath(fakeEnvironment(c.vars))
-			if path != c.wantPath {
-				t.Errorf("path = %q, want %q", path, c.wantPath)
+			path, err := databasePath(fakeEnvironment(c.vars))
+			if c.wantErr {
+				if err == nil {
+					t.Fatalf("databasePath = (%q, nil), want a refusal naming %s", path, envDatabaseNew)
+				}
+				if !errors.Is(err, config.ErrObsoleteEnvVar) {
+					t.Errorf("error does not wrap config.ErrObsoleteEnvVar: %v", err)
+				}
+				if !strings.Contains(err.Error(), envDatabaseNew) {
+					t.Errorf("the refusal does not name %s: %v", envDatabaseNew, err)
+				}
+				return
 			}
-			if oldUsed != c.wantOldUsed {
-				t.Errorf("oldNameUsed = %v, want %v", oldUsed, c.wantOldUsed)
+			if err != nil {
+				t.Fatalf("databasePath: %v", err)
+			}
+			if path != c.want {
+				t.Errorf("path = %q, want %q", path, c.want)
 			}
 		})
 	}
 }
 
+// TestOpenStoreRefusesOldEncryptionKeyName is T-244's mandatory case (b) for
+// the encryption key: ZAPGW_CHAVE_CIFRA alone has to REFUSE startup, naming
+// ZAPGW_ENCRYPTION_KEY, and the value must NOT be read — the failure mode
+// this task exists to close is the gateway opening an EMPTY database under a
+// DIFFERENT key, in silence.
+func TestOpenStoreRefusesOldEncryptionKeyName(t *testing.T) {
+	vars := map[string]string{
+		envEncryptionKeyOld: testKey,
+		envDatabaseNew:      filepath.Join(t.TempDir(), "zapgw.db"),
+	}
+	_, err := openStore(fakeEnvironment(vars))
+	if err == nil {
+		t.Fatal("openStore ACCEPTED the old encryption-key name — this would open an empty database under a different key, in silence")
+	}
+	if !errors.Is(err, config.ErrObsoleteEnvVar) {
+		t.Errorf("error does not wrap config.ErrObsoleteEnvVar: %v", err)
+	}
+	if !strings.Contains(err.Error(), "ZAPGW_ENCRYPTION_KEY") {
+		t.Errorf("the refusal does not name ZAPGW_ENCRYPTION_KEY: %v", err)
+	}
+}
+
 // --- openStore: ZAPGW_DATABASE/ZAPGW_BANCO and ZAPGW_ENCRYPTION_KEY/ZAPGW_CHAVE_CIFRA ---
 
-func TestOpenStoreAcceptsTheNewDatabaseNameAndItWins(t *testing.T) {
+func TestOpenStoreAcceptsTheNewNames(t *testing.T) {
 	pathNew := filepath.Join(t.TempDir(), "novo.db")
-	pathOld := filepath.Join(t.TempDir(), "velho.db")
 	vars := map[string]string{
 		envEncryptionKeyNew: testKey,
 		envDatabaseNew:      pathNew,
-		envDatabaseOld:      pathOld,
 	}
 	store, err := openStore(fakeEnvironment(vars))
 	if err != nil {
@@ -64,77 +102,29 @@ func TestOpenStoreAcceptsTheNewDatabaseNameAndItWins(t *testing.T) {
 	if _, err := os.Stat(pathNew); err != nil {
 		t.Errorf("the database from the NEW variable was not created: %v", err)
 	}
-	if _, err := os.Stat(pathOld); err == nil {
-		t.Errorf("the database from the OLD variable was created — the NEW one should have won")
-	}
 }
 
-func TestOpenStoreAcceptsTheNewEncryptionKeyNameAndItWins(t *testing.T) {
+// TestOpenStoreRefusesOldDatabaseName is case (b) for the database path
+// pair, exercised through openStore (not just databasePath) — the same
+// refusal has to reach the caller that actually opens the file.
+func TestOpenStoreRefusesOldDatabaseName(t *testing.T) {
 	vars := map[string]string{
 		envEncryptionKeyNew: testKey,
-		envEncryptionKeyOld: "chave-velha-invalida-de-proposito",
-		envDatabaseNew:      filepath.Join(t.TempDir(), "zapgw.db"),
+		envDatabaseOld:      filepath.Join(t.TempDir(), "velho.db"),
 	}
-	// If the OLD (invalid) key had won, NewVault would refuse it and
-	// openStore would return an error — succeeding here IS the proof the
-	// NEW (valid) key won.
-	store, err := openStore(fakeEnvironment(vars))
-	if err != nil {
-		t.Fatalf("the valid NEW key should have won over the invalid old one: %v", err)
+	_, err := openStore(fakeEnvironment(vars))
+	if err == nil {
+		t.Fatal("openStore ACCEPTED the old database-path name")
 	}
-	_ = store.Close()
-}
-
-func TestOpenStoreWarnsOnlyWhenOldNamesWin(t *testing.T) {
-	cases := []struct {
-		name         string
-		vars         map[string]string
-		wantKeyWarn  bool
-		wantPathWarn bool
-	}{
-		{
-			"both new: silent",
-			map[string]string{envEncryptionKeyNew: testKey, envDatabaseNew: filepath.Join(t.TempDir(), "a.db")},
-			false, false,
-		},
-		{
-			"both old: both warn",
-			map[string]string{envEncryptionKeyOld: testKey, envDatabaseOld: filepath.Join(t.TempDir(), "b.db")},
-			true, true,
-		},
-	}
-	original := log.Writer()
-	for _, c := range cases {
-		t.Run(c.name, func(t *testing.T) {
-			var buf bytes.Buffer
-			log.SetOutput(&buf)
-			store, err := openStore(fakeEnvironment(c.vars))
-			log.SetOutput(original)
-			if err != nil {
-				t.Fatalf("openStore: %v", err)
-			}
-			_ = store.Close()
-			text := buf.String()
-			keyWarned := strings.Contains(text, envEncryptionKeyOld) && strings.Contains(text, "deprecated")
-			pathWarned := strings.Contains(text, envDatabaseOld) && strings.Contains(text, "deprecated")
-			if keyWarned != c.wantKeyWarn {
-				t.Errorf("key warning = %v (log: %q), want %v", keyWarned, text, c.wantKeyWarn)
-			}
-			if pathWarned != c.wantPathWarn {
-				t.Errorf("database warning = %v (log: %q), want %v", pathWarned, text, c.wantPathWarn)
-			}
-		})
+	if !strings.Contains(err.Error(), envDatabaseNew) {
+		t.Errorf("the refusal does not name %s: %v", envDatabaseNew, err)
 	}
 }
 
 // --- CLI verbs: fumaca/smoke, instancia/instance, consumidor/consumer, estado/state ---
+// NOT TOUCHED by T-244 (that is T-220's territory) — kept as a regression
+// guard that this task did not accidentally change verb dispatch.
 
-// TestDispatchAcceptsEnglishVerbsSilently is T-214's Verify for the four CLI
-// verbs the task names: the OLD (Portuguese) verb still runs and prints the
-// T-214 notice; the NEW (English) verb runs identically and stays silent.
-// The underlying subcommand is free to error afterward (no --slug, no
-// instance) — warnOldVerb writes BEFORE that, so the notice is there either
-// way.
 func TestDispatchAcceptsEnglishVerbsSilently(t *testing.T) {
 	env := fakeEnvironment(testEnvironment(t))
 	cases := []struct{ oldVerb, newVerb string }{
@@ -162,20 +152,18 @@ func TestDispatchAcceptsEnglishVerbsSilently(t *testing.T) {
 
 // --- provisionar/rotacionar: ZAPGW_SEND_TOKEN/ZAPGW_TOKEN_ENVIO and ZAPGW_DELIVERY_SECRET/ZAPGW_SEGREDO_ENTREGA ---
 
-func TestCreateInstanceAcceptsTheNewSecretNamesAndTheyWin(t *testing.T) {
+func TestCreateInstanceAcceptsTheNewSecretNames(t *testing.T) {
 	vars := testEnvironment(t)
 	vars["ZAPGW_APP_SECRET"] = "app-secret-de-teste"
 	vars["ZAPGW_VERIFY_TOKEN"] = "verify-token-de-teste"
 	vars[envSendTokenNew] = "token-envio-NOVO"
-	vars[envSendTokenOld] = "token-envio-VELHO-nao-pode-vencer"
 	vars[envDeliverySecretNew] = "entrega-NOVA"
-	vars[envDeliverySecretOld] = "entrega-VELHA-nao-pode-vencer"
 
 	var out bytes.Buffer
-	if err := dispatch(instanceArgs("tenant-create-precedencia"), &out, fakeEnvironment(vars)); err != nil {
+	if err := dispatch(instanceArgs("tenant-create-novo"), &out, fakeEnvironment(vars)); err != nil {
 		t.Fatalf("dispatch: %v\n%s", err, out.String())
 	}
-	i := instanceFromEnvironment(t, vars, "tenant-create-precedencia")
+	i := instanceFromEnvironment(t, vars, "tenant-create-novo")
 	if i.SendToken != "token-envio-NOVO" {
 		t.Errorf("SendToken = %q, want the value of the NEW variable", i.SendToken)
 	}
@@ -184,29 +172,88 @@ func TestCreateInstanceAcceptsTheNewSecretNamesAndTheyWin(t *testing.T) {
 	}
 }
 
-func TestRotateInstanceAcceptsTheNewSecretNamesAndTheyWin(t *testing.T) {
-	vars := provisionedForRotation(t, "tenant-rotate-precedencia")
+// TestCreateInstanceRefusesOldSecretNames is T-244's case (b)/(c) for
+// envSendTokenOld/envDeliverySecretOld: either one being set REFUSES
+// creation, naming the corresponding new name.
+func TestCreateInstanceRefusesOldSecretNames(t *testing.T) {
+	cases := []struct {
+		name string
+		set  func(vars map[string]string)
+		want string
+	}{
+		{"(b) only the old send token", func(v map[string]string) {
+			v[envSendTokenOld] = "token-envio-VELHO"
+		}, envSendTokenNew},
+		{"(c) both send token names", func(v map[string]string) {
+			v[envSendTokenNew] = "token-envio-NOVO"
+			v[envSendTokenOld] = "token-envio-VELHO"
+		}, envSendTokenNew},
+		{"(b) only the old delivery secret", func(v map[string]string) {
+			v["ZAPGW_APP_SECRET"] = "app-secret-de-teste"
+			v[envSendTokenNew] = "token-envio-de-teste"
+			v[envDeliverySecretOld] = "entrega-VELHA"
+		}, envDeliverySecretNew},
+	}
+	for i, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			vars := testEnvironment(t)
+			c.set(vars)
+			var out bytes.Buffer
+			err := dispatch(instanceArgs(fmt.Sprintf("tenant-refusa-velho-%d", i)), &out, fakeEnvironment(vars))
+			if err == nil {
+				t.Fatal("the creation was ACCEPTED with an old secret name set")
+			}
+			if !errors.Is(err, config.ErrObsoleteEnvVar) {
+				t.Errorf("error does not wrap config.ErrObsoleteEnvVar: %v", err)
+			}
+			if !strings.Contains(err.Error(), c.want) {
+				t.Errorf("the refusal does not name %s: %v", c.want, err)
+			}
+		})
+	}
+}
+
+func TestRotateInstanceAcceptsTheNewSecretNames(t *testing.T) {
+	vars := provisionedForRotation(t, "tenant-rotate-novo")
 	vars[envSendTokenNew] = "token-envio-NOVO"
-	vars[envSendTokenOld] = "token-envio-VELHO-nao-pode-vencer"
 	vars[envDeliverySecretNew] = "entrega-NOVA"
-	vars[envDeliverySecretOld] = "entrega-VELHA-nao-pode-vencer"
 
 	var out bytes.Buffer
-	if err := dispatch([]string{"instancia", "rotacionar", "--slug", "tenant-rotate-precedencia"},
+	if err := dispatch([]string{"instancia", "rotacionar", "--slug", "tenant-rotate-novo"},
 		&out, fakeEnvironment(vars)); err != nil {
 		t.Fatalf("dispatch: %v\n%s", err, out.String())
 	}
-	i := instanceFromEnvironment(t, vars, "tenant-rotate-precedencia")
+	i := instanceFromEnvironment(t, vars, "tenant-rotate-novo")
 	if i.SendToken != "token-envio-NOVO" {
 		t.Errorf("SendToken = %q, want the value of the NEW variable", i.SendToken)
 	}
 	if i.DeliverySecret != "entrega-NOVA" {
 		t.Errorf("DeliverySecret = %q, want the value of the NEW variable", i.DeliverySecret)
+	}
+}
+
+// TestRotateInstanceRefusesOldSecretNames mirrors
+// TestCreateInstanceRefusesOldSecretNames for `instancia rotacionar`.
+func TestRotateInstanceRefusesOldSecretNames(t *testing.T) {
+	vars := provisionedForRotation(t, "tenant-rotate-refusa")
+	vars[envSendTokenOld] = "token-envio-VELHO"
+
+	var out bytes.Buffer
+	err := dispatch([]string{"instancia", "rotacionar", "--slug", "tenant-rotate-refusa"},
+		&out, fakeEnvironment(vars))
+	if err == nil {
+		t.Fatal("the rotation was ACCEPTED with the old send-token name set")
+	}
+	if !errors.Is(err, config.ErrObsoleteEnvVar) {
+		t.Errorf("error does not wrap config.ErrObsoleteEnvVar: %v", err)
+	}
+	if !strings.Contains(err.Error(), envSendTokenNew) {
+		t.Errorf("the refusal does not name %s: %v", envSendTokenNew, err)
 	}
 }
 
 // TestInstagramCreationAcceptsSendTokenNewName is T-114's missing-credential
-// guard (provision.go), now also accepting envSendTokenNew alone.
+// guard (provision.go), reading ONLY envSendTokenNew now (T-244).
 func TestInstagramCreationAcceptsSendTokenNewName(t *testing.T) {
 	vars := testEnvironment(t)
 	vars["ZAPGW_APP_SECRET"] = "app-secret-de-teste"
@@ -219,67 +266,91 @@ func TestInstagramCreationAcceptsSendTokenNewName(t *testing.T) {
 	}
 }
 
+// TestInstagramCreationRefusesSendTokenOldName is T-244's case (b) for the
+// same guard: the old name being set REFUSES with config.ErrObsoleteEnvVar,
+// never with the "missing credential" message.
+func TestInstagramCreationRefusesSendTokenOldName(t *testing.T) {
+	vars := testEnvironment(t)
+	vars["ZAPGW_APP_SECRET"] = "app-secret-de-teste"
+	vars[envSendTokenOld] = "token-envio-de-teste"
+
+	var out bytes.Buffer
+	err := dispatch(instagramInstanceArgs("insta-alias-envio-recusa", "IGID_ALIAS_ENVIO_RECUSA"), &out, fakeEnvironment(vars))
+	if err == nil {
+		t.Fatal("the creation was ACCEPTED with the old send-token name set")
+	}
+	if !errors.Is(err, config.ErrObsoleteEnvVar) {
+		t.Errorf("error does not wrap config.ErrObsoleteEnvVar: %v", err)
+	}
+	if !strings.Contains(err.Error(), envSendTokenNew) {
+		t.Errorf("the refusal does not name %s: %v", envSendTokenNew, err)
+	}
+}
+
 // --- ZAPGW_PUBLIC_URL/ZAPGW_URL_PUBLICA (webhookURL, enrollmentURL) --------
 
-func TestWebhookURLAcceptsTheNewNameAndItWins(t *testing.T) {
+// TestWebhookURLRefusesOldName is T-244's Verify: (a) only the new name ->
+// read; (b) only the old one -> refused, naming the new name; (c) both ->
+// refused too.
+func TestWebhookURLRefusesOldName(t *testing.T) {
 	cases := []struct {
-		name string
-		vars map[string]string
-		want string
+		name    string
+		vars    map[string]string
+		want    string
+		wantErr bool
 	}{
-		{"only the new one", map[string]string{envPublicURLNew: "https://novo.example"}, "https://novo.example/v1/inbound/slug"},
-		{"only the old one", map[string]string{envPublicURLOld: "https://velho.example"}, "https://velho.example/v1/inbound/slug"},
-		{"both: the NEW one wins", map[string]string{
+		{"(a) only the new one -> read", map[string]string{envPublicURLNew: "https://novo.example"}, "https://novo.example/v1/inbound/slug", false},
+		{"(b) only the old one -> refused", map[string]string{envPublicURLOld: "https://velho.example"}, "", true},
+		{"(c) both -> refused too", map[string]string{
 			envPublicURLNew: "https://novo.example", envPublicURLOld: "https://velho.example",
-		}, "https://novo.example/v1/inbound/slug"},
+		}, "", true},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			if got := webhookURL(fakeEnvironment(c.vars), "slug"); got != c.want {
+			got, err := webhookURL(fakeEnvironment(c.vars), "slug")
+			if c.wantErr {
+				if err == nil {
+					t.Fatalf("webhookURL = (%q, nil), want a refusal naming %s", got, envPublicURLNew)
+				}
+				if !errors.Is(err, config.ErrObsoleteEnvVar) {
+					t.Errorf("error does not wrap config.ErrObsoleteEnvVar: %v", err)
+				}
+				if !strings.Contains(err.Error(), envPublicURLNew) {
+					t.Errorf("the refusal does not name %s: %v", envPublicURLNew, err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("webhookURL: %v", err)
+			}
+			if got != c.want {
 				t.Errorf("webhookURL = %q, want %q", got, c.want)
 			}
 		})
 	}
 }
 
-func TestEnrollmentURLAcceptsTheNewNameAndItWins(t *testing.T) {
-	got := enrollmentURL(fakeEnvironment(map[string]string{
-		envPublicURLNew: "https://novo.example", envPublicURLOld: "https://velho.example",
-	}))
-	want := "https://novo.example/v1/cadastro"
-	if got != want {
+func TestEnrollmentURLRefusesOldName(t *testing.T) {
+	got, err := enrollmentURL(fakeEnvironment(map[string]string{envPublicURLNew: "https://novo.example"}))
+	if err != nil {
+		t.Fatalf("enrollmentURL: %v", err)
+	}
+	if want := "https://novo.example/v1/cadastro"; got != want {
 		t.Errorf("enrollmentURL = %q, want %q", got, want)
 	}
-}
 
-func TestWebhookURLWarnsOnlyWhenOldNameWins(t *testing.T) {
-	cases := []struct {
-		name     string
-		vars     map[string]string
-		wantWarn bool
-	}{
-		{"only the old one: warns", map[string]string{envPublicURLOld: "https://velho.example"}, true},
-		{"only the new one: stays silent", map[string]string{envPublicURLNew: "https://novo.example"}, false},
-		{"none: stays silent", map[string]string{}, false},
+	_, err = enrollmentURL(fakeEnvironment(map[string]string{envPublicURLOld: "https://velho.example"}))
+	if err == nil {
+		t.Fatal("enrollmentURL accepted the old name")
 	}
-	original := log.Writer()
-	for _, c := range cases {
-		t.Run(c.name, func(t *testing.T) {
-			var buf bytes.Buffer
-			log.SetOutput(&buf)
-			webhookURL(fakeEnvironment(c.vars), "slug")
-			log.SetOutput(original)
-			warned := strings.Contains(buf.String(), envPublicURLOld) && strings.Contains(buf.String(), "deprecated")
-			if warned != c.wantWarn {
-				t.Errorf("warning = %v (log: %q), want %v", warned, buf.String(), c.wantWarn)
-			}
-		})
+	if !strings.Contains(err.Error(), envPublicURLNew) {
+		t.Errorf("the refusal does not name %s: %v", envPublicURLNew, err)
 	}
 }
 
 // --- ZAPGW_DIAGNOSTIC_PROBE_FOLDER/ZAPGW_DIAGNOSTICO_SONDAR_FOLDER ---------
 
-func TestDiagnosticProbeFolderAcceptsTheNewNameAndItWins(t *testing.T) {
+func TestDiagnosticProbeFolderAcceptsTheNewName(t *testing.T) {
 	g := workingInstagramGraph("IGID_ALIAS_SONDA")
 	g.conversationsBody[testInvalidFolder] = g.conversationsBody[""]
 	vars := diagnosticScenario(t, "insta-alias-sonda", "IGID_ALIAS_SONDA", g)
@@ -294,38 +365,24 @@ func TestDiagnosticProbeFolderAcceptsTheNewNameAndItWins(t *testing.T) {
 	}
 }
 
-func TestDiagnosticProbeFolderWarnsOnlyWhenOldNameWins(t *testing.T) {
-	g := workingInstagramGraph("IGID_ALIAS_SONDA_AVISO")
+// TestDiagnosticProbeFolderRefusesOldName is T-244's case (b): the old
+// name being set REFUSES the whole `diagnostico` command.
+func TestDiagnosticProbeFolderRefusesOldName(t *testing.T) {
+	g := workingInstagramGraph("IGID_ALIAS_SONDA_RECUSA")
 	g.conversationsBody[testInvalidFolder] = g.conversationsBody[""]
+	vars := diagnosticScenario(t, "insta-alias-sonda-recusa", "IGID_ALIAS_SONDA_RECUSA", g)
+	vars[envDiagnosticProbeFolderOld] = "1"
 
-	cases := []struct {
-		name     string
-		set      func(vars map[string]string)
-		wantWarn bool
-	}{
-		{"only the old one: warns", func(v map[string]string) { v[envDiagnosticProbeFolderOld] = "1" }, true},
-		{"only the new one: stays silent", func(v map[string]string) { v[envDiagnosticProbeFolderNew] = "1" }, false},
+	var out bytes.Buffer
+	err := dispatch(diagnosticArgs("insta-alias-sonda-recusa"), &out, fakeEnvironment(vars))
+	if err == nil {
+		t.Fatal("dispatch accepted the old diagnostic-probe-folder name")
 	}
-	original := log.Writer()
-	for i, c := range cases {
-		t.Run(c.name, func(t *testing.T) {
-			slug := fmt.Sprintf("insta-alias-sonda-aviso-%d", i)
-			vars := diagnosticScenario(t, slug, "IGID_ALIAS_SONDA_AVISO", g)
-			c.set(vars)
-
-			var out bytes.Buffer
-			var buf bytes.Buffer
-			log.SetOutput(&buf)
-			err := dispatch(diagnosticArgs(slug), &out, fakeEnvironment(vars))
-			log.SetOutput(original)
-			if err != nil {
-				t.Fatalf("dispatch: %v\n%s", err, out.String())
-			}
-			warned := strings.Contains(buf.String(), envDiagnosticProbeFolderOld) && strings.Contains(buf.String(), "deprecated")
-			if warned != c.wantWarn {
-				t.Errorf("warning = %v (log: %q), want %v", warned, buf.String(), c.wantWarn)
-			}
-		})
+	if !errors.Is(err, config.ErrObsoleteEnvVar) {
+		t.Errorf("error does not wrap config.ErrObsoleteEnvVar: %v", err)
+	}
+	if !strings.Contains(err.Error(), envDiagnosticProbeFolderNew) {
+		t.Errorf("the refusal does not name %s: %v", envDiagnosticProbeFolderNew, err)
 	}
 }
 
@@ -333,20 +390,17 @@ func TestDiagnosticProbeFolderWarnsOnlyWhenOldNameWins(t *testing.T) {
 
 // bootAndCaptureStderr starts `bin` with NO argument (the server path) and
 // exactly the env vars in `vars` (plus the ones the OS already carries),
-// waits for /v1/health to answer 200, kills the process and returns
-// everything written to stderr. Killing BEFORE reading is what makes the
-// read race-free: exec.Cmd copies a non-*os.File Stderr through a pipe on a
-// background goroutine, and Wait() only returns after that goroutine is
-// done — the same guarantee startServerAndGetHealth relies on, just
-// exercised after Wait instead of skipped.
-func bootAndCaptureStderr(t *testing.T, bin string, vars map[string]string) string {
+// waits up to `timeout` for /v1/health to answer 200 OR for the process to
+// exit, kills the process if it is still running and returns everything
+// written to stderr plus whether it ever became healthy. Killing BEFORE
+// reading is what makes the read race-free: exec.Cmd copies a non-*os.File
+// Stderr through a pipe on a background goroutine, and Wait() only returns
+// after that goroutine is done.
+func bootAndCaptureStderr(t *testing.T, bin string, vars map[string]string, timeout time.Duration) (stderr string, healthy bool) {
 	t.Helper()
-	address, ok := vars["ZAPGW_ENDERECO"]
-	if !ok {
-		address = vars["ZAPGW_ADDRESS"]
-	}
+	address := vars["ZAPGW_ADDRESS"]
 	if address == "" {
-		t.Fatal("bootAndCaptureStderr: vars needs ZAPGW_ENDERECO or ZAPGW_ADDRESS")
+		t.Fatal("bootAndCaptureStderr: vars needs ZAPGW_ADDRESS")
 	}
 
 	env := os.Environ()
@@ -355,76 +409,55 @@ func bootAndCaptureStderr(t *testing.T, bin string, vars map[string]string) stri
 	}
 	cmd := exec.Command(bin)
 	cmd.Env = env
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
+	var buf bytes.Buffer
+	cmd.Stderr = &buf
 	if err := cmd.Start(); err != nil {
 		t.Fatalf("start %s: %v", bin, err)
 	}
 
-	deadline := time.Now().Add(15 * time.Second)
-	var lastError error
-	healthy := false
+	exited := make(chan struct{})
+	go func() {
+		_ = cmd.Wait()
+		close(exited)
+	}()
+
+	deadline := time.Now().Add(timeout)
 	for time.Now().Before(deadline) {
+		select {
+		case <-exited:
+			return buf.String(), false
+		default:
+		}
 		resp, err := http.Get("http://" + address + "/v1/health")
 		if err != nil {
-			lastError = err
 			time.Sleep(50 * time.Millisecond)
 			continue
 		}
 		_ = resp.Body.Close()
 		if resp.StatusCode == http.StatusOK {
-			healthy = true
-			break
+			_ = cmd.Process.Kill()
+			<-exited
+			return buf.String(), true
 		}
-		lastError = fmt.Errorf("status %d", resp.StatusCode)
 		time.Sleep(50 * time.Millisecond)
 	}
 	_ = cmd.Process.Kill()
-	_ = cmd.Wait()
-	if !healthy {
-		t.Fatalf("/v1/health at %s did not answer in time: %v\nprocess stderr:\n%s",
-			address, lastError, stderr.String())
-	}
-	return stderr.String()
+	<-exited
+	return buf.String(), false
 }
 
-// TestServerStartupWarnsOnOldNamesAndStaysSilentOnNewNames is T-214's
-// end-to-end Verify: the REAL binary, booted twice — once with every
-// server-time ZAPGW_* variable in its OLD (Portuguese) spelling, once with
-// every one in its NEW (English) spelling — proves the startup log prints
-// the T-214 notice for each old name used, and prints NOTHING extra when
-// every variable is already migrated.
-func TestServerStartupWarnsOnOldNamesAndStaysSilentOnNewNames(t *testing.T) {
-	bin := buildWithVersion(t, "0.0.0-t214-teste")
+// TestServerStartupRefusesOldNamesAndBootsSilentlyOnNewNames is T-244's
+// end-to-end Verify: the REAL binary, booted with every server-time
+// ZAPGW_* variable in its OLD (Portuguese) spelling, NEVER becomes healthy
+// and its stderr names the new variable to use for each one; booted with
+// every variable in its NEW (English) spelling, it boots and stays silent
+// (no "no longer read" / "deprecated" text at all).
+func TestServerStartupRefusesOldNamesAndBootsSilentlyOnNewNames(t *testing.T) {
+	bin := buildWithVersion(t, "0.0.0-t244-teste")
 
-	oldNames := []string{
-		"ZAPGW_BANCO", "ZAPGW_CHAVE_CIFRA", "ZAPGW_ENDERECO", "ZAPGW_MAX_CORPO_BYTES",
-		"ZAPGW_TTL_IDEMPOTENCIA_HORAS", "ZAPGW_TTL_CONTADORES_DIAS", "ZAPGW_TTL_TRANSITO_DIAS",
-		"ZAPGW_ENTRADA_VIA", "ZAPGW_CONECTOR_READY", "ZAPGW_LIDERANCA_ARQUIVO",
-		"ZAPGW_LIDERANCA_VALIDADE", "ZAPGW_SONDA_EXTERNA_URL",
-	}
-	oldVars := map[string]string{
-		"ZAPGW_CHAVE_CIFRA":            testKey,
-		"ZAPGW_BANCO":                  filepath.Join(t.TempDir(), "old.db"),
-		"ZAPGW_ENDERECO":               freeAddress(t),
-		"ZAPGW_MAX_CORPO_BYTES":        "2097152",
-		"ZAPGW_TTL_IDEMPOTENCIA_HORAS": "48",
-		"ZAPGW_TTL_CONTADORES_DIAS":    "60",
-		"ZAPGW_TTL_TRANSITO_DIAS":      "20",
-		"ZAPGW_ENTRADA_VIA":            "tunel",
-		"ZAPGW_CONECTOR_READY":         "http://127.0.0.1:9/ready",
-		"ZAPGW_LIDERANCA_ARQUIVO":      filepath.Join(t.TempDir(), "lider"),
-		"ZAPGW_LIDERANCA_VALIDADE":     "8s",
-		"ZAPGW_SONDA_EXTERNA_URL":      "http://127.0.0.1:9/status",
-	}
-	oldStderr := bootAndCaptureStderr(t, bin, oldVars)
-	for _, name := range oldNames {
-		if !strings.Contains(oldStderr, name) || !strings.Contains(oldStderr, "deprecated") {
-			t.Errorf("startup with old names did NOT warn about %s:\nstderr:\n%s", name, oldStderr)
-		}
-	}
-
-	newVars := map[string]string{
+	// A complete set of GOOD values, entirely under the NEW names — this
+	// is also exercised standalone, below, as the silent-boot case.
+	goodNewVars := map[string]string{
 		"ZAPGW_ENCRYPTION_KEY":        testKey,
 		"ZAPGW_DATABASE":              filepath.Join(t.TempDir(), "new.db"),
 		"ZAPGW_ADDRESS":               freeAddress(t),
@@ -438,8 +471,62 @@ func TestServerStartupWarnsOnOldNamesAndStaysSilentOnNewNames(t *testing.T) {
 		"ZAPGW_LEADERSHIP_VALIDITY":   "8s",
 		"ZAPGW_EXTERNAL_PROBE_URL":    "http://127.0.0.1:9/status",
 	}
-	newStderr := bootAndCaptureStderr(t, bin, newVars)
-	if strings.Contains(newStderr, "deprecated") {
-		t.Errorf("startup with ALL NEW names printed an unwarranted T-214 notice:\nstderr:\n%s", newStderr)
+	oldToNew := map[string]string{
+		"ZAPGW_BANCO":                  "ZAPGW_DATABASE",
+		"ZAPGW_CHAVE_CIFRA":            "ZAPGW_ENCRYPTION_KEY",
+		"ZAPGW_MAX_CORPO_BYTES":        "ZAPGW_MAX_BODY_BYTES",
+		"ZAPGW_TTL_IDEMPOTENCIA_HORAS": "ZAPGW_TTL_IDEMPOTENCY_HOURS",
+		"ZAPGW_TTL_CONTADORES_DIAS":    "ZAPGW_TTL_COUNTERS_DAYS",
+		"ZAPGW_TTL_TRANSITO_DIAS":      "ZAPGW_TTL_TRANSIT_DAYS",
+		"ZAPGW_ENTRADA_VIA":            "ZAPGW_INGRESS_VIA",
+		"ZAPGW_CONECTOR_READY":         "ZAPGW_CONNECTOR_READY",
+		"ZAPGW_LIDERANCA_ARQUIVO":      "ZAPGW_LEADERSHIP_FILE",
+		"ZAPGW_LIDERANCA_VALIDADE":     "ZAPGW_LEADERSHIP_VALIDITY",
+		"ZAPGW_SONDA_EXTERNA_URL":      "ZAPGW_EXTERNAL_PROBE_URL",
+	}
+
+	// One OLD name at a time: setting several together would only prove
+	// the FIRST one checked refuses, not that each pair still refuses on
+	// its own. Every OTHER variable keeps its GOOD value under the NEW
+	// name — the address needs its own free port per sub-test, and the
+	// leadership pair needs the FILE variable present for the VALIDITY
+	// one to even be looked at (a disarmed guard never reads validity).
+	for oldName, newName := range oldToNew {
+		t.Run(oldName, func(t *testing.T) {
+			vars := map[string]string{}
+			for k, v := range goodNewVars {
+				vars[k] = v
+			}
+			vars["ZAPGW_ADDRESS"] = freeAddress(t)
+			if oldName == "ZAPGW_LIDERANCA_VALIDADE" {
+				vars["ZAPGW_LEADERSHIP_FILE"] = filepath.Join(t.TempDir(), "lider")
+			}
+			value := vars[newName]
+			delete(vars, newName)
+			vars[oldName] = value
+
+			stderr, healthy := bootAndCaptureStderr(t, bin, vars, 5*time.Second)
+			if healthy {
+				t.Fatalf("the server booted HEALTHY with the old name %s set — it must refuse to start.\nstderr:\n%s", oldName, stderr)
+			}
+			if !strings.Contains(stderr, newName) {
+				t.Errorf("startup with %s set did not name %s in stderr:\n%s", oldName, newName, stderr)
+			}
+		})
+	}
+
+	silentVars := map[string]string{}
+	for k, v := range goodNewVars {
+		silentVars[k] = v
+	}
+	silentVars["ZAPGW_ADDRESS"] = freeAddress(t)
+	newStderr, healthy := bootAndCaptureStderr(t, bin, silentVars, 15*time.Second)
+	if !healthy {
+		t.Fatalf("the server did NOT boot healthy with every variable in its NEW name:\nstderr:\n%s", newStderr)
+	}
+	for _, forbidden := range []string{"no longer read", "deprecated", "ErrObsoleteEnvVar"} {
+		if strings.Contains(newStderr, forbidden) {
+			t.Errorf("startup with ALL NEW names printed an unwarranted notice (%q):\nstderr:\n%s", forbidden, newStderr)
+		}
 	}
 }

@@ -362,17 +362,17 @@ const SevenDayWindow = (ShortSeriesDays - 1) * 24 * time.Hour
 // brings down the dashboard that asked for it.
 const DefaultRetentionDays = 90
 
-// CounterRetentionEnvVar is the environment variable that changes the
-// deadline above. Documented in docs/IMPLANTACAO.md.
-//
-// This is the OLD (Portuguese) name. T-214 (2026-08-31) added
-// CounterRetentionEnvVarNew as the English pair — this constant stays,
-// unchanged and still read, because it is the ONLY name an already-deployed
-// /etc/zapgw/env has; see CounterRetentionDays.
+// CounterRetentionEnvVar is the OLD (Portuguese) name of the environment
+// variable that changes the deadline above. T-214 (2026-08-31) added
+// CounterRetentionEnvVarNew as the English pair; T-244 (2026-09-15) stopped
+// reading this name — it stays declared ONLY because EnvRefusingOld's
+// refusal names it, and because a stray export of it in an operator's
+// /etc/zapgw/env must still be recognized and REFUSED, never silently
+// ignored. See CounterRetentionDays.
 const CounterRetentionEnvVar = "ZAPGW_TTL_CONTADORES_DIAS"
 
-// CounterRetentionEnvVarNew is the English name of CounterRetentionEnvVar
-// (T-214). The NEW name wins when both are set — see config.EnvOrOld.
+// CounterRetentionEnvVarNew is the English name of CounterRetentionEnvVar,
+// and the ONLY one CounterRetentionDays reads (T-244) — see config.EnvRefusingOld.
 const CounterRetentionEnvVarNew = "ZAPGW_TTL_COUNTERS_DAYS"
 
 // CounterRetentionDays resolves the counters' retention deadline, in
@@ -394,20 +394,23 @@ const CounterRetentionEnvVarNew = "ZAPGW_TTL_COUNTERS_DAYS"
 // changing this here would make an `env` with a wrong digit bring the
 // server down on startup instead of keeping counters for longer than requested.
 //
-// T-214: accepts CounterRetentionEnvVarNew in addition to the old name (new
-// wins if both are set), and logs once (config.WarnOldEnvVar) when the value
-// that won came from the OLD name — never when it fell back to the default,
-// since then no operator wrote either variable at all.
-func CounterRetentionDays(getenv func(string) string) int {
+// T-244: the OLD name (CounterRetentionEnvVar) is no longer read — if it is
+// set, this returns an error wrapping ErrObsoleteEnvVar instead of a day
+// count, and the caller has to bring the startup down (see
+// config.EnvRefusingOld's header for why: silently ignoring it would open
+// the door to booting on the DEFAULT retention with nobody noticing).
+func CounterRetentionDays(getenv func(string) string) (int, error) {
 	if getenv == nil {
-		return DefaultRetentionDays
+		return DefaultRetentionDays, nil
 	}
-	v, oldUsed := EnvOrOld(getenv, CounterRetentionEnvVarNew, CounterRetentionEnvVar)
+	v, err := EnvRefusingOld(getenv, CounterRetentionEnvVarNew, CounterRetentionEnvVar)
+	if err != nil {
+		return 0, err
+	}
 	if n, err := strconv.Atoi(v); err == nil && n > 0 {
-		WarnOldEnvVar(oldUsed, CounterRetentionEnvVar, CounterRetentionEnvVarNew)
-		return n
+		return n, nil
 	}
-	return DefaultRetentionDays
+	return DefaultRetentionDays, nil
 }
 
 // dayOf formats the instant as the counter's DAY, always in UTC — one

@@ -52,18 +52,24 @@ const (
 	envPublicURLOld = "ZAPGW_URL_PUBLICA"
 )
 
-// databasePath resolves the database file path — ZAPGW_DATABASE, falling
-// back to ZAPGW_BANCO — with the "zapgw.db" default applied here. THE ONE
-// PLACE both openStore and `zapgw perdidas` (lost.go) get this default from,
-// so the two can never diverge on which file "no variable at all" opens —
-// exactly the divergence class CounterRetentionDays's own header warns
-// against.
-func databasePath(env environment) (path string, oldNameUsed bool) {
-	path, oldNameUsed = config.EnvOrOld(env, envDatabaseNew, envDatabaseOld)
+// databasePath resolves the database file path — ZAPGW_DATABASE, with the
+// "zapgw.db" default applied here. THE ONE PLACE both openStore and `zapgw
+// perdidas` (lost.go) get this default from, so the two can never diverge
+// on which file "no variable at all" opens — exactly the divergence class
+// CounterRetentionDays's own header warns against.
+//
+// T-244: the OLD name (ZAPGW_BANCO) is no longer read — if it is set, this
+// returns an error wrapping config.ErrObsoleteEnvVar instead of a path, and
+// the caller has to bring the startup down.
+func databasePath(env environment) (path string, err error) {
+	path, err = config.EnvRefusingOld(env, envDatabaseNew, envDatabaseOld)
+	if err != nil {
+		return "", err
+	}
 	if path == "" {
 		path = "zapgw.db"
 	}
-	return path, oldNameUsed
+	return path, nil
 }
 
 // warnOldVerb prints the T-214 CLI-verb warning: the OLD (Portuguese) verb

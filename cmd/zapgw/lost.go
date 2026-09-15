@@ -37,9 +37,11 @@ func lostCommand(args []string, out io.Writer, env environment) error {
 	}
 	currentPath := *current
 	if currentPath == "" {
-		var oldUsed bool
-		currentPath, oldUsed = databasePath(env)
-		config.WarnOldEnvVar(oldUsed, envDatabaseOld, envDatabaseNew)
+		var err error
+		currentPath, err = databasePath(env)
+		if err != nil {
+			return err
+		}
 	}
 
 	c, err := config.CompareFailover(*old, currentPath)

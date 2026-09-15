@@ -8,10 +8,9 @@
 package outbound
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
-	"log"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -46,20 +45,25 @@ func TestIngressViaAcceptsTheKnownPathsAndRefusesTheRest(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		via, err := IngressVia(func(string) string { return c.env })
+		via, err := IngressVia(func(k string) string {
+			if k == VarIngressViaNew {
+				return c.env
+			}
+			return ""
+		})
 		if c.wantErr {
 			if err == nil {
 				t.Errorf("%s=%q returned via=%q with no error; the binary HAS to refuse to start",
-					VarIngressVia, c.env, via)
+					VarIngressViaNew, c.env, via)
 			}
 			continue
 		}
 		if err != nil {
-			t.Errorf("%s=%q: unexpected error: %v", VarIngressVia, c.env, err)
+			t.Errorf("%s=%q: unexpected error: %v", VarIngressViaNew, c.env, err)
 			continue
 		}
 		if via != c.want {
-			t.Errorf("%s=%q gave via=%q, want %q", VarIngressVia, c.env, via, c.want)
+			t.Errorf("%s=%q gave via=%q, want %q", VarIngressViaNew, c.env, via, c.want)
 		}
 	}
 }
@@ -68,11 +72,16 @@ func TestIngressViaAcceptsTheKnownPathsAndRefusesTheRest(t *testing.T) {
 // is on the console of a machine that just failed to start, without the code
 // in front of them.
 func TestIngressViaSaysWhatToDoInTheError(t *testing.T) {
-	_, err := IngressVia(func(string) string { return "tunnel" })
+	_, err := IngressVia(func(k string) string {
+		if k == VarIngressViaNew {
+			return "tunnel"
+		}
+		return ""
+	})
 	if err == nil {
 		t.Fatal("unknown value has to give an error")
 	}
-	for _, want := range []string{VarIngressVia, "tunnel", ViaTunnel, ViaPortForwarding} {
+	for _, want := range []string{VarIngressViaNew, "tunnel", ViaTunnel, ViaPortForwarding} {
 		if !strings.Contains(err.Error(), want) {
 			t.Errorf("the message does not cite %q: %v", want, err)
 		}
@@ -90,12 +99,21 @@ func TestConnectorAddressTrimsSurroundingSpace(t *testing.T) {
 		"   ":                              "",
 	}
 	for raw, want := range cases {
-		if has := ConnectorAddress(func(string) string { return raw }); has != want {
+		has, err := ConnectorAddress(func(k string) string {
+			if k == VarConnectorReadyNew {
+				return raw
+			}
+			return ""
+		})
+		if err != nil {
+			t.Fatalf("ConnectorAddress(%q): %v", raw, err)
+		}
+		if has != want {
 			t.Errorf("ConnectorAddress(%q) = %q, want %q", raw, has, want)
 		}
 	}
-	if has := ConnectorAddress(nil); has != "" {
-		t.Errorf("ConnectorAddress(nil) = %q, want empty", has)
+	if has, err := ConnectorAddress(nil); err != nil || has != "" {
+		t.Errorf("ConnectorAddress(nil) = (%q, %v), want (\"\", nil)", has, err)
 	}
 }
 
@@ -496,26 +514,40 @@ func TestTheIngressBlockAppearsOnTheCLIScreen(t *testing.T) {
 	}
 }
 
-// --- T-214: VarIngressViaNew/VarConnectorReadyNew, the English pair --------
+// --- T-244: the OLD names (VarIngressVia/VarConnectorReady) are refused ---
 
-// TestIngressViaAcceptsTheNewNameAndItWins is T-214's Verify for
-// ZAPGW_INGRESS_VIA/ZAPGW_ENTRADA_VIA: both work alone, and the NEW one
-// wins when both are set.
-func TestIngressViaAcceptsTheNewNameAndItWins(t *testing.T) {
+// TestIngressViaRefusesOldName is T-244's Verify for
+// ZAPGW_INGRESS_VIA/ZAPGW_ENTRADA_VIA: (a) only the new name -> read; (b)
+// only the old one -> refused, naming the new name, value not read; (c)
+// both -> refused too.
+func TestIngressViaRefusesOldName(t *testing.T) {
 	cases := []struct {
-		name string
-		vars map[string]string
-		want string
+		name    string
+		vars    map[string]string
+		want    string
+		wantErr bool
 	}{
-		{"so a nova", map[string]string{VarIngressViaNew: ViaTunnel}, ViaTunnel},
-		{"so a velha", map[string]string{VarIngressVia: ViaPortForwarding}, ViaPortForwarding},
-		{"as duas: a NOVA vence", map[string]string{
+		{"(a) only the new one -> read", map[string]string{VarIngressViaNew: ViaTunnel}, ViaTunnel, false},
+		{"(b) only the old one -> refused", map[string]string{VarIngressVia: ViaPortForwarding}, "", true},
+		{"(c) both -> refused too", map[string]string{
 			VarIngressViaNew: ViaTunnel, VarIngressVia: ViaPortForwarding,
-		}, ViaTunnel},
+		}, "", true},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			via, err := IngressVia(func(k string) string { return c.vars[k] })
+			if c.wantErr {
+				if err == nil {
+					t.Fatalf("IngressVia = (%q, nil), want a refusal naming %s", via, VarIngressViaNew)
+				}
+				if !errors.Is(err, config.ErrObsoleteEnvVar) {
+					t.Errorf("error does not wrap config.ErrObsoleteEnvVar: %v", err)
+				}
+				if !strings.Contains(err.Error(), VarIngressViaNew) {
+					t.Errorf("the refusal does not name %s: %v", VarIngressViaNew, err)
+				}
+				return
+			}
 			if err != nil {
 				t.Fatalf("IngressVia: %v", err)
 			}
@@ -526,80 +558,41 @@ func TestIngressViaAcceptsTheNewNameAndItWins(t *testing.T) {
 	}
 }
 
-// TestIngressViaWarnsOnlyWhenOldNameWins is T-214 Do item 3.
-func TestIngressViaWarnsOnlyWhenOldNameWins(t *testing.T) {
+// TestConnectorAddressRefusesOldName mirrors TestIngressViaRefusesOldName
+// for ZAPGW_CONNECTOR_READY/ZAPGW_CONECTOR_READY.
+func TestConnectorAddressRefusesOldName(t *testing.T) {
 	cases := []struct {
-		name     string
-		vars     map[string]string
-		wantWarn bool
+		name    string
+		vars    map[string]string
+		want    string
+		wantErr bool
 	}{
-		{"only the old one: warns", map[string]string{VarIngressVia: ViaTunnel}, true},
-		{"so a nova: fica calado", map[string]string{VarIngressViaNew: ViaTunnel}, false},
-		{"nenhuma: fica calado", map[string]string{}, false},
-	}
-	original := log.Writer()
-	for _, c := range cases {
-		t.Run(c.name, func(t *testing.T) {
-			var buf bytes.Buffer
-			log.SetOutput(&buf)
-			if _, err := IngressVia(func(k string) string { return c.vars[k] }); err != nil {
-				log.SetOutput(original)
-				t.Fatalf("IngressVia: %v", err)
-			}
-			log.SetOutput(original)
-			warned := strings.Contains(buf.String(), VarIngressVia) && strings.Contains(buf.String(), "deprecated")
-			if warned != c.wantWarn {
-				t.Errorf("warning = %v (log: %q), want %v", warned, buf.String(), c.wantWarn)
-			}
-		})
-	}
-}
-
-// TestConnectorAddressAcceptsTheNewNameAndItWins mirrors
-// TestIngressViaAcceptsTheNewNameAndItWins for
-// ZAPGW_CONNECTOR_READY/ZAPGW_CONECTOR_READY.
-func TestConnectorAddressAcceptsTheNewNameAndItWins(t *testing.T) {
-	cases := []struct {
-		name string
-		vars map[string]string
-		want string
-	}{
-		{"so a nova", map[string]string{VarConnectorReadyNew: "http://novo/ready"}, "http://novo/ready"},
-		{"so a velha", map[string]string{VarConnectorReady: "http://velho/ready"}, "http://velho/ready"},
-		{"as duas: a NOVA vence", map[string]string{
+		{"(a) only the new one -> read", map[string]string{VarConnectorReadyNew: "http://novo/ready"}, "http://novo/ready", false},
+		{"(b) only the old one -> refused", map[string]string{VarConnectorReady: "http://velho/ready"}, "", true},
+		{"(c) both -> refused too", map[string]string{
 			VarConnectorReadyNew: "http://novo/ready", VarConnectorReady: "http://velho/ready",
-		}, "http://novo/ready"},
+		}, "", true},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			if has := ConnectorAddress(func(k string) string { return c.vars[k] }); has != c.want {
-				t.Errorf("ConnectorAddress = %q, want %q", has, c.want)
+			has, err := ConnectorAddress(func(k string) string { return c.vars[k] })
+			if c.wantErr {
+				if err == nil {
+					t.Fatalf("ConnectorAddress = (%q, nil), want a refusal naming %s", has, VarConnectorReadyNew)
+				}
+				if !errors.Is(err, config.ErrObsoleteEnvVar) {
+					t.Errorf("error does not wrap config.ErrObsoleteEnvVar: %v", err)
+				}
+				if !strings.Contains(err.Error(), VarConnectorReadyNew) {
+					t.Errorf("the refusal does not name %s: %v", VarConnectorReadyNew, err)
+				}
+				return
 			}
-		})
-	}
-}
-
-// TestConnectorAddressWarnsOnlyWhenOldNameWins is T-214 Do item 3.
-func TestConnectorAddressWarnsOnlyWhenOldNameWins(t *testing.T) {
-	cases := []struct {
-		name     string
-		vars     map[string]string
-		wantWarn bool
-	}{
-		{"only the old one: warns", map[string]string{VarConnectorReady: "http://velho/ready"}, true},
-		{"so a nova: fica calado", map[string]string{VarConnectorReadyNew: "http://novo/ready"}, false},
-		{"nenhuma: fica calado", map[string]string{}, false},
-	}
-	original := log.Writer()
-	for _, c := range cases {
-		t.Run(c.name, func(t *testing.T) {
-			var buf bytes.Buffer
-			log.SetOutput(&buf)
-			ConnectorAddress(func(k string) string { return c.vars[k] })
-			log.SetOutput(original)
-			warned := strings.Contains(buf.String(), VarConnectorReady) && strings.Contains(buf.String(), "deprecated")
-			if warned != c.wantWarn {
-				t.Errorf("warning = %v (log: %q), want %v", warned, buf.String(), c.wantWarn)
+			if err != nil {
+				t.Fatalf("ConnectorAddress: %v", err)
+			}
+			if has != c.want {
+				t.Errorf("ConnectorAddress = %q, want %q", has, c.want)
 			}
 		})
 	}

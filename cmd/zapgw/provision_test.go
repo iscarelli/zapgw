@@ -40,9 +40,9 @@ const testKey = "000000000000000000000000000000000000000000000000000000000000000
 func testEnvironment(t *testing.T) map[string]string {
 	t.Helper()
 	return map[string]string{
-		"ZAPGW_CHAVE_CIFRA": testKey,
-		"ZAPGW_BANCO":       filepath.Join(t.TempDir(), "zapgw.db"),
-		"ZAPGW_URL_PUBLICA": "https://zapgw.exemplo.test",
+		"ZAPGW_ENCRYPTION_KEY": testKey,
+		"ZAPGW_DATABASE":       filepath.Join(t.TempDir(), "zapgw.db"),
+		"ZAPGW_PUBLIC_URL":     "https://zapgw.exemplo.test",
 	}
 }
 
@@ -56,11 +56,11 @@ func fakeEnvironment(vars map[string]string) environment {
 // disk, not what passed through memory.
 func storeFromEnvironment(t *testing.T, vars map[string]string) *config.Store {
 	t.Helper()
-	vault, err := config.NewVault(vars["ZAPGW_CHAVE_CIFRA"])
+	vault, err := config.NewVault(vars["ZAPGW_ENCRYPTION_KEY"])
 	if err != nil {
 		t.Fatalf("NewVault: %v", err)
 	}
-	s, err := config.OpenStore(vars["ZAPGW_BANCO"], vault)
+	s, err := config.OpenStore(vars["ZAPGW_DATABASE"], vault)
 	if err != nil {
 		t.Fatalf("OpenStore: %v", err)
 	}
@@ -88,8 +88,8 @@ func TestProvisionInstanceWritesEncryptedAndReturnsInTheClear(t *testing.T) {
 	vars := testEnvironment(t)
 	vars["ZAPGW_APP_SECRET"] = "app-secret-de-teste"
 	vars["ZAPGW_VERIFY_TOKEN"] = "verify-token-de-teste"
-	vars["ZAPGW_TOKEN_ENVIO"] = "token-envio-de-teste"
-	vars["ZAPGW_SEGREDO_ENTREGA"] = "segredo-entrega-de-teste"
+	vars["ZAPGW_SEND_TOKEN"] = "token-envio-de-teste"
+	vars["ZAPGW_DELIVERY_SECRET"] = "segredo-entrega-de-teste"
 
 	var out bytes.Buffer
 	if err := dispatch(instanceArgs("lojinha"), &out, fakeEnvironment(vars)); err != nil {
@@ -281,8 +281,8 @@ func TestProvisionInstancePrintsNOSecretAtAll(t *testing.T) {
 		secrets := map[string]string{
 			"ZAPGW_APP_SECRET":      "segredo-app-nao-pode-vazar",
 			"ZAPGW_VERIFY_TOKEN":    "segredo-verify-nao-pode-vazar",
-			"ZAPGW_TOKEN_ENVIO":     "segredo-envio-nao-pode-vazar",
-			"ZAPGW_SEGREDO_ENTREGA": "segredo-entrega-nao-pode-vazar",
+			"ZAPGW_SEND_TOKEN":      "segredo-envio-nao-pode-vazar",
+			"ZAPGW_DELIVERY_SECRET": "segredo-entrega-nao-pode-vazar",
 		}
 		for k, v := range secrets {
 			vars[k] = v
@@ -323,8 +323,8 @@ func TestProvisionInstancePrintsNOSecretAtAll(t *testing.T) {
 			t.Fatalf("FindInstance: %v", err)
 		}
 		drawn := map[string]string{
-			"ZAPGW_APP_SECRET":  i.AppSecret,
-			"ZAPGW_TOKEN_ENVIO": i.SendToken,
+			"ZAPGW_APP_SECRET": i.AppSecret,
+			"ZAPGW_SEND_TOKEN": i.SendToken,
 		}
 		for name, value := range drawn {
 			if value == "" {
@@ -343,7 +343,7 @@ func TestProvisionInstanceGeneratesTheMissingSecretsAndSaysWHICH(t *testing.T) {
 	// generated — and inbound would then reject Meta's HMAC with no one
 	// understanding why.
 	vars := testEnvironment(t)
-	vars["ZAPGW_TOKEN_ENVIO"] = "token-envio-de-teste" // this one came in; the other three didn't
+	vars["ZAPGW_SEND_TOKEN"] = "token-envio-de-teste" // this one came in; the other three didn't
 
 	var out bytes.Buffer
 	if err := dispatch(instanceArgs("lojinha"), &out, fakeEnvironment(vars)); err != nil {
@@ -364,10 +364,10 @@ func TestProvisionInstanceGeneratesTheMissingSecretsAndSaysWHICH(t *testing.T) {
 			t.Errorf("the output does not deliver the %q it generated:\n%s", field, text)
 		}
 	}
-	// "ZAPGW_TOKEN_ENVIO" came from the environment: it cannot appear
+	// "ZAPGW_SEND_TOKEN" came from the environment: it cannot appear
 	// anywhere in the output, not even as a name.
-	if strings.Contains(text, "ZAPGW_TOKEN_ENVIO") {
-		t.Errorf("the output says ZAPGW_TOKEN_ENVIO was generated, but it came from the environment:\n%s", text)
+	if strings.Contains(text, "ZAPGW_SEND_TOKEN") {
+		t.Errorf("the output says ZAPGW_SEND_TOKEN was generated, but it came from the environment:\n%s", text)
 	}
 
 	// Generated cannot be empty: a blank app_secret would make inbound
@@ -839,8 +839,8 @@ func provisionedForRotation(t *testing.T, slug string) map[string]string {
 	}
 	creation["ZAPGW_APP_SECRET"] = oldAppSecret
 	creation["ZAPGW_VERIFY_TOKEN"] = oldVerify
-	creation["ZAPGW_TOKEN_ENVIO"] = oldSend
-	creation["ZAPGW_SEGREDO_ENTREGA"] = oldDelivery
+	creation["ZAPGW_SEND_TOKEN"] = oldSend
+	creation["ZAPGW_DELIVERY_SECRET"] = oldDelivery
 
 	var out bytes.Buffer
 	if err := dispatch(instanceArgs(slug), &out, fakeEnvironment(creation)); err != nil {
@@ -912,7 +912,7 @@ func TestRotateInstanceChangesOnlyWhatCAMEInTheEnvironment(t *testing.T) {
 	if !strings.Contains(text, "ZAPGW_APP_SECRET") {
 		t.Errorf("the output does not say ZAPGW_APP_SECRET was swapped:\n%s", text)
 	}
-	for _, notSwapped := range []string{"ZAPGW_VERIFY_TOKEN", "ZAPGW_TOKEN_ENVIO", "ZAPGW_SEGREDO_ENTREGA"} {
+	for _, notSwapped := range []string{"ZAPGW_VERIFY_TOKEN", "ZAPGW_SEND_TOKEN", "ZAPGW_DELIVERY_SECRET"} {
 		if strings.Contains(text, notSwapped) {
 			t.Errorf("the output says %s was swapped, but it did not come from the environment:\n%s", notSwapped, text)
 		}
@@ -1072,8 +1072,8 @@ func TestRotateInstancePrintsNOSecretAtAll(t *testing.T) {
 	newValues := map[string]string{
 		"ZAPGW_APP_SECRET":      "app-secret-NOVO-nao-pode-vazar",
 		"ZAPGW_VERIFY_TOKEN":    "verify-token-NOVO-nao-pode-vazar",
-		"ZAPGW_TOKEN_ENVIO":     "token-envio-NOVO-nao-pode-vazar",
-		"ZAPGW_SEGREDO_ENTREGA": "segredo-entrega-NOVO-nao-pode-vazar",
+		"ZAPGW_SEND_TOKEN":      "token-envio-NOVO-nao-pode-vazar",
+		"ZAPGW_DELIVERY_SECRET": "segredo-entrega-NOVO-nao-pode-vazar",
 	}
 	for k, v := range newValues {
 		vars[k] = v
@@ -1200,8 +1200,8 @@ func instagramProvisionedForRotation(t *testing.T, slug, igID string) map[string
 	}
 	creation["ZAPGW_APP_SECRET"] = oldAppSecret
 	creation["ZAPGW_VERIFY_TOKEN"] = oldVerify
-	creation["ZAPGW_TOKEN_ENVIO"] = oldSend
-	creation["ZAPGW_SEGREDO_ENTREGA"] = oldDelivery
+	creation["ZAPGW_SEND_TOKEN"] = oldSend
+	creation["ZAPGW_DELIVERY_SECRET"] = oldDelivery
 
 	var out bytes.Buffer
 	args := []string{
@@ -1218,7 +1218,7 @@ func instagramProvisionedForRotation(t *testing.T, slug, igID string) map[string
 }
 
 // instagramInstanceArgs is the minimal --tipo instagram (slug, ig-id,
-// callback) — T-114's tests add ZAPGW_APP_SECRET/ZAPGW_TOKEN_ENVIO (or
+// callback) — T-114's tests add ZAPGW_APP_SECRET/ZAPGW_SEND_TOKEN (or
 // not) on top of this same environment.
 func instagramInstanceArgs(slug, igID string) []string {
 	return []string{
@@ -1234,7 +1234,7 @@ func instagramInstanceArgs(slug, igID string) []string {
 //
 // Before this task, `consumerMeta` (above) excluded Instagram from
 // the "consumer registers later" branch (Instagram has no POST
-// /v1/cadastro, T-111) — so with ZAPGW_APP_SECRET or ZAPGW_TOKEN_ENVIO
+// /v1/cadastro, T-111) — so with ZAPGW_APP_SECRET or ZAPGW_SEND_TOKEN
 // missing the command GENERATED both and finished successfully. An
 // instance like that never works: the generated app_secret rejects every
 // webhook by HMAC, and nothing warned the operator. These three tests
@@ -1245,7 +1245,7 @@ func instagramInstanceArgs(slug, igID string) []string {
 // ZAPGW_APP_SECRET is missing.
 func TestProvisionInstanceInstagramRefusesWithoutAppSecret(t *testing.T) {
 	vars := testEnvironment(t)
-	vars["ZAPGW_TOKEN_ENVIO"] = "token-envio-de-teste"
+	vars["ZAPGW_SEND_TOKEN"] = "token-envio-de-teste"
 
 	var out bytes.Buffer
 	err := dispatch(instagramInstanceArgs("insta-loja", "IGID_SINTETICO_SEM_APP_SECRET"), &out, fakeEnvironment(vars))
@@ -1255,8 +1255,8 @@ func TestProvisionInstanceInstagramRefusesWithoutAppSecret(t *testing.T) {
 	if !strings.Contains(err.Error(), "ZAPGW_APP_SECRET") {
 		t.Errorf("the error does not name ZAPGW_APP_SECRET as what's missing: %v", err)
 	}
-	if strings.Contains(err.Error(), "ZAPGW_TOKEN_ENVIO") {
-		t.Errorf("the error names ZAPGW_TOKEN_ENVIO, which was NOT missing: %v", err)
+	if strings.Contains(err.Error(), "ZAPGW_SEND_TOKEN") {
+		t.Errorf("the error names ZAPGW_SEND_TOKEN, which was NOT missing: %v", err)
 	}
 	if n := countInstancesFromEnvironment(t, vars); n != 0 {
 		t.Errorf("%d instance(s) created despite the refusal", n)
@@ -1264,7 +1264,7 @@ func TestProvisionInstanceInstagramRefusesWithoutAppSecret(t *testing.T) {
 }
 
 // TestProvisionInstanceInstagramRefusesWithoutSendToken is case (b): only
-// ZAPGW_TOKEN_ENVIO is missing.
+// ZAPGW_SEND_TOKEN is missing.
 func TestProvisionInstanceInstagramRefusesWithoutSendToken(t *testing.T) {
 	vars := testEnvironment(t)
 	vars["ZAPGW_APP_SECRET"] = "app-secret-de-teste"
@@ -1272,10 +1272,10 @@ func TestProvisionInstanceInstagramRefusesWithoutSendToken(t *testing.T) {
 	var out bytes.Buffer
 	err := dispatch(instagramInstanceArgs("insta-loja", "IGID_SINTETICO_SEM_TOKEN_ENVIO"), &out, fakeEnvironment(vars))
 	if err == nil {
-		t.Fatal("the creation was ACCEPTED without ZAPGW_TOKEN_ENVIO")
+		t.Fatal("the creation was ACCEPTED without ZAPGW_SEND_TOKEN")
 	}
-	if !strings.Contains(err.Error(), "ZAPGW_TOKEN_ENVIO") {
-		t.Errorf("the error does not name ZAPGW_TOKEN_ENVIO as what's missing: %v", err)
+	if !strings.Contains(err.Error(), "ZAPGW_SEND_TOKEN") {
+		t.Errorf("the error does not name ZAPGW_SEND_TOKEN as what's missing: %v", err)
 	}
 	if strings.Contains(err.Error(), "ZAPGW_APP_SECRET") {
 		t.Errorf("the error names ZAPGW_APP_SECRET, which was NOT missing: %v", err)
@@ -1293,9 +1293,9 @@ func TestProvisionInstanceInstagramRefusesWithNeitherOfTheTwo(t *testing.T) {
 	var out bytes.Buffer
 	err := dispatch(instagramInstanceArgs("insta-loja", "IGID_SINTETICO_SEM_NENHUM"), &out, fakeEnvironment(vars))
 	if err == nil {
-		t.Fatal("the creation was ACCEPTED without ZAPGW_APP_SECRET or ZAPGW_TOKEN_ENVIO")
+		t.Fatal("the creation was ACCEPTED without ZAPGW_APP_SECRET or ZAPGW_SEND_TOKEN")
 	}
-	for _, name := range []string{"ZAPGW_APP_SECRET", "ZAPGW_TOKEN_ENVIO"} {
+	for _, name := range []string{"ZAPGW_APP_SECRET", "ZAPGW_SEND_TOKEN"} {
 		if !strings.Contains(err.Error(), name) {
 			t.Errorf("the error does not name %s: %v", name, err)
 		}
@@ -1311,7 +1311,7 @@ func TestProvisionInstanceInstagramRefusesWithNeitherOfTheTwo(t *testing.T) {
 func TestProvisionInstanceInstagramWithBothSecretsCreatesSuccessfully(t *testing.T) {
 	vars := testEnvironment(t)
 	vars["ZAPGW_APP_SECRET"] = "app-secret-de-teste"
-	vars["ZAPGW_TOKEN_ENVIO"] = "token-envio-de-teste"
+	vars["ZAPGW_SEND_TOKEN"] = "token-envio-de-teste"
 
 	var out bytes.Buffer
 	if err := dispatch(instagramInstanceArgs("insta-loja", "IGID_SINTETICO_COM_OS_DOIS"), &out, fakeEnvironment(vars)); err != nil {
@@ -1324,7 +1324,7 @@ func TestProvisionInstanceInstagramWithBothSecretsCreatesSuccessfully(t *testing
 
 // TestProvisionInstanceWhatsAppDoesNotChangeWithTheInstagramCheck is the
 // negative guard for item 2 of T-114: a --tipo whatsapp instance (the
-// default, with no --tipo) with no ZAPGW_APP_SECRET/ZAPGW_TOKEN_ENVIO
+// default, with no --tipo) with no ZAPGW_APP_SECRET/ZAPGW_SEND_TOKEN
 // still GENERATES both and finishes successfully — exactly as before this
 // task. The new check is exclusive to Instagram (a lab WhatsApp's
 // SendToken still has POST /v1/cadastro as the fix path, T-079).
@@ -1336,7 +1336,7 @@ func TestProvisionInstanceWhatsAppDoesNotChangeWithTheInstagramCheck(t *testing.
 		t.Fatalf("the whatsapp creation was REFUSED: %v", err)
 	}
 	text := out.String()
-	if !strings.Contains(text, "ZAPGW_APP_SECRET") || !strings.Contains(text, "ZAPGW_TOKEN_ENVIO") {
+	if !strings.Contains(text, "ZAPGW_APP_SECRET") || !strings.Contains(text, "ZAPGW_SEND_TOKEN") {
 		t.Errorf("the output does not say both secrets were generated, as always:\n%s", text)
 	}
 	if n := countInstancesFromEnvironment(t, vars); n != 1 {
@@ -1533,12 +1533,12 @@ func TestListInstancesShowsTheTYPEOfBoth(t *testing.T) {
 	}
 	creation.Reset()
 	// T-114: --tipo instagram requires ZAPGW_APP_SECRET and
-	// ZAPGW_TOKEN_ENVIO in the environment — without them creation is
+	// ZAPGW_SEND_TOKEN in the environment — without them creation is
 	// REJECTED. This test isn't about that requirement (it's about the
 	// TIPO column in `instancia listar`), so it supplies them with
 	// synthetic values just so the instance is born.
 	vars["ZAPGW_APP_SECRET"] = "app-secret-de-teste"
-	vars["ZAPGW_TOKEN_ENVIO"] = "token-envio-de-teste"
+	vars["ZAPGW_SEND_TOKEN"] = "token-envio-de-teste"
 	if err := dispatch([]string{
 		"provisionar", "instancia",
 		"--slug", "insta-loja",
@@ -1732,8 +1732,8 @@ func TestListInstancesPrintsNoSECRETAtAll(t *testing.T) {
 	secrets := map[string]string{
 		"ZAPGW_APP_SECRET":      "segredo-app-nao-pode-vazar",
 		"ZAPGW_VERIFY_TOKEN":    "segredo-verify-nao-pode-vazar",
-		"ZAPGW_TOKEN_ENVIO":     "segredo-envio-nao-pode-vazar",
-		"ZAPGW_SEGREDO_ENTREGA": "segredo-entrega-nao-pode-vazar",
+		"ZAPGW_SEND_TOKEN":      "segredo-envio-nao-pode-vazar",
+		"ZAPGW_DELIVERY_SECRET": "segredo-entrega-nao-pode-vazar",
 	}
 	for k, v := range secrets {
 		vars[k] = v
@@ -1818,7 +1818,7 @@ func TestListInstancesWorksWithTheWRONGCIPHERKEY(t *testing.T) {
 	for k, v := range vars {
 		withAnotherKey[k] = v
 	}
-	withAnotherKey["ZAPGW_CHAVE_CIFRA"] = "00000000000000000000000000000000000000000000000000000000000000ff"
+	withAnotherKey["ZAPGW_ENCRYPTION_KEY"] = "00000000000000000000000000000000000000000000000000000000000000ff"
 
 	// THE KEY REALLY HAS TO BE WRONG: with both the same the test would
 	// pass green without exercising anything — the trap shape
@@ -2141,7 +2141,7 @@ func TestProvisionInstanceDoesNOTPrintTheSecretsNOBODYNeedsToReadBack(t *testing
 	if strings.Contains(text, i.SendToken) {
 		t.Error("the generated token_envio appeared on screen")
 	}
-	if !strings.Contains(text, "ZAPGW_APP_SECRET") || !strings.Contains(text, "ZAPGW_TOKEN_ENVIO") {
+	if !strings.Contains(text, "ZAPGW_APP_SECRET") || !strings.Contains(text, "ZAPGW_SEND_TOKEN") {
 		t.Errorf("the output does not say WHICH ones were generated silently:\n%s", text)
 	}
 	// And the reverse: the two shared ones must NOT appear in the "the
@@ -2161,7 +2161,7 @@ func TestProvisionInstanceDoesNotReprintWhatCAMEFromTheENVIRONMENT(t *testing.T)
 	// all four).
 	vars := testEnvironment(t)
 	vars["ZAPGW_VERIFY_TOKEN"] = "verify-que-eu-ja-tenho"
-	vars["ZAPGW_SEGREDO_ENTREGA"] = "entrega-que-eu-ja-tenho"
+	vars["ZAPGW_DELIVERY_SECRET"] = "entrega-que-eu-ja-tenho"
 
 	var out bytes.Buffer
 	if err := dispatch(instanceArgs("lojinha"), &out, fakeEnvironment(vars)); err != nil {
@@ -2804,7 +2804,7 @@ type registrationRequest struct {
 }
 
 // registrationScenario provisions a --tipo whatsapp instance (with a fixed
-// ZAPGW_TOKEN_ENVIO, for the test to check the Authorization) and points
+// ZAPGW_SEND_TOKEN, for the test to check the Authorization) and points
 // ZAPGW_GRAPH_BASE at a fake Meta that always accepts and returns
 // {"success":true} — the SAME pattern as smokeScenario
 // (smoke_test.go), path-based because this command hits THREE different
@@ -2824,7 +2824,7 @@ func registrationScenario(t *testing.T) (map[string]string, *[]registrationReque
 
 	vars := testEnvironment(t)
 	vars["ZAPGW_GRAPH_BASE"] = srv.URL
-	vars["ZAPGW_TOKEN_ENVIO"] = "token-de-envio-de-teste"
+	vars["ZAPGW_SEND_TOKEN"] = "token-de-envio-de-teste"
 
 	var junk bytes.Buffer
 	if err := dispatch(instanceArgs("lojinha"), &junk, fakeEnvironment(vars)); err != nil {

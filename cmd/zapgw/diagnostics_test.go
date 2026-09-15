@@ -453,7 +453,7 @@ func TestDiagnosticInstagramPermissionVerdictDoesNotChangeWithFloor(t *testing.T
 const testInvalidFolder = "zzz-nao-existe-t113"
 
 // TestDiagnosticInstagramWithoutEnvVarDoesNotProbeInvalidFolder is case (a) of
-// T-113's Verify: without `ZAPGW_DIAGNOSTICO_SONDAR_FOLDER`, item 5 does
+// T-113's Verify: without `ZAPGW_DIAGNOSTIC_PROBE_FOLDER`, item 5 does
 // not appear in the output and NO request uses the invalid folder — the
 // probe is a MEASUREMENT, not part of the normal diagnostic (extra
 // network cost only when requested).
@@ -468,7 +468,7 @@ func TestDiagnosticInstagramWithoutEnvVarDoesNotProbeInvalidFolder(t *testing.T)
 	text := out.String()
 
 	if strings.Contains(text, "5) `folder` parameter probe") {
-		t.Errorf("item 5 appeared without ZAPGW_DIAGNOSTICO_SONDAR_FOLDER:\n%s", text)
+		t.Errorf("item 5 appeared without ZAPGW_DIAGNOSTIC_PROBE_FOLDER:\n%s", text)
 	}
 	g.mu.Lock()
 	defer g.mu.Unlock()
@@ -494,7 +494,7 @@ func TestDiagnosticInstagramInvalidFolderProbeAcceptedSaysIgnored(t *testing.T) 
 	// hypothesis.
 	g.conversationsBody[testInvalidFolder] = g.conversationsBody[""]
 	vars := diagnosticScenario(t, "insta-loja", "IGID_SINTETICO_SONDA_ACEITA", g)
-	vars["ZAPGW_DIAGNOSTICO_SONDAR_FOLDER"] = "1"
+	vars["ZAPGW_DIAGNOSTIC_PROBE_FOLDER"] = "1"
 
 	var out bytes.Buffer
 	if err := dispatch(diagnosticArgs("insta-loja"), &out, fakeEnvironment(vars)); err != nil {
@@ -534,7 +534,7 @@ func TestDiagnosticInstagramInvalidFolderProbeRefusedSaysHonored(t *testing.T) {
 	g := workingInstagramGraph("IGID_SINTETICO_SONDA_RECUSA")
 	g.conversationsError[testInvalidFolder] = http.StatusBadRequest
 	vars := diagnosticScenario(t, "insta-loja", "IGID_SINTETICO_SONDA_RECUSA", g)
-	vars["ZAPGW_DIAGNOSTICO_SONDAR_FOLDER"] = "1"
+	vars["ZAPGW_DIAGNOSTIC_PROBE_FOLDER"] = "1"
 
 	var out bytes.Buffer
 	if err := dispatch(diagnosticArgs("insta-loja"), &out, fakeEnvironment(vars)); err != nil {

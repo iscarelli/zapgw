@@ -73,13 +73,14 @@ import (
 // `conector` in T-120.
 //
 // This is the OLD (Portuguese) name. T-214 (2026-08-31) added
-// VarExternalProbeURLNew as the English pair — this constant stays,
-// unchanged and still read, because it is the ONLY name an already-deployed
-// /etc/zapgw/env has; see ExternalProbeURL.
+// VarExternalProbeURLNew as the English pair; T-244 (2026-09-15) stopped
+// reading this name — it stays declared ONLY so EnvRefusingOld can
+// recognize and REFUSE a stray export of it, never silently ignore one. See
+// ExternalProbeURL.
 const VarExternalProbeURL = "ZAPGW_SONDA_EXTERNA_URL"
 
-// VarExternalProbeURLNew is the English name of VarExternalProbeURL
-// (T-214). The NEW name wins when both are set — see config.EnvOrOld.
+// VarExternalProbeURLNew is the English name of VarExternalProbeURL, and
+// the ONLY one ExternalProbeURL reads (T-244) — see config.EnvRefusingOld.
 const VarExternalProbeURLNew = "ZAPGW_EXTERNAL_PROBE_URL"
 
 // ExternalProbeURL reads the probe URL from the environment. Empty = not
@@ -92,17 +93,18 @@ const VarExternalProbeURLNew = "ZAPGW_EXTERNAL_PROBE_URL"
 // read fail and the block would publish `could_not_verify` forever,
 // pointing at a probe that was actually never asked correctly.
 //
-// T-214: accepts VarExternalProbeURLNew in addition to the old name (new
-// wins if both are set), and logs once (config.WarnOldEnvVar) when the value
-// that won came from the OLD name.
-func ExternalProbeURL(getenv func(string) string) string {
+// T-244: the OLD name (VarExternalProbeURL) is no longer read — if it is
+// set, this returns an error wrapping config.ErrObsoleteEnvVar instead of a
+// URL, and the caller has to bring the startup down.
+func ExternalProbeURL(getenv func(string) string) (string, error) {
 	if getenv == nil {
-		return ""
+		return "", nil
 	}
-	v, oldUsed := config.EnvOrOld(getenv, VarExternalProbeURLNew, VarExternalProbeURL)
-	v = strings.TrimSpace(v)
-	config.WarnOldEnvVar(oldUsed && v != "", VarExternalProbeURL, VarExternalProbeURLNew)
-	return v
+	v, err := config.EnvRefusingOld(getenv, VarExternalProbeURLNew, VarExternalProbeURL)
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(v), nil
 }
 
 // The THREE states of ExternalReachInState.

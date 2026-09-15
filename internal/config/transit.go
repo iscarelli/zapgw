@@ -122,17 +122,16 @@ CREATE INDEX IF NOT EXISTS idx_transito_carimbo ON transito(carimbo);
 // safer than retaining it longer, whether or not that's the owner's decision.
 const DefaultTransitRetentionDays = 30
 
-// TransitRetentionEnvVar is the environment variable that changes the
-// deadline above. Documented in docs/IMPLANTACAO.md.
-//
-// This is the OLD (Portuguese) name. T-214 (2026-08-31) added
-// TransitRetentionEnvVarNew as the English pair — this constant stays,
-// unchanged and still read, because it is the ONLY name an already-deployed
-// /etc/zapgw/env has; see TransitRetentionDays.
+// TransitRetentionEnvVar is the OLD (Portuguese) name of the environment
+// variable that changes the deadline above. T-214 (2026-08-31) added
+// TransitRetentionEnvVarNew as the English pair; T-244 (2026-09-15) stopped
+// reading this name — it stays declared ONLY so EnvRefusingOld can
+// recognize and REFUSE a stray export of it, never silently ignore one. See
+// TransitRetentionDays.
 const TransitRetentionEnvVar = "ZAPGW_TTL_TRANSITO_DIAS"
 
-// TransitRetentionEnvVarNew is the English name of TransitRetentionEnvVar
-// (T-214). The NEW name wins when both are set — see config.EnvOrOld.
+// TransitRetentionEnvVarNew is the English name of TransitRetentionEnvVar,
+// and the ONLY one TransitRetentionDays reads (T-244) — see config.EnvRefusingOld.
 const TransitRetentionEnvVarNew = "ZAPGW_TTL_TRANSIT_DAYS"
 
 // TransitRetentionDays resolves the transit log's retention deadline,
@@ -141,19 +140,21 @@ const TransitRetentionEnvVarNew = "ZAPGW_TTL_TRANSIT_DAYS"
 // number flows down as a parameter. An invalid value (non-numeric, zero,
 // or negative) falls back to the default, without an error.
 //
-// T-214: accepts TransitRetentionEnvVarNew in addition to the old name (new
-// wins if both are set), and logs once (WarnOldEnvVar) when the value that
-// won came from the OLD name.
-func TransitRetentionDays(getenv func(string) string) int {
+// T-244: the OLD name (TransitRetentionEnvVar) is no longer read — if it is
+// set, this returns an error wrapping ErrObsoleteEnvVar instead of a day
+// count, and the caller has to bring the startup down.
+func TransitRetentionDays(getenv func(string) string) (int, error) {
 	if getenv == nil {
-		return DefaultTransitRetentionDays
+		return DefaultTransitRetentionDays, nil
 	}
-	v, oldUsed := EnvOrOld(getenv, TransitRetentionEnvVarNew, TransitRetentionEnvVar)
+	v, err := EnvRefusingOld(getenv, TransitRetentionEnvVarNew, TransitRetentionEnvVar)
+	if err != nil {
+		return 0, err
+	}
 	if n, err := strconv.Atoi(v); err == nil && n > 0 {
-		WarnOldEnvVar(oldUsed, TransitRetentionEnvVar, TransitRetentionEnvVarNew)
-		return n
+		return n, nil
 	}
-	return DefaultTransitRetentionDays
+	return DefaultTransitRetentionDays, nil
 }
 
 // HMACContraparte and HMACWamid EXISTED UNTIL T-094 — removed along with

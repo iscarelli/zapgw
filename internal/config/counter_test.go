@@ -1,9 +1,7 @@
 package config
 
 import (
-	"bytes"
 	"errors"
-	"log"
 	"strings"
 	"sync"
 	"testing"
@@ -476,7 +474,7 @@ func TestShortSeriesIsTheSevenDaySuffixOfTheRequestedWindow(t *testing.T) {
 func TestCounterRetentionDaysReadsTheEnvironment(t *testing.T) {
 	env := func(value string) func(string) string {
 		return func(k string) string {
-			if k == CounterRetentionEnvVar {
+			if k == CounterRetentionEnvVarNew {
 				return value
 			}
 			return ""
@@ -493,68 +491,56 @@ func TestCounterRetentionDaysReadsTheEnvironment(t *testing.T) {
 		{"0", DefaultRetentionDays},
 		{"-7", DefaultRetentionDays},
 	} {
-		if has := CounterRetentionDays(env(c.value)); has != c.want {
-			t.Errorf("%s=%q -> %d days, want %d", CounterRetentionEnvVar, c.value, has, c.want)
+		has, err := CounterRetentionDays(env(c.value))
+		if err != nil {
+			t.Fatalf("%s=%q: unexpected error: %v", CounterRetentionEnvVarNew, c.value, err)
+		}
+		if has != c.want {
+			t.Errorf("%s=%q -> %d days, want %d", CounterRetentionEnvVarNew, c.value, has, c.want)
 		}
 	}
-	if has := CounterRetentionDays(nil); has != DefaultRetentionDays {
-		t.Errorf("with no environment at all -> %d days, want %d", has, DefaultRetentionDays)
+	if has, err := CounterRetentionDays(nil); err != nil || has != DefaultRetentionDays {
+		t.Errorf("with no environment at all -> (%d, %v), want (%d, nil)", has, err, DefaultRetentionDays)
 	}
 }
 
-// T-214: CounterRetentionEnvVarNew (ZAPGW_TTL_COUNTERS_DAYS) is accepted in
-// addition to the old (Portuguese) name, and the NEW one wins when both are
-// set.
-func TestCounterRetentionDaysAcceptsNewNameAndItWins(t *testing.T) {
-	vars := func(m map[string]string) func(string) string {
-		return func(k string) string { return m[k] }
-	}
+// TestCounterRetentionDaysRefusesOldName is T-244's Verify for
+// ZAPGW_TTL_CONTADORES_DIAS/ZAPGW_TTL_COUNTERS_DAYS: (a) only the new name
+// -> read; (b) only the old one -> refused, naming the new name, value not
+// read; (c) both -> refused too, there is no "new wins" any more.
+func TestCounterRetentionDaysRefusesOldName(t *testing.T) {
 	cases := []struct {
-		name string
-		vars map[string]string
-		want int
+		name    string
+		vars    map[string]string
+		want    int
+		wantErr bool
 	}{
-		{"only the new one", map[string]string{CounterRetentionEnvVarNew: "12"}, 12},
-		{"only the old one", map[string]string{CounterRetentionEnvVar: "18"}, 18},
-		{"both: the NEW one wins", map[string]string{
+		{"(a) only the new one -> read", map[string]string{CounterRetentionEnvVarNew: "12"}, 12, false},
+		{"(b) only the old one -> refused", map[string]string{CounterRetentionEnvVar: "18"}, 0, true},
+		{"(c) both -> refused too", map[string]string{
 			CounterRetentionEnvVarNew: "12", CounterRetentionEnvVar: "18",
-		}, 12},
+		}, 0, true},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			if has := CounterRetentionDays(vars(c.vars)); has != c.want {
-				t.Errorf("CounterRetentionDays = %d, want %d", has, c.want)
+			has, err := CounterRetentionDays(func(k string) string { return c.vars[k] })
+			if c.wantErr {
+				if err == nil {
+					t.Fatalf("CounterRetentionDays = (%d, nil), want a refusal naming %s", has, CounterRetentionEnvVarNew)
+				}
+				if !errors.Is(err, ErrObsoleteEnvVar) {
+					t.Errorf("error does not wrap ErrObsoleteEnvVar: %v", err)
+				}
+				if !strings.Contains(err.Error(), CounterRetentionEnvVarNew) {
+					t.Errorf("the refusal does not name %s: %v", CounterRetentionEnvVarNew, err)
+				}
+				return
 			}
-		})
-	}
-}
-
-// T-214 Do item 3: using the OLD name logs a warning ONCE; using only the
-// NEW name (or neither) stays silent.
-func TestCounterRetentionDaysWarnsOnlyWhenOldNameWins(t *testing.T) {
-	cases := []struct {
-		name     string
-		vars     map[string]string
-		wantWarn bool
-	}{
-		{"only the old one: warns", map[string]string{CounterRetentionEnvVar: "10"}, true},
-		{"only the new one: stays silent", map[string]string{CounterRetentionEnvVarNew: "10"}, false},
-		{"neither: stays silent", map[string]string{}, false},
-		{"both: the new one won, stays silent", map[string]string{
-			CounterRetentionEnvVarNew: "10", CounterRetentionEnvVar: "20",
-		}, false},
-	}
-	original := log.Writer()
-	for _, c := range cases {
-		t.Run(c.name, func(t *testing.T) {
-			var buf bytes.Buffer
-			log.SetOutput(&buf)
-			CounterRetentionDays(func(k string) string { return c.vars[k] })
-			log.SetOutput(original)
-			warned := strings.Contains(buf.String(), CounterRetentionEnvVar) &&
-				strings.Contains(buf.String(), "deprecated")
-			if warned != c.wantWarn {
-				t.Errorf("warned = %v (log: %q), want %v", warned, buf.String(), c.wantWarn)
+			if err != nil {
+				t.Fatalf("CounterRetentionDays: %v", err)
+			}
+			if has != c.want {
+				t.Errorf("CounterRetentionDays = %d, want %d", has, c.want)
 			}
 		})
 	}

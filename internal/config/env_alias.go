@@ -1,60 +1,44 @@
-// env_alias.go — T-214 (LAYER 4 of this project's "accept both, count the
-// old one" migration idiom — see internal/outbound/input_aliases.go for the
-// same idiom applied to the API contract, LAYER 3). Here it applies to the
-// OPERATOR's surface: the ZAPGW_* variables read from /etc/zapgw/env and the
-// CLI verbs.
+// env_alias.go — T-244 retires the "accept both, count the old one"
+// migration idiom T-214 introduced for this project's OPERATOR-facing
+// surface: the ZAPGW_* variables read from /etc/zapgw/env. (The CLI verbs
+// are a separate, still-open decision — T-220.)
 //
-// 🔴 WHY THIS LAYER IS THE DANGEROUS ONE, and CLAUDE.md already marked it
-// out of T-189's scope for the reason: a rename here does NOT reach
-// /etc/zapgw/env, which lives on the production machine, outside this
-// repository. A rename with no alias would make the gateway boot on the
-// DEFAULT, in SILENCE — no crash, no warning, and whatever depended on the
-// variable simply stops happening until someone notices its absence. That is
-// why every pair this task touches is ADDITIVE ONLY: the OLD (Portuguese)
-// name is never removed here — removing it is a separate, owner-only
-// decision (docs/TASKS.md, T-214's Do item 4).
+// 🔴 WHY AN OLD NAME IS REFUSED, NEVER SILENTLY IGNORED: a rename with no
+// safeguard would make the gateway boot on the DEFAULT, in SILENCE — no
+// crash, no warning, and whatever depended on the variable simply stops
+// happening until someone notices its absence. The most dangerous instance
+// of this is the encryption key: an operator (or an old /etc/zapgw/env on
+// another clone) still exporting ZAPGW_CHAVE_CIFRA would make the gateway
+// open an EMPTY database under a DIFFERENT key, with no error at all. That
+// is why the OLD name is not simply dropped from the read: if it is set,
+// the process REFUSES to start, naming the new name to use instead.
 package config
 
-import "log"
+import (
+	"errors"
+	"fmt"
+)
 
-// EnvOrOld resolves ONE operator-facing variable that has both an English
-// (new) and a Portuguese (old) name. THE NEW NAME WINS when both are set —
-// the same precedence rule internal/outbound's queryAlias already applies to
-// the API contract, so an operator migrating /etc/zapgw/env one line at a
-// time is never surprised by an old value winning over a new one they just
-// added.
+// ErrObsoleteEnvVar is the sentinel every EnvRefusingOld refusal wraps.
+// Callers that want to distinguish "operator config error" from other
+// startup failures can `errors.Is(err, ErrObsoleteEnvVar)`.
+var ErrObsoleteEnvVar = errors.New("obsolete environment variable name")
+
+// EnvRefusingOld resolves ONE operator-facing variable that used to accept
+// both an English (new) and a Portuguese (old) name (T-214). It reads ONLY
+// newName. If the OLD name is set (non-empty), it returns "" and an error
+// wrapping ErrObsoleteEnvVar — the old value is NEVER read, not even to
+// fall back to it.
 //
 // A nil getenv (only ever passed by a test that does not care about the
-// environment) resolves to "", false — never a panic.
-func EnvOrOld(getenv func(string) string, newName, oldName string) (value string, oldNameUsed bool) {
+// environment) resolves to "", nil — never a panic.
+func EnvRefusingOld(getenv func(string) string, newName, oldName string) (value string, err error) {
 	if getenv == nil {
-		return "", false
-	}
-	if v := getenv(newName); v != "" {
-		return v, false
+		return "", nil
 	}
 	if v := getenv(oldName); v != "" {
-		return v, true
+		return "", fmt.Errorf("environment variable %s is no longer read -- rename it to %s (T-244): %w",
+			oldName, newName, ErrObsoleteEnvVar)
 	}
-	return "", false
-}
-
-// WarnOldEnvVar prints, via the standard logger, that an operator's
-// environment used the OLD (Portuguese) name of a ZAPGW_* variable instead
-// of the new English one — Do item 3 of T-214: "if the old name is used, SAY
-// SO at startup — the operator needs to see it, and startup is the only
-// place they look." A no-op when oldNameUsed is false, which is what keeps a
-// fully-migrated /etc/zapgw/env printing NOTHING extra — the same silence
-// Verify checks for.
-//
-// Goes through `log`, not a return value collected somewhere: this is the
-// SAME channel main.go already uses for every other startup line ("guarda de
-// lideranca ARMADA", …), and it is also what a `zapgw <verb>` run from a
-// terminal already has on stderr — a CLI invocation IS its own "boot"
-// for this purpose, just like the server's boot is.
-func WarnOldEnvVar(oldNameUsed bool, oldName, newName string) {
-	if !oldNameUsed {
-		return
-	}
-	log.Printf("zapgw: environment variable %s is deprecated -- use %s instead (T-214)", oldName, newName)
+	return getenv(newName), nil
 }
