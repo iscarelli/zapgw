@@ -312,6 +312,7 @@ instancias foram rotacionadas. Duas licoes que custaram na hora e valem alem des
 > A fila do periodo privado esta em `iscarelli/zapgw-dev`, congelada. Tarefa nova nasce aqui.
 
 ## [ ] T-241  `POST /v1/uploads` — template header example handle via Meta's Resumable Upload
+Vikunja: 1605
 Why:     Pedido do consumidor `consumer-b` em 2026-09-15 (vale-presente: cartao PNG gerado na hora,
          enviado por template porque a janela de 24h pode estar fechada). Para criar um template com
          `HEADER` de formato `IMAGE`/`VIDEO`/`DOCUMENT` a Meta exige `example.header_handle` no
