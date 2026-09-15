@@ -52,6 +52,13 @@ var (
 	// field names, and collapsing them into one error would erase which
 	// field was missing.
 	ErrUploadWithoutHandle = errors.New("meta: 2xx response without an upload handle")
+	// ErrUploadSessionIDShape: the session id CreateUploadSession returned
+	// does not have a shape CompleteUpload can safely turn into a request
+	// (T-242). It is caught BEFORE the id ever reaches the wire — see
+	// uploadSessionIDShapeOK and the comment on CompleteUpload's target
+	// for why the check exists and what it does not do (clean, escape, or
+	// otherwise touch the id itself).
+	ErrUploadSessionIDShape = errors.New("meta: upload session id has an unexpected shape")
 )
 
 // AppID asks the Graph API which app the token belongs to.
@@ -159,13 +166,31 @@ func (c *Client) CreateUploadSession(
 // directly (`http.NewRequestWithContext` with `req.ContentLength` set) —
 // no `io.ReadAll`, nothing written to disk. Media is content, and this
 // project's line is "configuration yes, message never" (media.go).
+//
+// 🔥 T-242: `sessionID` is NOT a plain path segment like every other id
+// this package turns into a URL (phone_number_id, waba_id, ig_id, media_id
+// — all validated by PhoneNumberIDValid's alphanumeric/`_`/`-` class, safe
+// under url.JoinPath). Meta's Resumable Upload API hands back an id of the
+// shape `upload:<base64>?sig=<signature>` — a PATH-PLUS-QUERY fragment,
+// signature included — and `url.JoinPath` treats it as one opaque path
+// segment, percent-encoding its `?` to `%3F`. The escaped id reaches Meta
+// as a path that does not exist; Meta answers a generic 400 with a
+// NON-JSON body, and every real upload failed at this exact step
+// (production, v0.66.0, 2026-09-15 — see docs/ARMADILHAS.md). The fix is
+// to build the target by CONCATENATION, so the id's own `?` becomes the
+// URL's real query separator, exactly as Meta intends it — see
+// uploadSessionIDShapeOK for what makes an id safe to concatenate.
 func (c *Client) CompleteUpload(ctx context.Context, sessionID, token string, length int64, content io.Reader) (string, error) {
-	// `sessionID` (`upload:XXXX`) IS the whole path segment — the doc's
-	// `POST /upload:XXXX` names it directly, nothing is appended to it.
-	target, err := url.JoinPath(c.base, sessionID)
-	if err != nil {
-		return "", fmt.Errorf("meta: build url: %w", err)
+	if !uploadSessionIDShapeOK(sessionID) {
+		return "", ErrUploadSessionIDShape
 	}
+	// CONCATENATION, not url.JoinPath (see the func comment above): the id
+	// is an OPAQUE fragment Meta emits, and it goes to the wire EXACTLY as
+	// it came — cleaning, normalizing or escaping any byte of it is the
+	// bug this fixes. `c.base` never ends in a trailing slash in practice
+	// (NewClient's callers all pass a bare host+version prefix), but
+	// TrimSuffix keeps the doubled-slash case from ever creeping in.
+	target := strings.TrimSuffix(c.base, "/") + "/" + sessionID
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, target, content)
 	if err != nil {
@@ -192,6 +217,35 @@ func (c *Client) CompleteUpload(ctx context.Context, sessionID, token string, le
 		return "", metaError
 	}
 	return requiredStringField(raw, "h", ErrUploadWithoutHandle)
+}
+
+// uploadSessionIDShapeOK guards CompleteUpload's concatenation (T-242): it
+// checks the id is SAFE to append verbatim after `c.base + "/"`, never that
+// it is "clean" — the doc's own shape, `upload:<base64>?sig=<signature>`,
+// has to pass unmodified. An id fails this check when it could otherwise
+// redirect the request to a different host or path (a `/` or `\` walks the
+// path; a `#` starts a fragment the request never sends), when it carries
+// a byte that has no business in a request line (a control byte or a
+// space), or when it has more than one `?` (which `?` would be the real
+// query separator is then ambiguous). It also requires the `upload:`
+// prefix the doc always shows, so a completely different kind of string
+// never even reaches the network call.
+func uploadSessionIDShapeOK(sessionID string) bool {
+	if !strings.HasPrefix(sessionID, "upload:") {
+		return false
+	}
+	if strings.Count(sessionID, "?") > 1 {
+		return false
+	}
+	for _, r := range sessionID {
+		switch {
+		case r < 0x20 || r == 0x7f: // control bytes
+			return false
+		case r == ' ' || r == '#' || r == '/' || r == '\\':
+			return false
+		}
+	}
+	return true
 }
 
 // requiredStringField reads `field` out of a JSON object body, requiring a

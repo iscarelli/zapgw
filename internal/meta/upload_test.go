@@ -39,14 +39,40 @@ type fakeUploadMeta struct {
 	byteURL           string
 	byteContentLength int64
 	receivedContent   []byte
+	// byteExpectPath / byteExpectQuery, when non-empty, require the
+	// byte-upload request's URL to match EXACTLY (T-242): a mismatch
+	// answers 400 with a NON-JSON body, reproducing what the real Meta
+	// does when `url.JoinPath` escapes the session id's `?sig=` into the
+	// path instead of leaving it as a real query string. Zero value
+	// (both empty) means "accept any /upload:... path", which is what the
+	// tests below that hand CompleteUpload a bare id (no `?`) still need.
+	byteExpectPath  string
+	byteExpectQuery string
 }
 
+// defaultSessionID is the FIXTURE'S session id for the happy path, and it
+// deliberately carries the doc's real shape (T-242's Why): a
+// `upload:<base64>?sig=<signature>` fragment, not a bare `upload:XYZ` —
+// the earlier, simplified fixture is exactly what let the escaping bug
+// through the T-241 httptest suite.
+const (
+	defaultSessionIDPath  = "/upload:MTphdHRhY2htZW50OjEyMzQ1Njc4OTA="
+	defaultSessionIDQuery = "sig=ARZqkGCA_uQMxC8nHKI"
+	defaultSessionID      = "upload:MTphdHRhY2htZW50OjEyMzQ1Njc4OTA=?sig=ARZqkGCA_uQMxC8nHKI"
+)
+
+// newFakeUploadMeta's session fixture uses defaultSessionID, the real
+// `?sig=`-carrying shape — but byteExpectPath/byteExpectQuery are left
+// UNSET (any /upload:... path is accepted) because several tests below
+// hand CompleteUpload a bare literal id directly, bypassing session
+// creation. Only the happy-path test, which actually exercises the two
+// calls in sequence, turns the strict check on.
 func newFakeUploadMeta() *fakeUploadMeta {
 	return &fakeUploadMeta{
 		appIDStatus:     http.StatusOK,
 		appIDResponse:   `{"id":"APP-1"}`,
 		sessionStatus:   http.StatusOK,
-		sessionResponse: `{"id":"upload:XYZ"}`,
+		sessionResponse: `{"id":"` + defaultSessionID + `"}`,
 		byteStatus:      http.StatusOK,
 		byteResponse:    `{"h":"HANDLE-ABC"}`,
 	}
@@ -70,6 +96,18 @@ func (m *fakeUploadMeta) server(t *testing.T) *httptest.Server {
 			w.WriteHeader(m.sessionStatus)
 			_, _ = io.WriteString(w, m.sessionResponse)
 		case r.Method == http.MethodPost && strings.Contains(r.URL.Path, "upload:"):
+			// T-242: reproduce Meta's own behavior for a session id whose
+			// `?sig=` got mangled into the path -- a plain 400 with a
+			// NON-JSON body ("Bad Request" as text), exactly what
+			// production saw. A matcher that only checked
+			// strings.Contains(r.URL.Path, "upload:") (this fixture's
+			// ORIGINAL form) would happily accept the broken request and
+			// hide the bug.
+			if m.byteExpectPath != "" && (r.URL.Path != m.byteExpectPath || r.URL.RawQuery != m.byteExpectQuery) {
+				w.WriteHeader(http.StatusBadRequest)
+				_, _ = io.WriteString(w, "Bad Request")
+				return
+			}
 			m.byteAuth = r.Header.Get("Authorization")
 			m.byteOffsetHeader = r.Header.Get("file_offset")
 			m.byteURL = r.URL.String()
@@ -159,8 +197,21 @@ func TestAppIDClassifiesMeta4xx(t *testing.T) {
 //
 // The two calls are SEPARATE (T-241 addendum): the outbound handler
 // sequences them itself so it can attribute a failure to the right step.
+//
+// 🔴 T-242: the fixture's session id carries the REAL shape,
+// `upload:<base64>?sig=<signature>` (defaultSessionID above), and the fake
+// server's byte-upload leg REQUIRES the exact path/query split
+// (byteExpectPath/byteExpectQuery) that only happens when the id's `?` is
+// sent as an actual query separator — not escaped into the path by
+// url.JoinPath. Run this test against the pre-fix code (url.JoinPath
+// building the target) and it fails with "CompleteUpload: meta: status
+// 400" because the fake server answers a plain, non-JSON 400 — exactly
+// the production symptom in the task's Why. That failure IS the proof
+// this is a mechanism, not a test that only ever passed.
 func TestCreateUploadSessionAndCompleteUploadHappyPath(t *testing.T) {
 	m := newFakeUploadMeta()
+	m.byteExpectPath = defaultSessionIDPath
+	m.byteExpectQuery = defaultSessionIDQuery
 	srv := m.server(t)
 	c := NewClient(srv.Client(), srv.URL)
 
@@ -170,8 +221,8 @@ func TestCreateUploadSessionAndCompleteUploadHappyPath(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateUploadSession: %v", err)
 	}
-	if sessionID != "upload:XYZ" {
-		t.Fatalf("sessionID = %q, want upload:XYZ", sessionID)
+	if sessionID != defaultSessionID {
+		t.Fatalf("sessionID = %q, want %q", sessionID, defaultSessionID)
 	}
 
 	if !strings.HasSuffix(m.sessionPathSeenAppID, "/APP-1/uploads") {
@@ -300,5 +351,35 @@ func TestCreateUploadSessionRejectsInvalidAppID(t *testing.T) {
 	_, err := c.CreateUploadSession(context.Background(), "../etc/passwd", "t", "image/png", "x.png", 3)
 	if !errors.Is(err, ErrInvalidPhoneNumberID) {
 		t.Fatalf("err = %v, want ErrInvalidPhoneNumberID", err)
+	}
+}
+
+// TestCompleteUploadRejectsInvalidSessionIDShape proves uploadSessionIDShapeOK
+// catches every invalid form T-242's Do item 2 lists — BEFORE any network
+// call: the client here talks to a host that is never dialed, so a test
+// failure here would mean the invalid id reached url.JoinPath/concatenation
+// and an actual dial was attempted, not that the guard let it through
+// quietly.
+func TestCompleteUploadRejectsInvalidSessionIDShape(t *testing.T) {
+	cases := []struct {
+		name      string
+		sessionID string
+	}{
+		{"missing the upload: prefix", "XYZ?sig=ABC"},
+		{"contains a space", "upload:XY Z?sig=ABC"},
+		{"contains a control byte", "upload:XYZ?sig=AB\x01C"},
+		{"contains a hash", "upload:XYZ#frag?sig=ABC"},
+		{"contains a forward slash", "upload:XY/Z?sig=ABC"},
+		{"contains a backslash", "upload:XY\\Z?sig=ABC"},
+		{"has more than one question mark", "upload:XYZ?sig=ABC?extra=1"},
+	}
+	c := NewClient(http.DefaultClient, "https://graph.example.invalid")
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := c.CompleteUpload(context.Background(), tc.sessionID, "t", 3, strings.NewReader("abc"))
+			if !errors.Is(err, ErrUploadSessionIDShape) {
+				t.Fatalf("sessionID %q: err = %v, want ErrUploadSessionIDShape", tc.sessionID, err)
+			}
+		})
 	}
 }

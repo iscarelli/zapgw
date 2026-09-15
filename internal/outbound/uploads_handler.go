@@ -220,6 +220,16 @@ func respondUploadStepError(w http.ResponseWriter, step, label string, err error
 	case errors.Is(err, meta.ErrUploadWithoutHandle):
 		resp.Error.Class = string(meta.ClassUnknown)
 		resp.Error.Message = label + ": a Meta respondeu com sucesso mas sem o handle"
+	case errors.Is(err, meta.ErrUploadSessionIDShape):
+		// T-242: this error surfaces from the THIRD call (CompleteUpload),
+		// so the call site above tagged it "upload" -- but the thing that
+		// is wrong is what the SECOND call (CreateUploadSession) handed
+		// back. Overriding Step here, not at the call site, keeps that
+		// call site simple and puts the correction exactly where the
+		// taxonomy already lives.
+		resp.Error.Step = "session"
+		resp.Error.Class = string(meta.ClassUnknown)
+		resp.Error.Message = "a Meta devolveu um id de sessao de upload em formato inesperado"
 	default:
 		var me *meta.MetaError
 		if errors.As(err, &me) {

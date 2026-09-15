@@ -4371,3 +4371,62 @@ in well under a second.
 exposure with a due date nobody set. The gap closes when the code changes, not when the risk is written down; and
 when two git flags could plausibly answer "what did this commit introduce," measure both against a fixture built
 from a REAL operation (a real `git merge`, not a synthetic diff) before picking the cheaper-looking one.
+
+---
+
+### 🔥 `url.JoinPath` is for SEGMENTS — an opaque id that is itself path-plus-query goes by concatenation (2026-09-15)
+
+**Cost: the first real consumer call to `POST /v1/uploads` (T-241, v0.66.0), the same day the route shipped.**
+`400 {"error":{"class":"permanent","message":"...: Bad Request","step":"upload"}}`, with no `meta_code` at all —
+the body Meta sent back was not even its own JSON error shape. Every real upload failed at this one step; the
+`app_id` and `session` steps had already worked against the real Graph API.
+
+`internal/meta/upload.go`'s `CompleteUpload` (T-241) built its request URL with
+`url.JoinPath(c.base, sessionID)` — the SAME helper every other call in this package uses to append an id to a
+base URL, and the right choice for all of them. It was the wrong choice here, because Meta's Resumable Upload API
+does not hand back a plain id: it hands back `upload:<base64>?sig=<signature>` — a PATH-PLUS-QUERY fragment,
+signature included (confirmed against 360dialog's documentation of the same API; Meta's own doc shows only
+`upload:<UPLOAD_SESSION_ID>` and omits the suffix entirely). `url.JoinPath` treats its arguments as PATH SEGMENTS
+and escapes reserved characters accordingly, so the id's own `?` became `%3F` in the request. Verified directly
+(`net/url`, this session, 2026-09-15): the resulting `url.Parse` puts the escaped `?` back into `.Path` as a
+literal character and leaves `.RawQuery` empty — so the request that actually left this process for Meta carried
+a `%3F` on the wire, a path Meta's server does not recognize, and Meta answered its generic 400.
+
+**Why the T-241 `httptest` suite never caught it:** the fixture's session id was the simplified `upload:XYZ`, with
+no `?` at all — a shape `url.JoinPath` handles correctly, because a plain id has no query fragment to mangle. A
+test fixture that simplifies away the one property of the input that makes the bug possible proves nothing about
+that bug. The T-242 fix (`internal/meta/upload_test.go`) replaces the default fixture with the REAL shape,
+`upload:MTphdHRhY2htZW50OjEyMzQ1Njc4OTA=?sig=ARZqkGCA_uQMxC8nHKI`, and the fake server now requires the
+byte-upload request's `.Path` and `.RawQuery` to match EXACTLY that split — any mismatch answers a plain,
+NON-JSON 400, reproducing production instead of hiding behind a lenient `strings.Contains` match. Run against the
+pre-fix code, `TestCreateUploadSessionAndCompleteUploadHappyPath` failed with
+`CompleteUpload: meta: permanent (code 0): Bad Request` — the exact production symptom.
+
+**The fix is concatenation, not a smarter escape:** `strings.TrimSuffix(c.base, "/") + "/" + sessionID`. The id is
+OPAQUE and Meta-issued; it has to reach the wire byte-for-byte, `?` included as a REAL query separator — cleaning,
+normalizing, or "correctly" escaping any part of it is itself the bug, just a different-shaped one. A new
+`uploadSessionIDShapeOK` guard runs first and rejects (`ErrUploadSessionIDShape`) anything that does not start
+with `upload:`, contains a space, a control byte, `#`, `/`, or `\`, or carries more than one `?` — safety for the
+concatenation, never a rewrite of the id itself. Because this error surfaces from `CompleteUpload` (the "upload"
+step, by call-site position) but names a problem with what `CreateUploadSession` (the "session" step) returned,
+`internal/outbound/uploads_handler.go`'s `respondUploadStepError` special-cases it to report `step: "session"` —
+the taxonomy is corrected once, in the one place it lives, not at the call site.
+
+**The sibling sweep this entry's own rule demands** (`grep -n "url.JoinPath" internal/meta/*.go`): every OTHER
+`url.JoinPath` call in this package hands it a value already constrained to
+`PhoneNumberIDValid`'s character class (digits, letters, `_`, `-` — no `?`, no `/`, no `#`) — `phone_number_id`
+(`client.go`, `block.go`, `media.go`, `number.go`, `profile.go`, `read.go`, `registration.go`), `waba_id`
+(`templates.go`), `ig_id` (`instagram.go`), `media_id` (`media.go`'s `DescribeMedia`, guarded by `MediaIDValid`,
+itself `PhoneNumberIDValid`), and the app id from `upload.go`'s own `CreateUploadSession` (same guard). None of
+those ids is ever a path-plus-query fragment, so none of those calls has this hole. The one exception,
+`instagram_diagnostics.go`'s `readInstagramGraph(base, path, ...)`, passes a hardcoded literal (`"me/subscribed_apps"`,
+etc.) as `path`, never a value Meta emits — also safe, for a different reason (nothing external reaches it at
+all). **This route's `CompleteUpload` was the only call in the package handed an id that is itself a
+path-plus-query fragment**, which is exactly why it was the only one with this hole.
+
+**The rule that generalizes:** `url.JoinPath` (and `path.Join`, and any helper built for path SEGMENTS) is for
+values that are themselves single segments. An identifier a third-party API hands back as an opaque URL fragment
+— path and query and signature bundled together — is not a segment, no matter how it looks in the doc's example;
+building the request around it means concatenating that fragment verbatim, after validating its SHAPE, never
+after "cleaning" its CONTENT. And a test fixture for that identifier has to carry its real shape, not a
+simplified stand-in that happens to dodge the one character the bug depends on.

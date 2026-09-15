@@ -2,6 +2,17 @@
 
 One line per version shipped, in the same commit as the bump. The entry states the **effect**, not the diff.
 
+## Unreleased
+
+- **T-242 — `CompleteUpload` sends the Meta upload session id by concatenation, not `url.JoinPath`** —
+  every real call to `POST /v1/uploads` failed at the byte-upload step (v0.66.0's first consumer
+  call) because `url.JoinPath` escaped the session id's `?sig=` into the path instead of leaving it
+  as a real query string. Fixed in `internal/meta/upload.go` (`CompleteUpload` now concatenates the
+  id verbatim after a new `uploadSessionIDShapeOK` guard); `respondUploadStepError`
+  (`internal/outbound/uploads_handler.go`) maps the new `ErrUploadSessionIDShape` to `step:
+  "session"`, matching where the malformed id actually came from. See `docs/ARMADILHAS.md` for the
+  full sibling sweep of this package's other `url.JoinPath` calls. _Completed 2026-09-15._
+
 ## v0.66.0 — 2026-09-15
 
 - **T-241 — `POST /v1/uploads`, the template header example handle via Meta's Resumable Upload** —
