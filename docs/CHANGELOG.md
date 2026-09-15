@@ -4,6 +4,18 @@ One line per version shipped, in the same commit as the bump. The entry states t
 
 ## Unreleased
 
+- **T-241 — `POST /v1/uploads`, the template header example handle via Meta's Resumable Upload** —
+  a new route (`internal/meta/upload.go`, `internal/outbound/uploads_handler.go`) gives consumers a
+  way to obtain `example.header_handle` for a template's `HEADER` component: the `media_id` from
+  `POST /v1/media` does not work as that value, and consumers cannot reach the Graph API directly.
+  Extracted media's `instanceAuthorized` from `MediaHandler` into a package function so both routes
+  share the guard order instead of copying it. Mid-task addendum added a machine-readable `step`
+  field (`app_id`/`session`/`upload`) to every Meta-side error, so the three calls
+  (`Client.AppID`, `CreateUploadSession`, `CompleteUpload`) can be told apart without parsing
+  `message`. Documented in both contract files, with the one call never measured against the real
+  Meta (`GET /app`) marked as assumed. _Completed 2026-09-15 00:38._
+
+
 - **T-239 — Remove the one exemption T-238 had to leave behind** — fixed the last dead pointer
   (`status_sent_com_pricing.json` → `status_sent_with_pricing.json`) in both contract files and
   deleted its exemption from the gate. T-238's reason for deferring was honest and **temporary** —

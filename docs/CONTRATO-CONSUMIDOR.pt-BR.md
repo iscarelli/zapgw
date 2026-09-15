@@ -4007,6 +4007,16 @@ saindo em silêncio no seu lugar).
 > **A consequência para você: quem CRIA template precisa conhecer o formato da Meta; quem ENVIA,
 > não.** Use a referência de componentes de template da Meta para montar esta lista.
 
+> 🔴 **Um componente `HEADER` de formato `IMAGE`, `VIDEO` ou `DOCUMENT` exige `example.header_handle`
+> — e o `media_id` que `POST /v1/media` devolve NÃO é esse valor.** A Meta exige o handle de um
+> mecanismo SEPARADO, a Resumable Upload API dela — `POST /v1/uploads`, ao lado de *Mandar e baixar
+> mídia* mais abaixo, é a porta de entrada do gateway para isso. Um componente completo fica assim:
+>
+> ```jsonc
+> { "type": "HEADER", "format": "IMAGE",
+>   "example": { "header_handle": ["4::aW1hZ2UvcG5n:valor-sintetico-de-exemplo"] } }
+> ```
+
 Sucesso → **`201`**:
 
 ```jsonc
@@ -4354,6 +4364,108 @@ duas vezes (descrever a mídia, depois buscar os bytes), e qualquer uma das duas
 > antes**. A resposta não traz `Content-Length` (é `chunked`), então um cliente HTTP correto acusa
 > leitura incompleta; **não engula essa exceção**, e não grave o arquivo parcial como se estivesse
 > inteiro. Repetir o `GET` é seguro: baixar mídia não muda nada do lado da Meta.
+
+### Handle de exemplo de header de template: `POST /v1/uploads?instancia={slug}`
+
+Rota da **LAN**, no mesmo entrypoint `:8443` da mídia, restrita às instâncias vinculadas a você —
+mesma disciplina do `/v1/media`.
+
+**Para que serve:** criar um template cujo componente `HEADER` tem formato `IMAGE`, `VIDEO` ou
+`DOCUMENT` exige o `example.header_handle` da Meta nesse componente (veja *Criar um template*, acima).
+**O `media_id` que `POST /v1/media` devolve NÃO serve como esse handle** — a Meta exige um valor de um
+mecanismo SEPARADO, a **Resumable Upload API** dela, e você não pode chegar nela sozinho (regra deste
+gateway: você nunca fala direto com a Graph API). Esta rota é a porta de entrada do gateway para isso:
+mande os bytes aqui, uma vez, e coloque o handle que ela devolve em `example.header_handle` quando
+chamar `POST /v1/templates` como sempre.
+
+```
+curl -X POST \
+     -H "Authorization: Bearer <seu token>" \
+     -H "Content-Type: image/png" \
+     -H "Content-Length: 18420" \
+     --data-binary @cartao-presente.png \
+     'https://zapgw.exemplo.com.br:8443/v1/uploads?instancia=lojinha&file_name=cartao-presente.png'
+```
+
+Sucesso → `200`:
+
+```json
+{ "handle": "4::aW1hZ2UvcG5n:valor-sintetico-de-exemplo" }
+```
+
+**O corpo é bytes CRUS, NÃO `multipart/form-data`** — diferente do `/v1/media`. `Content-Type` é o
+mime; `?file_name=` é opcional (se você omitir, o gateway manda um padrão construído a partir do
+mime: `header.jpg`, `header.png`, `header.mp4`, `header.pdf` — a Meta exige o campo mas ele não tem
+efeito observável sobre o desfecho).
+
+> 🔴 **`Content-Length` é OBRIGATÓRIO aqui, diferente do `/v1/media`.** Ele vira o `file_length` que a
+> Resumable Upload API exige, e sem ele o gateway recusa com `411` antes de abrir qualquer conexão com
+> a Meta.
+
+**Mimes aceitos e tetos — mais estreito que o `/v1/media`, e os dois são do gateway, não da Meta:**
+
+| Mime | Teto |
+|---|---|
+| `image/jpeg` | 5 MiB |
+| `image/png` | 5 MiB |
+| `video/mp4` | 16 MiB |
+| `application/pdf` | 32 MiB |
+
+É exatamente a lista de mimes que a própria Resumable Upload API documenta
+(`developers.facebook.com/docs/graph-api/guides/upload`, lida em 2026-09-15). **`image/jpg` (sem `e`)
+está ausente de propósito** — a mesma linha que o `/v1/media` já segura — e também está ausente tudo
+que o `/v1/media` aceita e esta rota não (`audio/*`, `image/webp`, `video/3gpp`, os mimes de
+documento de escritório): se o mime que você precisa não está nesta tabela, ele não faz parte da lista
+documentada da Resumable Upload API, e não há parâmetro que afrouxe isso. Os tetos são a MESMA tabela
+por categoria que o `/v1/media` lê (são NOSSOS, não da Meta).
+
+> ⚠️ **Por quanto tempo o handle continua válido NÃO é documentado pela Meta, e o gateway não promete
+> nada sobre isso.** Use-o num `POST /v1/templates` logo depois de recebê-lo. Esta rota não guarda
+> cache nenhum — toda chamada fala com a Meta de novo, do zero.
+
+#### Erros
+
+Mesma taxonomia da mídia — decida pela `class`, nunca pelo status:
+
+| Status | Classe | Quando |
+|---|---|---|
+| `411` | `permanent` | sem `Content-Length` — esta rota exige o tamanho declarado, diferente do `/v1/media` |
+| `415` | `permanent` | o mime não está na tabela acima |
+| `413` | `permanent` | acima do teto da categoria do mime. A mensagem diz o teto em vigor e diz que ele é do gateway |
+| `401` | `config` | seu `Authorization` está ausente ou é inválido |
+| `403` | `config` | a instância pedida não é sua |
+| `404` | `config` | a instância não existe |
+| `503` | `retryable` | a instância está pausada, ou o gateway não leu o próprio armazenamento |
+| `400` / `502` / `503` | varia, veja `step` abaixo | uma chamada à própria Meta falhou |
+
+🔴 **Todo erro que acontece enquanto o gateway fala com a Meta carrega um campo `step`
+MÁQUINA-LEGÍVEL** — `"app_id"`, `"session"` ou `"upload"` — para você distinguir as três falhas SEM
+parsear `message`, que é texto livre e pode mudar (pode ser a própria prosa de erro da Meta,
+repassada). O `step` fica **AUSENTE** em toda recusa que acontece antes do fio
+(`411`/`415`/`413`/`401`/`403`/`404`/`503`) — um pedido que nunca chegou à Meta não carrega step, de
+propósito: o campo só nomeia uma chamada à Meta que realmente foi tentada.
+
+| `step` | Nomeia |
+|---|---|
+| `app_id` | `GET /app?fields=id` — descobrir a qual app da Meta seu token pertence. **É a única chamada desta rota inteira que ainda não foi medida contra a Meta real** — assumida só a partir da doc da Resumable Upload (veja a marca no fim desta seção) |
+| `session` | `POST /{app-id}/uploads` — abrir a sessão de upload |
+| `upload` | `POST /upload:{id}` — mandar os bytes |
+
+```jsonc
+// exemplo: a descoberta do App ID falhou
+{ "error": {
+    "class": "config",
+    "message": "descobrir o App ID (GET /app): Invalid OAuth access token",
+    "meta_code": 190,
+    "step": "app_id" } }
+```
+
+*Assumido / ainda não medido contra a Meta real (veja o §4, "Como este documento marca o que é medido
+e o que é suposto"): esta rota inteira.* Foi construída a partir de
+`developers.facebook.com/docs/graph-api/guides/upload` (lida em 2026-09-15) e provada só contra as
+fixtures `httptest` deste gateway — nenhuma chamada desta seção foi à Graph API real ainda. O formato
+do `example.header_handle` acima é o documentado pela Meta; esta marca sai quando um template real
+passar por esta rota.
 
 ---
 

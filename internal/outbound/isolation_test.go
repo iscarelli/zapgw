@@ -140,6 +140,15 @@ func outboundRoutes() []outboundRoute {
 			},
 		},
 		{
+			route: "POST /v1/uploads",
+			build: func(slug string) *http.Request {
+				// Empty body on purpose, same reasoning as media's upload:
+				// the link guard runs BEFORE Content-Length/mime are even
+				// looked at, and a valid body would only add noise.
+				return newRequest(http.MethodPost, "/v1/uploads?instancia="+slug, "")
+			},
+		},
+		{
 			route: "GET /v1/instances/{slug}/health",
 			build: func(slug string) *http.Request {
 				return newRequest(http.MethodGet, "/v1/instances/"+slug+"/health", "")
@@ -249,6 +258,7 @@ func allOutboundRoutes(t *testing.T, srv *httptest.Server) http.Handler {
 	media := NewMediaHandler(store, auth, client, counter, WhatsAppOnly)
 	mux.Handle("/v1/media", media)
 	mux.Handle("/v1/media/", media)
+	mux.Handle("/v1/uploads", NewUploadsHandler(store, auth, client, counter, WhatsAppOnly))
 	mux.Handle("/v1/instances/", NewHealthHandler(store, auth, client, AllTypes))
 	mux.Handle("/v1/estado", NewStateHandler(store, auth, NewWatchdog(store, client), nil,
 		IngressSource{}, nil, nil, testVersion, config.DefaultRetentionDays, counter, AllTypes))

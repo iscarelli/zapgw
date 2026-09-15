@@ -318,6 +318,7 @@ Daqui em diante o contrato é o documento. O que existe:
 | saber se o canal ainda está apto a enviar | `GET /v1/instances/{slug}/health` |
 | listar e criar templates | `GET` / `POST /v1/templates` |
 | subir e baixar mídia | `POST /v1/media`, `GET /v1/media/{id}` |
+| pegar o handle de exemplo de header de template (`example.header_handle`) | `POST /v1/uploads` |
 | tirar a instância do ar sem apagar nada | `POST /v1/pausa` |
 
 **E cinco obrigações que são suas, não nossas.** Elas estão detalhadas no contrato, em *"As cinco
