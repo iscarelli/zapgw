@@ -51,7 +51,7 @@ type healthResponse struct {
 	Version string `json:"versao"`
 }
 
-func routes(inboundHandler, outboundHandler, healthHandler, templatesHandler, mediaHandler, stateHandler, readsHandler, enrollmentHandler, smokeHandler, pauseHandler, blockingHandler, profileHandler http.Handler) http.Handler {
+func routes(inboundHandler, outboundHandler, healthHandler, templatesHandler, mediaHandler, uploadsHandler, stateHandler, readsHandler, enrollmentHandler, smokeHandler, pauseHandler, blockingHandler, profileHandler http.Handler) http.Handler {
 	mux := http.NewServeMux()
 
 	// NOT INFORMATIVE ABOUT THE CHANNEL, on purpose: this `200` says the
@@ -91,6 +91,14 @@ func routes(inboundHandler, outboundHandler, healthHandler, templatesHandler, me
 		// upload, `/v1/media/` matches the download by id.
 		mux.Handle("/v1/media", mediaHandler)
 		mux.Handle("/v1/media/", mediaHandler)
+	}
+	if uploadsHandler != nil {
+		// A LAN route, like the other instance routes (T-241): it spends
+		// the instance's Meta credential on every call (app id discovery
+		// AND the upload session), and the bytes it carries are the
+		// consumer's own content — the same reasoning that keeps
+		// /v1/media off the public port.
+		mux.Handle("/v1/uploads", uploadsHandler)
 	}
 	if stateHandler != nil {
 		// A LAN route, like the others — and here the reason is
@@ -442,6 +450,10 @@ func main() {
 	// T-111: WhatsAppOnly — upload and download use inst.PhoneNumberID;
 	// Instagram's first slice (T-097) does not send media.
 	media := outbound.NewMediaHandler(store, authenticator, metaClient, counter, outbound.WhatsAppOnly)
+	// T-241: WhatsAppOnly — the handle this route returns is only useful
+	// for a WhatsApp template's HEADER example, and the instance's
+	// SendToken is what carries the app-id discovery and upload calls.
+	uploads := outbound.NewUploadsHandler(store, authenticator, metaClient, counter, outbound.WhatsAppOnly)
 	// The SAME counter as sending, with its OWN KEY (T-075): marking as
 	// read never adds to `enviadas`. See internal/config/counter.go.
 	// T-111: WhatsAppOnly — marking as read uses inst.PhoneNumberID.
@@ -538,7 +550,7 @@ func main() {
 		version, counterDays, counter, outbound.AllTypes)
 
 	log.Printf("zapgw listening on %s", address)
-	if err := http.ListenAndServe(address, routes(h, leadership.Require(out), health, templates, media, state, reads, enrollment, smokeRoute, pauseRoute, blockingRoute, profileRoute)); err != nil {
+	if err := http.ListenAndServe(address, routes(h, leadership.Require(out), health, templates, media, uploads, state, reads, enrollment, smokeRoute, pauseRoute, blockingRoute, profileRoute)); err != nil {
 		log.Fatalf("zapgw: server crashed: %v", err)
 	}
 }

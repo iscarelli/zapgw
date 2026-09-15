@@ -299,6 +299,15 @@ type errorResponse struct {
 		// identifier Meta support accepts, and it does NOT come back after
 		// this call. It is NOT a secret.
 		MetaTrace string `json:"meta_trace,omitempty"`
+		// Step is T-241's addendum, set ONLY by POST /v1/uploads, and ONLY
+		// for a failure that happened while talking to Meta: "app_id" (GET
+		// /app), "session" (POST /{app-id}/uploads), or "upload" (POST
+		// /upload:{id}). It's a MACHINE-READABLE discriminator, added
+		// because the consumer asked to tell the three failures apart
+		// WITHOUT depending on the prose in Message — which is free to
+		// change (it can be Meta's own error text). `omitempty` so every
+		// other route's body stays byte-for-byte identical.
+		Step string `json:"step,omitempty"`
 	} `json:"error"`
 }
 

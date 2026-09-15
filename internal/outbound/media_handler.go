@@ -119,32 +119,41 @@ func NewMediaHandler(store *config.Store, auth *Authenticator, client *meta.Clie
 	return mux
 }
 
-// instanceAuthorized runs the three guards that apply to BOTH routes.
-// Returns the authenticated consumer and the ready instance, or false — in
-// which case the response has already been written.
+// instanceAuthorized runs the three guards that apply to every route that
+// takes an `?instancia=`/`?instance=` slug and a Meta credential — today
+// BOTH of media's routes AND `POST /v1/uploads` (T-241). Returns the
+// authenticated consumer and the ready instance, or false — in which case
+// the response has already been written.
 //
-// A single function, not a copy in each handler: the asymmetry between two
-// places that solve the same problem IS the bug (docs/ARMADILHAS.md).
+// A PACKAGE FUNCTION, not a method on any one handler, and not a copy in
+// each: the asymmetry between two places that solve the same problem IS the
+// bug (docs/ARMADILHAS.md) — T-241 moved this out of MediaHandler for
+// exactly that reason, rather than duplicating the block into
+// UploadsHandler.
 //
-// `rota` is only for the rejection log (T-037) to distinguish upload from
-// download — both call this function.
+// `rota` is only for the rejection log (T-037) to distinguish which route
+// called it.
 //
 // T-208: also returns whether `instancia` (the OLD spelling of the query
 // parameter) supplied the slug. It does NOT record config.CounterOldNameUsed
-// itself: each caller has a SECOND ENTRADA point of its own (upload's
-// `arquivo`/`file` part name, download's `mime_do_payload`/`payload_mime`),
-// and this project's counter convention (translateInputOrReject's
-// callers, docs/TASKS.md T-203 Do item 6) is ONE Record call per REQUEST,
-// combining every old name that request carried — never one call per key,
-// which would double-count a request that used two old names at once.
-func (h *MediaHandler) instanceAuthorized(w http.ResponseWriter, r *http.Request, route string) (config.Consumer, config.Instance, bool, bool) {
-	consumer, err := h.auth.Authenticate(r.Header.Get("Authorization"))
+// itself: a caller may have a SECOND ENTRADA point of its own (media
+// upload's `arquivo`/`file` part name, media download's
+// `mime_do_payload`/`payload_mime`), and this project's counter convention
+// (translateInputOrReject's callers, docs/TASKS.md T-203 Do item 6) is ONE
+// Record call per REQUEST, combining every old name that request carried —
+// never one call per key, which would double-count a request that used two
+// old names at once.
+func instanceAuthorized(
+	w http.ResponseWriter, r *http.Request, route string,
+	store *config.Store, auth *Authenticator, throttleLog *logThrottle, types AcceptedTypes,
+) (config.Consumer, config.Instance, bool, bool) {
+	consumer, err := auth.Authenticate(r.Header.Get("Authorization"))
 	if err != nil {
 		if errors.Is(err, ErrNoToken) || errors.Is(err, ErrInvalidToken) {
 			respondError(w, http.StatusUnauthorized, "config", "token ausente ou invalido", 0)
 			return config.Consumer{}, config.Instance{}, false, false
 		}
-		log.Printf("zapgw: store error while authenticating on media: %v", err)
+		log.Printf("zapgw: store error while authenticating on %s: %v", route, err)
 		respondError(w, http.StatusServiceUnavailable, "retryable", "indisponivel", 0)
 		return config.Consumer{}, config.Instance{}, false, false
 	}
@@ -156,20 +165,20 @@ func (h *MediaHandler) instanceAuthorized(w http.ResponseWriter, r *http.Request
 	if !CanUse(consumer, slug) {
 		// 403 YES (T-037): whoever got here already authenticated, and this
 		// is someone's config error — which is worth investigating.
-		logRejection(h.throttleLog, route, slug, consumer.Name, "instancia nao autorizada para este consumidor")
+		logRejection(throttleLog, route, slug, consumer.Name, "instancia nao autorizada para este consumidor")
 		respondError(w, http.StatusForbidden, "config",
 			"instancia nao autorizada para este consumidor (mande ?instancia={slug})", 0)
 		return config.Consumer{}, config.Instance{}, false, false
 	}
 
-	inst, err := h.store.FindInstance(slug)
+	inst, err := store.FindInstance(slug)
 	if err != nil {
 		if errors.Is(err, config.ErrInstanceNotFound) {
-			logRejection(h.throttleLog, route, slug, consumer.Name, "instancia desconhecida")
+			logRejection(throttleLog, route, slug, consumer.Name, "instancia desconhecida")
 			respondError(w, http.StatusNotFound, "config", "instancia desconhecida", 0)
 			return config.Consumer{}, config.Instance{}, false, false
 		}
-		log.Printf("zapgw: store error while looking up instance %q on media: %v", slug, err)
+		log.Printf("zapgw: store error while looking up instance %q on %s: %v", slug, route, err)
 		respondError(w, http.StatusServiceUnavailable, "retryable", "indisponivel", 0)
 		return config.Consumer{}, config.Instance{}, false, false
 	}
@@ -181,14 +190,14 @@ func (h *MediaHandler) instanceAuthorized(w http.ResponseWriter, r *http.Request
 	// otherwise this route becomes an oracle for "what type is this slug"
 	// for someone who doesn't own it. checkType already writes the
 	// 400/config response when it rejects.
-	if !checkType(w, h.types, inst, "") {
+	if !checkType(w, types, inst, "") {
 		return config.Consumer{}, config.Instance{}, false, false
 	}
 	return consumer, inst, true, oldInstanceParam
 }
 
 func (h *MediaHandler) upload(w http.ResponseWriter, r *http.Request) {
-	consumer, inst, ok, oldInstanceParam := h.instanceAuthorized(w, r, "POST /v1/media")
+	consumer, inst, ok, oldInstanceParam := instanceAuthorized(w, r, "POST /v1/media", h.store, h.auth, h.throttleLog, h.types)
 	if !ok {
 		return
 	}
@@ -350,7 +359,7 @@ func (h *MediaHandler) download(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, inst, ok, oldInstanceParam := h.instanceAuthorized(w, r, "GET /v1/media/{id}")
+	_, inst, ok, oldInstanceParam := instanceAuthorized(w, r, "GET /v1/media/{id}", h.store, h.auth, h.throttleLog, h.types)
 	if !ok {
 		return
 	}

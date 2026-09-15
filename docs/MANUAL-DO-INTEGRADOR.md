@@ -324,6 +324,7 @@ From here on the contract is the document. What exists:
 | know whether the channel is still able to send | `GET /v1/instances/{slug}/health` |
 | list and create templates | `GET` / `POST /v1/templates` |
 | upload and download media | `POST /v1/media`, `GET /v1/media/{id}` |
+| get a template header example handle (`example.header_handle`) | `POST /v1/uploads` |
 | take the instance off the air without erasing anything | `POST /v1/pausa` |
 
 **And five obligations that are yours, not ours.** They are detailed in the contract, under *"As
