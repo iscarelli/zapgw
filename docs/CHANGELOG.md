@@ -2,7 +2,7 @@
 
 One line per version shipped, in the same commit as the bump. The entry states the **effect**, not the diff.
 
-## Unreleased
+## v0.66.0 — 2026-09-15
 
 - **T-241 — `POST /v1/uploads`, the template header example handle via Meta's Resumable Upload** —
   a new route (`internal/meta/upload.go`, `internal/outbound/uploads_handler.go`) gives consumers a
