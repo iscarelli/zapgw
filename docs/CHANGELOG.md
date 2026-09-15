@@ -2,7 +2,14 @@
 
 One line per version shipped, in the same commit as the bump. The entry states the **effect**, not the diff.
 
-## Unreleased
+## v0.67.0 — 2026-09-15
+
+MINOR, and it BREAKS two operator-facing surfaces on purpose (the project is pre-1.0): the old
+`ZAPGW_*` env-var names now REFUSE at startup instead of being read (T-244), and every Portuguese
+CLI spelling — five top-level verbs, `estado`, eight sub-verbs — is refused naming the English one
+(T-220, T-245). The HTTP contract consumers use is unchanged. Operators: rename the six variables
+in `/etc/zapgw/env` BEFORE updating, and any script calling `zapgw instancia listar` /
+`rotacionar` must call `zapgw instance list` / `rotate` the moment the binary changes.
 
 - **T-245 — retire the remaining Portuguese CLI spellings: `estado` and the eight sub-verbs** —
   the bridge T-220 deliberately left standing (T-218's decision) is now closed: `estado` and the
