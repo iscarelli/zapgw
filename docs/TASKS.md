@@ -357,7 +357,6 @@ instancias foram rotacionadas. Duas licoes que custaram na hora e valem alem des
 
 ## [ ] T-244  Retire the old `ZAPGW_*` env-var names: an old name set at startup is REFUSED, never read
 Vikunja: 1619
-After:   T-243
 Why:     Decisao do dono em 2026-09-15 ("pode fazer uma de uma vez"), depois de o CT 125 ter sido
          renomeado para os nomes ingleses (zero avisos `deprecated` na `v0.66.1`) e de a medicao
          mostrar que nenhum chamador restante usa nome velho (`/root/rotaciona-token.sh` ja le
