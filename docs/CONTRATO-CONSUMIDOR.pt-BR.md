@@ -1213,7 +1213,7 @@ token e a rede) e que só aparece depois de as mensagens já terem sido recusada
 > basta para o evento sair.
 
 > **Desde 2026-07-28 este evento também ALIMENTA o `GET /v1/estado`.** O `limite_atual`
-> (`current_limit`) é gravado no bloco `numero_na_meta.limite_de_mensagens`, com `fonte: "webhook"`.
+> (`current_limit`) é gravado no bloco `number_at_meta.message_limit`, com `source: "webhook"`.
 > Se você já reage a este evento, não precisa mudar nada — o estado passa a ser só um segundo lugar,
 > **consultável a qualquer momento**, onde o mesmo número aparece. `limite_anterior` e
 > `limite_diario_maximo` **não** são gravados lá: o estado responde *"em que tier o número está
@@ -2739,9 +2739,9 @@ GET /v1/bloqueios?instancia=lojinha&limit=100&after=<cursor>&before=<cursor>
 
 ```jsonc
 // resposta 200
-{ "instancia": "lojinha",
+{ "instance": "lojinha",
   "total": 1,
-  "bloqueados": [ {"wa_id": "5511999990000"} ],
+  "blocked": [ {"wa_id": "5511999990000"} ],
   "cursor_antes": "…",
   "cursor_depois": "…" }
 ```
@@ -2752,7 +2752,7 @@ chamada para paginar.
 
 🔑 **Para que esta rota serve de verdade: para DISCORDAR de você.** Medido pelo `consumer-b`
 em 2026-08-20, e a lição é deles: o banco deles dizia "bloqueado" e este `GET` respondeu
-`{"total":0,"bloqueados":[]}`. **Duas fontes discordando em quinze segundos** transformaram um
+`{"total":0,"blocked":[]}`. **Duas fontes discordando em quinze segundos** transformaram um
 *"acho que não funcionou"* em causa raiz — era um `Enter` no formulário deles submetendo sem
 `submitter`, e portanto sem o campo que escolhia entre bloquear aqui e bloquear na Meta.
 
@@ -2855,11 +2855,11 @@ diferentes. Confundir as duas é como um dia inteiro de trabalho deste projeto f
 | Sua pergunta | Onde responder | Por quê |
 |---|---|---|
 | **"como o gateway está?"** — quantas mensagens, token válido, quando chegou a última | `GET /v1/estado`, logo abaixo | o gateway sabe isso, e sabe honestamente |
-| **"vocês estão me alcançando?"** | **fonte externa**, nesta seção — e um espelho de conveniência dela em `GET /v1/estado` (`alcance_externo`, 2026-08-07) | 🔴 o gateway **não pode medir isto sozinho**; ele só pode REPETIR o que uma sonda que roda fora da nossa rede já mediu |
+| **"vocês estão me alcançando?"** | **fonte externa**, nesta seção — e um espelho de conveniência dela em `GET /v1/estado` (`external_reach`, 2026-08-07) | 🔴 o gateway **não pode medir isto sozinho**; ele só pode REPETIR o que uma sonda que roda fora da nossa rede já mediu |
 
 🔴 **O ESPELHO NÃO SUBSTITUI A FONTE EXTERNA, e isso é decisão, não lacuna.** O caso em que a sonda
 mais importa é o **gateway calado** — e é exatamente aí que perguntar ao gateway não devolve nada.
-Um status que compartilha o domínio de falha do que ele monitora não é status. Use `alcance_externo`
+Um status que compartilha o domínio de falha do que ele monitora não é status. Use `external_reach`
 quando `GET /v1/estado` já está na sua tela (evita uma segunda chamada); use a URL desta seção quando
 suspeitar que o gateway inteiro está fora — ela é a única das duas que sobrevive à nossa queda.
 
@@ -2872,7 +2872,7 @@ internos ficaram verdes durante a queda inteira**.
 
 E há uma razão ainda mais simples: **qualquer resposta servida pelo gateway está indisponível
 exatamente quando a resposta seria "não".** Um `alcancavel: true` calculado por dentro seria verdade
-sempre que você conseguisse lê-lo — o que o torna informação nenhuma. Por isso `alcance_externo`
+sempre que você conseguisse lê-lo — o que o torna informação nenhuma. Por isso `external_reach`
 nunca é medição própria: é o gateway **perguntando à mesma sonda externa que você poderia perguntar
 direto** e devolvendo o que ela respondeu, pela mesma disciplina de "ninguém fala direto com a Meta"
 aplicada aqui a um terceiro que não é a Meta — pedido explícito do dono, para que você só precise
@@ -2960,7 +2960,7 @@ chave desconhecida como número, nunca como erro.
 
 **A leitura NUNCA fala com a Meta.** Pode chamar na frequência que o seu painel quiser: tudo aqui sai
 do banco e de um cache que o gateway atualiza no ritmo dele. Consequência que vale saber: a Meta fora
-do ar **não** derruba esta rota — ela aparece no `token_meta`, que é onde deve aparecer.
+do ar **não** derruba esta rota — ela aparece no `meta_token`, que é onde deve aparecer.
 
 ### Exemplo executado
 
@@ -2982,21 +2982,21 @@ inventado.
 **`carimbos_desde` aparece aqui igual ao `gerado_em` porque a instância desta captura acabou de ser
 criada**; numa instância que já existia ele é o instante em que a migração rodou, e numa criada mês
 passado é o nascimento dela.
-**SEGUNDA EXCEÇÃO (T-098, 2026-07-30):** o bloco `token_instagram` foi acrescentado À MÃO a esta
+**SEGUNDA EXCEÇÃO (T-098, 2026-07-30):** o bloco `instagram_token` foi acrescentado À MÃO a esta
 colagem — o cenário original é WhatsApp e não tinha esse campo quando foi capturado. Os SETE valores
-(`nao_se_aplica` e os seis `null`) são exatamente o que `TestGETStateWhatsappInstagramTokenIsNotApplicableInTheJSON`
+(`not_applicable` e os seis `null`) são exatamente o que `TestGETStateWhatsappInstagramTokenIsNotApplicableInTheJSON`
 (`internal/outbound/state_instagram_test.go`) prova contra o handler de verdade — a garantia é
 mecânica, só a colagem aqui é manual.
-**TERCEIRA EXCEÇÃO (T-107, 2026-07-30):** os campos `tipo` e `ig_id` também foram acrescentados À MÃO
-— o cenário original é anterior aos dois. Os valores (`"whatsapp"` e `"nao_se_aplica"`) são exatamente
+**TERCEIRA EXCEÇÃO (T-107, 2026-07-30):** os campos `kind` e `ig_id` também foram acrescentados À MÃO
+— o cenário original é anterior aos dois. Os valores (`"whatsapp"` e `"not_applicable"`) são exatamente
 o que `TestGETStateWhatsappExposesTypeAndIgIDAsNotApplicableInTheJSON` (`internal/outbound/state_instagram_test.go`)
 prova contra o handler de verdade.)*
 
 ```jsonc
 {
-  "instancia": "lojinha",
-  "tipo": "whatsapp",
-  "ig_id": "nao_se_aplica",
+  "instance": "lojinha",
+  "kind": "whatsapp",
+  "ig_id": "not_applicable",
   "estado": "ativa",
   "pausada": false,
   "versao": "9.9.9-teste",
@@ -3035,58 +3035,58 @@ prova contra o handler de verdade.)*
     { "dia": "2026-07-28", "dia_utc": "2026-07-28", "contadores": { "alarme_perda_definitiva": 0, /* as 7 chaves cobranca_* vêm aqui, todas 0 nesta captura — omitidas só nesta colagem */ "conta_descartada": 0, "entregues": 9, "enviadas": 0, "falhas_de_envio": 0, "falhas_de_leitura": 0, "leituras_marcadas": 0, "numero_descartado": 0, "recebidas": 9, "recusadas_pelo_consumidor": 0 } },
     { "dia": "2026-07-29", "dia_utc": "2026-07-29", "contadores": { "alarme_perda_definitiva": 0, /* as 7 chaves cobranca_* vêm aqui, todas 0 nesta captura — omitidas só nesta colagem */ "conta_descartada": 0, "entregues": 4, "enviadas": 2, "falhas_de_envio": 1, "falhas_de_leitura": 0, "leituras_marcadas": 3, "numero_descartado": 0, "recebidas": 4, "recusadas_pelo_consumidor": 0 } }
   ],
-  "token_meta": {
+  "meta_token": {
     "verdict": "ok",
-    "medido_em": "2026-07-29T00:00:02Z",
-    "conferido_em": "2026-07-29T00:00:02Z",
-    "checagem_falhando_desde": null
+    "measured_at": "2026-07-29T00:00:02Z",
+    "checked_at": "2026-07-29T00:00:02Z",
+    "check_failing_since": null
   },
-  "certificado_do_callback": {
-    "estado": "observado",
-    "expira_em": "2026-10-21T00:00:02Z",
-    "observado_em": "2026-07-28T23:23:02Z"
+  "callback_certificate": {
+    "state": "observed",
+    "expires_at": "2026-10-21T00:00:02Z",
+    "observed_at": "2026-07-28T23:23:02Z"
   },
-  "numero_na_meta": {
-    "qualidade": {
-      "estado": "observado",
-      "valor": "GREEN",
-      "observado_em": "2026-07-29T00:00:02Z",
-      "fonte": "medicao"
+  "number_at_meta": {
+    "quality": {
+      "state": "observed",
+      "value": "GREEN",
+      "observed_at": "2026-07-29T00:00:02Z",
+      "source": "medicao"
     },
-    "limite_de_mensagens": {
-      "estado": "observado",
-      "valor": "TIER_1K",
-      "observado_em": "2026-07-29T00:00:02Z",
-      "fonte": "medicao"
+    "message_limit": {
+      "state": "observed",
+      "value": "TIER_1K",
+      "observed_at": "2026-07-29T00:00:02Z",
+      "source": "medicao"
     },
-    "conferido_em": "2026-07-29T00:00:02Z"
+    "checked_at": "2026-07-29T00:00:02Z"
   },
-  "token_instagram": {
-    "veredito": "nao_se_aplica",
+  "instagram_token": {
+    "verdict": "not_applicable",
     "definido_em": null,
-    "expira_em": null,
-    "dias_restantes": null,
-    "renovado_em": null,
-    "falhando_desde": null,
-    "instrucao": null
+    "expires_at": null,
+    "days_left": null,
+    "renewed_at": null,
+    "failing_since": null,
+    "instruction": null
   },
-  "entrada": {
+  "ingress": {
     "via": "tunel",
     "connector": {
       "state": "observed",
-      "conexoes_prontas": 4,
-      "medido_em": "2026-07-29T00:00:02Z",
-      "falhando_desde": null
+      "ready_connections": 4,
+      "measured_at": "2026-07-29T00:00:02Z",
+      "failing_since": null
     },
-    "ultimo_webhook_em": "2026-07-29T00:00:02Z"
+    "last_webhook_at": "2026-07-29T00:00:02Z"
   }
 }
 ```
 
-*(`token_instagram` sai `nao_se_aplica` nesta captura porque `lojinha` é WhatsApp — ver a seção
+*(`instagram_token` sai `not_applicable` nesta captura porque `lojinha` é WhatsApp — ver a seção
 própria do bloco, mais abaixo, para o exemplo numa instância Instagram.)*
 
-*(**QUARTA EXCEÇÃO (T-120, 2026-08-06):** o bloco `entrada` foi acrescentado À MÃO a esta colagem — o
+*(**QUARTA EXCEÇÃO (T-120, 2026-08-06):** o bloco `ingress` foi acrescentado À MÃO a esta colagem — o
 cenário original é anterior a ele. A forma e os estados são exatamente os que
 `internal/outbound/ingress_test.go` prova contra o handler de verdade; os valores mostrados são os de
 uma instalação que entra por túnel com o conector respondendo.)*
@@ -3134,8 +3134,8 @@ houvesse carimbo, nunca o contrário.
 > **Por que ele existe em vez de você anotar a data da `v0.23.0`:** foi exatamente essa a alternativa,
 > e ela é uma constante escrita à mão no código de cada consumidor — que **apodrece na primeira
 > instância nova**, porque aquela não carimba desde a `v0.23.0`, e sim desde que nasceu. O pedido foi
-> de um consumidor, e o argumento é o mesmo que já nos fez pôr **dois** carimbos no `token_meta` e no
-> `certificado_do_callback`: quem lê precisa saber a idade do **instrumento**, não só a do dado.
+> de um consumidor, e o argumento é o mesmo que já nos fez pôr **dois** carimbos no `meta_token` e no
+> `callback_certificate`: quem lê precisa saber a idade do **instrumento**, não só a do dado.
 
 #### 🔴 A regra acima está INCOMPLETA sem uma janela de referência
 
@@ -3397,7 +3397,7 @@ depois de um `200` contaria de novo. É o mesmo caveat que `recebidas` e `entreg
 contado até o webhook ser de fato aceito. Sem essa regra, um incidente do seu lado inflaria
 justamente o número que você mais olha durante ele.
 
-### `token_meta` — a checagem viva, com DOIS carimbos e TRÊS estados
+### `meta_token` — a checagem viva, com DOIS carimbos e TRÊS estados
 
 Responde *"a Meta ainda aceita o token desta instância?"* — a mesma pergunta do
 `GET /v1/instances/{slug}/health`, mas **sem custo por chamada**: aqui você lê o que o gateway já
@@ -3406,18 +3406,18 @@ mediu.
 | campo | o que é |
 |---|---|
 | `verdict` | `"ok"` · `"refused"` · `"unknown"` |
-| `medido_em` | quando a Meta **respondeu** pela última vez (`null` = nunca) |
-| `conferido_em` | a última **tentativa**, com ou sem sucesso (`null` = nunca) |
-| `checagem_falhando_desde` | início da sequência atual de falhas de checagem (`null` = não está falhando) |
+| `measured_at` | quando a Meta **respondeu** pela última vez (`null` = nunca) |
+| `checked_at` | a última **tentativa**, com ou sem sucesso (`null` = nunca) |
+| `check_failing_since` | início da sequência atual de falhas de checagem (`null` = não está falhando) |
 
-**Por que dois carimbos, e não um.** `{"verdict":"ok","medido_em":"15:20"}` sozinho é **ambíguo
+**Por que dois carimbos, e não um.** `{"verdict":"ok","measured_at":"15:20"}` sozinho é **ambíguo
 entre dois estados opostos**: *"conferi às 15:20 e não precisei conferir de novo"* e *"conferi às
 15:20, e todas as tentativas desde então falharam"*. No segundo caso o seu painel pintaria verde com
-a Meta fora do ar. **`medido_em` e `conferido_em` divergindo é o sinal de que a checagem está
+a Meta fora do ar. **`measured_at` e `checked_at` divergindo é o sinal de que a checagem está
 falhando** — visível sem você saber nada da nossa implementação.
 
 **O `ok` velho EXPIRA.** Passados 15 minutos sem a Meta responder, o veredito degrada para
-`unknown` em vez de continuar `ok`: cache que nunca expira é mentira com carimbo. `medido_em`
+`unknown` em vez de continuar `ok`: cache que nunca expira é mentira com carimbo. `measured_at`
 continua apontando para a última resposta real — é ele que diz há quanto tempo o gateway não ouve a
 Meta.
 
@@ -3438,11 +3438,11 @@ de tráfego* ficaria indistinguível de *sistema quebrado* — token revogado à
 veredito dela envelhece para `unknown`; use `pausada` para não confundir os dois.
 
 **As duas regras de alarme que isto lhe dá, e nenhuma exige conhecer as nossas entranhas:**
-`verdict != "ok"`, ou `conferido_em` envelhecido.
+`verdict != "ok"`, ou `checked_at` envelhecido.
 
-### `certificado_do_callback` — a validade do **seu** certificado, como o gateway a viu
+### `callback_certificate` — a validade do **seu** certificado, como o gateway a viu
 
-O irmão do `token_meta` do outro lado: aquele responde *"a Meta ainda aceita o token desta
+O irmão do `meta_token` do outro lado: aquele responde *"a Meta ainda aceita o token desta
 instância?"*; este responde *"o certificado do seu callback ainda vai estar válido semana que
 vem?"*. **Certificado do consumidor expirando derruba a entrega inteira**, e o sintoma chega como
 falha de TLS de madrugada — saber com dias de antecedência transforma incidente em manutenção.
@@ -3450,21 +3450,21 @@ Renovação automática existe justamente para isso, mas **automação falha cal
 
 | campo | o que é |
 |---|---|
-| `estado` | `"observado"` · `"nunca_observado"` |
-| `expira_em` | o `NotAfter` do certificado, UTC/RFC3339 (`null` em `nunca_observado`) |
-| `observado_em` | quando o gateway **viu** esse certificado, UTC/RFC3339 (`null` em `nunca_observado`) |
+| `state` | `"observed"` · `"never_observed"` |
+| `expires_at` | o `NotAfter` do certificado, UTC/RFC3339 (`null` em `never_observed`) |
+| `observed_at` | quando o gateway **viu** esse certificado, UTC/RFC3339 (`null` em `never_observed`) |
 
 **Não é sonda: é observação.** O gateway não abre conexão nenhuma para olhar o seu certificado — ele
 lê o que o handshake **da entrega** já traz, na mesma conexão que ia acontecer de qualquer jeito.
 Duas consequências que você precisa saber, e a segunda é a que decide a sua regra de alarme:
 
 - **sem entrega, não há observação nova.** O dado envelhece quando o tráfego para (ou quando a
-  instância fica pausada). É por isso que `observado_em` viaja junto: certificado observado há três
+  instância fica pausada). É por isso que `observed_at` viaja junto: certificado observado há três
   semanas **não é informação atual**, e o gateway não tem como fingir que é;
 - **é o certificado FOLHA** (o seu), não a cadeia inteira. É o que renova a cada ~90 dias e o que
   quebra quando a renovação falha. Intermediária da sua CA expirando não aparece aqui.
 
-**`nunca_observado` é um estado com nome, e isso é deliberado — trate-o como "sem informação", nunca
+**`never_observed` é um estado com nome, e isso é deliberado — trate-o como "sem informação", nunca
 como "vencido".** Ele significa que **nenhuma entrega desta instância chegou a completar um
 handshake**: instância recém-criada, ou consumidor que ainda não recebeu nada. Não é falha, e não é
 motivo de alarme sozinho.
@@ -3485,12 +3485,12 @@ tolera.
 **A regra de alarme sugerida**, e ela usa os dois campos de propósito:
 
 ```
-estado == "observado"
-  E expira_em - agora < 14 dias
-  E agora - observado_em < 24 h      # senão você está alarmando sobre informação velha
+state == "observed"
+  E expires_at - agora < 14 dias
+  E agora - observed_at < 24 h      # senão você está alarmando sobre informação velha
 ```
 
-E, separado disso: `estado == "observado"` com `observado_em` muito velho **numa instância ativa e
+E, separado disso: `state == "observed"` com `observed_at` muito velho **numa instância ativa e
 com tráfego** quer dizer que a entrega parou — mas para isso `entregues.ultimo_em` responde melhor,
 porque ele existe exatamente para essa pergunta.
 
@@ -3498,16 +3498,16 @@ Exemplo do bloco numa instância que ainda não entregou nada (**colado da mesma
 acima, antes da observação):
 
 ```json
-"certificado_do_callback": {
-  "estado": "nunca_observado",
-  "expira_em": null,
-  "observado_em": null
+"callback_certificate": {
+  "state": "never_observed",
+  "expires_at": null,
+  "observed_at": null
 }
 ```
 
-### `numero_na_meta` — a **qualidade** e o **limite de mensagens** do seu número (2026-07-28)
+### `number_at_meta` — a **qualidade** e o **limite de mensagens** do seu número (2026-07-28)
 
-O terceiro irmão de `token_meta` e `certificado_do_callback`. Os dois primeiros respondem *"esta
+O terceiro irmão de `meta_token` e `callback_certificate`. Os dois primeiros respondem *"esta
 credencial continua funcionando?"*; este responde a pergunta vizinha e igualmente cara: **"este
 número continua podendo enviar o volume que eu planejei?"**
 
@@ -3515,39 +3515,39 @@ número continua podendo enviar o volume que eu planejei?"**
 com o seu token. A regra do gateway — *ninguém fala direto com a Meta* — fechou aquele caminho, e
 esta é a porta que o substitui. O que cada um decide do seu lado:
 
-- **`limite_de_mensagens`** é o *tier* — o teto diário de conversas iniciadas. Ele **muda sozinho**:
+- **`message_limit`** é o *tier* — o teto diário de conversas iniciadas. Ele **muda sozinho**:
   a conta amadurece e sobe, ou é rebaixada e cai. Planejar o mês com o tier velho é planejar errado;
-- **`qualidade`** é o aviso **antecipado** de que a conta caminha para restrição. Descobrir isso pelo
+- **`quality`** é o aviso **antecipado** de que a conta caminha para restrição. Descobrir isso pelo
   bloqueio é descobrir tarde.
 
 ```jsonc
-"numero_na_meta": {
-  "qualidade": {
-    "estado": "observado",
-    "valor": "GREEN",
-    "observado_em": "2026-07-28T20:36:58Z",
-    "fonte": "medicao"
+"number_at_meta": {
+  "quality": {
+    "state": "observed",
+    "value": "GREEN",
+    "observed_at": "2026-07-28T20:36:58Z",
+    "source": "medicao"
   },
-  "limite_de_mensagens": {
-    "estado": "observado",
-    "valor": "TIER_50",          // rebaixado, e o aviso chegou EMPURRADO
-    "observado_em": "2026-07-28T20:40:03Z",
-    "fonte": "webhook"
+  "message_limit": {
+    "state": "observed",
+    "value": "TIER_50",          // rebaixado, e o aviso chegou EMPURRADO
+    "observed_at": "2026-07-28T20:40:03Z",
+    "source": "webhook"
   },
-  "conferido_em": "2026-07-28T20:36:58Z"
+  "checked_at": "2026-07-28T20:36:58Z"
 }
 ```
 
-*(Os dois exemplos deste bloco — este e o do `nunca_observado` abaixo — são **colados de uma execução
+*(Os dois exemplos deste bloco — este e o do `never_observed` abaixo — são **colados de uma execução
 do handler de verdade**, nunca digitados.)*
 
 | campo | o que é |
 |---|---|
-| `<valor>.estado` | `"observado"` · `"nunca_observado"` — as **mesmas** palavras do `certificado_do_callback`, porque a pergunta é a mesma |
-| `<valor>.valor` | o literal da Meta (`null` em `nunca_observado`) |
-| `<valor>.observado_em` | quando o **gateway** soube desse valor, UTC/RFC3339 (`null` em `nunca_observado`) |
-| `<valor>.fonte` | `"medicao"` · `"webhook"` (`null` em `nunca_observado`) |
-| `conferido_em` | a última vez que o gateway **tentou medir**, UTC/RFC3339 (`null` se nunca tentou) |
+| `<valor>.state` | `"observed"` · `"never_observed"` — as **mesmas** palavras do `callback_certificate`, porque a pergunta é a mesma |
+| `<valor>.value` | o literal da Meta (`null` em `never_observed`) |
+| `<valor>.observed_at` | quando o **gateway** soube desse valor, UTC/RFC3339 (`null` em `never_observed`) |
+| `<valor>.source` | `"medicao"` · `"webhook"` (`null` em `never_observed`) |
+| `checked_at` | a última vez que o gateway **tentou medir**, UTC/RFC3339 (`null` se nunca tentou) |
 
 #### 🔴 Os valores são LITERAIS da Meta — `"TIER_250"` não vira `250`
 
@@ -3561,7 +3561,7 @@ precisa de um número, faça a conversão do seu lado, e trate valor desconhecid
 
 #### As DUAS fontes, e quem vence quando elas discordam
 
-O `limite_de_mensagens` chega por dois caminhos, e o campo `fonte` diz qual produziu o valor que você
+O `message_limit` chega por dois caminhos, e o campo `source` diz qual produziu o valor que você
 está lendo:
 
 - **`medicao`** — o gateway pergunta à Graph API, por instância **ativa**, no mesmo ciclo em que já
@@ -3573,87 +3573,87 @@ está lendo:
 sempre vence" deixaria um reenvio da Meta (ela reenvia por até 36 h) regredir um valor já medido
 depois; "medição sempre vence" jogaria fora justamente o aviso empurrado.
 
-**A `qualidade` tem uma fonte só (`medicao`)**, e isso não é lacuna: o webhook
+**A `quality` tem uma fonte só (`medicao`)**, e isso não é lacuna: o webhook
 `phone_number_quality_update` **não carrega nota de qualidade** — ele carrega um `event`
 (`ONBOARDING`/`FLAGGED`/`UNFLAGGED`), que é outro fato. Inventar uma equivalência entre eles seria
 afirmar uma tradução que a documentação da Meta não sustenta.
 
-#### `observado_em` é o relógio do GATEWAY, não o da Meta
+#### `observed_at` é o relógio do GATEWAY, não o da Meta
 
 O carimbo diz **quando o gateway soube**, e não quando a Meta registrou a mudança. É a mesma
-definição de `certificado_do_callback.observado_em`. O motivo é que a alternativa compararia dois
+definição de `callback_certificate.observed_at`. O motivo é que a alternativa compararia dois
 relógios que ninguém sincronizou — e um desvio de minutos decidiria, em silêncio, qual fonte vence.
 
 #### Os DOIS carimbos, e o que a divergência entre eles significa
 
-`conferido_em` andando enquanto os `observado_em` ficam parados quer dizer **"o gateway está medindo
+`checked_at` andando enquanto os `observed_at` ficam parados quer dizer **"o gateway está medindo
 e voltando sem o dado"** — a Meta parou de mandar os campos, ou o pedido de campos foi recusado.
-Nesse estado o valor que você lê continua verdadeiro *para a data dele*, e o `observado_em` é o que
+Nesse estado o valor que você lê continua verdadeiro *para a data dele*, e o `observed_at` é o que
 te diz quanta idade ele tem.
 
-**`conferido_em: null` numa instância `pausada` é o esperado**, não uma falha: instância pausada não
+**`checked_at: null` numa instância `pausada` é o esperado**, não uma falha: instância pausada não
 é medida de propósito — ela não envia, e gastar chamada por ela seria medir um canal que não pode
 falhar.
 
-#### `nunca_observado` é estado com nome — trate como "sem informação", nunca como "ruim"
+#### `never_observed` é estado com nome — trate como "sem informação", nunca como "ruim"
 
 O estado é **por valor**, e não do bloco, porque o caso misto existe de verdade: um webhook de limite
 pode chegar antes da primeira medição, e aí o limite está observado e a qualidade não.
 
 ```json
-"numero_na_meta": {
-  "qualidade": {
-    "estado": "nunca_observado",
-    "valor": null,
-    "observado_em": null,
-    "fonte": null
+"number_at_meta": {
+  "quality": {
+    "state": "never_observed",
+    "value": null,
+    "observed_at": null,
+    "source": null
   },
-  "limite_de_mensagens": {
-    "estado": "nunca_observado",
-    "valor": null,
-    "observado_em": null,
-    "fonte": null
+  "message_limit": {
+    "state": "never_observed",
+    "value": null,
+    "observed_at": null,
+    "source": null
   },
-  "conferido_em": null
+  "checked_at": null
 }
 ```
 
 **A regra de alarme sugerida** — e ela é sua, porque o gateway não publica juízo aqui:
 
 ```
-limite_de_mensagens.estado == "observado"
-  E limite_de_mensagens.valor != <o tier que você planejou>     # subiu ou caiu sem você saber
-qualidade.estado == "observado" E qualidade.valor != "GREEN"    # e trate valor DESCONHECIDO como desconhecido
+message_limit.state == "observed"
+  E message_limit.value != <o tier que você planejou>     # subiu ou caiu sem você saber
+quality.state == "observed" E quality.value != "GREEN"    # e trate valor DESCONHECIDO como desconhecido
 ```
 
-#### 🔴 Numa instância Instagram, este bloco (e `token_meta`) dizem `nao_se_aplica` (T-099)
+#### 🔴 Numa instância Instagram, este bloco (e `meta_token`) dizem `not_applicable` (T-099)
 
 **Qualidade e tier de mensagens são conceitos do WhatsApp Business Number — Instagram não os tem, e
-nunca vai ter.** Até a v0.36.0 este bloco saía `nunca_observado` numa instância Instagram (medido em
-produção, `tenant-two-ig`, 2026-07-30 21:11), o que é a resposta ERRADA: `nunca_observado` diz
-*"ainda não medimos, espere"*; a resposta certa é `nao_se_aplica`, que diz *"nunca vai existir aqui,
-não olhe"*. Se você ler `nunca_observado` num campo que nunca vai ser preenchido, ou fica esperando
-para sempre ou alarma por algo que não existe — é o mesmo problema que `token_instagram` já resolve
+nunca vai ter.** Até a v0.36.0 este bloco saía `never_observed` numa instância Instagram (medido em
+produção, `tenant-two-ig`, 2026-07-30 21:11), o que é a resposta ERRADA: `never_observed` diz
+*"ainda não medimos, espere"*; a resposta certa é `not_applicable`, que diz *"nunca vai existir aqui,
+não olhe"*. Se você ler `never_observed` num campo que nunca vai ser preenchido, ou fica esperando
+para sempre ou alarma por algo que não existe — é o mesmo problema que `instagram_token` já resolve
 do lado do WhatsApp (seção seguinte), e as duas direções agora usam a **mesma palavra**.
 
 ```json
-"numero_na_meta": {
-  "qualidade": { "estado": "nao_se_aplica", "valor": null, "observado_em": null, "fonte": null },
-  "limite_de_mensagens": { "estado": "nao_se_aplica", "valor": null, "observado_em": null, "fonte": null },
-  "conferido_em": null
+"number_at_meta": {
+  "quality": { "state": "not_applicable", "value": null, "observed_at": null, "source": null },
+  "message_limit": { "state": "not_applicable", "value": null, "observed_at": null, "source": null },
+  "checked_at": null
 }
 ```
 
-**E o mesmo vale para `token_meta.verdict`, que também sai `"nao_se_aplica"` numa instância
+**E o mesmo vale para `meta_token.verdict`, que também sai `"not_applicable"` numa instância
 Instagram.** O motivo é mais sutil do que "o campo não se aplica por definição": a checagem viva
 (`watchdog.go`) mede chamando `GET /{phone_number_id}` na Graph API, e uma instância Instagram **nunca
 tem** `phone_number_id` (o cadastro recusa se vier preenchido). Sem este tratamento, a vigia mediria
 com o campo vazio, a Graph recusaria a chamada localmente (nem chega a haver requisição de rede), e o
 gateway classificaria isso como **credencial recusada** — um `verdict: "refused"` **permanente e
 falso** em toda instância Instagram saudável, porque a checagem nunca foi desenhada para medir nada
-por lá. Por isso o gateway não deixa esse resultado vazar: `token_meta` também vira `nao_se_aplica`.
+por lá. Por isso o gateway não deixa esse resultado vazar: `meta_token` também vira `not_applicable`.
 
-### `token_instagram` — a validade do token de longa duração do Instagram (2026-07-30)
+### `instagram_token` — a validade do token de longa duração do Instagram (2026-07-30)
 
 Responde *"este canal Instagram vai continuar funcionando?"* — pelo lado do **token**, que aqui tem
 uma diferença dura em relação ao WhatsApp: ele **vence em 60 dias**, sempre, e passado esse prazo
@@ -3666,48 +3666,48 @@ desfecho **definitivo**, não uma zona cinza.
 consumidor→instância decide qual). Numa instância **WhatsApp** este bloco sai assim, sempre:
 
 ```json
-"token_instagram": {
-  "veredito": "nao_se_aplica",
+"instagram_token": {
+  "verdict": "not_applicable",
   "definido_em": null,
-  "expira_em": null,
-  "dias_restantes": null,
-  "renovado_em": null,
-  "falhando_desde": null,
-  "instrucao": null
+  "expires_at": null,
+  "days_left": null,
+  "renewed_at": null,
+  "failing_since": null,
+  "instruction": null
 }
 ```
 
 **Isto NÃO é o bloco quebrado — é o bloco dizendo a verdade.** O token de System User que o
-WhatsApp usa não tem prazo de 60 dias (é a mesma razão pela qual `numero_na_meta` e `token_meta`
-sempre saem `nao_se_aplica` do lado do Instagram — ver a subseção correspondente, acima —, e
-`token_instagram` sempre sai `nao_se_aplica` do lado do WhatsApp: cada produto da Meta tem a
+WhatsApp usa não tem prazo de 60 dias (é a mesma razão pela qual `number_at_meta` e `meta_token`
+sempre saem `not_applicable` do lado do Instagram — ver a subseção correspondente, acima —, e
+`instagram_token` sempre sai `not_applicable` do lado do WhatsApp: cada produto da Meta tem a
 credencial que tem, e o bloco existe SEMPRE, na resposta, dizendo qual dos dois é o seu caso). Um
 campo que simplesmente sumisse, ou viesse com os números zerados em vez de `null`, faria você achar
 que a renovação automática está quebrada quando ela nunca existiu ali.
 
 | campo | o que é |
 |---|---|
-| `veredito` | `"nao_se_aplica"` · `"aguardando"` · `"ok"` · `"falhando"` · `"expirado"` |
-| `definido_em` | quando o token ATUAL foi definido — criação, seu cadastro, rotação do dono, ou a última renovação automática (`null` em `nao_se_aplica`) |
-| `expira_em` | `definido_em` + 60 dias (`null` em `nao_se_aplica`) |
-| `dias_restantes` | pode ser **negativo** (expirado há N dias) (`null` em `nao_se_aplica`) |
-| `renovado_em` | a última vez que o **laço automático** renovou este token com sucesso — `null` até a primeira renovação de verdade, mesmo que o token original ainda tenha dias de vida |
-| `falhando_desde` | início da sequência atual de falhas de renovação (`null` = não está falhando) |
-| `instrucao` | texto explicando o que fazer — só presente quando `veredito` é `falhando` ou `expirado` |
+| `verdict` | `"not_applicable"` · `"pending"` · `"ok"` · `"failing"` · `"expired"` |
+| `definido_em` | quando o token ATUAL foi definido — criação, seu cadastro, rotação do dono, ou a última renovação automática (`null` em `not_applicable`) |
+| `expires_at` | `definido_em` + 60 dias (`null` em `not_applicable`) |
+| `days_left` | pode ser **negativo** (expirado há N dias) (`null` em `not_applicable`) |
+| `renewed_at` | a última vez que o **laço automático** renovou este token com sucesso — `null` até a primeira renovação de verdade, mesmo que o token original ainda tenha dias de vida |
+| `failing_since` | início da sequência atual de falhas de renovação (`null` = não está falhando) |
+| `instruction` | texto explicando o que fazer — só presente quando `verdict` é `failing` ou `expired` |
 
 **Os cinco vereditos, e o que cada um pede de você:**
 
-- **`aguardando`** — token válido, ainda longe do limiar de renovar (a partir de 30 dias de idade).
+- **`pending`** — token válido, ainda longe do limiar de renovar (a partir de 30 dias de idade).
   Normal, sem ação nenhuma;
 - **`ok`** — o laço automático **já renovou este token com sucesso pelo menos uma vez**. É a
   resposta a *"o mecanismo funciona de verdade?"* — e é por isso que ele é um veredito PRÓPRIO, e não
-  o mesmo que `aguardando`: um token que nunca precisou renovar ainda não provou nada sobre a
+  o mesmo que `pending`: um token que nunca precisou renovar ainda não provou nada sobre a
   automação;
-- **`falhando`** — a tentativa de renovação mais recente não deu certo (a Meta recusou, ou a
-  gravação do token novo falhou) e o token **ainda não venceu**. `falhando_desde` mostra a HONESTA
+- **`failing`** — a tentativa de renovação mais recente não deu certo (a Meta recusou, ou a
+  gravação do token novo falhou) e o token **ainda não venceu**. `failing_since` mostra a HONESTA
   primeira falha — não há atraso nem limiar aqui: se o gateway está falhando há 10 minutos, é isso
   que a resposta diz há 10 minutos;
-- **`expirado`** — passou de 60 dias sem renovar. **Não há mais renovação automática possível.**
+- **`expired`** — passou de 60 dias sem renovar. **Não há mais renovação automática possível.**
 
 #### 🔴 Quem alarma é você — o gateway só registra
 
@@ -3718,36 +3718,36 @@ gateway; construir um segundo canal aqui seria pior que o que já existe do seu 
 
 🔴 **E o motivo pelo qual isto importa mais aqui do que em qualquer outro bloco: você não consegue
 consertar sozinho.** O token não está na sua mão, por desenho deste gateway (ninguém fala direto com
-a Meta). Por isso `instrucao` não é cosmético — ela é a única coisa que separa `veredito: "falhando"`
+a Meta). Por isso `instruction` não é cosmético — ela é a única coisa que separa `verdict: "failing"`
 de um beco sem saída para quem não tem acesso ao problema.
 
 **Regra prática de alarme, sua:**
 
 ```
-veredito == "expirado"                                    # pare tudo, é manual
-  OU (veredito == "falhando" E falhando_desde tem mais de alguns dias)
+verdict == "expired"                                    # pare tudo, é manual
+  OU (verdict == "failing" E failing_since tem mais de alguns dias)
 ```
 
-Se `falhando_desde` passar de alguns dias, acione o dono da conta Instagram na Meta — a resolução é
-**manual** e não está do lado do gateway. Um `falhando` recém-aparecido normalmente se resolve
+Se `failing_since` passar de alguns dias, acione o dono da conta Instagram na Meta — a resolução é
+**manual** e não está do lado do gateway. Um `failing` recém-aparecido normalmente se resolve
 sozinho no próximo ciclo (rede instável, um `5xx` passageiro da Meta); é a PERSISTÊNCIA da falha que
 pede gente, não a primeira ocorrência.
 
 Exemplo de uma instância Instagram falhando (colado de uma execução do handler de verdade):
 
 ```json
-"token_instagram": {
-  "veredito": "falhando",
+"instagram_token": {
+  "verdict": "failing",
   "definido_em": "2026-06-15T00:00:00Z",
-  "expira_em": "2026-08-14T00:00:00Z",
-  "dias_restantes": 12,
-  "renovado_em": null,
-  "falhando_desde": "2026-08-01T09:00:00Z",
-  "instrucao": "a renovacao automatica esta falhando; a resolucao e MANUAL, do lado de quem opera o gateway ou e dono da conta Instagram na Meta — o token nao esta ao alcance deste consumidor"
+  "expires_at": "2026-08-14T00:00:00Z",
+  "days_left": 12,
+  "renewed_at": null,
+  "failing_since": "2026-08-01T09:00:00Z",
+  "instruction": "a renovacao automatica esta falhando; a resolucao e MANUAL, do lado de quem opera o gateway ou e dono da conta Instagram na Meta — o token nao esta ao alcance deste consumidor"
 }
 ```
 
-### `entrada` — por ONDE a entrada é publicada, e se o conector está de pé (2026-08-06)
+### `ingress` — por ONDE a entrada é publicada, e se o conector está de pé (2026-08-06)
 
 🔴 **LEIA ESTA FRASE ANTES DE USAR O BLOCO, porque ela é o que impede o mal-entendido caro:**
 `via` e `connector` descrevem **por onde a entrada é publicada** e **se o conector está de pé** —
@@ -3767,71 +3767,71 @@ isso ele não existe aqui, e não vai passar a existir.
 |---|---|---|
 | `via` | **configuração**, não medição — `tunel`, `encaminhamento_de_porta` ou `unknown` | saber por onde a entrada deveria estar chegando quando você for reportar uma queda |
 | `connector` | **medição** do `/ready` do conector que publica a rota | distinguir "o túnel caiu" de "o gateway está quieto" |
-| `ultimo_webhook_em` | o **mesmo** valor de `contadores.recebidas.ultimo_em` | concluir **silêncio** por conta própria, sem ler a tabela de contadores |
+| `last_webhook_at` | o **mesmo** valor de `contadores.recebidas.ultimo_em` | concluir **silêncio** por conta própria, sem ler a tabela de contadores |
 
 **`connector.state` tem TRÊS valores, e a diferença entre dois deles é o ponto do bloco:**
 
-- **`observed`** — o gateway perguntou e o conector respondeu. `conexoes_prontas` traz o número, e
+- **`observed`** — o gateway perguntou e o conector respondeu. `ready_connections` traz o número, e
   ele **pode ser `0`**: zero é uma medição legítima ("o conector está de pé e não há túnel montado"),
-  o sinal mais forte que este bloco consegue dar. `falhando_desde` vem `null`;
-- **`unknown`** — **não consegui medir**. `conexoes_prontas` vem **sempre `null`**, nunca um
-  zero que pareça veredito; `falhando_desde` diz desde quando a pergunta não volta (`null` se nunca
-  houve tentativa), e `medido_em` continua apontando para a **última resposta real**, que é o que diz
+  o sinal mais forte que este bloco consegue dar. `failing_since` vem `null`;
+- **`unknown`** — **não consegui medir**. `ready_connections` vem **sempre `null`**, nunca um
+  zero que pareça veredito; `failing_since` diz desde quando a pergunta não volta (`null` se nunca
+  houve tentativa), e `measured_at` continua apontando para a **última resposta real**, que é o que diz
   há quanto tempo o gateway não ouve o conector;
 - **`not_configured`** — ninguém disse ao gateway a quem perguntar (instalação sem túnel). Os três
   campos vêm `null`.
 
 ⚠️ **`observed` NÃO é um veredito de saúde.** O gateway publica o que mediu e quando mediu; quem
-julga é você. É a mesma regra de `certificado_do_callback`, que também não tem estado "vencido".
+julga é você. É a mesma regra de `callback_certificate`, que também não tem estado "vencido".
 
 ⚠️ **O bloco vem SEMPRE, com todas as chaves, em toda instância** — inclusive `not_configured` e
 inclusive numa instância Instagram. Campo que some quebra parser estrito, e este contrato já pagou
-por isso com o `token_instagram`.
+por isso com o `instagram_token`.
 
 ℹ️ **`via` e `connector` são do GATEWAY, não da instância:** duas instâncias do mesmo gateway leem
-exatamente os mesmos valores. Só `ultimo_webhook_em` é por instância.
+exatamente os mesmos valores. Só `last_webhook_at` é por instância.
 
-**A regra de alarme que isso te dá:** `connector.state == "observed" && conexoes_prontas == 0` é
+**A regra de alarme que isso te dá:** `connector.state == "observed" && ready_connections == 0` é
 *"o túnel caiu"* — aja. `connector.state == "unknown"` é *"o gateway não está conseguindo
 medir"* — outra urgência, outro lugar para procurar, e **nunca** o mesmo alarme.
 
-### `alcance_externo` — o veredito da sonda pública, espelhado aqui (2026-08-07)
+### `external_reach` — o veredito da sonda pública, espelhado aqui (2026-08-07)
 
 🔴 **LEIA A SEÇÃO "Duas perguntas diferentes" (acima) ANTES DE USAR ESTE BLOCO.** Ele é
 **conveniência**, não uma segunda fonte: quando o gateway está calado, este bloco também está — é a
 URL pública da sonda (seção acima) que sobrevive à nossa queda, nunca este campo.
 
 ```jsonc
-"alcance_externo": { "estado": "observado", "veredito": "up", "medido_em": "2026-08-07T13:05:00Z",
-                      "fonte": "sonda_externa" }
+"external_reach": { "state": "observed", "verdict": "up", "measured_at": "2026-08-07T13:05:00Z",
+                     "source": "sonda_externa" }
 ```
 
 | campo | é |
 |---|---|
-| `estado` | `observado`, `nao_configurado` ou `nao_consegui_verificar` — ver abaixo |
-| `veredito` | o literal que a sonda externa respondeu (hoje, `"up"` ou `"down"`), **sem tradução** — `null` fora de `observado` |
-| `medido_em` | a última vez que a sonda externa RESPONDEU de verdade — continua apontando pra essa resposta mesmo depois de o estado degradar, pela mesma razão de `token_meta.medido_em` |
-| `fonte` | hoje sempre `"sonda_externa"` quando `observado`; existe para o dia em que um segundo mecanismo entrar, sem forçar você a reinterpretar o contrato |
+| `state` | `observed`, `not_configured` ou `could_not_verify` — ver abaixo |
+| `verdict` | o literal que a sonda externa respondeu (hoje, `"up"` ou `"down"`), **sem tradução** — `null` fora de `observed` |
+| `measured_at` | a última vez que a sonda externa RESPONDEU de verdade — continua apontando pra essa resposta mesmo depois de o estado degradar, pela mesma razão de `meta_token.measured_at` |
+| `source` | hoje sempre `"sonda_externa"` quando `observed`; existe para o dia em que um segundo mecanismo entrar, sem forçar você a reinterpretar o contrato |
 
-**`estado` tem TRÊS valores, e a distinção entre os dois últimos é o ponto do bloco:**
+**`state` tem TRÊS valores, e a distinção entre os dois últimos é o ponto do bloco:**
 
-- **`observado`** — o gateway perguntou à sonda externa e ela respondeu. `veredito` traz o literal
-  dela, **incluindo `"down"`** — down MEDIDO é `observado` com `veredito: "down"`, não um estado à
+- **`observed`** — o gateway perguntou à sonda externa e ela respondeu. `verdict` traz o literal
+  dela, **incluindo `"down"`** — down MEDIDO é `observed` com `verdict: "down"`, não um estado à
   parte;
-- 🔴 **`nao_consegui_verificar`** — a ÚLTIMA tentativa do gateway de perguntar à sonda externa não
+- 🔴 **`could_not_verify`** — a ÚLTIMA tentativa do gateway de perguntar à sonda externa não
   voltou (sem resposta, sem JSON legível, ou sem o campo esperado), OU a última resposta boa já
   passou da validade. **Isto NUNCA é `down`, e nunca é o campo ausente.** É uma palavra própria,
-  diferente de `unknown` usado em `token_meta`/`connector` — porque a decisão que você vai
+  diferente de `unknown` usado em `meta_token`/`connector` — porque a decisão que você vai
   automatizar em cima dela é diferente: "eu não consegui perguntar" não é "vocês estão fora do ar";
-- **`nao_configurado`** — este gateway ainda não tem `ZAPGW_EXTERNAL_PROBE_URL` configurada. `veredito`,
-  `medido_em` e `fonte` vêm `null`.
+- **`not_configured`** — este gateway ainda não tem `ZAPGW_EXTERNAL_PROBE_URL` configurada. `verdict`,
+  `measured_at` e `source` vêm `null`.
 
-⚠️ **O bloco vem SEMPRE, com as quatro chaves, em toda instância** — mesma regra de `entrada` e
-`token_instagram`: campo que some quebra parser estrito.
+⚠️ **O bloco vem SEMPRE, com as quatro chaves, em toda instância** — mesma regra de `ingress` e
+`instagram_token`: campo que some quebra parser estrito.
 
-**A regra de alarme que isso te dá:** `alcance_externo.estado == "observado" && veredito == "down"`
+**A regra de alarme que isso te dá:** `external_reach.state == "observed" && verdict == "down"`
 é *"a entrada pública caiu"* — aja, com a MESMA urgência de uma leitura direta da sonda.
-`alcance_externo.estado == "nao_consegui_verificar"` é *"o gateway não conseguiu perguntar à sonda
+`external_reach.state == "could_not_verify"` é *"o gateway não conseguiu perguntar à sonda
 agora"* — não é sinal de queda nenhuma; se você quiser saber mesmo assim, use a URL direta desta
 seção, que não depende do gateway responder.
 
@@ -4666,9 +4666,9 @@ o que a resposta final diz, só quando a Meta é consultada.
 - Template, botão, mídia, reação, localização, resposta a story, marcação de leitura.
 - Qualidade do número / tier de mensagens — conceito de WhatsApp, sem equivalente modelado aqui.
 - `GET /v1/estado` continua funcionando (ele é genérico, por slug), mas os blocos específicos de
-  WhatsApp (`token_meta`, `numero_na_meta`) sempre respondem `nao_se_aplica` — **explicitamente**,
+  WhatsApp (`meta_token`, `number_at_meta`) sempre respondem `not_applicable` — **explicitamente**,
   nunca vazios nem ausentes (T-099) — numa instância Instagram. Ver a tabela logo abaixo.
-- 🔴 **A EXCEÇÃO é `token_instagram` (T-098): ele é o bloco que SÓ existe do lado do Instagram** — o
+- 🔴 **A EXCEÇÃO é `instagram_token` (T-098): ele é o bloco que SÓ existe do lado do Instagram** — o
   token de longa duração vence em 60 dias, sem equivalente no WhatsApp (System User não expira
   assim). É por ali que você vigia se o token deste canal ainda vai funcionar amanhã — ver a seção
   própria do bloco, acima.
@@ -4699,18 +4699,18 @@ confirme o token sem enviar mensagem — inventar um por analogia arriscaria uma
 | bloco | WhatsApp | Instagram |
 |---|---|---|
 | `estado` / `pausada` / `versao` / `gerado_em` / `carimbos_desde` / `contadores` / `serie_7_dias` / `serie_diaria` | sim | sim — genéricos, independem do produto Meta |
-| `tipo` | sim — sempre `"whatsapp"` | sim — sempre `"instagram"` |
-| `ig_id` | **sempre `nao_se_aplica`** (T-107) — identificador do Instagram, o WhatsApp não tem | sim — o Instagram-scoped Business Account ID desta instância, o mesmo valor de `zapgw instance show` |
-| `certificado_do_callback` | sim | sim — é o TLS do **seu** endpoint, o mesmo nos dois produtos |
-| `token_meta` | sim, medido a cada 5 min | **sempre `nao_se_aplica`** (T-099) — a checagem mede por `phone_number_id`, que Instagram nunca tem |
-| `numero_na_meta` (`qualidade`, `limite_de_mensagens`) | sim, medido/empurrado | **sempre `nao_se_aplica`** (T-099) — qualidade e tier são conceitos do WhatsApp Business Number |
-| `token_instagram` | **sempre `nao_se_aplica`** (T-098) | sim — vencimento em 60 dias, ver a seção própria |
-| `entrada` (`via`, `connector`, `ultimo_webhook_em`) | sim | sim — ele é do **gateway**, não do produto Meta: os dois primeiros campos são iguais em toda instância deste gateway (T-120) |
+| `kind` | sim — sempre `"whatsapp"` | sim — sempre `"instagram"` |
+| `ig_id` | **sempre `not_applicable`** (T-107) — identificador do Instagram, o WhatsApp não tem | sim — o Instagram-scoped Business Account ID desta instância, o mesmo valor de `zapgw instance show` |
+| `callback_certificate` | sim | sim — é o TLS do **seu** endpoint, o mesmo nos dois produtos |
+| `meta_token` | sim, medido a cada 5 min | **sempre `not_applicable`** (T-099) — a checagem mede por `phone_number_id`, que Instagram nunca tem |
+| `number_at_meta` (`quality`, `message_limit`) | sim, medido/empurrado | **sempre `not_applicable`** (T-099) — qualidade e tier são conceitos do WhatsApp Business Number |
+| `instagram_token` | **sempre `not_applicable`** (T-098) | sim — vencimento em 60 dias, ver a seção própria |
+| `ingress` (`via`, `connector`, `last_webhook_at`) | sim | sim — ele é do **gateway**, não do produto Meta: os dois primeiros campos são iguais em toda instância deste gateway (T-120) |
 
-🔴 **`tipo` e `ig_id` entraram na T-107 (2026-07-30) e aparecem SEMPRE, nos dois produtos** — a mesma
+🔴 **`kind` e `ig_id` entraram na T-107 (2026-07-30) e aparecem SEMPRE, nos dois produtos** — a mesma
 cegueira que a T-103 já tinha consertado em `zapgw instance show`/`list` continuava aqui: sem
-`tipo`, você tinha de deduzir o produto pela ausência dos outros blocos (`token_instagram
-nao_se_aplica` etc.), que é adivinhação; e sem `ig_id` você via o bloco `token_instagram` saudável
+`kind`, você tinha de deduzir o produto pela ausência dos outros blocos (`instagram_token
+not_applicable` etc.), que é adivinhação; e sem `ig_id` você via o bloco `instagram_token` saudável
 **sem conseguir confirmar de qual conta Instagram ele fala** — foi exatamente um `ig_id` errado que
 causou o defeito descrito na seção de rotação de instância (T-102). `ig_id` é identificador, não
 segredo (mesma decisão da T-102): sai o valor, nunca um booleano `cadastrado: sim/não`.

@@ -2,6 +2,18 @@
 
 One line per version shipped, in the same commit as the bump. The entry states the **effect**, not the diff.
 
+## Unreleased
+
+- **The `GET /v1/estado` blocks the contract still names in Portuguese** (T-240) — measured
+  `docs/CONTRATO-CONSUMIDOR.md` and its pt-BR mirror against `state.go`, `ingress.go`,
+  `block_handler.go` and `external_probe.go`, family by family, and renamed every block/field name
+  and literal enum value that no longer matches what the handler emits (`meta_token`,
+  `callback_certificate`, `number_at_meta`, `instagram_token`, `ingress`, `external_reach`, their
+  inner fields, and `GET /v1/bloqueios`'s `instance`/`blocked`); left every occurrence that is
+  correct as-is (request-body/query-param aliases, `operacao`, `hoje`, `definido_em`, the `dia`/
+  `serie_7_dias` deprecation table, and the still-Portuguese `lideranca` block name, which stays a
+  pending code-side item). _Completed 2026-09-15 04:22._
+
 ## v0.67.0 — 2026-09-15
 
 MINOR, and it BREAKS two operator-facing surfaces on purpose (the project is pre-1.0): the old
