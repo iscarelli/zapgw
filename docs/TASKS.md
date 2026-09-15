@@ -392,6 +392,25 @@ instancias foram rotacionadas. Duas licoes que custaram na hora e valem alem des
 
 > A fila do periodo privado esta em `iscarelli/zapgw-dev`, congelada. Tarefa nova nasce aqui.
 
+## [ ] T-249  The `POST /v1/cadastro`, `/v1/pausa` and `/v1/fumaca` examples in the contract do not match the keys the handlers emit
+Why:     Achado da T-247 (2026-09-15), medido por mim contra o codigo: os handlers dessas rotas
+         emitem uma MISTURA — `registration_handler.go:151-161` responde `instance`/`state`/
+         `paused`/`registration_window`/`encrypted` (ingles) ao lado de `proximo_passo`, `campo`,
+         `cadastrado`, `primeira_insercao_em`, `fecha_em` (portugues); o corpo de ENTRADA continua
+         `instancia`/`numero_exibido`/`token_envio` (`:105-112`); `pause_handler.go:63` le
+         `instancia`. Os exemplos do contrato mostram `estado`/`pausada`/`instancia` na RESPOSTA —
+         chave que nao sai. E' a familia do `versao -> None`. Mais um residuo da T-240 que ficou so'
+         no EN: `docs/CONTRATO-CONSUMIDOR.pt-BR.md:2906` ainda diz `alcance_externo.veredito`
+         (o EN ja diz `external_reach.verdict`).
+Files:   docs/CONTRATO-CONSUMIDOR.md, docs/CONTRATO-CONSUMIDOR.pt-BR.md
+Do:      Mesmo metodo da T-240/T-247: por rota, `grep -n 'json:"' <handler>` colado ANTES, doc
+         depois, grep do doc no fim. O doc descreve o que SAI e o que ENTRA hoje, chave por chave,
+         inclusive as que continuam em portugues no codigo — NAO "corrija" a mistura no doc: ela e'
+         real, e o consumidor precisa dela como esta. 🔴 NAO MEXA EM CODIGO; a mistura em si vai
+         para o relatorio (a T-248 recebe a lista). Casos (a)/(b)/(c) como sempre.
+Verify:  Por rota, os dois greps colados; `grep -n "alcance_externo" docs/CONTRATO-CONSUMIDOR.pt-BR.md`
+         vazio fora de caso (b)/(c). `CGO_ENABLED=0 go build ./... && go test ./...` (garantia).
+
 ## [ ] T-248  Seven response keys and literals still Portuguese in code, among English siblings
 After:   DECISAO DO DONO — muda chave de RESPOSTA que o consumidor le hoje. Nao despache sem ele.
 Why:     Medido pela T-240 contra o codigo (2026-09-15): `hoje` (`state.go:236`, irmaos `last_7_days`/
