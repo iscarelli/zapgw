@@ -4472,6 +4472,12 @@ there is no parameter that loosens it. The ceilings are the SAME per-category ta
 > ⚠️ **How long the handle stays valid is NOT documented by Meta, and the gateway makes no promise
 > about it.** Use it in a `POST /v1/templates` call soon after you receive it. This route has no
 > cache of its own — every call talks to Meta again, from scratch.
+>
+> *What one real handle showed (2026-09-15, read from the value itself, NOT from any Meta page — so
+> treat it as a hint, not a contract):* the handle is a `:`-separated string whose second and third
+> fields are the `file_name` and the mime in base64, and after an `:e:` field comes a Unix timestamp
+> **four days after the upload**. It looks like an expiry. Nobody has measured what happens after
+> it; the advice above ("same run") already covers the case.
 
 #### Errors
 
@@ -4497,7 +4503,7 @@ Meta call that was actually attempted.
 
 | `step` | Names |
 |---|---|
-| `app_id` | `GET /app?fields=id` — discovering which Meta app your token belongs to. **This is the one call in this whole route that has not yet been measured against the real Meta** — assumed from the Resumable Upload doc alone (see the mark at the end of this section) |
+| `app_id` | `GET /app?fields=id` — discovering which Meta app your token belongs to. Measured against the real Meta on 2026-09-15 with a consumer's System User token: it answers the `id`, and the route does not need you to send an App ID |
 | `session` | `POST /{app-id}/uploads` — opening the upload session |
 | `upload` | `POST /upload:{id}` — sending the bytes |
 
@@ -4510,12 +4516,15 @@ Meta call that was actually attempted.
     "step": "app_id" } }
 ```
 
-*Assumed / not yet measured against the real Meta (see §4, "How this document marks what is measured
-and what is assumed"): this whole route.* It was built from
-`developers.facebook.com/docs/graph-api/guides/upload` (read 2026-09-15) and proven only against this
-gateway's own `httptest` fixtures — no call in this section has gone to the real Graph API yet. The
-`example.header_handle` shape above is Meta's documented one; this mark comes off once a real
-template ships through this route.
+*Measured against the real Meta on 2026-09-15 (see §4, "How this document marks what is measured
+and what is assumed"): this whole route, once.* A consumer sent a 77,999-byte `image/png` (1080×1350)
+through `v0.66.1`, received `200` with a 218-character handle, and created a template with that
+handle in a `HEADER` of format `IMAGE` in the same run — `201`, `PENDING`, category stored as
+requested. One measurement, one mime, one consumer: the other three mimes in the table above are
+still only Meta's documented list. **And the first real call, on `v0.66.0`, failed** — the session id
+Meta returns carries a `?sig=…` suffix that the gateway was escaping (fixed in `v0.66.1`, T-242, and
+recorded in `docs/ARMADILHAS.md`); the test fixtures of `v0.66.0` never carried that suffix, which is
+why the fixtures passed and Meta did not.
 
 ---
 

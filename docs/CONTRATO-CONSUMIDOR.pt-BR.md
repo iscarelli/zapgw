@@ -4422,6 +4422,12 @@ por categoria que o `/v1/media` lê (são NOSSOS, não da Meta).
 > ⚠️ **Por quanto tempo o handle continua válido NÃO é documentado pela Meta, e o gateway não promete
 > nada sobre isso.** Use-o num `POST /v1/templates` logo depois de recebê-lo. Esta rota não guarda
 > cache nenhum — toda chamada fala com a Meta de novo, do zero.
+>
+> *O que um handle real mostrou (2026-09-15, lido do próprio valor, NÃO de página da Meta — então
+> trate como pista, não como contrato):* o handle é uma string separada por `:` cujo segundo e
+> terceiro campos são o `file_name` e o mime em base64, e depois de um campo `:e:` vem um timestamp
+> Unix **quatro dias depois do upload**. Tem cara de validade. Ninguém mediu o que acontece depois
+> dele; o conselho acima ("mesma execução") já cobre o caso.
 
 #### Erros
 
@@ -4447,7 +4453,7 @@ propósito: o campo só nomeia uma chamada à Meta que realmente foi tentada.
 
 | `step` | Nomeia |
 |---|---|
-| `app_id` | `GET /app?fields=id` — descobrir a qual app da Meta seu token pertence. **É a única chamada desta rota inteira que ainda não foi medida contra a Meta real** — assumida só a partir da doc da Resumable Upload (veja a marca no fim desta seção) |
+| `app_id` | `GET /app?fields=id` — descobrir a qual app da Meta seu token pertence. Medida contra a Meta real em 2026-09-15 com o token de System User de um consumidor: responde o `id`, e a rota não precisa que você mande App ID nenhum |
 | `session` | `POST /{app-id}/uploads` — abrir a sessão de upload |
 | `upload` | `POST /upload:{id}` — mandar os bytes |
 
@@ -4460,12 +4466,15 @@ propósito: o campo só nomeia uma chamada à Meta que realmente foi tentada.
     "step": "app_id" } }
 ```
 
-*Assumido / ainda não medido contra a Meta real (veja o §4, "Como este documento marca o que é medido
-e o que é suposto"): esta rota inteira.* Foi construída a partir de
-`developers.facebook.com/docs/graph-api/guides/upload` (lida em 2026-09-15) e provada só contra as
-fixtures `httptest` deste gateway — nenhuma chamada desta seção foi à Graph API real ainda. O formato
-do `example.header_handle` acima é o documentado pela Meta; esta marca sai quando um template real
-passar por esta rota.
+*Medido contra a Meta real em 2026-09-15 (veja o §4, "Como este documento marca o que é medido e o
+que é suposto"): esta rota inteira, uma vez.* Um consumidor mandou um `image/png` de 77.999 bytes
+(1080×1350) pela `v0.66.1`, recebeu `200` com um handle de 218 caracteres e criou um template com
+esse handle num `HEADER` de formato `IMAGE` na mesma execução — `201`, `PENDING`, categoria gravada
+como pedida. Uma medição, um mime, um consumidor: os outros três mimes da tabela acima continuam
+sendo só a lista documentada pela Meta. **E a primeira chamada real, na `v0.66.0`, FALHOU** — o id
+de sessão que a Meta devolve carrega um sufixo `?sig=…` que o gateway escapava (consertado na
+`v0.66.1`, T-242, registrado em `docs/ARMADILHAS.md`); as fixtures de teste da `v0.66.0` nunca
+carregaram esse sufixo, e por isso as fixtures passaram e a Meta não.
 
 ---
 
