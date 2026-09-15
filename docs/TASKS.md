@@ -392,29 +392,6 @@ instancias foram rotacionadas. Duas licoes que custaram na hora e valem alem des
 
 > A fila do periodo privado esta em `iscarelli/zapgw-dev`, congelada. Tarefa nova nasce aqui.
 
-## [ ] T-247  The `GET /v1/estado` top-level scalars, the counters vocabulary and the health `verdict` in the contract are still Portuguese
-Why:     A T-240 (d75b02a) consertou os NOMES DOS BLOCOS e os quatro vizinhos, e no caminho mediu uma
-         familia que nao estava na tabela dela: o exemplo executado do `GET /v1/estado` e a prosa em
-         volta ainda mostram `estado`/`pausada`/`versao`/`gerado_em`/`carimbos_desde`/`contadores`/
-         `serie_7_dias`/`serie_diaria` e, dentro de cada contador, `ultimos_7_dias`/`ultimo_em` —
-         e o codigo emite `state`/`paused`/`version`/`generated_at`/`stamps_since`/`counters`/
-         `last_7_days_series`/`daily_series` (`internal/outbound/state.go:66-152`) e
-         `last_7_days`/`last_at` (`state.go:237,241`). Foi exatamente `versao` que o consumidor leu
-         como `None` em 2026-09-15 03:34. Mesma familia: `GET /v1/instances/{slug}/health` numa
-         instancia Instagram responde `"verdict":"not_applicable"`
-         (`internal/outbound/health_handler.go:94,155`) e o doc (~4746 EN / ~4693 pt-BR) diz
-         `"veredito":"nao_se_aplica"`.
-Files:   docs/CONTRATO-CONSUMIDOR.md, docs/CONTRATO-CONSUMIDOR.pt-BR.md
-Do:      Mesmo metodo da T-240: prova contra o codigo antes (`grep -n 'json:"' internal/outbound/state.go`),
-         doc depois, `grep` do doc no fim. Casos (a)/(b)/(c) iguais. 🔴 NAO MEXA EM CODIGO. As chaves
-         que CONTINUAM em portugues no codigo ficam iguais no doc (`hoje`, `definido_em`,
-         `cursor_antes`/`cursor_depois`, `lideranca`, literais `medicao`/`sonda_externa`) — sao a
-         T-248, que espera decisao do dono. Tabela de migracao `dia`/`serie_7_dias` (~5166) e' caso (b).
-Verify:  Prova por familia colada; `grep -n "\"estado\"\|\"pausada\"\|\"versao\"\|\"gerado_em\"\|carimbos_desde\|\"contadores\"\|serie_7_dias\|serie_diaria\|ultimos_7_dias\|ultimo_em\|veredito" docs/CONTRATO-CONSUMIDOR.md`
-         so' com caso (b)/(c) listados um a um (o `"versao"` do `/v1/health` e' caso (a) correto: fica).
-         `CGO_ENABLED=0 go build ./... && go test ./...` (garantia).
-After:   T-246
-
 ## [ ] T-248  Seven response keys and literals still Portuguese in code, among English siblings
 After:   DECISAO DO DONO — muda chave de RESPOSTA que o consumidor le hoje. Nao despache sem ele.
 Why:     Medido pela T-240 contra o codigo (2026-09-15): `hoje` (`state.go:236`, irmaos `last_7_days`/

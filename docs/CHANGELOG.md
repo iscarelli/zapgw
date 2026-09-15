@@ -19,6 +19,18 @@ One line per version shipped, in the same commit as the bump. The entry states t
   same way T-220/T-245 retired the rest (`oldVerbRefused`, exit != 0 naming the English verb),
   and updated every comment, error message and doc reference that named the old verbs; the
   `/v1/health` and `/v1/estado` JSON (`json:"versao"`) is untouched. _Completed 2026-09-15 04:36._
+- **The `GET /v1/estado` top-level scalars, the counters vocabulary and the health `verdict` in the
+  contract are still Portuguese** (T-247) — measured `docs/CONTRATO-CONSUMIDOR.md` and its pt-BR
+  mirror against `state.go` and `health_handler.go`, family by family, and renamed the executed
+  example and every surrounding prose mention of `estado`/`pausada`/`versao`/`gerado_em`/
+  `carimbos_desde`/`contadores`/`serie_7_dias`/`serie_diaria`/`ultimos_7_dias`/`ultimo_em` to
+  `state`/`paused`/`version`/`generated_at`/`stamps_since`/`counters`/`last_7_days_series`/
+  `daily_series`/`last_7_days`/`last_at`, and `"veredito":"nao_se_aplica"` to
+  `"verdict":"not_applicable"`; left the `dia`/`dia_utc` pair, the `hoje` counter field, the
+  `lideranca` block and the `dia`/`serie_7_dias` deprecation table untouched (pending items and
+  deliberate history), the `/v1/health` `"versao"` field as-is (correct), and the `POST /v1/cadastro`
+  / `POST /v1/pausa` / `POST /v1/fumaca` examples untouched (a different, unmeasured staleness —
+  flagged for a follow-up task, not this one's scope). _Completed 2026-09-15 04:49._
 
 ## v0.67.0 — 2026-09-15
 

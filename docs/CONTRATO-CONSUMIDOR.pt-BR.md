@@ -2941,7 +2941,7 @@ das duas é "está tudo bem".**
 
 **`GET /v1/estado?instancia={slug}`** · `Authorization: Bearer <seu token>`
 **Parâmetro opcional:** `&serie_dias={1..90}` — o tamanho da série diária (default 7); ver a seção
-*`serie_diaria` + `?serie_dias=`*, abaixo.
+*`daily_series` + `?serie_dias=`*, abaixo.
 
 Mesmas regras do `/v1/messages`: rota da **LAN**, no entrypoint interno (`:8443`), e **só as
 instâncias vinculadas a você respondem** — `403` para as outras, com o mesmo corpo de erro do envio.
@@ -2949,12 +2949,12 @@ Não há modelo de autorização novo aqui: é o mesmo vínculo consumidor↔ins
 
 **Ela existe para você ALARMAR, não para você desenhar.** O gateway não tem painel e não vai ter; o
 número que ele promete sai por aqui, e quem desenha é quem já tem web. O ganho real: você já tem
-sistema de aviso — com estes campos, `alarme_perda_definitiva.ultimos_7_dias > 0` vira alerta
+sistema de aviso — com estes campos, `alarme_perda_definitiva.last_7_days > 0` vira alerta
 automático **num sistema que já sabe alertar**, em vez de um número que só quem tem acesso ao servidor
 consegue ver.
 
 **São os MESMOS números que quem opera o gateway vê na tela dele**, lidos da mesma função no mesmo
-instante — não uma segunda conta que concorda por coincidência. As chaves de `contadores` saem do vocabulário fechado do
+instante — não uma segunda conta que concorda por coincidência. As chaves de `counters` saem do vocabulário fechado do
 gateway; quando uma chave nova nascer, ela aparece aqui **sozinha**, sem release de contrato. Trate
 chave desconhecida como número, nunca como erro.
 
@@ -2966,20 +2966,20 @@ do ar **não** derruba esta rota — ela aparece no `meta_token`, que é onde de
 
 Capturado rodando o handler de verdade (não digitado): instância ativa, 13 recebidas e 13 entregues
 na semana (4 delas hoje), 2 enviadas, 1 falha de envio, 3 leituras marcadas, o veredito do token
-medido no instante da captura e o certificado do callback observado 37 minutos antes. `versao` aqui é
+medido no instante da captura e o certificado do callback observado 37 minutos antes. `version` aqui é
 o valor que a suíte injeta; em produção é o **mesmo** valor do `GET /v1/health`. As séries foram
 encurtadas com `…` **só na colagem**, para caber — a resposta traz sempre a janela inteira, e todos os
 dias com todas as chaves.
 
-*(Recapturado em 2026-07-29, primeiro quando os campos `carimbos_desde` e `serie_7_dias[].dia_utc`
+*(Recapturado em 2026-07-29, primeiro quando os campos `stamps_since` e `last_7_days_series[].dia_utc`
 entraram, de novo quando entraram as chaves `leituras_marcadas` e `falhas_de_leitura`, e de novo
-quando `serie_diaria` entrou — os VALORES saem do handler, nunca digitados.
+quando `daily_series` entrou — os VALORES saem do handler, nunca digitados.
 **Uma exceção, escrita para ninguém confundir com o resto:** as sete chaves `cobranca_*`
 **não foram recapturadas** — elas entraram nesta colagem em zero, porque o cenário capturado não
 tinha nenhum `sent` com cobrança e zero é exatamente o que a garantia acima produz nesse caso (toda
 chave do vocabulário aparece, mesmo sem evento). Zero aqui é o preenchimento garantido, não um número
 inventado.
-**`carimbos_desde` aparece aqui igual ao `gerado_em` porque a instância desta captura acabou de ser
+**`stamps_since` aparece aqui igual ao `generated_at` porque a instância desta captura acabou de ser
 criada**; numa instância que já existia ele é o instante em que a migração rodou, e numa criada mês
 passado é o nascimento dela.
 **SEGUNDA EXCEÇÃO (T-098, 2026-07-30):** o bloco `instagram_token` foi acrescentado À MÃO a esta
@@ -2997,43 +2997,43 @@ prova contra o handler de verdade.)*
   "instance": "lojinha",
   "kind": "whatsapp",
   "ig_id": "not_applicable",
-  "estado": "ativa",
-  "pausada": false,
-  "versao": "9.9.9-teste",
-  "gerado_em": "2026-07-29T00:00:02Z",
-  "carimbos_desde": "2026-07-29T00:00:02Z",
-  "contadores": {
-    "alarme_perda_definitiva":   { "hoje": 0, "ultimos_7_dias": 0,  "ultimo_em": null },
-    "cobranca_ausente":          { "hoje": 0, "ultimos_7_dias": 0,  "ultimo_em": null },
-    "cobranca_authentication":   { "hoje": 0, "ultimos_7_dias": 0,  "ultimo_em": null },
-    "cobranca_cobravel":         { "hoje": 0, "ultimos_7_dias": 0,  "ultimo_em": null },
-    "cobranca_marketing":        { "hoje": 0, "ultimos_7_dias": 0,  "ultimo_em": null },
-    "cobranca_outra":            { "hoje": 0, "ultimos_7_dias": 0,  "ultimo_em": null },
-    "cobranca_service":          { "hoje": 0, "ultimos_7_dias": 0,  "ultimo_em": null },
-    "cobranca_utility":          { "hoje": 0, "ultimos_7_dias": 0,  "ultimo_em": null },
-    "conta_descartada":          { "hoje": 0, "ultimos_7_dias": 0,  "ultimo_em": null },
-    "entregues":                 { "hoje": 4, "ultimos_7_dias": 13, "ultimo_em": "2026-07-29T00:00:02Z" },
-    "enviadas":                  { "hoje": 2, "ultimos_7_dias": 2,  "ultimo_em": "2026-07-29T00:00:02Z" },
-    "falhas_de_envio":           { "hoje": 1, "ultimos_7_dias": 1,  "ultimo_em": "2026-07-29T00:00:02Z" },
-    "falhas_de_leitura":         { "hoje": 0, "ultimos_7_dias": 0,  "ultimo_em": null },
-    "leituras_marcadas":         { "hoje": 3, "ultimos_7_dias": 3,  "ultimo_em": "2026-07-29T00:00:02Z" },
-    "numero_descartado":         { "hoje": 0, "ultimos_7_dias": 0,  "ultimo_em": null },
-    "recebidas":                 { "hoje": 4, "ultimos_7_dias": 13, "ultimo_em": "2026-07-29T00:00:02Z" },
-    "recusadas_pelo_consumidor": { "hoje": 0, "ultimos_7_dias": 0,  "ultimo_em": null }
+  "state": "ativa",
+  "paused": false,
+  "version": "9.9.9-teste",
+  "generated_at": "2026-07-29T00:00:02Z",
+  "stamps_since": "2026-07-29T00:00:02Z",
+  "counters": {
+    "alarme_perda_definitiva":   { "hoje": 0, "last_7_days": 0,  "last_at": null },
+    "cobranca_ausente":          { "hoje": 0, "last_7_days": 0,  "last_at": null },
+    "cobranca_authentication":   { "hoje": 0, "last_7_days": 0,  "last_at": null },
+    "cobranca_cobravel":         { "hoje": 0, "last_7_days": 0,  "last_at": null },
+    "cobranca_marketing":        { "hoje": 0, "last_7_days": 0,  "last_at": null },
+    "cobranca_outra":            { "hoje": 0, "last_7_days": 0,  "last_at": null },
+    "cobranca_service":          { "hoje": 0, "last_7_days": 0,  "last_at": null },
+    "cobranca_utility":          { "hoje": 0, "last_7_days": 0,  "last_at": null },
+    "conta_descartada":          { "hoje": 0, "last_7_days": 0,  "last_at": null },
+    "entregues":                 { "hoje": 4, "last_7_days": 13, "last_at": "2026-07-29T00:00:02Z" },
+    "enviadas":                  { "hoje": 2, "last_7_days": 2,  "last_at": "2026-07-29T00:00:02Z" },
+    "falhas_de_envio":           { "hoje": 1, "last_7_days": 1,  "last_at": "2026-07-29T00:00:02Z" },
+    "falhas_de_leitura":         { "hoje": 0, "last_7_days": 0,  "last_at": null },
+    "leituras_marcadas":         { "hoje": 3, "last_7_days": 3,  "last_at": "2026-07-29T00:00:02Z" },
+    "numero_descartado":         { "hoje": 0, "last_7_days": 0,  "last_at": null },
+    "recebidas":                 { "hoje": 4, "last_7_days": 13, "last_at": "2026-07-29T00:00:02Z" },
+    "recusadas_pelo_consumidor": { "hoje": 0, "last_7_days": 0,  "last_at": null }
   },
-  "serie_7_dias": [
-    { "dia": "2026-07-23", "dia_utc": "2026-07-23", "contadores": { "alarme_perda_definitiva": 0, /* as 7 chaves cobranca_* vêm aqui, todas 0 nesta captura — omitidas só nesta colagem */ "conta_descartada": 0, "entregues": 0, "enviadas": 0, "falhas_de_envio": 0, "falhas_de_leitura": 0, "leituras_marcadas": 0, "numero_descartado": 0, "recebidas": 0, "recusadas_pelo_consumidor": 0 } },
+  "last_7_days_series": [
+    { "dia": "2026-07-23", "dia_utc": "2026-07-23", "counters": { "alarme_perda_definitiva": 0, /* as 7 chaves cobranca_* vêm aqui, todas 0 nesta captura — omitidas só nesta colagem */ "conta_descartada": 0, "entregues": 0, "enviadas": 0, "falhas_de_envio": 0, "falhas_de_leitura": 0, "leituras_marcadas": 0, "numero_descartado": 0, "recebidas": 0, "recusadas_pelo_consumidor": 0 } },
     // … 2026-07-24 a 2026-07-27, todos zerados nesta captura …
-    { "dia": "2026-07-28", "dia_utc": "2026-07-28", "contadores": { "alarme_perda_definitiva": 0, /* as 7 chaves cobranca_* vêm aqui, todas 0 nesta captura — omitidas só nesta colagem */ "conta_descartada": 0, "entregues": 9, "enviadas": 0, "falhas_de_envio": 0, "falhas_de_leitura": 0, "leituras_marcadas": 0, "numero_descartado": 0, "recebidas": 9, "recusadas_pelo_consumidor": 0 } },
-    { "dia": "2026-07-29", "dia_utc": "2026-07-29", "contadores": { "alarme_perda_definitiva": 0, /* as 7 chaves cobranca_* vêm aqui, todas 0 nesta captura — omitidas só nesta colagem */ "conta_descartada": 0, "entregues": 4, "enviadas": 2, "falhas_de_envio": 1, "falhas_de_leitura": 0, "leituras_marcadas": 3, "numero_descartado": 0, "recebidas": 4, "recusadas_pelo_consumidor": 0 } }
+    { "dia": "2026-07-28", "dia_utc": "2026-07-28", "counters": { "alarme_perda_definitiva": 0, /* as 7 chaves cobranca_* vêm aqui, todas 0 nesta captura — omitidas só nesta colagem */ "conta_descartada": 0, "entregues": 9, "enviadas": 0, "falhas_de_envio": 0, "falhas_de_leitura": 0, "leituras_marcadas": 0, "numero_descartado": 0, "recebidas": 9, "recusadas_pelo_consumidor": 0 } },
+    { "dia": "2026-07-29", "dia_utc": "2026-07-29", "counters": { "alarme_perda_definitiva": 0, /* as 7 chaves cobranca_* vêm aqui, todas 0 nesta captura — omitidas só nesta colagem */ "conta_descartada": 0, "entregues": 4, "enviadas": 2, "falhas_de_envio": 1, "falhas_de_leitura": 0, "leituras_marcadas": 3, "numero_descartado": 0, "recebidas": 4, "recusadas_pelo_consumidor": 0 } }
   ],
   // Sem `?serie_dias=`, esta é a MESMA janela de 7 dias acima, dia a dia igual.
-  // Com `?serie_dias=30`, ela tem 30 entradas e `serie_7_dias` continua com 7.
-  "serie_diaria": [
-    { "dia": "2026-07-23", "dia_utc": "2026-07-23", "contadores": { "alarme_perda_definitiva": 0, /* as 7 chaves cobranca_* vêm aqui, todas 0 nesta captura — omitidas só nesta colagem */ "conta_descartada": 0, "entregues": 0, "enviadas": 0, "falhas_de_envio": 0, "falhas_de_leitura": 0, "leituras_marcadas": 0, "numero_descartado": 0, "recebidas": 0, "recusadas_pelo_consumidor": 0 } },
+  // Com `?serie_dias=30`, ela tem 30 entradas e `last_7_days_series` continua com 7.
+  "daily_series": [
+    { "dia": "2026-07-23", "dia_utc": "2026-07-23", "counters": { "alarme_perda_definitiva": 0, /* as 7 chaves cobranca_* vêm aqui, todas 0 nesta captura — omitidas só nesta colagem */ "conta_descartada": 0, "entregues": 0, "enviadas": 0, "falhas_de_envio": 0, "falhas_de_leitura": 0, "leituras_marcadas": 0, "numero_descartado": 0, "recebidas": 0, "recusadas_pelo_consumidor": 0 } },
     // … 2026-07-24 a 2026-07-27, todos zerados nesta captura …
-    { "dia": "2026-07-28", "dia_utc": "2026-07-28", "contadores": { "alarme_perda_definitiva": 0, /* as 7 chaves cobranca_* vêm aqui, todas 0 nesta captura — omitidas só nesta colagem */ "conta_descartada": 0, "entregues": 9, "enviadas": 0, "falhas_de_envio": 0, "falhas_de_leitura": 0, "leituras_marcadas": 0, "numero_descartado": 0, "recebidas": 9, "recusadas_pelo_consumidor": 0 } },
-    { "dia": "2026-07-29", "dia_utc": "2026-07-29", "contadores": { "alarme_perda_definitiva": 0, /* as 7 chaves cobranca_* vêm aqui, todas 0 nesta captura — omitidas só nesta colagem */ "conta_descartada": 0, "entregues": 4, "enviadas": 2, "falhas_de_envio": 1, "falhas_de_leitura": 0, "leituras_marcadas": 3, "numero_descartado": 0, "recebidas": 4, "recusadas_pelo_consumidor": 0 } }
+    { "dia": "2026-07-28", "dia_utc": "2026-07-28", "counters": { "alarme_perda_definitiva": 0, /* as 7 chaves cobranca_* vêm aqui, todas 0 nesta captura — omitidas só nesta colagem */ "conta_descartada": 0, "entregues": 9, "enviadas": 0, "falhas_de_envio": 0, "falhas_de_leitura": 0, "leituras_marcadas": 0, "numero_descartado": 0, "recebidas": 9, "recusadas_pelo_consumidor": 0 } },
+    { "dia": "2026-07-29", "dia_utc": "2026-07-29", "counters": { "alarme_perda_definitiva": 0, /* as 7 chaves cobranca_* vêm aqui, todas 0 nesta captura — omitidas só nesta colagem */ "conta_descartada": 0, "entregues": 4, "enviadas": 2, "falhas_de_envio": 1, "falhas_de_leitura": 0, "leituras_marcadas": 3, "numero_descartado": 0, "recebidas": 4, "recusadas_pelo_consumidor": 0 } }
   ],
   "meta_token": {
     "verdict": "ok",
@@ -3091,14 +3091,14 @@ cenário original é anterior a ele. A forma e os estados são exatamente os que
 `internal/outbound/ingress_test.go` prova contra o handler de verdade; os valores mostrados são os de
 uma instalação que entra por túnel com o conector respondendo.)*
 
-### `ultimo_em` — o campo que responde o que o contador não responde
+### `last_at` — o campo que responde o que o contador não responde
 
 **Contador parado é ambíguo entre "falhou" e "ninguém escreveu" — os dois são o mesmo número.**
 Isso cobrou caro em 2026-07-28, 11:07: a entrega parou e `recebidas` ficou parado em 4. A queda só
 apareceu porque havia um monitor de log armado à mão naquela manhã.
 
 O carimbo desfaz a ambiguidade porque ele **envelhece**. Com ele a sua regra de alarme é
-*"`entregues.ultimo_em` tem mais de N minutos"* — e ela funciona **sem você saber nada do nosso
+*"`entregues.last_at` tem mais de N minutos"* — e ela funciona **sem você saber nada do nosso
 volume normal**, que é a única regra que funciona para quem não conhece o tráfego do outro.
 
 - É o instante do **último** evento daquela chave, em UTC, RFC3339;
@@ -3106,23 +3106,23 @@ volume normal**, que é a única regra que funciona para quem não conhece o tr�
 - ele **não** é cortado pela janela de 7 dias: um evento de 20 dias atrás aparece com a data dele.
   Cortar faria "velho" e "nunca" virarem a mesma coisa, que é o defeito que ele existe para curar.
 
-Os quatro que mais interessam: `recebidas.ultimo_em`, `entregues.ultimo_em`, `enviadas.ultimo_em` e
-`falhas_de_envio.ultimo_em`.
+Os quatro que mais interessam: `recebidas.last_at`, `entregues.last_at`, `enviadas.last_at` e
+`falhas_de_envio.last_at`.
 
-### `carimbos_desde` — desde quando esta instância carimba (2026-07-28)
+### `stamps_since` — desde quando esta instância carimba (2026-07-28)
 
-**`ultimo_em: null` ainda esconde DOIS estados**, e a regra acima só descreve um deles. Sobram
+**`last_at: null` ainda esconde DOIS estados**, e a regra acima só descreve um deles. Sobram
 *"nunca aconteceu"* (normal) e *"aconteceu **antes** de o carimbo ser gravado"* — porque o carimbo
 nasceu na `v0.23.0`, e o que veio antes não deixou instante nenhum. Para um alarme são coisas
 diferentes: no primeiro caso não há nada a saber; no segundo há um ponto cego.
 
-`carimbos_desde` é o instante (UTC/RFC3339, **no topo da resposta**, fora de `contadores`) a partir do
+`stamps_since` é o instante (UTC/RFC3339, **no topo da resposta**, fora de `counters`) a partir do
 qual **aquela instância** grava carimbo. A leitura completa passa a ser:
 
 ```
-ultimo_em != null                      -> a data é a resposta
-ultimo_em == null e carimbos_desde é ANTIGO  -> nunca aconteceu mesmo
-ultimo_em == null e carimbos_desde é RECENTE -> pode ter acontecido antes, e não dá para saber
+last_at != null                            -> a data é a resposta
+last_at == null e stamps_since é ANTIGO    -> nunca aconteceu mesmo
+last_at == null e stamps_since é RECENTE   -> pode ter acontecido antes, e não dá para saber
 ```
 
 **Ele é por INSTÂNCIA e vem do banco — não é a data de uma versão nossa.** Instância criada hoje
@@ -3152,7 +3152,7 @@ entrega é a de ontem à noite, com 11h de idade, velha por definição e sem na
 **A regra completa tem duas condições:**
 
 ```
-alarma se:  <chave>.ultimo_em está mais velho que N minutos
+alarma se:  <chave>.last_at está mais velho que N minutos
         E   a janela de tráfego de hoje já está aberta há pelo menos N minutos
 ```
 
@@ -3173,18 +3173,18 @@ mesma que decide envio lá. O seu caso será outro; o defeito é o mesmo.
 > descobre na primeira madrugada — e alarme que toca toda noite sem motivo é como se ensina uma
 > equipe a ignorar alarme, que é o oposto do que este campo existe para fazer.
 
-### `pausada` — antes de alarmar por silêncio, olhe este campo
+### `paused` — antes de alarmar por silêncio, olhe este campo
 
 Instância pausada responde `503` no envio, o volume vai a zero e o carimbo envelhece — **exatamente
 como uma queda**. Sem este campo o seu alarme diria *"nenhuma entrega há 200 minutos"* quando a causa
-é uma pausa deliberada. **Regra: `pausada == true` suprime o alarme de silêncio** (e, se quiser,
+é uma pausa deliberada. **Regra: `paused == true` suprime o alarme de silêncio** (e, se quiser,
 levanta um aviso próprio, porque instância pausada por engano também é problema).
-`estado` é a mesma informação em palavra (`"ativa"` / `"pausada"`), para tela de gente.
+`state` é a mesma informação em palavra (`"ativa"` / `"pausada"`), para tela de gente.
 
-### `serie_7_dias` — o dia a dia da mesma janela
+### `last_7_days_series` — o dia a dia da mesma janela
 
 > ⚠️ **OBSOLETA desde 2026-07-29, e continua funcionando byte a byte.** A sucessora é
-> `serie_diaria`, que aceita a janela que você pedir (30 dias, por exemplo) — a seção logo abaixo.
+> `daily_series`, que aceita a janela que você pedir (30 dias, por exemplo) — a seção logo abaixo.
 > Tudo o que está descrito aqui vale igual para as duas.
 
 Sempre **7 entradas**, do dia mais velho para o mais novo, cada uma com **todas** as chaves do
@@ -3194,7 +3194,7 @@ como zero.
 
 **Cada entrada traz DUAS chaves com o MESMO valor: `dia_utc` (o nome certo) e `dia` (obsoleto).**
 Use `dia_utc`. A data é em **UTC**, o mesmo fuso em que os contadores são gravados. É por isso que a
-soma dos sete dias bate exatamente com `ultimos_7_dias`; se você converter para o fuso local antes de
+soma dos sete dias bate exatamente com `last_7_days`; se você converter para o fuso local antes de
 somar, ela deixa de bater — e a culpa não é do gateway.
 
 > 🛑 **DECIDIDO EM 2026-07-31: o dia continua sendo UTC, e NÃO haverá parâmetro de fuso.** Não peça
@@ -3240,20 +3240,20 @@ depreciação*, no fim deste documento). Até lá ele sai na resposta, com o mes
 > é, e vai procurar bug de contador onde só há fuso.
 > **Escreva isso na sua tela**, não só no seu código. Quem lê o painel não lê o contrato.
 
-### `serie_diaria` + `?serie_dias=` — a janela que **você** pede (2026-07-29)
+### `daily_series` + `?serie_dias=` — a janela que **você** pede (2026-07-29)
 
 **`GET /v1/estado?instancia={slug}&serie_dias=30`**
 
-`serie_7_dias` responde *"está entregando?"* — a pergunta operacional, e sete dias bastam para ela.
+`last_7_days_series` responde *"está entregando?"* — a pergunta operacional, e sete dias bastam para ela.
 **Não responde *"quanto vou gastar no mês"***, que é um gráfico de 30 dias. Esse gráfico existia no
 painel de um consumidor, alimentado pelo `analytics` da WABA, **direto na Graph**, e a regra *ninguém
 fala direto com a Meta* fechou aquele caminho: esta janela é a substituta, e é **dívida que a regra
 criou**, não conveniência.
 
-- `serie_diaria` tem **exatamente** `serie_dias` entradas, do dia mais velho para o mais novo, com a
-  mesma forma de `serie_7_dias` (`dia_utc`, `dia` obsoleto, e **todas** as chaves em **todo** dia,
+- `daily_series` tem **exatamente** `serie_dias` entradas, do dia mais velho para o mais novo, com a
+  mesma forma de `last_7_days_series` (`dia_utc`, `dia` obsoleto, e **todas** as chaves em **todo** dia,
   inclusive nos dias sem tráfego);
-- **sem o parâmetro, são 7 dias** — o mesmo conteúdo de `serie_7_dias`, dia a dia. O default não
+- **sem o parâmetro, são 7 dias** — o mesmo conteúdo de `last_7_days_series`, dia a dia. O default não
   cresceu para não inflar em treze vezes a resposta de quem nunca pediu nada;
 - o dado **já estava no banco**: o gateway guarda contador diário por **90 dias** (a retenção que este
   documento sempre declarou), e o corte em 7 era da rota, nunca do armazenamento. Não houve
@@ -3281,24 +3281,24 @@ erro, nunca `200`**.
 
 Retenção não é a única fronteira: uma instância criada há três dias não tem trinta dias de história
 para contar, e a série volta com zeros legítimos nos dias em que **ela não existia**. Quem responde
-isso é o **`carimbos_desde`** no topo da mesma resposta — a idade do instrumento. A leitura é:
+isso é o **`stamps_since`** no topo da mesma resposta — a idade do instrumento. A leitura é:
 
 ```
-dia da série ANTERIOR a carimbos_desde  -> ausência de instrumento, não ausência de tráfego
-dia da série POSTERIOR a carimbos_desde -> zero é zero de verdade
+dia da série ANTERIOR a stamps_since  -> ausência de instrumento, não ausência de tráfego
+dia da série POSTERIOR a stamps_since -> zero é zero de verdade
 ```
 
 *Isto vale muito para quem plota custo: uma média mensal calculada sobre os dias anteriores ao
 nascimento da instância sai diluída, e o número parece razoável — que é o pior jeito de errar.*
 
-#### `serie_7_dias` continua funcionando, byte a byte, e é OBSOLETA
+#### `last_7_days_series` continua funcionando, byte a byte, e é OBSOLETA
 
-Ela **não muda de forma nunca**: com `serie_dias=30`, `serie_diaria` tem 30 entradas e `serie_7_dias`
+Ela **não muda de forma nunca**: com `serie_dias=30`, `daily_series` tem 30 entradas e `last_7_days_series`
 continua com 7 — e as duas saem da **mesma leitura do banco**, então o sufixo de 7 dias de uma é igual
 à outra, dia a dia e número a número (há teste guardando isso).
 
-**Migre para `serie_diaria`** (com ou sem o parâmetro: sem ele são os mesmos 7 dias). O nome
-`serie_7_dias` carrega um número, e por isso ele nunca poderia crescer — um campo com esse nome e 30
+**Migre para `daily_series`** (com ou sem o parâmetro: sem ele são os mesmos 7 dias). O nome
+`last_7_days_series` carrega um número, e por isso ele nunca poderia crescer — um campo com esse nome e 30
 entradas mentiria sobre si mesmo dentro do `console.log` de quem estiver depurando às duas da manhã,
 que é exatamente o argumento que produziu o `dia_utc`.
 
@@ -3308,7 +3308,7 @@ resposta, com a mesma forma de sempre.
 
 ### Uma promessa nossa sobre o vocabulário, e o que ela exige de você
 
-`contadores` traz **toda** chave do vocabulário, sempre, mesmo zerada — e isso é garantido por teste
+`counters` traz **toda** chave do vocabulário, sempre, mesmo zerada — e isso é garantido por teste
 do nosso lado, não por convenção. **A consequência boa:** chave nova que criarmos aparece na sua tela
 sem release seu.
 
@@ -3435,7 +3435,7 @@ dano.
 tráfego e de alguém estar olhando. Isso é deliberado: se o veredito dependesse de tráfego, *ausência
 de tráfego* ficaria indistinguível de *sistema quebrado* — token revogado às 2h da manhã só apareceria
 às 8h, na frente da primeira cliente. **Instância pausada não é medida** (ela não envia), e por isso o
-veredito dela envelhece para `unknown`; use `pausada` para não confundir os dois.
+veredito dela envelhece para `unknown`; use `paused` para não confundir os dois.
 
 **As duas regras de alarme que isto lhe dá, e nenhuma exige conhecer as nossas entranhas:**
 `verdict != "ok"`, ou `checked_at` envelhecido.
@@ -3470,7 +3470,7 @@ handshake**: instância recém-criada, ou consumidor que ainda não recebeu nada
 motivo de alarme sozinho.
 
 > **Por que a palavra, e não só `null`.** Esta rota já pagou essa conta uma vez: ela subiu com
-> `ultimo_em: null` em contadores que **tinham** histórico (o carimbo só passou a ser gravado
+> `last_at: null` em contadores que **tinham** histórico (o carimbo só passou a ser gravado
 > naquele momento), e quem tratasse `null` como "muito antigo" começaria com falso positivo em
 > tudo. Aqui o caso é permanente — instância sem entrega nunca terá data —, então a diferença entre
 > *"nunca vi"* e *"vi e está ruim"* é **inequívoca na forma**: uma palavra que não se parece com
@@ -3491,7 +3491,7 @@ state == "observed"
 ```
 
 E, separado disso: `state == "observed"` com `observed_at` muito velho **numa instância ativa e
-com tráfego** quer dizer que a entrega parou — mas para isso `entregues.ultimo_em` responde melhor,
+com tráfego** quer dizer que a entrega parou — mas para isso `entregues.last_at` responde melhor,
 porque ele existe exatamente para essa pergunta.
 
 Exemplo do bloco numa instância que ainda não entregou nada (**colado da mesma execução** do exemplo
@@ -3591,7 +3591,7 @@ e voltando sem o dado"** — a Meta parou de mandar os campos, ou o pedido de ca
 Nesse estado o valor que você lê continua verdadeiro *para a data dele*, e o `observed_at` é o que
 te diz quanta idade ele tem.
 
-**`checked_at: null` numa instância `pausada` é o esperado**, não uma falha: instância pausada não
+**`checked_at: null` numa instância `paused` é o esperado**, não uma falha: instância pausada não
 é medida de propósito — ela não envia, e gastar chamada por ela seria medir um canal que não pode
 falhar.
 
@@ -3767,7 +3767,7 @@ isso ele não existe aqui, e não vai passar a existir.
 |---|---|---|
 | `via` | **configuração**, não medição — `tunel`, `encaminhamento_de_porta` ou `unknown` | saber por onde a entrada deveria estar chegando quando você for reportar uma queda |
 | `connector` | **medição** do `/ready` do conector que publica a rota | distinguir "o túnel caiu" de "o gateway está quieto" |
-| `last_webhook_at` | o **mesmo** valor de `contadores.recebidas.ultimo_em` | concluir **silêncio** por conta própria, sem ler a tabela de contadores |
+| `last_webhook_at` | o **mesmo** valor de `counters.recebidas.last_at` | concluir **silêncio** por conta própria, sem ler a tabela de contadores |
 
 **`connector.state` tem TRÊS valores, e a diferença entre dois deles é o ponto do bloco:**
 
@@ -4690,7 +4690,7 @@ tentar qualquer coisa com a Meta. A mensagem sempre nomeia o tipo recusado:
 
 `GET /v1/instances/{slug}/health` é a **única exceção**, e por decisão deliberada: sendo rota de
 **leitura**, ela nunca recusa — um `400` ali quebraria a vigilância em laço de quem monitora o
-canal. Numa instância Instagram ela responde `200` com `"veredito":"nao_se_aplica"` e **sem chamar
+canal. Numa instância Instagram ela responde `200` com `"verdict":"not_applicable"` e **sem chamar
 a Meta**: não existe, em `graph.instagram.com`, um equivalente ao `GET /{phone_number_id}` que
 confirme o token sem enviar mensagem — inventar um por analogia arriscaria uma resposta que engana.
 
@@ -4698,7 +4698,7 @@ confirme o token sem enviar mensagem — inventar um por analogia arriscaria uma
 
 | bloco | WhatsApp | Instagram |
 |---|---|---|
-| `estado` / `pausada` / `versao` / `gerado_em` / `carimbos_desde` / `contadores` / `serie_7_dias` / `serie_diaria` | sim | sim — genéricos, independem do produto Meta |
+| `state` / `paused` / `version` / `generated_at` / `stamps_since` / `counters` / `last_7_days_series` / `daily_series` | sim | sim — genéricos, independem do produto Meta |
 | `kind` | sim — sempre `"whatsapp"` | sim — sempre `"instagram"` |
 | `ig_id` | **sempre `not_applicable`** (T-107) — identificador do Instagram, o WhatsApp não tem | sim — o Instagram-scoped Business Account ID desta instância, o mesmo valor de `zapgw instance show` |
 | `callback_certificate` | sim | sim — é o TLS do **seu** endpoint, o mesmo nos dois produtos |

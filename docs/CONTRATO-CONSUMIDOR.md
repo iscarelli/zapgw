@@ -2958,7 +2958,7 @@ a human; neither of them is "everything is fine".**
 
 **`GET /v1/estado?instancia={slug}`** · `Authorization: Bearer <your token>`
 **Optional parameter:** `&serie_dias={1..90}` — the size of the daily series (default 7); see the
-section *`serie_diaria` + `?serie_dias=`*, below.
+section *`daily_series` + `?serie_dias=`*, below.
 
 Same rules as `/v1/messages`: a **LAN** route, on the internal entrypoint (`:8443`), and **only the
 instances linked to you answer** — `403` for the others, with the same error body as sending. There is
@@ -2967,11 +2967,11 @@ no new authorization model here: it is the same consumer↔instance link.
 **It exists for you to ALARM, not for you to draw.** The gateway has no dashboard and will not have
 one; the number it promises comes out here, and whoever draws is whoever already has a web front end.
 The real gain: you already have a warning system — with these fields,
-`alarme_perda_definitiva.ultimos_7_dias > 0` becomes an automatic alert **in a system that already
+`alarme_perda_definitiva.last_7_days > 0` becomes an automatic alert **in a system that already
 knows how to alert**, instead of a number only someone with server access can see.
 
 **These are the SAME numbers whoever operates the gateway sees on their screen**, read from the same
-function at the same instant — not a second count that agrees by coincidence. The `contadores` keys
+function at the same instant — not a second count that agrees by coincidence. The `counters` keys
 come from the gateway's closed vocabulary; when a new key is born, it appears here **on its own**,
 without a contract release. Treat an unknown key as a number, never as an error.
 
@@ -2983,19 +2983,19 @@ being down does **not** bring this route down — it shows up in `meta_token`, w
 
 Captured by running the real handler (not typed): an active instance, 13 received and 13 delivered in
 the week (4 of them today), 2 sent, 1 send failure, 3 read receipts marked, the token's verdict
-measured at the instant of capture and the callback's certificate observed 37 minutes earlier. `versao`
+measured at the instant of capture and the callback's certificate observed 37 minutes earlier. `version`
 here is the value the suite injects; in production it is the **same** value as `GET /v1/health`. The
 series were shortened with `…` **only in the paste**, to fit — the response always carries the whole
 window, and every day with every key.
 
-*(Recaptured on 2026-07-29, first when the `carimbos_desde` and `serie_7_dias[].dia_utc` fields went
+*(Recaptured on 2026-07-29, first when the `stamps_since` and `last_7_days_series[].dia_utc` fields went
 in, again when the `leituras_marcadas` and `falhas_de_leitura` keys went in, and again when
-`serie_diaria` went in — the VALUES come from the handler, never typed.
+`daily_series` went in — the VALUES come from the handler, never typed.
 **One exception, written so nobody confuses it with the rest:** the seven `cobranca_*` keys **were not
 recaptured** — they went into this paste at zero, because the captured scenario had no `sent` with a
 charge and zero is exactly what the guarantee above produces in that case (every key of the vocabulary
 appears, even with no event). Zero here is the guaranteed filling, not an invented number.
-**`carimbos_desde` appears here equal to `gerado_em` because this capture's instance had just been
+**`stamps_since` appears here equal to `generated_at` because this capture's instance had just been
 created**; on an instance that already existed it is the instant the migration ran, and on one created
 last month it is its birth.
 **SECOND EXCEPTION (T-098, 2026-07-30):** the `instagram_token` block was added BY HAND to this paste —
@@ -3014,43 +3014,43 @@ original scenario predates both. The values (`"whatsapp"` and `"not_applicable"`
   "instance": "lojinha",
   "kind": "whatsapp",
   "ig_id": "not_applicable",
-  "estado": "ativa",
-  "pausada": false,
-  "versao": "9.9.9-teste",
-  "gerado_em": "2026-07-29T00:00:02Z",
-  "carimbos_desde": "2026-07-29T00:00:02Z",
-  "contadores": {
-    "alarme_perda_definitiva":   { "hoje": 0, "ultimos_7_dias": 0,  "ultimo_em": null },
-    "cobranca_ausente":          { "hoje": 0, "ultimos_7_dias": 0,  "ultimo_em": null },
-    "cobranca_authentication":   { "hoje": 0, "ultimos_7_dias": 0,  "ultimo_em": null },
-    "cobranca_cobravel":         { "hoje": 0, "ultimos_7_dias": 0,  "ultimo_em": null },
-    "cobranca_marketing":        { "hoje": 0, "ultimos_7_dias": 0,  "ultimo_em": null },
-    "cobranca_outra":            { "hoje": 0, "ultimos_7_dias": 0,  "ultimo_em": null },
-    "cobranca_service":          { "hoje": 0, "ultimos_7_dias": 0,  "ultimo_em": null },
-    "cobranca_utility":          { "hoje": 0, "ultimos_7_dias": 0,  "ultimo_em": null },
-    "conta_descartada":          { "hoje": 0, "ultimos_7_dias": 0,  "ultimo_em": null },
-    "entregues":                 { "hoje": 4, "ultimos_7_dias": 13, "ultimo_em": "2026-07-29T00:00:02Z" },
-    "enviadas":                  { "hoje": 2, "ultimos_7_dias": 2,  "ultimo_em": "2026-07-29T00:00:02Z" },
-    "falhas_de_envio":           { "hoje": 1, "ultimos_7_dias": 1,  "ultimo_em": "2026-07-29T00:00:02Z" },
-    "falhas_de_leitura":         { "hoje": 0, "ultimos_7_dias": 0,  "ultimo_em": null },
-    "leituras_marcadas":         { "hoje": 3, "ultimos_7_dias": 3,  "ultimo_em": "2026-07-29T00:00:02Z" },
-    "numero_descartado":         { "hoje": 0, "ultimos_7_dias": 0,  "ultimo_em": null },
-    "recebidas":                 { "hoje": 4, "ultimos_7_dias": 13, "ultimo_em": "2026-07-29T00:00:02Z" },
-    "recusadas_pelo_consumidor": { "hoje": 0, "ultimos_7_dias": 0,  "ultimo_em": null }
+  "state": "ativa",
+  "paused": false,
+  "version": "9.9.9-teste",
+  "generated_at": "2026-07-29T00:00:02Z",
+  "stamps_since": "2026-07-29T00:00:02Z",
+  "counters": {
+    "alarme_perda_definitiva":   { "hoje": 0, "last_7_days": 0,  "last_at": null },
+    "cobranca_ausente":          { "hoje": 0, "last_7_days": 0,  "last_at": null },
+    "cobranca_authentication":   { "hoje": 0, "last_7_days": 0,  "last_at": null },
+    "cobranca_cobravel":         { "hoje": 0, "last_7_days": 0,  "last_at": null },
+    "cobranca_marketing":        { "hoje": 0, "last_7_days": 0,  "last_at": null },
+    "cobranca_outra":            { "hoje": 0, "last_7_days": 0,  "last_at": null },
+    "cobranca_service":          { "hoje": 0, "last_7_days": 0,  "last_at": null },
+    "cobranca_utility":          { "hoje": 0, "last_7_days": 0,  "last_at": null },
+    "conta_descartada":          { "hoje": 0, "last_7_days": 0,  "last_at": null },
+    "entregues":                 { "hoje": 4, "last_7_days": 13, "last_at": "2026-07-29T00:00:02Z" },
+    "enviadas":                  { "hoje": 2, "last_7_days": 2,  "last_at": "2026-07-29T00:00:02Z" },
+    "falhas_de_envio":           { "hoje": 1, "last_7_days": 1,  "last_at": "2026-07-29T00:00:02Z" },
+    "falhas_de_leitura":         { "hoje": 0, "last_7_days": 0,  "last_at": null },
+    "leituras_marcadas":         { "hoje": 3, "last_7_days": 3,  "last_at": "2026-07-29T00:00:02Z" },
+    "numero_descartado":         { "hoje": 0, "last_7_days": 0,  "last_at": null },
+    "recebidas":                 { "hoje": 4, "last_7_days": 13, "last_at": "2026-07-29T00:00:02Z" },
+    "recusadas_pelo_consumidor": { "hoje": 0, "last_7_days": 0,  "last_at": null }
   },
-  "serie_7_dias": [
-    { "dia": "2026-07-23", "dia_utc": "2026-07-23", "contadores": { "alarme_perda_definitiva": 0, /* the 7 cobranca_* keys come here, all 0 in this capture — omitted only in this paste */ "conta_descartada": 0, "entregues": 0, "enviadas": 0, "falhas_de_envio": 0, "falhas_de_leitura": 0, "leituras_marcadas": 0, "numero_descartado": 0, "recebidas": 0, "recusadas_pelo_consumidor": 0 } },
+  "last_7_days_series": [
+    { "dia": "2026-07-23", "dia_utc": "2026-07-23", "counters": { "alarme_perda_definitiva": 0, /* the 7 cobranca_* keys come here, all 0 in this capture — omitted only in this paste */ "conta_descartada": 0, "entregues": 0, "enviadas": 0, "falhas_de_envio": 0, "falhas_de_leitura": 0, "leituras_marcadas": 0, "numero_descartado": 0, "recebidas": 0, "recusadas_pelo_consumidor": 0 } },
     // … 2026-07-24 to 2026-07-27, all zeroed in this capture …
-    { "dia": "2026-07-28", "dia_utc": "2026-07-28", "contadores": { "alarme_perda_definitiva": 0, /* the 7 cobranca_* keys come here, all 0 in this capture — omitted only in this paste */ "conta_descartada": 0, "entregues": 9, "enviadas": 0, "falhas_de_envio": 0, "falhas_de_leitura": 0, "leituras_marcadas": 0, "numero_descartado": 0, "recebidas": 9, "recusadas_pelo_consumidor": 0 } },
-    { "dia": "2026-07-29", "dia_utc": "2026-07-29", "contadores": { "alarme_perda_definitiva": 0, /* the 7 cobranca_* keys come here, all 0 in this capture — omitted only in this paste */ "conta_descartada": 0, "entregues": 4, "enviadas": 2, "falhas_de_envio": 1, "falhas_de_leitura": 0, "leituras_marcadas": 3, "numero_descartado": 0, "recebidas": 4, "recusadas_pelo_consumidor": 0 } }
+    { "dia": "2026-07-28", "dia_utc": "2026-07-28", "counters": { "alarme_perda_definitiva": 0, /* the 7 cobranca_* keys come here, all 0 in this capture — omitted only in this paste */ "conta_descartada": 0, "entregues": 9, "enviadas": 0, "falhas_de_envio": 0, "falhas_de_leitura": 0, "leituras_marcadas": 0, "numero_descartado": 0, "recebidas": 9, "recusadas_pelo_consumidor": 0 } },
+    { "dia": "2026-07-29", "dia_utc": "2026-07-29", "counters": { "alarme_perda_definitiva": 0, /* the 7 cobranca_* keys come here, all 0 in this capture — omitted only in this paste */ "conta_descartada": 0, "entregues": 4, "enviadas": 2, "falhas_de_envio": 1, "falhas_de_leitura": 0, "leituras_marcadas": 3, "numero_descartado": 0, "recebidas": 4, "recusadas_pelo_consumidor": 0 } }
   ],
   // Without `?serie_dias=`, this is the SAME 7-day window as above, day for day.
-  // With `?serie_dias=30`, it has 30 entries and `serie_7_dias` still has 7.
-  "serie_diaria": [
-    { "dia": "2026-07-23", "dia_utc": "2026-07-23", "contadores": { "alarme_perda_definitiva": 0, /* the 7 cobranca_* keys come here, all 0 in this capture — omitted only in this paste */ "conta_descartada": 0, "entregues": 0, "enviadas": 0, "falhas_de_envio": 0, "falhas_de_leitura": 0, "leituras_marcadas": 0, "numero_descartado": 0, "recebidas": 0, "recusadas_pelo_consumidor": 0 } },
+  // With `?serie_dias=30`, it has 30 entries and `last_7_days_series` still has 7.
+  "daily_series": [
+    { "dia": "2026-07-23", "dia_utc": "2026-07-23", "counters": { "alarme_perda_definitiva": 0, /* the 7 cobranca_* keys come here, all 0 in this capture — omitted only in this paste */ "conta_descartada": 0, "entregues": 0, "enviadas": 0, "falhas_de_envio": 0, "falhas_de_leitura": 0, "leituras_marcadas": 0, "numero_descartado": 0, "recebidas": 0, "recusadas_pelo_consumidor": 0 } },
     // … 2026-07-24 to 2026-07-27, all zeroed in this capture …
-    { "dia": "2026-07-28", "dia_utc": "2026-07-28", "contadores": { "alarme_perda_definitiva": 0, /* the 7 cobranca_* keys come here, all 0 in this capture — omitted only in this paste */ "conta_descartada": 0, "entregues": 9, "enviadas": 0, "falhas_de_envio": 0, "falhas_de_leitura": 0, "leituras_marcadas": 0, "numero_descartado": 0, "recebidas": 9, "recusadas_pelo_consumidor": 0 } },
-    { "dia": "2026-07-29", "dia_utc": "2026-07-29", "contadores": { "alarme_perda_definitiva": 0, /* the 7 cobranca_* keys come here, all 0 in this capture — omitted only in this paste */ "conta_descartada": 0, "entregues": 4, "enviadas": 2, "falhas_de_envio": 1, "falhas_de_leitura": 0, "leituras_marcadas": 3, "numero_descartado": 0, "recebidas": 4, "recusadas_pelo_consumidor": 0 } }
+    { "dia": "2026-07-28", "dia_utc": "2026-07-28", "counters": { "alarme_perda_definitiva": 0, /* the 7 cobranca_* keys come here, all 0 in this capture — omitted only in this paste */ "conta_descartada": 0, "entregues": 9, "enviadas": 0, "falhas_de_envio": 0, "falhas_de_leitura": 0, "leituras_marcadas": 0, "numero_descartado": 0, "recebidas": 9, "recusadas_pelo_consumidor": 0 } },
+    { "dia": "2026-07-29", "dia_utc": "2026-07-29", "counters": { "alarme_perda_definitiva": 0, /* the 7 cobranca_* keys come here, all 0 in this capture — omitted only in this paste */ "conta_descartada": 0, "entregues": 4, "enviadas": 2, "falhas_de_envio": 1, "falhas_de_leitura": 0, "leituras_marcadas": 3, "numero_descartado": 0, "recebidas": 4, "recusadas_pelo_consumidor": 0 } }
   ],
   "meta_token": {
     "verdict": "ok",
@@ -3108,14 +3108,14 @@ original scenario predates it. The shape and the states are exactly the ones
 `internal/outbound/ingress_test.go` proves against the real handler; the values shown are those of an
 installation that comes in through a tunnel with the connector answering.)*
 
-### `ultimo_em` — the field that answers what the counter does not
+### `last_at` — the field that answers what the counter does not
 
 **A stopped counter is ambiguous between "it failed" and "nobody wrote" — both are the same number.**
 That cost dearly on 2026-07-28, 11:07: delivery stopped and `recebidas` stayed stuck at 4. The outage
 only came to light because a log monitor had been armed by hand that morning.
 
 The timestamp undoes the ambiguity because it **ages**. With it, your alarm rule is
-*"`entregues.ultimo_em` is more than N minutes old"* — and it works **without you knowing anything
+*"`entregues.last_at` is more than N minutes old"* — and it works **without you knowing anything
 about our normal volume**, which is the only rule that works for someone who does not know the other
 side's traffic.
 
@@ -3124,24 +3124,24 @@ side's traffic.
 - it is **not** cut off by the 7-day window: an event from 20 days ago appears with its own date.
   Cutting it off would make "old" and "never" the same thing, which is the defect it exists to cure.
 
-The four that matter most: `recebidas.ultimo_em`, `entregues.ultimo_em`, `enviadas.ultimo_em` and
-`falhas_de_envio.ultimo_em`.
+The four that matter most: `recebidas.last_at`, `entregues.last_at`, `enviadas.last_at` and
+`falhas_de_envio.last_at`.
 
-### `carimbos_desde` — since when this instance timestamps (2026-07-28)
+### `stamps_since` — since when this instance timestamps (2026-07-28)
 
-**`ultimo_em: null` still hides TWO states**, and the rule above describes only one of them. What is
+**`last_at: null` still hides TWO states**, and the rule above describes only one of them. What is
 left is *"it never happened"* (normal) and *"it happened **before** the timestamp was recorded"* —
 because the timestamp was born in `v0.23.0`, and what came before left no instant at all. For an alarm
 these are different things: in the first case there is nothing to know; in the second there is a blind
 spot.
 
-`carimbos_desde` is the instant (UTC/RFC3339, **at the top of the response**, outside `contadores`)
+`stamps_since` is the instant (UTC/RFC3339, **at the top of the response**, outside `counters`)
 from which **that instance** records timestamps. The complete reading becomes:
 
 ```
-ultimo_em != null                             -> the date is the answer
-ultimo_em == null and carimbos_desde is OLD    -> it really never happened
-ultimo_em == null and carimbos_desde is RECENT -> it may have happened before, and there is no way to know
+last_at != null                            -> the date is the answer
+last_at == null and stamps_since is OLD    -> it really never happened
+last_at == null and stamps_since is RECENT -> it may have happened before, and there is no way to know
 ```
 
 **It is per INSTANCE and comes from the database — it is not the date of a version of ours.** An
@@ -3172,7 +3172,7 @@ delivery is last night's, 11 h old, old by definition and with nothing wrong.
 **The complete rule has two conditions:**
 
 ```
-alarm if:  <key>.ultimo_em is older than N minutes
+alarm if:  <key>.last_at is older than N minutes
        AND today's traffic window has been open for at least N minutes
 ```
 
@@ -3194,17 +3194,17 @@ is the same.
 > out on the first night — and an alarm that fires every night for no reason is how you teach a team to
 > ignore alarms, which is the opposite of what this field exists to do.
 
-### `pausada` — before alarming on silence, look at this field
+### `paused` — before alarming on silence, look at this field
 
 A paused instance answers `503` on sending, the volume goes to zero and the timestamp ages —
 **exactly like an outage**. Without this field your alarm would say *"no delivery for 200 minutes"*
-when the cause is a deliberate pause. **Rule: `pausada == true` suppresses the silence alarm** (and,
-if you like, raises one of its own, because an instance paused by mistake is also a problem). `estado`
+when the cause is a deliberate pause. **Rule: `paused == true` suppresses the silence alarm** (and,
+if you like, raises one of its own, because an instance paused by mistake is also a problem). `state`
 is the same information in words (`"ativa"` / `"pausada"`), for a human-facing screen.
 
-### `serie_7_dias` — the day by day of the same window
+### `last_7_days_series` — the day by day of the same window
 
-> ⚠️ **OBSOLETE since 2026-07-29, and still working byte for byte.** The successor is `serie_diaria`,
+> ⚠️ **OBSOLETE since 2026-07-29, and still working byte for byte.** The successor is `daily_series`,
 > which accepts whatever window you ask for (30 days, for example) — the section just below.
 > Everything described here applies identically to both.
 
@@ -3215,7 +3215,7 @@ zero.
 
 **Each entry carries TWO keys with the SAME value: `dia_utc` (the right name) and `dia` (obsolete).**
 Use `dia_utc`. The date is in **UTC**, the same time zone in which the counters are recorded. That is
-why the sum of the seven days matches `ultimos_7_dias` exactly; if you convert to the local time zone
+why the sum of the seven days matches `last_7_days` exactly; if you convert to the local time zone
 before summing, it stops matching — and that is not the gateway's fault.
 
 > 🛑 **DECIDED ON 2026-07-31: the day stays UTC, and there will be NO time zone parameter.** Do not ask
@@ -3264,20 +3264,20 @@ written, and it is the notice.
 > **Write that on your screen**, not just in your code. Whoever reads the dashboard does not read the
 > contract.
 
-### `serie_diaria` + `?serie_dias=` — the window **you** ask for (2026-07-29)
+### `daily_series` + `?serie_dias=` — the window **you** ask for (2026-07-29)
 
 **`GET /v1/estado?instancia={slug}&serie_dias=30`**
 
-`serie_7_dias` answers *"is it delivering?"* — the operational question, and seven days are enough for
+`last_7_days_series` answers *"is it delivering?"* — the operational question, and seven days are enough for
 it. **It does not answer *"how much am I going to spend this month"***, which is a 30-day chart. That
 chart existed on a consumer's dashboard, fed by the WABA's `analytics`, **straight from the Graph**,
 and the rule *nobody talks to Meta directly* closed that path: this window is the replacement, and it
 is **debt the rule created**, not convenience.
 
-- `serie_diaria` has **exactly** `serie_dias` entries, from the oldest day to the newest, with the same
-  shape as `serie_7_dias` (`dia_utc`, obsolete `dia`, and **all** the keys on **every** day, including
+- `daily_series` has **exactly** `serie_dias` entries, from the oldest day to the newest, with the same
+  shape as `last_7_days_series` (`dia_utc`, obsolete `dia`, and **all** the keys on **every** day, including
   days without traffic);
-- **without the parameter, it is 7 days** — the same content as `serie_7_dias`, day for day. The
+- **without the parameter, it is 7 days** — the same content as `last_7_days_series`, day for day. The
   default did not grow so as not to inflate thirteenfold the response of someone who never asked for
   anything;
 - the data was **already in the database**: the gateway keeps daily counters for **90 days** (the
@@ -3306,25 +3306,25 @@ the truncated template catalogue: **incomplete is an error, never a `200`**.
 
 Retention is not the only boundary: an instance created three days ago has no thirty days of history to
 tell, and the series comes back with legitimate zeros on the days **it did not exist**. What answers
-that is **`carimbos_desde`** at the top of the same response — the instrument's age. The reading is:
+that is **`stamps_since`** at the top of the same response — the instrument's age. The reading is:
 
 ```
-a series day BEFORE carimbos_desde -> absence of instrument, not absence of traffic
-a series day AFTER carimbos_desde  -> a zero is a real zero
+a series day BEFORE stamps_since -> absence of instrument, not absence of traffic
+a series day AFTER stamps_since  -> a zero is a real zero
 ```
 
 *This matters a lot for anyone plotting cost: a monthly average computed over the days before the
 instance's birth comes out diluted, and the number looks reasonable — which is the worst way to be
 wrong.*
 
-#### `serie_7_dias` still works, byte for byte, and is OBSOLETE
+#### `last_7_days_series` still works, byte for byte, and is OBSOLETE
 
-It **never changes shape**: with `serie_dias=30`, `serie_diaria` has 30 entries and `serie_7_dias`
+It **never changes shape**: with `serie_dias=30`, `daily_series` has 30 entries and `last_7_days_series`
 still has 7 — and both come from the **same read of the database**, so one's 7-day suffix equals the
 other, day for day and number for number (there is a test guarding this).
 
-**Migrate to `serie_diaria`** (with or without the parameter: without it, it is the same 7 days). The
-name `serie_7_dias` carries a number, and so it could never grow — a field with that name and 30
+**Migrate to `daily_series`** (with or without the parameter: without it, it is the same 7 days). The
+name `last_7_days_series` carries a number, and so it could never grow — a field with that name and 30
 entries would lie about itself inside the `console.log` of whoever is debugging at two in the morning,
 which is exactly the argument that produced `dia_utc`.
 
@@ -3334,7 +3334,7 @@ response, with the same shape as always.
 
 ### A promise of ours about the vocabulary, and what it demands of you
 
-`contadores` carries **every** key of the vocabulary, always, even zeroed — and that is guaranteed by a
+`counters` carries **every** key of the vocabulary, always, even zeroed — and that is guaranteed by a
 test on our side, not by convention. **The good consequence:** a new key we create appears on your
 screen without a release of yours.
 
@@ -3463,7 +3463,7 @@ damage.
 of whether there is traffic and whether anyone is looking. That is deliberate: if the verdict depended
 on traffic, *absence of traffic* would be indistinguishable from *broken system* — a token revoked at
 2 a.m. would only show up at 8 a.m., in front of the first customer. **A paused instance is not
-measured** (it does not send), and that is why its verdict ages into `unknown`; use `pausada` so
+measured** (it does not send), and that is why its verdict ages into `unknown`; use `paused` so
 you do not confuse the two.
 
 **The two alarm rules this gives you, and neither requires knowing our innards:** `verdict != "ok"`,
@@ -3500,7 +3500,7 @@ freshly created instance, or a consumer that has not received anything yet. It i
 is not on its own a reason to alarm.
 
 > **Why the word, and not just `null`.** This route already paid that bill once: it went live with
-> `ultimo_em: null` on counters that **did** have history (the timestamp had only started being
+> `last_at: null` on counters that **did** have history (the timestamp had only started being
 > recorded at that moment), and anyone treating `null` as "very old" would have started with a false
 > positive on everything. Here the case is permanent — an instance without deliveries will never have a
 > date — so the difference between *"never saw it"* and *"saw it and it is bad"* is **unambiguous in
@@ -3522,7 +3522,7 @@ state == "observed"
 ```
 
 And, separately from that: `state == "observed"` with a very old `observed_at` **on an active
-instance with traffic** means delivery has stopped — but for that `entregues.ultimo_em` answers
+instance with traffic** means delivery has stopped — but for that `entregues.last_at` answers
 better, because it exists for exactly that question.
 
 Example of the block on an instance that has not delivered anything yet (**pasted from the same run**
@@ -3625,7 +3625,7 @@ coming back without the data"** — Meta stopped sending the fields, or the fiel
 that state the value you read is still true *for its date*, and `observed_at` is what tells you how
 old it is.
 
-**`checked_at: null` on a `pausada` instance is expected**, not a failure: a paused instance is not
+**`checked_at: null` on a `paused` instance is expected**, not a failure: a paused instance is not
 measured on purpose — it does not send, and spending a call on it would be measuring a channel that
 cannot fail.
 
@@ -3806,7 +3806,7 @@ is why it does not exist here, and will not come to exist.
 |---|---|---|
 | `via` | **configuration**, not measurement — `tunel`, `encaminhamento_de_porta` or `unknown` | knowing where the inbound path should be arriving through when you report an outage |
 | `connector` | a **measurement** of the `/ready` of the connector that publishes the route | telling "the tunnel went down" apart from "the gateway is quiet" |
-| `last_webhook_at` | the **same** value as `contadores.recebidas.ultimo_em` | concluding **silence** on your own, without reading the counters table |
+| `last_webhook_at` | the **same** value as `counters.recebidas.last_at` | concluding **silence** on your own, without reading the counters table |
 
 **`connector.state` has THREE values, and the difference between two of them is the point of the
 block:**
@@ -4743,7 +4743,7 @@ anything with Meta. The message always names the refused type:
 
 `GET /v1/instances/{slug}/health` is the **only exception**, and by deliberate decision: being a
 **read** route, it never refuses — a `400` there would break the polling watch of whoever monitors the
-channel. On an Instagram instance it answers `200` with `"veredito":"nao_se_aplica"` and **without
+channel. On an Instagram instance it answers `200` with `"verdict":"not_applicable"` and **without
 calling Meta**: there is no equivalent, on `graph.instagram.com`, to `GET /{phone_number_id}` that
 confirms the token without sending a message — inventing one by analogy would risk an answer that
 deceives.
@@ -4752,7 +4752,7 @@ deceives.
 
 | block | WhatsApp | Instagram |
 |---|---|---|
-| `estado` / `pausada` / `versao` / `gerado_em` / `carimbos_desde` / `contadores` / `serie_7_dias` / `serie_diaria` | yes | yes — generic, independent of the Meta product |
+| `state` / `paused` / `version` / `generated_at` / `stamps_since` / `counters` / `last_7_days_series` / `daily_series` | yes | yes — generic, independent of the Meta product |
 | `kind` | yes — always `"whatsapp"` | yes — always `"instagram"` |
 | `ig_id` | **always `not_applicable`** (T-107) — an Instagram identifier, WhatsApp does not have one | yes — this instance's Instagram-scoped Business Account ID, the same value as `zapgw instance show` |
 | `callback_certificate` | yes | yes — it is **your** endpoint's TLS, the same in both products |
