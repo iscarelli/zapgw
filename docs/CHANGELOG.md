@@ -2,7 +2,13 @@
 
 One line per version shipped, in the same commit as the bump. The entry states the **effect**, not the diff.
 
-## Unreleased
+## v0.68.0 — 2026-09-15
+
+MINOR: the last three Portuguese CLI verbs (`transito`, `perdidas`, `versao`) now refuse naming
+`transit`, `lost`, `version` (T-246) — the CLI has no Portuguese spelling left. No HTTP route changed;
+the other three tasks fix the contract so it names the keys the code already emits (T-240, T-247,
+T-249): `GET /v1/estado` blocks and scalars, `/v1/bloqueios`, the health `verdict`, and the
+`/v1/cadastro`, `/v1/pausa`, `/v1/fumaca` responses.
 
 - **The `POST /v1/cadastro`, `/v1/pausa` and `/v1/fumaca` examples in the contract do not match the keys the handlers emit** (T-249) — measured `registration_handler.go`, `pause_handler.go` and
   `smoke_handler.go` against the contract's request/response examples: the RESPONSE examples for all
