@@ -14,7 +14,8 @@
   `operator alerts: telegram (chat configured)`; mesmo bot/chat do daily-check; 1688 fechado).
   ⚠️ **Nenhum alerta real saiu ainda** — a chamada do gateway ao Telegram foi provada so' contra
   `httptest`; o primeiro `ALARME` real e' a prova, e ate' la' este mecanismo conta como "nunca falhou".
-- Fila: T-248 (decisao do dono) e T-231 (fatiar). Nada em voo.
+- Fila: T-248 (decidida: opcao 1; segurada por orcamento) e T-231 (fatiar; segurada por
+  orcamento). Nada em voo. **Dono em 09-19: "vamos fazer quando sobrar token."**
 
 ### 📌 2026-09-19 — `v0.68.1` EM PRODUCAO (T-250, medido: `HEALTH OK` + `VERSION MATCHES 0.68.1`). o consumidor migrou para o contrato ingles.
 
@@ -452,7 +453,11 @@ instancias foram rotacionadas. Duas licoes que custaram na hora e valem alem des
 
 
 ## [ ] T-248  Seven response keys and literals still Portuguese in code, among English siblings
-After:   DECISAO DO DONO — muda chave de RESPOSTA que o consumidor le hoje. Nao despache sem ele.
+After:   DECIDIDO em 2026-09-19 — opcao (1): renomear TUDO de uma vez, bump MINOR, aviso aos dois
+         consumidores ANTES do deploy (o dono manda o texto; sem canal). Segurada por ORCAMENTO
+         ("quando sobrar token"), nao por decisao. Antes de despachar: o planner escreve a tabela
+         velho->novo completa aqui (partindo da tabela da T-251 no contrato), sem deixar nome para
+         o implementador inventar, e o texto do aviso aos consumidores.
 Why:     Medido pela T-240 contra o codigo (2026-09-15): `hoje` (`state.go:236`, irmaos `last_7_days`/
          `last_at`), `definido_em` (`state.go:518`, cinco irmaos em ingles), `cursor_antes`/
          `cursor_depois` (`block_handler.go:183-184`, irmaos `instance`/`total`/`blocked`),
@@ -465,9 +470,11 @@ Why:     Medido pela T-240 contra o codigo (2026-09-15): `hoje` (`state.go:236`,
 Files:   internal/outbound/state.go, internal/outbound/block_handler.go, internal/config/number.go,
          internal/outbound/external_probe.go, os `_test.go`, docs/CONTRATO-CONSUMIDOR.md (+pt-BR),
          docs/CHANGELOG.md
-Do:      O que o dono decidir entre: (1) renomear de uma vez com bump MINOR e aviso no canal ANTES do
-         deploy, com a lista velho->novo; (2) emitir os dois nomes por uma versao (`omitempty` no
-         velho) e aposentar depois; (3) deixar. Escrever a decisao aqui antes de despachar.
+Do:      (1) renomear de uma vez, MINOR, aviso ANTES do deploy com a lista velho->novo. Escopo: toda
+         chave, valor e literal de SAIDA da tabela "Keys that are STILL Portuguese" do contrato
+         (T-251), mais `state` (`ativa`/`pausada`) e as frases de `instruction`. Contadores: so' o nome
+         no FIO (mapa na saida em `state.go`); a chave no SQLite fica. FORA do escopo, decisao a parte:
+         rotas (`/v1/estado`...), aliases de ENTRADA (passo 4 da T-189) e os textos de erro em `mensagem`.
 Verify:  a definir com a decisao.
 
 ## [ ] T-231  Translate the English side of the docs that is still Portuguese
