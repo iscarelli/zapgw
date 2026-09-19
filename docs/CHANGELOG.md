@@ -2,7 +2,14 @@
 
 One line per version shipped, in the same commit as the bump. The entry states the **effect**, not the diff.
 
-## Unreleased
+## v0.69.0 — 2026-09-19
+
+MINOR: a `404` from the consumer's callback_url is now answered to Meta as `502` (transient — Meta
+redelivers) instead of `200` (definitive loss), because a 404 is the edge proxy speaking, not the
+consumer refusing (T-252). The gateway can now alert its operator on Telegram — definitive loss,
+consumer failing in series, recovery — via `ZAPGW_ALERT_TELEGRAM_TOKEN` + `ZAPGW_ALERT_TELEGRAM_CHAT_ID`
+(T-253); the contract gained the table of output keys still Portuguese (T-251). Every other route,
+status and body is unchanged.
 
 - **A `404` from the callback_url is treated as transient, not as the consumer's refusal**
   (T-252) — `ConsumerVerdict` (`internal/inbound/mirror.go`) now answers `502`/no-alarm for a `404`,
