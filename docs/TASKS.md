@@ -415,6 +415,46 @@ instancias foram rotacionadas. Duas licoes que custaram na hora e valem alem des
 
 > A fila do periodo privado esta em `iscarelli/zapgw-dev`, congelada. Tarefa nova nasce aqui.
 
+## [ ] T-250  Log the mute 503 branches of the template catalog read
+Vikunja: 1677
+Why:     Pedido do consumidor (2026-09-19): um `503 retryable` "nao foi possivel falar com a Meta para
+         ler o catalogo" nao deixou NENHUMA linha no journal do CT (causa real: restart do DNS, achada
+         por fora). Medido: em `respondCatalogError` (`internal/outbound/templates_handler.go:1010`) o
+         `default` de transporte/deadline (`:1054-1060`) e o ramo `ErrCatalogNotUnderstood` (`:1039`)
+         respondem sem `log.Printf`; os irmaos logam, e os "WITHOUT A VERDICT" de criacao (`:1144`) e
+         exclusao (`:866`) tambem. A funcao e chamada de DOIS lugares (`list` `:443` e a pre-leitura
+         de `deleteTemplate` `:657`), entao o log tem de dizer qual rota.
+Files:   internal/outbound/templates_handler.go, internal/outbound/templates_handler_test.go (ou o
+         `_test.go` onde os testes de `respondCatalogError`/`list` ja vivem), docs/CHANGELOG.md
+Do:      1. `respondCatalogError` ganha dois parametros: `route string` (literal `"GET /v1/templates"`
+            no chamador de `:443`; `"DELETE /v1/templates (catalog pre-read)"` no de `:657`) e
+            `elapsed time.Duration`. Cada chamador mede `started := time.Now()` imediatamente antes
+            do `h.client.ListTemplates(...)` e passa `time.Since(started)`.
+         2. No `default` de transporte (`:1054-1060`), ANTES do `respondError`, logar no formato dos
+            irmaos: `zapgw: catalog read on instance %q (%s) FAILED without a verdict from Meta after
+            %s (deadline %s): %v — answered 503 retryable` com `slug`, `route`, `elapsed`,
+            `InstanceDeadline(inst)` (passe `inst config.Instance` em vez de `slug` se for mais
+            simples; o `slug` continua nas outras mensagens) e `err` via `%v` (ele ja carrega
+            "dial tcp"/"context deadline exceeded"/"no such host").
+         3. No ramo `ErrCatalogNotUnderstood` (`:1039`), logar tambem, com `route` e `err`:
+            `zapgw: catalog read on instance %q (%s): Meta answered a catalog the gateway could not
+            parse: %v — answered 503 retryable`.
+         4. NAO mude nenhum corpo de resposta, status ou classe: o contrato fica igual. NAO logue o
+            token nem a URL com query da Meta (o `%v` do erro de transporte do net/http pode carregar
+            a URL; se carregar `access_token=`, redija ANTES de logar — confira com um teste que faz o
+            client falso devolver um `*url.Error` cuja URL contenha `access_token=x`).
+         5. Teste: para cada um dos dois ramos, um subteste que captura `log.SetOutput` num buffer,
+            faz o client falso de templates devolver (a) `context.DeadlineExceeded` embrulhado e
+            (b) `meta.ErrCatalogNotUnderstood`, chama a rota e exige: status 503, classe `retryable`,
+            corpo IGUAL ao de hoje, e o buffer contendo o slug, a rota e o texto do erro. Prova
+            negativa: rode o teste ANTES da mudanca e ele tem de FALHAR no buffer vazio.
+         6. Uma linha no `docs/CHANGELOG.md` sob `## Unreleased`, com o custo (503 mudo, DNS achado
+            por fora).
+Verify:  CGO_ENABLED=0 go build ./... && go test ./... && go vet ./... && gofmt -l cmd internal
+         (nada impresso); `go test ./internal/outbound -run 'Templates.*Catalog' -v` mostra os
+         subtestes novos passando; `git diff` em `templates_handler.go` nao toca em nenhuma string
+         passada a `respondError`/`respondMetaError`.
+
 ## [ ] T-248  Seven response keys and literals still Portuguese in code, among English siblings
 After:   DECISAO DO DONO — muda chave de RESPOSTA que o consumidor le hoje. Nao despache sem ele.
 Why:     Medido pela T-240 contra o codigo (2026-09-15): `hoje` (`state.go:236`, irmaos `last_7_days`/
