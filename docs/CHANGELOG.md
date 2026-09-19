@@ -2,7 +2,11 @@
 
 One line per version shipped, in the same commit as the bump. The entry states the **effect**, not the diff.
 
-## Unreleased
+## v0.68.1 — 2026-09-19
+
+PATCH: a `503 retryable` on the template catalog read (transport failure, deadline, or a catalog the
+gateway could not parse) now leaves a journal line naming the instance, the route, the elapsed time
+and the underlying error (T-250). No HTTP route, status, class or body changed.
 
 - **The two mute branches of the catalog read now log before answering** (T-250) — a consumer's `503
   retryable` for "could not talk to Meta to read the catalog" left ZERO lines in the CT's journal; the
