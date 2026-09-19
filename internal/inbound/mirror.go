@@ -29,6 +29,19 @@
 // redeliveries expire, it simply stops, and the gateway never even finds out.
 // What covers that is the per-instance probe, on its own plan — it is not
 // here, and this absence is deliberate, not an oversight.
+//
+// THE MATRIX'S ONE EXCEPTION INSIDE THE 4xx RANGE: a 404 is NOT a refusal.
+// Every OTHER 4xx (400/401/403/409/413/422/...) means the consumer's own
+// code read the event and decided not to keep it — that is a deliberate,
+// permanent answer, and no redelivery changes it. A 404 means something
+// different: nobody is listening at the callback_url at all — the edge
+// proxy answered on the consumer's behalf (route absent, no backend behind
+// it), and the consumer's code never even saw the request. Cost: on
+// 2026-09-15, a consumer's guest was powered off for scheduled maintenance
+// while the gateway stayed up; the edge in front of it answered 404, this
+// code read it as "consumer REFUSED", and answered Meta 200 — six messages
+// lost for good. A 502 keeps Meta's 36h redelivery window open instead,
+// turning that same outage into a delay.
 package inbound
 
 import (
@@ -117,6 +130,18 @@ func ConsumerVerdict(status int, err error) Verdict {
 			Reason:        fmt.Sprintf("consumer failed transiently (%d); Meta will redeliver", status),
 		}
 
+	case status == http.StatusNotFound:
+		// Nobody is listening — see the file-header comment. Not a
+		// refusal: the consumer's own code never read this event, so a
+		// deliberate answer never happened. Treated like a transient 5xx:
+		// 502 keeps Meta's redelivery window open.
+		return Verdict{
+			StatusForMeta: http.StatusBadGateway,
+			Alarm:         false,
+			Reason: "consumer answered 404 — nobody is listening at the callback_url" +
+				" (route absent, proxy without a backend); treated as transient, Meta will redeliver",
+		}
+
 	case status >= 400:
 		// They understood and refused. Redelivering repeats the same
 		// failure for 36h.
@@ -146,10 +171,12 @@ func ConsumerVerdict(status int, err error) Verdict {
 // TestCounterKeysMatchConsumerVerdictBoundaries sweeps the whole
 // 100..599 range and proves the two agree at the boundaries.
 //
-// WHY A TRANSIENT FAILURE (consumer 5xx) COUNTS NOTHING AT ALL: the closed
-// counter vocabulary (T-035) has no key for this, and forcing this event
-// inside "recusadas_pelo_consumidor" would confuse whoever operates it — Meta
-// is still going to redeliver on its own, no one needs to act now.
+// WHY A TRANSIENT FAILURE (consumer 5xx, or a 404) COUNTS NOTHING AT ALL: the
+// closed counter vocabulary (T-035) has no key for this, and forcing this
+// event inside "recusadas_pelo_consumidor" would confuse whoever operates it
+// — Meta is still going to redeliver on its own, no one needs to act now. A
+// 404 gets the same treatment as a 5xx here for the same reason: it is not
+// the consumer's own code refusing the event (see ConsumerVerdict).
 func CounterKeys(status int, err error, v Verdict) []string {
 	var keys []string
 	if err == nil {
@@ -158,6 +185,8 @@ func CounterKeys(status int, err error, v Verdict) []string {
 			keys = append(keys, config.CounterDelivered)
 		case status >= 500 && status < 600:
 			// Transient: no key (see comment above).
+		case status == http.StatusNotFound:
+			// Transient (nobody listening): no key, same rule as a 5xx.
 		case status >= 400:
 			keys = append(keys, config.CounterRefusedByConsumer)
 		}

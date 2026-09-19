@@ -722,12 +722,17 @@ func TestHandlerRejectsPausedInstance(t *testing.T) {
 // Alarm=true on branches that return StatusForMeta 200, and the handler
 // only logged when StatusForMeta was NOT 2xx — the two conditions are
 // mutually exclusive, so the ALARME prefix (which mirror.go promises for
-// permanent loss) never fired. A consumer that returns 404 is exactly this
-// case: we respond 200 to Meta, it never redelivers, and the log was the
-// only safety net.
+// permanent loss) never fired. A consumer that returns 400 (a deliberate
+// refusal — the consumer's own code read the event and rejected it) is
+// exactly this case: we respond 200 to Meta, it never redelivers, and the
+// log was the only safety net.
+//
+// NOT 404: since T-252, a 404 means nobody is listening (the edge proxy
+// answered on the consumer's behalf), and is treated as transient — see
+// TestVerdictTreats404AsNobodyListening in mirror_test.go.
 func TestHandlerLogsALARMEWhenConsumerRefusesTheDocument(t *testing.T) {
 	consumer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusNotFound)
+		w.WriteHeader(http.StatusBadRequest)
 	}))
 	defer consumer.Close()
 
@@ -746,7 +751,7 @@ func TestHandlerLogsALARMEWhenConsumerRefusesTheDocument(t *testing.T) {
 		t.Fatalf("status = %d, want 200 (Meta cannot redeliver a permanent refusal)", rec.Code)
 	}
 	if !strings.Contains(buf.String(), "ALARME") {
-		t.Fatalf("log with no ALARME for a consumer that REFUSED (404) — permanent loss with no one knowing. log:\n%s", buf.String())
+		t.Fatalf("log with no ALARME for a consumer that REFUSED (400) — permanent loss with no one knowing. log:\n%s", buf.String())
 	}
 }
 
@@ -1040,10 +1045,11 @@ func TestHandlerCountsReceivedAndDeliveredOnSuccessfulDelivery(t *testing.T) {
 // Verify (b): a 4xx from the consumer increments `recusadas_pelo_consumidor`
 // AND `alarme_perda_definitiva` — both, because it's the SAME event
 // (permanent loss) seen from two angles: who rejected it, and that no one
-// has been warned yet.
+// has been warned yet. NOT 404 (see T-252): that one is treated as
+// transient, not as the consumer's own refusal.
 func TestHandlerCountsRefusedAndAlarmWhenConsumerRefuses(t *testing.T) {
 	consumer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusNotFound)
+		w.WriteHeader(http.StatusBadRequest)
 	}))
 	defer consumer.Close()
 
