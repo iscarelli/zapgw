@@ -68,7 +68,9 @@ Three things have to be in place on the target host:
 | the systemd unit | `/etc/systemd/system/zapgw.service` | [`deploy/zapgw.service`](deploy/zapgw.service) |
 | the variables | `/etc/zapgw/env`, mode `0600` | a filled-in copy of [`.env.example`](.env.example) |
 
-`/etc/zapgw/env` is the only place secrets live — `ZAPGW_ENCRYPTION_KEY` included. It is not version
+`/etc/zapgw/env` is the only place secrets live — `ZAPGW_ENCRYPTION_KEY` and, when operator alerts
+are enabled, `ZAPGW_ALERT_TELEGRAM_TOKEN` included. The Telegram token comes from @BotFather;
+rotating it only means updating this file and restarting — nothing else breaks. It is not version
 controlled, the deploy script does not copy it, and none of it ever travels on a command line.
 
 ### The deploy script

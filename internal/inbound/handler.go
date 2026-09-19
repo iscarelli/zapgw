@@ -83,6 +83,13 @@ type Handler struct {
 	// process instead of once per message (T-063, see
 	// internal/inbound/billing.go).
 	warnedCategories *unknownCategoryWarning
+	// alerts is the OPTIONAL operator-notification sink (T-253): NIL-SAFE,
+	// same discipline as counter/transit above, and called with EXACTLY the
+	// three fields mirror.go's own Verdict carries — this handler never
+	// re-decides "does this need a person," it only forwards the decision
+	// mirror.go already made. See alertObserver below for why this is a
+	// LOCAL interface instead of an import of internal/alert.
+	alerts alertObserver
 	// now is injectable only for tests, like the Watchdog's own `now` —
 	// without it, proving the tie-break rule between webhook and measurement
 	// would require sleeping on the clock.
@@ -94,20 +101,46 @@ type Handler struct {
 }
 
 func NewHandler(store *config.Store, deliverer *Deliverer, maxBytes int, counter *config.Counter, transit *config.Transit) http.Handler {
-	_, mux := newHandler(store, deliverer, maxBytes, counter, transit, time.Now)
+	_, mux := newHandler(store, deliverer, maxBytes, counter, transit, nil, time.Now)
+	return mux
+}
+
+// alertObserver is the operator-notification sink this handler optionally
+// calls (T-253). It is declared HERE, LOCAL to this package, instead of
+// importing internal/alert's Sender type directly — the SAME pattern this
+// file already follows for counter/transit (config.Counter, config.Transit):
+// this package depends on a SHAPE, not on the alert package's existence, so
+// internal/inbound never needs to import internal/alert at all. main.go is
+// the only place that constructs an *alert.Sender and hands it in — it
+// satisfies this interface structurally.
+type alertObserver interface {
+	Observe(slug, correlation string, statusForMeta int, alarm bool, reason string)
+}
+
+// NewHandlerWithAlerts is NewHandler plus an OPTIONAL operator-alert sink
+// (T-253). It exists as a SEPARATE constructor, the same pattern as
+// NewHandlerWithInstagramBase in internal/outbound, so NewHandler's
+// signature — and every existing caller of it — stays untouched. Passing a
+// nil alerts is equivalent to NewHandler.
+func NewHandlerWithAlerts(
+	store *config.Store, deliverer *Deliverer, maxBytes int,
+	counter *config.Counter, transit *config.Transit, alerts alertObserver,
+) http.Handler {
+	_, mux := newHandler(store, deliverer, maxBytes, counter, transit, alerts, time.Now)
 	return mux
 }
 
 // newHandler ALSO returns the *Handler, and it exists so a test can stop the
 // clock (the same role as the Watchdog's `now` field). Production never swaps
-// it — NewHandler above passes time.Now and there is no path outside this
-// package that passes anything else.
+// it — NewHandler/NewHandlerWithAlerts above pass time.Now and there is no
+// path outside this package that passes anything else.
 func newHandler(
 	store *config.Store, deliverer *Deliverer, maxBytes int,
-	counter *config.Counter, transit *config.Transit, now func() time.Time,
+	counter *config.Counter, transit *config.Transit, alerts alertObserver, now func() time.Time,
 ) (*Handler, http.Handler) {
 	h := &Handler{
 		store: store, deliverer: deliverer, maxBytes: maxBytes, counter: counter, transit: transit,
+		alerts:           alerts,
 		number:           config.NewNumberObserver(store),
 		now:              now,
 		rejections:       newRejectionCounter(largeBodyThreshold, largeBodyWindow),
@@ -632,6 +665,16 @@ func (h *Handler) receive(w http.ResponseWriter, r *http.Request) {
 		for _, key := range CounterKeys(status, deliveryErr, v) {
 			h.counter.Record(slug, key)
 		}
+	}
+
+	// T-253: operator alert, in the SAME place and under the SAME rule as
+	// the counter above — AFTER the response to Meta has been written.
+	// alertObserver.Observe never returns an error and never touches the
+	// network synchronously (see internal/alert.Sender), so a Telegram
+	// outage cannot reach this response any more than a counter failure
+	// can.
+	if h.alerts != nil {
+		h.alerts.Observe(slug, correlation, v.StatusForMeta, v.Alarm, v.Reason)
 	}
 
 	// T-063: billing by category, in the same place and under the same

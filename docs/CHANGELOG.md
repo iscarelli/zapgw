@@ -4,6 +4,24 @@ One line per version shipped, in the same commit as the bump. The entry states t
 
 ## Unreleased
 
+- **Operator alerts on Telegram: definitive loss, consumer failing in series, and recovery** (T-253)
+  — between 2026-09-01 and 09-19 a consumer answered transiently ~650 times and lost 6 messages for
+  good on 09-15, and nobody found out for 18 days: the gateway only ever wrote `ALARME` to the
+  journal and to the per-instance counters, and nothing read either one. Added `internal/alert`
+  (`Tracker`, `Telegram`, `Sender`): a permanent loss (mirror.go's `Alarm && StatusForMeta == 200`)
+  alerts immediately and aggregates further losses on the same instance for 10 minutes; ten
+  consecutive non-2xx deliveries Meta will still redeliver (502/504, including a bad-certificate
+  504) or 30 minutes since the first one — whichever comes first — alerts as "failing in series",
+  with a reminder every 6h; the first accepted delivery after an alerted series sends a recovery
+  message and resets it (a series that never alerted resets in silence). Wired into
+  `internal/inbound/handler.go` through a new, OPTIONAL, nil-safe `alertObserver` local interface
+  (`NewHandlerWithAlerts`, `NewHandler` unchanged) called AFTER the response to Meta and the
+  counters, same discipline as `counter`/`transit` — proved with a test where a Notifier that always
+  fails leaves the status and the counters untouched. `cmd/zapgw/main.go` reads
+  `ZAPGW_ALERT_TELEGRAM_TOKEN`/`ZAPGW_ALERT_TELEGRAM_CHAT_ID`: both set enables it, neither set logs
+  "not configured", exactly one set refuses to start naming the missing one. The bot token never
+  reaches a log line or an error string (net/http's `*url.Error` normally carries the full request
+  URL — redacted before it can leave `internal/alert`). _Completed 2026-09-19 03:10._
 - **Contract: name the output keys that are still Portuguese, so nobody invents the English one**
   (T-251) — a consumer migrated by reading the code, not the doc, and found `pricing.cobravel`
   (`internal/meta/types.go:189`) and `health.verificado_em`

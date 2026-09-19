@@ -57,7 +57,7 @@ func qualityHandler(t *testing.T, now time.Time) (http.Handler, *config.Store) {
 		t.Fatalf("activate instance: %v", err)
 	}
 
-	_, mux := newHandler(store, NewDeliverer(nil), 1<<20, config.NewCounter(store), config.NewTransit(store),
+	_, mux := newHandler(store, NewDeliverer(nil), 1<<20, config.NewCounter(store), config.NewTransit(store), nil,
 		func() time.Time { return now })
 	return mux, store
 }

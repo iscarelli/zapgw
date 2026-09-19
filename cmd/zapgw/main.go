@@ -19,12 +19,23 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
+	"github.com/iscarelli/zapgw/internal/alert"
 	"github.com/iscarelli/zapgw/internal/config"
 	"github.com/iscarelli/zapgw/internal/inbound"
 	"github.com/iscarelli/zapgw/internal/meta"
 	"github.com/iscarelli/zapgw/internal/outbound"
+)
+
+// envAlertTelegramToken/envAlertTelegramChatID (T-253): the two variables
+// that turn on operator alerts. Neither has a "new"/"old" pair
+// (config.EnvRefusingOld) — this is a BRAND NEW feature, not a rename, so
+// there is no obsolete spelling to refuse.
+const (
+	envAlertTelegramToken  = "ZAPGW_ALERT_TELEGRAM_TOKEN"
+	envAlertTelegramChatID = "ZAPGW_ALERT_TELEGRAM_CHAT_ID"
 )
 
 // versao is the binary's identity. IT IS NEVER READ FROM DISK AT RUNTIME
@@ -429,13 +440,47 @@ func main() {
 		address = "127.0.0.1:8080"
 	}
 
+	// Operator alerts on Telegram (T-253): OPTIONAL, off unless BOTH
+	// variables are set. Between 2026-09-01 and 09-19 a consumer failed
+	// ~650 times and lost 6 messages for good, and nobody found out for 18
+	// days — the gateway only ever wrote "ALARME" to the journal
+	// (mirror.go's Verdict.Alarm) and to the per-instance counters, and
+	// nothing read either one. This does not change WHAT counts as needing
+	// a person — that stays entirely in mirror.go — it only adds a channel.
+	telegramToken := strings.TrimSpace(os.Getenv(envAlertTelegramToken))
+	telegramChatID := strings.TrimSpace(os.Getenv(envAlertTelegramChatID))
+	var alerts *alert.Sender
+	switch {
+	case telegramToken != "" && telegramChatID != "":
+		alerts = alert.NewSender(alert.NewTracker(time.Now), &alert.Telegram{Token: telegramToken, ChatID: telegramChatID})
+		log.Printf("zapgw: operator alerts: telegram (chat configured)")
+	case telegramToken == "" && telegramChatID == "":
+		log.Printf("zapgw: operator alerts: not configured")
+	case telegramToken == "":
+		// Refuses to start rather than silently running with no alerts,
+		// the SAME discipline as the obsolete-env-var checks above
+		// (config.EnvRefusingOld, T-244): a half-set pair is a
+		// misconfiguration, not a valid "disabled" state, and the token
+		// itself never appears in this message.
+		log.Fatalf("zapgw: %s is set but %s is not -- both are required to enable operator alerts",
+			envAlertTelegramChatID, envAlertTelegramToken)
+	default:
+		log.Fatalf("zapgw: %s is set but %s is not -- both are required to enable operator alerts",
+			envAlertTelegramToken, envAlertTelegramChatID)
+	}
+
 	// The certificate observer (T-064) is WRITTEN on delivery and READ
 	// in GET /v1/estado — both sides through the same store, which is
 	// what makes the observation survive a restart. It only renews when
 	// there is a delivery (there is no probe), so losing it on every
 	// deploy would leave a low-traffic instance saying "never observed"
 	// for days.
-	h := inbound.NewHandler(store, inbound.NewDeliverer(config.NewCertificateObserver(store)), maxBytes, counter, transit)
+	var h http.Handler
+	if alerts != nil {
+		h = inbound.NewHandlerWithAlerts(store, inbound.NewDeliverer(config.NewCertificateObserver(store)), maxBytes, counter, transit, alerts)
+	} else {
+		h = inbound.NewHandler(store, inbound.NewDeliverer(config.NewCertificateObserver(store)), maxBytes, counter, transit)
+	}
 
 	authenticator := outbound.NewAuthenticator(store)
 	metaClient := meta.NewClient(nil, graphBase(os.Getenv))

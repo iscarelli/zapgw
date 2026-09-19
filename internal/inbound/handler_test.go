@@ -2,6 +2,7 @@ package inbound
 
 import (
 	"bytes"
+	"context"
 	"crypto/hmac"
 	"crypto/sha256"
 	"database/sql"
@@ -21,6 +22,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/iscarelli/zapgw/internal/alert"
 	"github.com/iscarelli/zapgw/internal/config"
 
 	_ "modernc.org/sqlite" // only to activate a test instance via direct UPDATE
@@ -1251,6 +1253,83 @@ func TestHandlerCounterWithstandsConcurrentRequests(t *testing.T) {
 	if n := directCount(t, path, "lojinha", config.CounterDelivered); n != goroutines {
 		t.Fatalf("entregues = %d, want %d", n, goroutines)
 	}
+}
+
+// T-253: a Notifier that FAILS must not change the response Meta gets, nor
+// the counters — the same guarantee the counter/transit failure tests above
+// already prove, extended to the newest optional sink. The consumer answers
+// with a REFUSAL (400) so that ConsumerVerdict produces Alarm=true,
+// StatusForMeta=200 — mirror.go's own "permanent loss" case, which is
+// exactly the one alertObserver.Observe is wired to react to.
+func TestHandlerNotifierFailureDoesNotChangeStatusOrCounters(t *testing.T) {
+	consumer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+	}))
+	defer consumer.Close()
+
+	vault, err := config.NewVault(testCipherKey)
+	if err != nil {
+		t.Fatalf("NewVault: %v", err)
+	}
+	path := filepath.Join(t.TempDir(), "t.db")
+	store, err := config.OpenStore(path, vault)
+	if err != nil {
+		t.Fatalf("OpenStore: %v", err)
+	}
+	t.Cleanup(func() { _ = store.Close() })
+	if err := store.CreateInstance(config.Instance{
+		Slug: "lojinha", WabaID: "WABA1", PhoneNumberID: "PNID1",
+		AppSecret: "app-secret-de-teste", VerifyToken: "vt", SendToken: "te",
+		CallbackURL: consumer.URL, DeliverySecret: "se", TimeoutMs: 2000,
+	}); err != nil {
+		t.Fatalf("CreateInstance: %v", err)
+	}
+	activateInstanceInFile(t, path, "lojinha")
+
+	notifier := &alwaysFailingNotifier{done: make(chan struct{}, 1)}
+	sender := alert.NewSender(alert.NewTracker(nil), notifier)
+
+	h := NewHandlerWithAlerts(store, NewDeliverer(nil), 1<<20, config.NewCounter(store), config.NewTransit(store), sender)
+
+	raw := testPayload()
+	req := httptest.NewRequest(http.MethodPost, "/v1/inbound/lojinha", strings.NewReader(string(raw)))
+	req.Header.Set("X-Hub-Signature-256", signAsMeta(raw, "app-secret-de-teste"))
+	rec := httptest.NewRecorder()
+
+	h.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200 (Meta cannot redeliver a permanent refusal) — a Notifier failure must not change this", rec.Code)
+	}
+	if n := directCount(t, path, "lojinha", config.CounterDefinitiveLossAlarm); n != 1 {
+		t.Fatalf("perda_definitiva_alarme = %d, want 1 — a Notifier failure must not change the counters either", n)
+	}
+
+	select {
+	case <-notifier.done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("the failing Notifier was never called — the test did not exercise the path it proves")
+	}
+	if notifier.calls.Load() == 0 {
+		t.Fatal("the failing Notifier's call count is zero — the test did not exercise the path it proves")
+	}
+}
+
+// alwaysFailingNotifier is an alert.Notifier that ALWAYS fails, signaling
+// on done so the test can wait for the ASYNC send (internal/alert.Sender
+// fires it in its own goroutine) without sleeping.
+type alwaysFailingNotifier struct {
+	calls atomic.Int64
+	done  chan struct{}
+}
+
+func (n *alwaysFailingNotifier) Notify(ctx context.Context, text string) error {
+	n.calls.Add(1)
+	select {
+	case n.done <- struct{}{}:
+	default:
+	}
+	return errors.New("simulated notifier failure")
 }
 
 // activateInstanceInFile is the same direct UPDATE activeTestHandler

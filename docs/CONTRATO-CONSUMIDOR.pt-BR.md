@@ -5016,6 +5016,11 @@ declare-o **inteiro** no `Content-Type` da parte `arquivo`.
 | não responde / demora | `504` | A Meta reenvia, se você voltar a tempo. |
 | certificado TLS recusado | `504` + alarme | A Meta reenvia — mas o reenvio leva a **mesma** recusa. Só gente conserta, e o alarme diz isso. |
 
+**O operador do próprio gateway agora é avisado, separadamente de você (T-253).** O zapgw pode
+notificar seu operador no Telegram de uma perda definitiva e de um consumidor falhando em série —
+mas isso é um canal SEPARADO: não substitui o seu próprio alarme em `alarme_perda_definitiva`, e
+você continua agindo sobre esse campo exatamente como antes.
+
 ### ⚠️ Erro de credencial ou de configuração responde **5xx**, nunca 4xx
 
 Esta é a regra que mais custa descobrir sozinho, e a tabela acima explica por quê.
