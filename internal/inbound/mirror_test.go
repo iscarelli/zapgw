@@ -53,7 +53,7 @@ func TestVerdictDoesNotTellMetaToRedeliverWhatTheConsumerRefused(t *testing.T) {
 	// repeats the same failure for 36h — the same shape of defect as
 	// treating a permanent error as transient. Responds 200 and ALARMS
 	// LOUDLY, because the loss is permanent.
-	for _, status := range []int{400, 401, 403, 404, 409, 422} {
+	for _, status := range []int{400, 401, 403, 409, 422} {
 		v := ConsumerVerdict(status, nil)
 		if v.StatusForMeta != http.StatusOK {
 			t.Errorf("consumer %d -> Meta %d, want 200", status, v.StatusForMeta)
@@ -61,6 +61,35 @@ func TestVerdictDoesNotTellMetaToRedeliverWhatTheConsumerRefused(t *testing.T) {
 		if !v.Alarm {
 			t.Errorf("consumer %d has to ALARM — Meta never redelivers again", status)
 		}
+	}
+}
+
+// A 404 is NOT a refusal: it means nobody is listening at the callback_url
+// (the edge proxy answered on the consumer's behalf — route absent, no
+// backend — not the consumer's own code reading and refusing the event).
+// Cost: 2026-09-15, six messages lost for good when a consumer's guest was
+// powered off for maintenance while the gateway stayed up. The edge proxy's
+// 404 was read as "consumer REFUSED", answered 200 to Meta — irreversible.
+// A 502 keeps Meta's 36h redelivery window open, turning the outage into a
+// delay instead of a loss.
+func TestVerdictTreats404AsNobodyListening(t *testing.T) {
+	v := ConsumerVerdict(http.StatusNotFound, nil)
+	if v.StatusForMeta != http.StatusBadGateway {
+		t.Errorf("StatusForMeta = %d, want 502", v.StatusForMeta)
+	}
+	if v.Alarm {
+		t.Error("404 alarmed — Meta will redeliver, this is not a permanent loss")
+	}
+	if !strings.Contains(v.Reason, "nobody is listening") {
+		t.Errorf("Reason = %q, want it to contain %q", v.Reason, "nobody is listening")
+	}
+
+	keys := CounterKeys(http.StatusNotFound, nil, v)
+	if containsKey(keys, config.CounterRefusedByConsumer) {
+		t.Errorf("404 generated %q — it is not a refusal, the consumer's own code never saw it", config.CounterRefusedByConsumer)
+	}
+	if len(keys) != 0 {
+		t.Errorf("404 (transient): keys=%v, want none", keys)
 	}
 }
 
@@ -236,7 +265,9 @@ func TestCounterKeysMatchConsumerVerdictBoundaries(t *testing.T) {
 		keys := CounterKeys(status, nil, v)
 
 		wantDelivered := status >= 200 && status < 300
-		wantRefused := status >= 400 && status < 500
+		// 404 is "nobody is listening" (see ConsumerVerdict), not a
+		// refusal — it carries no key, same rule as a transient 5xx.
+		wantRefused := status >= 400 && status < 500 && status != http.StatusNotFound
 		wantAlarm := v.Alarm && v.StatusForMeta == http.StatusOK
 
 		hasDelivered := containsKey(keys, config.CounterDelivered)

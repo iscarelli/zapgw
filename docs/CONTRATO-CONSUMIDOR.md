@@ -5071,7 +5071,8 @@ it **whole** in the `Content-Type` of the `arquivo` part.
 |---|---|---|
 | **2xx** | `200` | Done. **Meta never resends this event.** |
 | **5xx** | `502` | Meta resends. Use it when a resend **would** solve it (your database went down). |
-| **4xx** | `200` + alarm | Meta does **not** resend. Use it when a resend would **not** solve it. |
+| **404** | `502` | Meta resends. A 404 is read as "nobody listening" (your proxy answered for you), never as a refusal — if you MEAN to refuse, answer 400/413/422. |
+| **4xx except 404** | `200` + alarm | Meta does **not** resend. Use it when a resend would **not** solve it. |
 | no answer / too slow | `504` | Meta resends, if you come back in time. |
 | TLS certificate refused | `504` + alarm | Meta resends — but the resend gets the **same** refusal. Only a human fixes it, and the alarm says so. |
 

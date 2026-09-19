@@ -440,41 +440,6 @@ instancias foram rotacionadas. Duas licoes que custaram na hora e valem alem des
 
 > A fila do periodo privado esta em `iscarelli/zapgw-dev`, congelada. Tarefa nova nasce aqui.
 
-## [ ] T-252  A 404 from the callback_url is "nobody listening", not "the consumer refused": treat it as transient
-Vikunja: 1687
-Why:     2026-09-15, 17:13-18:47 UTC: o guest do consumidor estava DESLIGADO (manutencao do homelab) e o
-         zapgw de pe'. O Traefik da borda respondeu `404` (rota some com o guest), `ConsumerVerdict`
-         (`internal/inbound/mirror.go:120-127`) tratou como "leu e recusou" e respondeu `200` a Meta —
-         irreversivel. **6 mensagens de cliente perdidas em definitivo** (journal do CT: `consumer REFUSED
-         (404); event lost for good`, seis vezes). Um `502` teria mantido a janela de reentrega da Meta
-         (36 h) e as 8 h de manutencao seriam atraso, nao perda. Decisao do dono em 2026-09-19: `404` vira
-         transitorio; os outros 4xx continuam definitivos (o consumidor usa `400`/`413`/`422` para recusar
-         de proposito — `404` nunca e' uma recusa consciente de um evento).
-Files:   internal/inbound/mirror.go, internal/inbound/mirror_test.go, docs/CONTRATO-CONSUMIDOR.md,
-         docs/CONTRATO-CONSUMIDOR.pt-BR.md, docs/ARMADILHAS.md, docs/CHANGELOG.md
-Do:      1. Em `ConsumerVerdict`, ANTES do `case status >= 400`, um `case status == http.StatusNotFound`
-            que devolve `StatusForMeta: http.StatusBadGateway`, `Alarm: false`, `Reason: "consumer
-            answered 404 — nobody is listening at the callback_url (route absent, proxy without a
-            backend); treated as transient, Meta will redeliver"`. Atualize o comentario de cabecalho do
-            arquivo (a matriz) com a linha nova e o porque' (o custo de 09-15, sem nome de consumidor).
-         2. Em `CounterKeys`, `404` NAO incrementa `recusadas_pelo_consumidor` (mesma regra do 5xx: sem
-            chave — a Meta vai reentregar). Nao crie contador novo.
-         3. Testes: tire `404` da tabela de `TestVerdictDoesNotTellMetaToRedeliverWhatTheConsumerRefused`
-            (`mirror_test.go:56`); adicione `TestVerdictTreats404AsNobodyListening` (404 -> 502, sem
-            alarme, Reason contendo "nobody is listening") e um caso em `CounterKeys` provando que 404
-            nao gera chave de recusa. Rode o teste novo ANTES da mudanca e registre a falha no relatorio.
-         4. Contrato (`docs/CONTRATO-CONSUMIDOR.md`, tabela "What you answer, and what that causes",
-            ~linha 5070, e o espelho pt-BR): linha nova `**404** | 502 | Meta resends. A 404 is read as
-            "nobody listening" (your proxy answered for you), never as a refusal — if you MEAN to refuse,
-            answer 400/413/422.` e a linha `4xx` passa a dizer `4xx except 404`.
-         5. `docs/ARMADILHAS.md`: entrada 🔥 com o custo real (6 mensagens, 2026-09-15, guest desligado com
-            o gateway de pe'; o 404 veio do proxy, nao do app) e a regra: "um 4xx que o consumidor nao
-            escreveu nao e' recusa". Sem nome de consumidor nem hostname.
-         6. Uma linha em `docs/CHANGELOG.md` sob `## Unreleased`.
-Verify:  CGO_ENABLED=0 go build ./... && go test ./... && go vet ./... && gofmt -l cmd internal (nada);
-         `go test ./internal/inbound -run 'Verdict|CounterKeys' -v` mostra os testes novos passando e o
-         antigo sem o 404; `grep -n "404" docs/CONTRATO-CONSUMIDOR.md | grep -i "nobody"` >= 1.
-
 ## [ ] T-253  Operator alerts on Telegram: definitive loss, consumer failing in series, and recovery
 Vikunja: 1682
 Why:     Entre 2026-09-01 e 09-19 um consumidor respondeu ~650 vezes 503 (3 a 95/dia) e perdeu 6 mensagens

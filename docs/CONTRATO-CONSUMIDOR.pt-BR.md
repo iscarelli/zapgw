@@ -5012,7 +5012,8 @@ declare-o **inteiro** no `Content-Type` da parte `arquivo`.
 |---|---|---|
 | **2xx** | `200` | Fim. **A Meta nunca mais reenvia este evento.** |
 | **5xx** | `502` | A Meta reenvia. Use quando o reenvio **resolveria** (seu banco caiu). |
-| **4xx** | `200` + alarme | A Meta **não** reenvia. Use quando o reenvio **não** resolveria. |
+| **404** | `502` | A Meta reenvia. Um 404 é lido como "não tem ninguém escutando" (seu proxy respondeu no seu lugar), nunca como recusa — se a intenção é recusar, responda 400/413/422. |
+| **4xx exceto 404** | `200` + alarme | A Meta **não** reenvia. Use quando o reenvio **não** resolveria. |
 | não responde / demora | `504` | A Meta reenvia, se você voltar a tempo. |
 | certificado TLS recusado | `504` + alarme | A Meta reenvia — mas o reenvio leva a **mesma** recusa. Só gente conserta, e o alarme diz isso. |
 

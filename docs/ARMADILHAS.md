@@ -4473,3 +4473,25 @@ values that are themselves single segments. An identifier a third-party API hand
 building the request around it means concatenating that fragment verbatim, after validating its SHAPE, never
 after "cleaning" its CONTENT. And a test fixture for that identifier has to carry its real shape, not a
 simplified stand-in that happens to dodge the one character the bug depends on.
+
+### 🔥 A `4xx` that the consumer never wrote is not a refusal — `mirror.go` read the edge proxy's `404` as the consumer's own answer (2026-09-15)
+
+**Cost: six of a consumer's customer messages lost for good, 2026-09-15 17:13-18:47 UTC**, during eight hours of
+scheduled homelab maintenance in which their guest was powered off and the gateway stayed up. `internal/inbound`'s
+`ConsumerVerdict` (`mirror.go`) treated any `status >= 400` from the delivery attempt as "they understood and
+refused" — a deliberate, permanent answer that gets mirrored to Meta as `200`, which Meta never redelivers again.
+But the `404` the gateway actually received did not come from the consumer's code at all: with the guest off, the
+edge proxy in front of it answered on its behalf (the route was simply absent). The consumer's own logic never
+saw the event, never made a decision, and had no chance to answer `400`/`413`/`422` the way it does for an actual
+refusal. The journal recorded `consumer REFUSED (404); event lost for good`, six times, and Meta's 36h
+redelivery window — which would have turned the outage into a delay instead of a loss — had already been closed
+by the `200` this code sent it.
+
+**The rule that generalizes:** a `4xx` is only a refusal when it is the consumer's OWN code answering on
+purpose. Anything sitting in front of the consumer (an edge proxy, a load balancer, a CDN) can also answer with
+a `4xx` on the consumer's behalf, for reasons that have nothing to do with the event's content — and the
+gateway cannot tell those two apart from the status code alone, except for the one code that is reserved,
+practically everywhere, for exactly that failure mode: `404`, "there is no route/backend here at all". The fix
+(T-252) special-cases `404` in `ConsumerVerdict` to answer `502` with `Alarm: false`, the same treatment as a
+transient `5xx`, before the general `status >= 400` branch runs — the other 4xx codes (`400`/`401`/`403`/`409`/
+`413`/`422`) still mean the consumer read the event and refused it on purpose, and stay definitive.

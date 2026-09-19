@@ -4,6 +4,16 @@ One line per version shipped, in the same commit as the bump. The entry states t
 
 ## Unreleased
 
+- **A `404` from the callback_url is treated as transient, not as the consumer's refusal**
+  (T-252) — `ConsumerVerdict` (`internal/inbound/mirror.go`) now answers `502`/no-alarm for a `404`,
+  the same treatment as a transient `5xx`, instead of mirroring it as a permanent, alarmed `200`
+  refusal. A `404` means the edge in front of the consumer answered on its behalf (route absent, no
+  backend) — the consumer's own code never saw the event, so it never made a deliberate refusal.
+  Fixes the loss measured on 2026-09-15 (six of a consumer's customer messages lost for good during
+  eight hours of scheduled maintenance with the guest off and the gateway up). `CounterKeys` no
+  longer counts a `404` under `recusadas_pelo_consumidor`. Contract table
+  (`docs/CONTRATO-CONSUMIDOR.md` + pt-BR) gets a `404` row and the `4xx` row now reads "4xx except
+  404". _Completed 2026-09-19 02:29._
 - **Contract: name the output keys that are still Portuguese, so nobody invents the English one**
   (T-251) — a consumer migrated by reading the code, not the doc, and found `pricing.cobravel`
   (`internal/meta/types.go:189`) and `health.verificado_em`
