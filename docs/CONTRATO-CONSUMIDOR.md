@@ -5076,6 +5076,11 @@ it **whole** in the `Content-Type` of the `arquivo` part.
 | no answer / too slow | `504` | Meta resends, if you come back in time. |
 | TLS certificate refused | `504` + alarm | Meta resends — but the resend gets the **same** refusal. Only a human fixes it, and the alarm says so. |
 
+**The gateway's own operator is now alerted, separately from you (T-253).** zapgw can notify its
+operator on Telegram of a permanent loss and of a consumer failing in series — but that is a
+SEPARATE channel: it does **not** replace your own alarm on `alarme_perda_definitiva`, and you still
+act on that field exactly as before.
+
 ### ⚠️ A credential or configuration error answers **5xx**, never 4xx
 
 This is the rule that costs most to find out on your own, and the table above explains why.
