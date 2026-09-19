@@ -2,6 +2,17 @@
 
 One line per version shipped, in the same commit as the bump. The entry states the **effect**, not the diff.
 
+## Unreleased
+
+- **The two mute branches of the catalog read now log before answering** (T-250) — a consumer's `503
+  retryable` for "could not talk to Meta to read the catalog" left ZERO lines in the CT's journal; the
+  real cause (a DNS restart) was only found by looking outside the gateway. `respondCatalogError`
+  (`internal/outbound/templates_handler.go`) now logs the instance, the route (`GET /v1/templates` or
+  `DELETE /v1/templates (catalog pre-read)`), how long the failed call took, and the underlying error —
+  for both the transport/deadline branch and the `meta.ErrCatalogNotUnderstood` branch — with an
+  `access_token=` redaction guard in case a raw transport error ever carries the Graph API URL. No
+  response body, status or class changed. _Completed 2026-09-19 00:35._
+
 ## v0.68.0 — 2026-09-15
 
 MINOR: the last three Portuguese CLI verbs (`transito`, `perdidas`, `versao`) now refuse naming
