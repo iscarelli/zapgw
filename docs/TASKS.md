@@ -17,6 +17,13 @@
   reentrega), e **6 perdas definitivas em 09-15 17:13-18:47 UTC — todas por `404` do consumidor,
   nao por 503**. Medido em `journalctl -u zapgw` no CT em 09-19. Ninguem foi avisado: o gateway
   NAO tem canal de notificacao — Vikunja **1682** (decisao do dono: canal, gatilho, destinatario).
+- ✅ **Modo de manutencao do zapgw na BORDA existe desde 2026-09-19** (repo `Proxmox`:
+  `infra/worker-manutencao-zapgw/` + `scripts/manutencao-homelab.sh on|off|status`, runbook em
+  `docs/COMO-FAZER.md`). Com o flag ligado a Cloudflare responde `503` + `retry-after` ao webhook
+  da Meta e o gateway NAO ve o evento — fecha a janela de 09-15 (zapgw de pe' com o consumidor
+  morto -> `4xx` -> `200` para a Meta). Ensaiado pelo dono em 09-19: on/off/status provados de fora.
+  **So' protege se o flag for virado ANTES do primeiro guest cair** — por isso a T-252 (`404` ->
+  transitorio em `mirror.go`) continua valendo como segunda camada; espera o "sim" do dono.
 - **T-251 fechada** (doc: tabela das chaves de saida ainda em portugues, `cobravel`/`verificado_em`
   incluidas, `## Unreleased` no changelog); T-248 ganhou essas duas chaves na lista medida.
 - 🔴 **Nome de consumidor entrou em `docs/TASKS.md` num commit LOCAL (2026-09-19) e o portao de
