@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -640,6 +642,128 @@ func TestTemplatesListReturns503RetryableWhenTheCatalogIsNotUnderstood(t *testin
 	}
 	if errBody.Error.Class != string(meta.ClassRetryable) {
 		t.Errorf("class = %q, want %q", errBody.Error.Class, meta.ClassRetryable)
+	}
+}
+
+// deadlineExceededTransport never touches the network: it simulates a call
+// to Meta that timed out, without any real sleep (same technique as
+// deadlineCapturingTransport above, T-211).
+type deadlineExceededTransport struct{}
+
+func (deadlineExceededTransport) RoundTrip(_ *http.Request) (*http.Response, error) {
+	return nil, fmt.Errorf("simulated: %w", context.DeadlineExceeded)
+}
+
+// T-250: a catalog read that ends WITHOUT A VERDICT from Meta (transport
+// down, deadline exceeded — the `default` branch of respondCatalogError)
+// used to log NOTHING. Measured on the production CT: a consumer's `503
+// retryable` for "could not talk to Meta to read the catalog" left ZERO
+// lines in the journal, and the real cause (a DNS restart) was only found
+// by looking outside the gateway entirely.
+func TestTemplatesListLogsWhenTheReadFailsWithoutAVerdict(t *testing.T) {
+	store, path := storeWithConsumer(t)
+	activateInstance(t, path, "lojinha")
+
+	client := &http.Client{Transport: deadlineExceededTransport{}}
+	h := NewTemplatesHandler(store, NewAuthenticator(store),
+		meta.NewClient(client, "http://meta.invalid"), 1<<20, config.NewCounter(store), WhatsAppOnly)
+
+	var logBuf bytes.Buffer
+	log.SetOutput(&logBuf)
+	rec := askTemplates(t, h, "token-do-a", "?instancia=lojinha")
+	log.SetOutput(logStdout)
+
+	if rec.Code != http.StatusServiceUnavailable {
+		t.Fatalf("status = %d, want 503; body = %s", rec.Code, rec.Body.String())
+	}
+	var errBody errorResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &errBody); err != nil {
+		t.Fatalf("error body does not deserialize: %v (body = %q)", err, rec.Body.String())
+	}
+	if errBody.Error.Class != string(meta.ClassRetryable) {
+		t.Errorf("class = %q, want %q", errBody.Error.Class, meta.ClassRetryable)
+	}
+
+	output := logBuf.String()
+	if strings.TrimSpace(output) == "" {
+		t.Fatal("log is EMPTY for a mute 503 — this is exactly what the consumer hit on the CT")
+	}
+	if !strings.Contains(output, "lojinha") {
+		t.Errorf("log does not cite the instance slug: %q", output)
+	}
+	if !strings.Contains(output, "GET /v1/templates") {
+		t.Errorf("log does not cite the route: %q", output)
+	}
+	if !strings.Contains(output, "transport failure while listing templates") {
+		t.Errorf("log does not cite the underlying error text: %q", output)
+	}
+}
+
+// T-250: the SAME mute branch as above, for the sibling error —
+// meta.ErrCatalogNotUnderstood, which also answered 503/retryable without
+// leaving a trace.
+func TestTemplatesListLogsWhenTheCatalogIsNotUnderstood(t *testing.T) {
+	m := &fakeTemplateMeta{pages: [][]string{{`{}`}}}
+	h := testTemplatesHandler(t, m, "lojinha")
+
+	var logBuf bytes.Buffer
+	log.SetOutput(&logBuf)
+	rec := askTemplates(t, h, "token-do-a", "?instancia=lojinha")
+	log.SetOutput(logStdout)
+
+	if rec.Code != http.StatusServiceUnavailable {
+		t.Fatalf("status = %d, want 503; body = %s", rec.Code, rec.Body.String())
+	}
+	var errBody errorResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &errBody); err != nil {
+		t.Fatalf("error body does not deserialize: %v (body = %q)", err, rec.Body.String())
+	}
+	if errBody.Error.Class != string(meta.ClassRetryable) {
+		t.Errorf("class = %q, want %q", errBody.Error.Class, meta.ClassRetryable)
+	}
+
+	output := logBuf.String()
+	if strings.TrimSpace(output) == "" {
+		t.Fatal("log is EMPTY for a mute 503 — this is exactly what the consumer hit on the CT")
+	}
+	if !strings.Contains(output, "lojinha") {
+		t.Errorf("log does not cite the instance slug: %q", output)
+	}
+	if !strings.Contains(output, "GET /v1/templates") {
+		t.Errorf("log does not cite the route: %q", output)
+	}
+	if !strings.Contains(output, "without a name") {
+		t.Errorf("log does not cite the underlying error text: %q", output)
+	}
+}
+
+// T-250 (item 4): the transport branch's error text could, in principle,
+// carry the Graph API URL — a raw *url.Error's Error() includes it, and the
+// URL carries `access_token=`. internal/meta already strips this via
+// errWithoutDetail before ListTemplates ever returns (see the comment on
+// that function), so this error shape cannot reach here through the real
+// client today — but this proves the LOG's own guard holds even if that
+// stopped being true, by calling respondCatalogError directly with exactly
+// the raw shape net/http returns.
+func TestRespondCatalogErrorRedactsAnAccessTokenInTheUnderlyingURL(t *testing.T) {
+	h := &TemplatesHandler{}
+	leaking := &url.Error{
+		Op:  "Get",
+		URL: "https://graph.facebook.com/v21.0/123/message_templates?access_token=x",
+		Err: errors.New("simulated"),
+	}
+
+	rec := httptest.NewRecorder()
+	var logBuf bytes.Buffer
+	log.SetOutput(&logBuf)
+	h.respondCatalogError(rec, config.Instance{Slug: "lojinha"}, "GET /v1/templates", 5*time.Millisecond, leaking)
+	log.SetOutput(logStdout)
+
+	if strings.Contains(logBuf.String(), "access_token=x") {
+		t.Fatalf("the log LEAKED the access_token carried by the transport error's URL: %q", logBuf.String())
+	}
+	if !strings.Contains(logBuf.String(), "lojinha") {
+		t.Errorf("log does not cite the instance slug: %q", logBuf.String())
 	}
 }
 

@@ -437,10 +437,11 @@ func (h *TemplatesHandler) list(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), InstanceDeadline(inst))
 	defer cancel()
 
+	started := time.Now()
 	catalog, err := h.client.ListTemplates(ctx, inst.WabaID, inst.SendToken,
 		r.URL.Query().Get("status"))
 	if err != nil {
-		h.respondCatalogError(w, inst.Slug, err)
+		h.respondCatalogError(w, inst, "GET /v1/templates", time.Since(started), err)
 		return
 	}
 	if catalog == nil {
@@ -652,9 +653,10 @@ func (h *TemplatesHandler) deleteTemplate(w http.ResponseWriter, r *http.Request
 	//
 	// It is also what fills `entradas`: after the DELETE the lines are gone,
 	// so WHAT was deleted can only be told by whoever looked before.
+	started := time.Now()
 	catalog, err := h.client.ListTemplates(ctx, inst.WabaID, inst.SendToken, "")
 	if err != nil {
-		h.respondCatalogError(w, inst.Slug, err)
+		h.respondCatalogError(w, inst, "DELETE /v1/templates (catalog pre-read)", time.Since(started), err)
 		return
 	}
 	found := entriesWithName(catalog, name)
@@ -1003,11 +1005,36 @@ func (h *TemplatesHandler) instanceActive(
 	return inst, true
 }
 
+// reAccessTokenInErr matches a Graph API `access_token` query value that
+// might ride inside a transport error's own text — a raw *url.Error's
+// Error() carries the full request URL. internal/meta already strips this
+// out (errWithoutDetail, internal/meta/client.go) before a transport
+// failure ever reaches ListTemplates's caller, but this is a second guard
+// so the log here never becomes a token leak even if that stopped holding.
+var reAccessTokenInErr = regexp.MustCompile(`access_token=[^&"'\s]*`)
+
+// redactCatalogReadErr formats a catalog-read error for the log, with any
+// `access_token=` value blanked out — see reAccessTokenInErr.
+func redactCatalogReadErr(err error) string {
+	return reAccessTokenInErr.ReplaceAllString(fmt.Sprintf("%v", err), "access_token=REDACTED")
+}
+
 // respondCatalogError translates a READ failure.
 //
 // No branch here returns a list: the error response carries no templates,
 // and that is the whole point of this endpoint.
-func (h *TemplatesHandler) respondCatalogError(w http.ResponseWriter, slug string, err error) {
+//
+// T-250: this function is called from TWO routes (`list` and the
+// pre-read inside `deleteTemplate`), and two of its branches used to
+// answer without a single log line — measured on the production CT, where
+// a consumer's `503 retryable` for "could not talk to Meta to read the
+// catalog" left ZERO lines in the journal; the real cause (a DNS restart)
+// was only found by looking outside the gateway. `route` says which of the
+// two callers this is, and `elapsed` is how long the failed call to Meta
+// took, both measured by the caller.
+func (h *TemplatesHandler) respondCatalogError(
+	w http.ResponseWriter, inst config.Instance, route string, elapsed time.Duration, err error,
+) {
 	switch {
 	case errors.Is(err, meta.ErrIncompleteCatalog):
 		// NEEDS A HUMAN: while this lasts, this consumer CANNOT read this
@@ -1018,7 +1045,7 @@ func (h *TemplatesHandler) respondCatalogError(w http.ResponseWriter, slug strin
 		// production.
 		log.Printf("ALARME zapgw: catalogo de templates da instancia %q nao coube no teto de paginas — "+
 			"nenhuma lista foi servida (parcial seria pior); confira a paginacao da Meta ou suba o teto: %v",
-			slug, err)
+			inst.Slug, err)
 		respondError(w, http.StatusBadGateway, string(meta.ClassConfig),
 			"o catalogo desta instancia nao coube no limite de paginacao do gateway; "+
 				"nenhuma lista parcial e devolvida de proposito — avise quem opera o gateway", 0)
@@ -1026,24 +1053,28 @@ func (h *TemplatesHandler) respondCatalogError(w http.ResponseWriter, slug strin
 		// The request never even left here, and no read of this instance
 		// works until an admin fixes the registration.
 		log.Printf("ALARME zapgw: waba_id invalido para a instancia %q — corrija o waba_id no store; "+
-			"nenhuma consulta de template desta instancia funciona ate la", slug)
+			"nenhuma consulta de template desta instancia funciona ate la", inst.Slug)
 		respondError(w, http.StatusBadGateway, string(meta.ClassConfig),
 			"a configuracao desta instancia no gateway esta invalida; "+
 				"o pedido nao chegou a Meta e nao adianta repetir ate isso ser corrigido", 0)
 	case errors.Is(err, meta.ErrPageFromAnotherOrigin):
 		log.Printf("ALARME zapgw: paginacao de templates da instancia %q apontou para fora da Graph API "+
-			"configurada; a leitura foi abortada e o token NAO foi enviado ao destino estranho", slug)
+			"configurada; a leitura foi abortada e o token NAO foi enviado ao destino estranho", inst.Slug)
 		respondError(w, http.StatusBadGateway, string(meta.ClassConfig),
 			"a paginacao da Meta apontou para um destino inesperado e a leitura foi abortada; "+
 				"nenhuma lista parcial e devolvida — avise quem opera o gateway", 0)
 	case errors.Is(err, meta.ErrCatalogNotUnderstood):
+		// T-250: this branch is the only one of the four that decides
+		// 503/retryable instead of 502/config, and it answered mute.
+		log.Printf("zapgw: catalog read on instance %q (%s): Meta answered a catalog the gateway could not "+
+			"parse: %v — answered 503 retryable", inst.Slug, route, redactCatalogReadErr(err))
 		respondError(w, http.StatusServiceUnavailable, string(meta.ClassRetryable),
 			"a Meta respondeu um catalogo que o gateway nao entendeu; nenhuma lista parcial e devolvida", 0)
 	default:
 		var me *meta.MetaError
 		if errors.As(err, &me) {
 			if me.Class == meta.ClassConfig {
-				log.Printf("ALARME zapgw: credencial da instancia %q recusada pela Meta ao ler templates", slug)
+				log.Printf("ALARME zapgw: credencial da instancia %q recusada pela Meta ao ler templates", inst.Slug)
 			}
 			// T-153: respondMetaError (handler.go), not respondError —
 			// this route has its own error body and it was THROUGH IT that
@@ -1056,6 +1087,13 @@ func (h *TemplatesHandler) respondCatalogError(w http.ResponseWriter, slug strin
 		// creation, READING creates nothing on the other side: retrying is
 		// safe, and that is why here it really is `retryable`, not
 		// `unknown`.
+		//
+		// T-250: this was the OTHER mute branch — the one the consumer
+		// actually hit. Logged BEFORE responding, same as every other
+		// branch above.
+		log.Printf("zapgw: catalog read on instance %q (%s) FAILED without a verdict from Meta after %s "+
+			"(deadline %s): %v — answered 503 retryable",
+			inst.Slug, route, elapsed, InstanceDeadline(inst), redactCatalogReadErr(err))
 		respondError(w, http.StatusServiceUnavailable, string(meta.ClassRetryable),
 			"nao foi possivel falar com a Meta para ler o catalogo; tente de novo", 0)
 	}
