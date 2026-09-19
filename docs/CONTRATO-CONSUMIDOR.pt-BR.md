@@ -369,6 +369,35 @@ X-Zapgw-Correlation-Id: <id>            atravessa os dois lados; cite-o ao relat
 X-Hub-Signature-256:    sha256=<hex>    a assinatura ORIGINAL da Meta, repassada
 ```
 
+### Chaves que AINDA estão em português na saída (medido na v0.68.1)
+
+**Esta tabela é a lista — não invente a grafia em inglês.** Toda chave abaixo sai deste gateway em
+português HOJE, medida contra as tags `json:"…"` do código (nunca contra uma doc mais antiga). Uma
+chave que não aparece na tabela abaixo ou já está em inglês, ou não existe. Quando uma destas mudar,
+será anunciada com bump MINOR e uma tabela velho -> novo, aqui e em `docs/MIGRACAO-CONTRATO-EN.md`.
+
+| chave | onde (rota / bloco) | file:line | por que não mudou |
+|---|---|---|---|
+| `cobravel` | envelope de evento do webhook, `pricing.cobravel` (irmãos `category`/`pricing` já em inglês) | `internal/meta/types.go:189` | decisão do dono pendente, T-248 |
+| `verificado_em` | `GET /v1/instances/{slug}/health` (irmãos `ok`/`display_number`/`verdict` já em inglês) | `internal/outbound/health_handler.go:85` | decisão do dono pendente, T-248 |
+| `versao` | `GET /v1/health` — a sonda RAIZ do processo. **Não** `/v1/estado`, cujo campo equivalente já é `version` (`internal/outbound/state.go:82`) | `cmd/zapgw/main.go:51` | decisão do dono pendente, T-248 |
+| `hoje` | `GET /v1/estado`, dentro de cada bloco `counters.<nome>` (também em `daily_series[]`/`last_7_days_series[]`) — irmãos `last_7_days`/`last_at` já em inglês | `internal/outbound/state.go:236` | decisão do dono pendente, T-248 |
+| `definido_em` | `GET /v1/estado`, `instagram_token.definido_em` — irmãos `expires_at`/`verdict`/`days_left` já em inglês | `internal/outbound/state.go:518` | decisão do dono pendente, T-248 |
+| `cursor_antes` / `cursor_depois` | `GET /v1/bloqueios` — irmãos `instance`/`total`/`blocked` já em inglês | `internal/outbound/block_handler.go:183` / `:184` | decisão do dono pendente, T-248 |
+| `lideranca` (bloco), `armada`, `titular` | `GET /v1/estado`, o bloco de liderança inteiro — o irmão `state` (dentro do mesmo bloco) já está em inglês | `internal/outbound/state.go:220`; `internal/outbound/leadership.go:245` (`armada`) / `:255` (`titular`) | decisão do dono pendente, T-248 |
+| `campo`, `cadastrado` | `POST /v1/cadastro`, cada item de `encrypted[]` | `internal/outbound/registration_handler.go:123` / `:124` | decisão do dono pendente — mesma forma do T-248, ainda não somada à sua lista |
+| `primeira_insercao_em`, `fecha_em` | `POST /v1/cadastro`, `registration_window` | `internal/outbound/registration_handler.go:136` / `:137` | decisão do dono pendente — mesma forma do T-248, ainda não somada à sua lista |
+| `proximo_passo` | `POST /v1/cadastro` (nível raiz) | `internal/outbound/registration_handler.go:161` | decisão do dono pendente — mesma forma do T-248, ainda não somada à sua lista |
+| `ja_estava_ativa`, `ativa_desde` | `POST /v1/fumaca` — irmãos `instance`/`state`/`paused`/`wa_message_id` já em inglês | `internal/outbound/smoke_handler.go:128` / `:136` | decisão do dono pendente — mesma forma do T-248, ainda não somada à sua lista |
+| `operacao` | `POST` / `DELETE /v1/bloqueios` — irmãos `instance`/`processed`/`failures` já em inglês | `internal/outbound/block_handler.go:166` | decisão do dono pendente — mesma forma do T-248, ainda não somada à sua lista |
+| `tipo`, `severidade`, `descricao`, `id_da_entidade` | envelope de evento do webhook, bloco `account_alert` — o irmão `state` (dentro do mesmo bloco) já está em inglês | `internal/meta/types.go:396` / `:397` / `:406` / `:392` | decisão do dono pendente — **conferido contra a §10 da doc de migração: são a NOSSA PRÓPRIA tradução de `alert_type`/`alert_severity`/`alert_description`/`entity_id` da Meta, não o nome do campo da Meta mantido ao pé da letra, então NÃO se qualificam como "vocabulário da Meta, mantido de propósito"** |
+| `status_do_recurso` | envelope de evento do webhook — **NÃO dentro de `account_alert`**: é o `AppealStatus` do bloco `template_categoria` (`template_category`) | `internal/meta/types.go:318` | decisão do dono pendente — mesma forma do T-248, ainda não somada à sua lista |
+| nomes de contador, ex. `cobranca_cobravel`, `alarme_perda_definitiva` (+16 outros) | `GET /v1/estado`, as próprias CHAVES do dicionário `counters` (não um campo dentro de um bloco) | `internal/config/counter.go:31-232` (o vocabulário fechado) | nome de contador, história deliberada — a lista completa dos 18 e o único par já decidido (`nome_antigo_usado` -> `old_name_used`) estão em `docs/MIGRACAO-CONTRATO-EN.md` §8.11 |
+
+> `destino` (corpo do pedido de `POST /v1/fumaca`, `internal/outbound/smoke_handler.go:97`) foi
+> conferido e excluído desta tabela de propósito: é uma chave de ENTRADA, não de saída — esta tabela
+> cobre só SAIDA (resposta e envelope de evento).
+
 ```jsonc
 {
   "instancia": "lojinha",

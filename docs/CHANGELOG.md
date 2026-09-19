@@ -2,6 +2,26 @@
 
 One line per version shipped, in the same commit as the bump. The entry states the **effect**, not the diff.
 
+## Unreleased
+
+- **Contract: name the output keys that are still Portuguese, so nobody invents the English one**
+  (T-251) — a consumer migrated by reading the code, not the doc, and found `pricing.cobravel`
+  (`internal/meta/types.go:189`) and `health.verificado_em`
+  (`internal/outbound/health_handler.go:85`) still Portuguese with no doc saying so. Added a
+  measured "Keys that are STILL Portuguese in the output" table to `docs/CONTRATO-CONSUMIDOR.md`
+  (and its pt-BR mirror) covering 15 rows: `cobravel`, `verificado_em`, `versao` (root `/v1/health`
+  only — `/v1/estado` already uses `version`), `hoje`, `definido_em`, `cursor_antes`/`cursor_depois`,
+  `lideranca`/`armada`/`titular`, `campo`/`cadastrado`, `primeira_insercao_em`/`fecha_em`,
+  `proximo_passo`, `ja_estava_ativa`/`ativa_desde`, `operacao`, the four `account_alert` fields
+  (`tipo`/`severidade`/`descricao`/`id_da_entidade`), `status_do_recurso` (measured to be on
+  `template_categoria`, NOT `account_alert` as first assumed), and the 18-name counter vocabulary
+  (pointer to `docs/MIGRACAO-CONTRATO-EN.md` §8.11). Excluded `destino` and `dia`/`dia_utc` after
+  measuring them against the code: `destino` is an ENTRADA-only key, and `dia`/`dia_utc` are already
+  `day`/`day_utc` in the current code (the contract's own JSON examples are stale on that point, out
+  of this task's scope). Also added §8.12 to `docs/MIGRACAO-CONTRATO-EN.md` naming the two
+  consumer-reported keys with a pointer to the full table. Zero `.go` files changed.
+  _Completed 2026-09-19 01:45._
+
 ## v0.68.1 — 2026-09-19
 
 PATCH: a `503 retryable` on the template catalog read (transport failure, deadline, or a catalog the

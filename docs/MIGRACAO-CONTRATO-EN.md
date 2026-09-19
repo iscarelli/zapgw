@@ -284,6 +284,27 @@ Measured by sweeping every `json:"…"` tag on every output struct in `internal/
 | `about`,`address`,`description`,`email`,`profile_picture_url`,`websites`,`vertical` | `internal/meta/profile.go:65-71` | `Profile` | SAIDA-RESPOSTA | `GET /v1/perfil` |
 | `about`,`address`,`description`,`email`,`websites`,`vertical`,`profile_picture_handle` | `internal/meta/profile.go:92-103` | `ProfilePatch` (echoed in `profileWriteResponse.gravado`) | SAIDA-RESPOSTA **and** ENTRADA | `POST /v1/perfil` |
 
+### 8.12 Two keys that also do NOT change — but for the opposite reason (T-251, 2026-09-19)
+
+**`cobravel` and `verificado_em` are absent from tables A and B above for the OPPOSITE reason from
+every other row in this section: they are still PORTUGUESE, not already English.** A consumer
+migrated by reading the code, not this doc, and reported the gap on 2026-09-19: nothing here said
+they had not moved, so a consumer migrating by pattern-matching this document invents `billable` /
+`verified_at` and breaks in silence.
+
+| pt key | file:line | struct | direction | route(s) |
+|---|---|---|---|---|
+| `cobravel` | `internal/meta/types.go:189` | `Billing` (`Event.pricing`) | SAIDA-EVENTO | webhook |
+| `verificado_em` | `internal/outbound/health_handler.go:85` | `healthResponse` | SAIDA-RESPOSTA | `GET /v1/instances/{slug}/health` |
+
+Their destination is the owner's decision (T-248), not this task's. **The exhaustive, measured list
+of every output key still in Portuguese today — including these two, plus the ones T-248 does not
+yet name (`campo`/`cadastrado`, `primeira_insercao_em`/`fecha_em`, `proximo_passo`,
+`ja_estava_ativa`/`ativa_desde`, `operacao`, the four `account_alert` fields, `status_do_recurso` and
+the 18 counter names of §8.11) — is `docs/CONTRATO-CONSUMIDOR.md`'s "Keys that are STILL Portuguese
+in the output" section, right after "What you receive". Do not duplicate that table here: two copies
+is one that ages.
+
 ## 9. Multi-direction keys — the dangerous ones
 
 **21 of the 119 keys above carry more than one direction.** Each is a `media_id` waiting to

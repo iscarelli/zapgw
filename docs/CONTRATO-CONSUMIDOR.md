@@ -377,6 +377,36 @@ X-Zapgw-Correlation-Id: <id>            crosses both sides; quote it when report
 X-Hub-Signature-256:    sha256=<hex>    Meta's ORIGINAL signature, passed through
 ```
 
+### Keys that are STILL Portuguese in the output (measured on v0.68.1)
+
+**This table is the list — do not invent the English spelling.** Every key below leaves this
+gateway in Portuguese TODAY, measured against the `json:"…"` tags in the code (never against an
+older doc). A key missing from the table below is either already English or does not exist; when
+one of these keys changes, it will be announced with a MINOR bump and an old -> new table, here and
+in `docs/MIGRACAO-CONTRATO-EN.md`.
+
+| key | where (route / block) | file:line | why it has not moved |
+|---|---|---|---|
+| `cobravel` | webhook event envelope, `pricing.cobravel` (siblings `category`/`pricing` are English) | `internal/meta/types.go:189` | pending owner decision, T-248 |
+| `verificado_em` | `GET /v1/instances/{slug}/health` (siblings `ok`/`display_number`/`verdict` are English) | `internal/outbound/health_handler.go:85` | pending owner decision, T-248 |
+| `versao` | `GET /v1/health` — the ROOT process probe. **Not** `/v1/estado`, whose equivalent field is already `version` (`internal/outbound/state.go:82`) | `cmd/zapgw/main.go:51` | pending owner decision, T-248 |
+| `hoje` | `GET /v1/estado`, inside every `counters.<name>` block (also `daily_series[]`/`last_7_days_series[]`) — siblings `last_7_days`/`last_at` are English | `internal/outbound/state.go:236` | pending owner decision, T-248 |
+| `definido_em` | `GET /v1/estado`, `instagram_token.definido_em` — siblings `expires_at`/`verdict`/`days_left` are English | `internal/outbound/state.go:518` | pending owner decision, T-248 |
+| `cursor_antes` / `cursor_depois` | `GET /v1/bloqueios` — siblings `instance`/`total`/`blocked` are English | `internal/outbound/block_handler.go:183` / `:184` | pending owner decision, T-248 |
+| `lideranca` (block), `armada`, `titular` | `GET /v1/estado`, the whole leadership block — sibling `state` (inside the same block) is English | `internal/outbound/state.go:220`; `internal/outbound/leadership.go:245` (`armada`) / `:255` (`titular`) | pending owner decision, T-248 |
+| `campo`, `cadastrado` | `POST /v1/cadastro`, each entry of `encrypted[]` | `internal/outbound/registration_handler.go:123` / `:124` | pending owner decision — same shape as T-248, not yet added to its list |
+| `primeira_insercao_em`, `fecha_em` | `POST /v1/cadastro`, `registration_window` | `internal/outbound/registration_handler.go:136` / `:137` | pending owner decision — same shape as T-248, not yet added to its list |
+| `proximo_passo` | `POST /v1/cadastro` (top level) | `internal/outbound/registration_handler.go:161` | pending owner decision — same shape as T-248, not yet added to its list |
+| `ja_estava_ativa`, `ativa_desde` | `POST /v1/fumaca` — siblings `instance`/`state`/`paused`/`wa_message_id` are English | `internal/outbound/smoke_handler.go:128` / `:136` | pending owner decision — same shape as T-248, not yet added to its list |
+| `operacao` | `POST` / `DELETE /v1/bloqueios` — siblings `instance`/`processed`/`failures` are English | `internal/outbound/block_handler.go:166` | pending owner decision — same shape as T-248, not yet added to its list |
+| `tipo`, `severidade`, `descricao`, `id_da_entidade` | webhook event envelope, `account_alert` block — sibling `state` (inside the same block) is English | `internal/meta/types.go:396` / `:397` / `:406` / `:392` | pending owner decision — **checked against §10 of the migration doc: these are OUR OWN translation of Meta's `alert_type`/`alert_severity`/`alert_description`/`entity_id`, not Meta's own field name kept verbatim, so they do NOT qualify as "Meta's vocabulary, kept on purpose"** |
+| `status_do_recurso` | webhook event envelope — **NOT inside `account_alert`**: it is `AppealStatus` on the `template_categoria` (`template_category`) block | `internal/meta/types.go:318` | pending owner decision — same shape as T-248, not yet added to its list |
+| counter names, e.g. `cobranca_cobravel`, `alarme_perda_definitiva` (+16 more) | `GET /v1/estado`, the `counters` dictionary's own KEYS (not a field inside a block) | `internal/config/counter.go:31-232` (the closed vocabulary) | counter name, deliberate history — the full list of 18 and the one already-decided pair (`nome_antigo_usado` -> `old_name_used`) are in `docs/MIGRACAO-CONTRATO-EN.md` §8.11 |
+
+> `destino` (`POST /v1/fumaca`'s request body, `internal/outbound/smoke_handler.go:97`) was checked
+> and excluded from this table on purpose: it is an ENTRADA (input) key, not an output one — this
+> table only covers SAIDA (response and event envelope).
+
 ```jsonc
 {
   "instancia": "lojinha",
