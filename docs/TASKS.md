@@ -6,13 +6,14 @@
 > Escrito ao fim de 2026-08-30, o dia em que o repositorio virou publico. Bloco de retomada
 > mentindo e' pior que bloco nenhum: e' o primeiro texto que a proxima sessao le.
 
-### 📌 2026-09-19 05:45 — `v0.69.0` EM PRODUCAO (medido: `HEALTH OK` + `VERSION MATCHES 0.69.0`). Alertas existem mas estao DESLIGADOS.
+### 📌 2026-09-19 05:54 — `v0.69.0` EM PRODUCAO (medido: `HEALTH OK` + `VERSION MATCHES 0.69.0`). Alertas ao operador LIGADOS.
 
 - **T-252** (`404` do callback -> `502` para a Meta, sem alarme) e **T-253** (alertas ao operador no
   Telegram) mescladas e implantadas; T-251 subiu junto. `main` = `e8874c6`, tag `v0.69.0` no `origin`.
-- 🙋 **Journal do CT na subida: `operator alerts: not configured`.** O gateway so' avisa depois que o
-  dono rodar `~/.zapgw/liga-alerta-telegram.sh` (copia o bot/chat do daily-check, CT 102, para
-  `/etc/zapgw/env`; Vikunja **1688**). Ate' la', perda definitiva e serie de 503 continuam so' no journal.
+- ✅ **Alertas LIGADOS as 05:54** (dono rodou `~/.zapgw/liga-alerta-telegram.sh`; journal:
+  `operator alerts: telegram (chat configured)`; mesmo bot/chat do daily-check; 1688 fechado).
+  ⚠️ **Nenhum alerta real saiu ainda** — a chamada do gateway ao Telegram foi provada so' contra
+  `httptest`; o primeiro `ALARME` real e' a prova, e ate' la' este mecanismo conta como "nunca falhou".
 - Fila: T-248 (decisao do dono) e T-231 (fatiar). Nada em voo.
 
 ### 📌 2026-09-19 — `v0.68.1` EM PRODUCAO (T-250, medido: `HEALTH OK` + `VERSION MATCHES 0.68.1`). o consumidor migrou para o contrato ingles.
