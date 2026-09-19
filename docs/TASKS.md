@@ -6,6 +6,20 @@
 > Escrito ao fim de 2026-08-30, o dia em que o repositorio virou publico. Bloco de retomada
 > mentindo e' pior que bloco nenhum: e' o primeiro texto que a proxima sessao le.
 
+### 📌 2026-09-19 — `v0.68.1` EM PRODUCAO (T-250, medido: `HEALTH OK` + `VERSION MATCHES 0.68.1`). o consumidor migrou para o contrato ingles.
+
+- **O consumidor (1.12.0) em producao 03:59 UTC**, contrato ingles sem fallback; `old_name_used` da
+  instancia dele parou as 03:00 UTC de 09-19 (medido por eles). Eles se declaram prontos para o
+  passo 4 (remocao dos aliases de entrada) — **o passo 4 espera saber se ha' OUTRO consumidor
+  ainda em portugues; avisar a data no canal antes.**
+- 🔴 **O inbound deles ficou quebrado de 09-01 a 09-19** (`instancia` -> `instance` no envelope,
+  T-209): ~650 recusas 503 no journal do CT (3 a 95/dia), todas sem `ALARME` de proposito (a Meta
+  reentrega), e **6 perdas definitivas em 09-15 17:13-18:47 UTC — todas por `404` do consumidor,
+  nao por 503**. Medido em `journalctl -u zapgw` no CT em 09-19. Ninguem foi avisado: o gateway
+  NAO tem canal de notificacao — Vikunja **1682** (decisao do dono: canal, gatilho, destinatario).
+- **T-251** (doc: tabela das chaves de saida ainda em portugues, `cobravel`/`verificado_em`
+  incluidas) enfileirada no topo; T-248 ganhou essas duas chaves na lista medida.
+
 ### 📌 2026-09-15 05:05 — `v0.68.0` EM PRODUCAO (timer das 04:04 retomou a fila). Fila: T-248 espera o dono; T-231 precisa ser FATIADA antes de despachar.
 
 **Medido pelo deploy:** `HEALTH OK: {"ok":true,"versao":"0.68.0"}` + `VERSION MATCHES: 0.68.0` as
@@ -415,6 +429,42 @@ instancias foram rotacionadas. Duas licoes que custaram na hora e valem alem des
 
 > A fila do periodo privado esta em `iscarelli/zapgw-dev`, congelada. Tarefa nova nasce aqui.
 
+## [ ] T-251  Contract: name the output keys that are still Portuguese, so nobody invents the English one
+Vikunja: 1681
+Why:     O consumidor (2026-09-19) migrou pelo codigo, nao pela doc, e avisou: `pricing.cobravel`
+         (`internal/meta/types.go:189`) e `health.verificado_em` (`health_handler.go:85`) continuam em
+         portugues, a tabela de migracao nao lista o par e a doc nao diz que NAO mudaram — quem migrar
+         pela doc inventa `billable`/`verified_at` e quebra em silencio. Medido: `grep -n "cobravel\|
+         verificado_em" docs/MIGRACAO-CONTRATO-EN.md` devolve ZERO linhas. O destino dessas chaves e'
+         decisao do dono (T-248); esta tarefa so' registra o estado ATUAL, medido, para o consumidor.
+Files:   docs/CONTRATO-CONSUMIDOR.md, docs/CONTRATO-CONSUMIDOR.pt-BR.md, docs/MIGRACAO-CONTRATO-EN.md
+Do:      1. Medir, contra as tags `json:` do codigo (NAO contra a doc), toda chave de SAIDA (resposta
+            HTTP e envelope de evento) que continua em portugues na `v0.68.1`. Ponto de partida, a
+            conferir uma a uma com `arquivo:linha`: `cobravel` (`internal/meta/types.go`),
+            `verificado_em` (`internal/outbound/health_handler.go`), `versao` (health e `/v1/estado`),
+            `hoje`, `definido_em`, `cursor_antes`/`cursor_depois`, `lideranca` (+`armada`/`titular`),
+            `campo`/`cadastrado`/`primeira_insercao_em`/`fecha_em`/`proximo_passo`, `destino`/
+            `ja_estava_ativa`/`ativa_desde`, `operacao`, `dia`/`dia_utc`, e os nomes de contador
+            (`cobranca_cobravel`, `alarme_perda_definitiva`, `old_name_used`...). Tambem `tipo`/
+            `descricao`/`severidade`/`id_da_entidade`/`status_do_recurso` dentro de `account_alert`
+            (types.go) — confira se sao vocabulario da Meta mantido de proposito (§10 da migracao) e
+            diga isso na tabela.
+         2. Em `docs/CONTRATO-CONSUMIDOR.md`, logo depois da secao que apresenta o envelope de evento
+            (antes do primeiro exemplo com `kind`), uma secao curta "Keys that are STILL Portuguese
+            in the output (measured on v0.68.1)": tabela `key | where (route / block) | file:line |
+            why it has not moved` (uma de tres: "pending owner decision, T-248" / "Meta's own
+            vocabulary, kept on purpose" / "counter name, deliberate history"). Uma frase antes da
+            tabela: a doc e' a lista; NAO invente a grafia inglesa — quando uma mudar, sera' anunciada
+            com bump MINOR e a tabela velho->novo.
+         3. O mesmo em `docs/CONTRATO-CONSUMIDOR.pt-BR.md` (e' um dos quatro espelhos que existem).
+         4. Em `docs/MIGRACAO-CONTRATO-EN.md`, na secao 8 ("What does NOT change"), acrescentar
+            `cobravel` e `verificado_em` com o `file:line` e o ponteiro para a secao nova do contrato.
+         5. NAO mude nenhuma tag `json:` — zero arquivo `.go` nesta tarefa.
+Verify:  `go test ./...` verde (o portao de ponteiro de doc le `file:line` citados: cada ponteiro novo
+         tem de existir); `grep -c "cobravel" docs/MIGRACAO-CONTRATO-EN.md` >= 1; `git diff --stat`
+         mostra SO os tres `.md`; a tabela nova cita `internal/meta/types.go:<linha>` onde
+         `json:"cobravel,omitempty"` esta' de fato (`grep -n cobravel internal/meta/types.go`).
+
 ## [ ] T-248  Seven response keys and literals still Portuguese in code, among English siblings
 After:   DECISAO DO DONO — muda chave de RESPOSTA que o consumidor le hoje. Nao despache sem ele.
 Why:     Medido pela T-240 contra o codigo (2026-09-15): `hoje` (`state.go:236`, irmaos `last_7_days`/
@@ -422,7 +472,9 @@ Why:     Medido pela T-240 contra o codigo (2026-09-15): `hoje` (`state.go:236`,
          `cursor_depois` (`block_handler.go:183-184`, irmaos `instance`/`total`/`blocked`),
          `lideranca` (`state.go:220`, bloco inteiro), literais `medicao` (`internal/config/number.go:76`)
          e `sonda_externa` (`external_probe.go:151`), e as frases de `instruction`
-         (`state.go:555-558`). Sao restos do passe de 2026-08-30 — mas cada um e' contrato vivo:
+         (`state.go:555-558`). O consumidor acrescentou em 2026-09-19, medindo as tags: `cobravel`
+         (`internal/meta/types.go:189`, irmaos `category`/`pricing`) e `verificado_em`
+         (`health_handler.go:85`, irmaos `ok`/`display_number`/`verdict`). Sao restos do passe de 2026-08-30 — mas cada um e' contrato vivo:
          renomear quebra quem le (o `versao` -> `version` ja custou um `None` ao consumidor).
 Files:   internal/outbound/state.go, internal/outbound/block_handler.go, internal/config/number.go,
          internal/outbound/external_probe.go, os `_test.go`, docs/CONTRATO-CONSUMIDOR.md (+pt-BR),
