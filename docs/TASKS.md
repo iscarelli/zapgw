@@ -23,7 +23,7 @@
   da Meta e o gateway NAO ve o evento — fecha a janela de 09-15 (zapgw de pe' com o consumidor
   morto -> `4xx` -> `200` para a Meta). Ensaiado pelo dono em 09-19: on/off/status provados de fora.
   **So' protege se o flag for virado ANTES do primeiro guest cair** — por isso a T-252 (`404` ->
-  transitorio em `mirror.go`) continua valendo como segunda camada; espera o "sim" do dono.
+  transitorio em `mirror.go`) continua valendo como segunda camada — **autorizada em 09-19 ("ataque os dois"), T-252 na fila.**
 - **T-251 fechada** (doc: tabela das chaves de saida ainda em portugues, `cobravel`/`verificado_em`
   incluidas, `## Unreleased` no changelog); T-248 ganhou essas duas chaves na lista medida.
 - 🔴 **Nome de consumidor entrou em `docs/TASKS.md` num commit LOCAL (2026-09-19) e o portao de
@@ -439,6 +439,107 @@ instancias foram rotacionadas. Duas licoes que custaram na hora e valem alem des
 ## Active
 
 > A fila do periodo privado esta em `iscarelli/zapgw-dev`, congelada. Tarefa nova nasce aqui.
+
+## [ ] T-252  A 404 from the callback_url is "nobody listening", not "the consumer refused": treat it as transient
+Vikunja: 1687
+Why:     2026-09-15, 17:13-18:47 UTC: o guest do consumidor estava DESLIGADO (manutencao do homelab) e o
+         zapgw de pe'. O Traefik da borda respondeu `404` (rota some com o guest), `ConsumerVerdict`
+         (`internal/inbound/mirror.go:120-127`) tratou como "leu e recusou" e respondeu `200` a Meta —
+         irreversivel. **6 mensagens de cliente perdidas em definitivo** (journal do CT: `consumer REFUSED
+         (404); event lost for good`, seis vezes). Um `502` teria mantido a janela de reentrega da Meta
+         (36 h) e as 8 h de manutencao seriam atraso, nao perda. Decisao do dono em 2026-09-19: `404` vira
+         transitorio; os outros 4xx continuam definitivos (o consumidor usa `400`/`413`/`422` para recusar
+         de proposito — `404` nunca e' uma recusa consciente de um evento).
+Files:   internal/inbound/mirror.go, internal/inbound/mirror_test.go, docs/CONTRATO-CONSUMIDOR.md,
+         docs/CONTRATO-CONSUMIDOR.pt-BR.md, docs/ARMADILHAS.md, docs/CHANGELOG.md
+Do:      1. Em `ConsumerVerdict`, ANTES do `case status >= 400`, um `case status == http.StatusNotFound`
+            que devolve `StatusForMeta: http.StatusBadGateway`, `Alarm: false`, `Reason: "consumer
+            answered 404 — nobody is listening at the callback_url (route absent, proxy without a
+            backend); treated as transient, Meta will redeliver"`. Atualize o comentario de cabecalho do
+            arquivo (a matriz) com a linha nova e o porque' (o custo de 09-15, sem nome de consumidor).
+         2. Em `CounterKeys`, `404` NAO incrementa `recusadas_pelo_consumidor` (mesma regra do 5xx: sem
+            chave — a Meta vai reentregar). Nao crie contador novo.
+         3. Testes: tire `404` da tabela de `TestVerdictDoesNotTellMetaToRedeliverWhatTheConsumerRefused`
+            (`mirror_test.go:56`); adicione `TestVerdictTreats404AsNobodyListening` (404 -> 502, sem
+            alarme, Reason contendo "nobody is listening") e um caso em `CounterKeys` provando que 404
+            nao gera chave de recusa. Rode o teste novo ANTES da mudanca e registre a falha no relatorio.
+         4. Contrato (`docs/CONTRATO-CONSUMIDOR.md`, tabela "What you answer, and what that causes",
+            ~linha 5070, e o espelho pt-BR): linha nova `**404** | 502 | Meta resends. A 404 is read as
+            "nobody listening" (your proxy answered for you), never as a refusal — if you MEAN to refuse,
+            answer 400/413/422.` e a linha `4xx` passa a dizer `4xx except 404`.
+         5. `docs/ARMADILHAS.md`: entrada 🔥 com o custo real (6 mensagens, 2026-09-15, guest desligado com
+            o gateway de pe'; o 404 veio do proxy, nao do app) e a regra: "um 4xx que o consumidor nao
+            escreveu nao e' recusa". Sem nome de consumidor nem hostname.
+         6. Uma linha em `docs/CHANGELOG.md` sob `## Unreleased`.
+Verify:  CGO_ENABLED=0 go build ./... && go test ./... && go vet ./... && gofmt -l cmd internal (nada);
+         `go test ./internal/inbound -run 'Verdict|CounterKeys' -v` mostra os testes novos passando e o
+         antigo sem o 404; `grep -n "404" docs/CONTRATO-CONSUMIDOR.md | grep -i "nobody"` >= 1.
+
+## [ ] T-253  Operator alerts on Telegram: definitive loss, consumer failing in series, and recovery
+Vikunja: 1682
+Why:     Entre 2026-09-01 e 09-19 um consumidor respondeu ~650 vezes 503 (3 a 95/dia) e perdeu 6 mensagens
+         em definitivo (09-15), e NINGUEM soube por 18 dias: o gateway so' escreve `ALARME` no journal e
+         nos contadores, e nada le o journal. Medido em 09-19 (`journalctl -u zapgw` no CT). O criterio
+         de "precisa de uma pessoa" JA' existe no codigo (`Verdict.Alarm`, `mirror.go`); o que falta e'
+         um canal. Decisao do dono (2026-09-19, Vikunja 1682): Telegram, direto do gateway, dois env vars.
+Files:   internal/alert/ (novo: telegram.go, tracker.go, *_test.go), internal/inbound/handler.go,
+         internal/inbound/handler_test.go (ou o `_test.go` onde `NewHandler` e' exercitado), cmd/zapgw/main.go,
+         .env.example, README.md, docs/CONTRATO-CONSUMIDOR.md (uma nota), docs/CHANGELOG.md
+Do:      1. Pacote `internal/alert`:
+            - `Notifier` interface `Notify(ctx context.Context, text string) error`.
+            - `Telegram{Token, ChatID string; Client *http.Client; BaseURL string}` (BaseURL default
+              `https://api.telegram.org`, sobrescrivivel no teste): `POST {BaseURL}/bot{Token}/sendMessage`
+              com JSON `{"chat_id":..., "text":..., "disable_web_page_preview":true}`; timeout 10 s; nao-2xx
+              vira erro. O token NUNCA aparece em log nem em erro (`%v` de `*url.Error` carrega a URL —
+              redija `/bot<token>/` antes de devolver o erro; teste que prova).
+            - `Tracker` (em memoria, por instancia, com `now func() time.Time` injetavel, mutex):
+              `Observe(slug, correlation string, statusForMeta int, alarm bool, reason string) []string`
+              devolve as mensagens a enviar (zero, uma ou duas). Regras:
+              a) PERDA DEFINITIVA (`alarm && statusForMeta == 200`): a primeira envia na hora —
+                 `"zapgw ALERT — instance <slug>: 1 event LOST FOR GOOD (<reason>). Meta will not redeliver;
+                 only a person can recover it. correlation <id>"`; as seguintes na mesma instancia dentro
+                 de 10 min sao agregadas e saem numa unica mensagem quando a janela fecha (`"... +N more lost
+                 since HH:MM UTC, correlations: ..."`).
+              b) SERIE DE FALHAS (qualquer entrega sem 2xx que a Meta vai reentregar: statusForMeta
+                 502/504): conta consecutivas por instancia; ao atingir 10 seguidas OU 30 min desde a
+                 primeira da serie (o que vier antes) envia `"zapgw ALERT — instance <slug>: consumer
+                 failing for <dur> (<n> deliveries in a row without 2xx, last: <reason>). Meta redelivers
+                 for ~36 h; after that it is loss."`; enquanto durar, lembrete a cada 6 h com o total.
+              c) RECUPERACAO: primeira entrega 2xx depois de uma serie que JA' alertou envia `"zapgw OK —
+                 instance <slug>: consumer back after <dur> (<n> failed deliveries)"` e zera a serie.
+                 Serie que nunca chegou a alertar zera em silencio.
+              d) Nao alerta em falha isolada, nem em alarm com 504 (certificado — ja' e' ALARME no log
+                 e vai repetir a cada reentrega; conte-o na serie b, nao em a).
+            - `Sender` que junta os dois: `Observe` + envio em goroutine com `context.WithTimeout(10 s)`;
+              erro de envio vira UMA linha de log `zapgw: operator alert not delivered: %v` e nada mais.
+              Nunca bloqueia nem altera a resposta a Meta. Envio de janela agregada (regra a) precisa de
+              um timer — use `time.AfterFunc` com o mesmo `now` injetavel, ou entregue na proxima
+              observacao apos a janela; documente qual.
+         2. `internal/inbound/handler.go`: campo opcional `alerts` (interface local com `Observe(slug,
+            correlation string, statusForMeta int, alarm bool, reason string)`); chamado DEPOIS de
+            `w.WriteHeader(v.StatusForMeta)` e dos contadores (~linha 620-640), nil-safe. Nova opcao de
+            construcao sem quebrar `NewHandler` (mesmo padrao que `counter`/`transit`: parametro extra
+            no construtor interno, ou um setter — escolha o que o arquivo ja' faz).
+         3. `cmd/zapgw/main.go`: le `ZAPGW_ALERT_TELEGRAM_TOKEN` e `ZAPGW_ALERT_TELEGRAM_CHAT_ID`; os dois
+            presentes -> liga e loga `zapgw: operator alerts: telegram (chat configured)`; nenhum -> loga
+            `zapgw: operator alerts: not configured`; so' um -> RECUSA subir nomeando o que falta (mesma
+            forma dos env obsoletos, T-244). O valor do token nunca e' logado.
+         4. Testes: `Tracker` com relogio falso cobrindo a, b (10 seguidas; 30 min; lembrete 6 h), c, d;
+            `Telegram` contra `httptest.Server` provando o corpo JSON e a redacao do token no erro;
+            handler: com um `Notifier` que FALHA, a resposta a Meta e os contadores sao identicos aos
+            de hoje.
+         5. Docs: `.env.example` (bloco Observability, os dois nomes, comentario de uma linha cada);
+            `README.md` (a frase sobre `/etc/zapgw/env` ganha os dois nomes: e' segredo, vive la', vem do
+            BotFather, rotacionar troca so' o env e reinicia — nada mais quebra);
+            `docs/CONTRATO-CONSUMIDOR.md` + pt-BR: uma nota de 3 linhas na secao "What you answer" dizendo
+            que o operador do gateway agora e' avisado de perda definitiva e de serie de falhas, e que
+            isso NAO substitui o alarme do proprio consumidor sobre `alarme_perda_definitiva`.
+            `docs/CHANGELOG.md` sob `## Unreleased`.
+         6. Tudo em ingles, inclusive o texto das mensagens de Telegram.
+Verify:  CGO_ENABLED=0 go build ./... && go test ./... && go vet ./... && gofmt -l cmd internal (nada);
+         `go test ./internal/alert -v` lista os casos a-d; `ZAPGW_ALERT_TELEGRAM_TOKEN=x ./zapgw` (sem o
+         chat) sai != 0 nomeando `ZAPGW_ALERT_TELEGRAM_CHAT_ID`; nenhum `log.Printf` em `internal/alert`
+         recebe o token (grep no relatorio).
 
 ## [ ] T-248  Seven response keys and literals still Portuguese in code, among English siblings
 After:   DECISAO DO DONO — muda chave de RESPOSTA que o consumidor le hoje. Nao despache sem ele.
