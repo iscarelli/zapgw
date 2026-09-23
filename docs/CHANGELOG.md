@@ -2,6 +2,17 @@
 
 One line per version shipped, in the same commit as the bump. The entry states the **effect**, not the diff.
 
+## Unreleased
+
+- **Account sending-health read route** (T-254) — new `GET /v1/instances/{slug}/account-health`
+  answers whether the ACCOUNT (not just the token) is fit to send: it asks Meta for `health_status`
+  on both the WABA and the phone number, and for `primary_funding_id` (payment method presence) on
+  the WABA, so a consumer can find out about a refusal like `131042` (no payment method on file)
+  before a real customer's send fails. Same guard order, no-cache, and Instagram `NotApplicable`
+  behavior as the sibling `GET /v1/instances/{slug}/health`; the response never turns an
+  unrecognized or missing `health_status` into `AVAILABLE` by omission, and never echoes a Meta
+  entity id or the `primary_funding_id` value.
+
 ## v0.69.0 — 2026-09-19
 
 MINOR: a `404` from the consumer's callback_url is now answered to Meta as `502` (transient — Meta

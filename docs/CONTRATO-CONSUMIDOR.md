@@ -2895,6 +2895,69 @@ you choose.
 
 ---
 
+## Knowing whether the ACCOUNT is still fit to send, beyond the token — `GET /v1/instances/{slug}/account-health` (2026-09-22)
+
+**`GET /v1/instances/{slug}/account-health`** · `Authorization: Bearer <your token>`
+
+Same rules as the probe above: a **LAN** route, only the instances linked to you answer (`403` for
+the others, without the gateway even talking to Meta), no cache, no per-call log.
+
+It exists because `GET /v1/instances/{slug}/health` only proves the **token** is still accepted — it
+never asks whether the **account** itself is fit to send. On 2026-09-21 the Graph API refused a
+template with error `131042` ("the WABA has no payment method on file"), and the only way we found
+out was a real customer's failed send. This route asks Meta the question directly, with that
+instance's token, so you can poll it (the plan we heard was every 15-30 minutes) **before** your own
+customer pays the price of finding out the hard way.
+
+It makes **two** calls to Meta — one to the WABA, one to the phone number — because the two fields
+live on two different Graph nodes: `health_status` exists on both, but whether a payment method is on
+file only exists on the WABA. **Either call failing is `503`, never `200`** — the same taxonomy as the
+probe above (`config` / `retryable` / `unknown`), through the exact same error body.
+
+Fit to send → `200`:
+
+```jsonc
+{ "can_send_message": "AVAILABLE",   // the WORSE of the WABA's and the number's own value
+  "has_payment_method": true,
+  "entities": [
+    { "entity_type": "WABA", "can_send_message": "AVAILABLE", "errors": [], "additional_info": [] },
+    { "entity_type": "PHONE_NUMBER", "can_send_message": "AVAILABLE", "errors": [], "additional_info": [] }
+  ],
+  "checked_at": "2026-09-22T12:00:00Z" }
+```
+
+`can_send_message` is `AVAILABLE`, `LIMITED`, or `BLOCKED` — **LITERAL**, never translated, ordered
+worst-first when the WABA and the number disagree (`BLOCKED` > `LIMITED` > `AVAILABLE`). `entities` is
+the union of what both calls answered, **without the Meta id** of either entity: this gateway does not
+echo a third party's Meta id back through this route. Each entity's `errors[]` carries Meta's own
+`code`, `description`, and `possible_solution` — text written by Meta, not by us; `additional_info` is
+free-form diagnostic text, also Meta's own.
+
+🔴 **`has_payment_method` is INFERRED, not measured against a real account without one.** It is `true`
+when Meta's `primary_funding_id` came back non-empty, `false` when it is absent or empty — and it is
+the **only** thing this route ever does with that field: the value itself never appears in this
+response, in a log, or in an error. We have not yet seen this field come back `false` for a real
+account that actually lacks a payment method; treat it as directionally correct until it has been.
+
+Any outcome that is not "Meta answered a recognized `health_status` for both calls" → **`503`**, with
+the same error body as sending. This includes a `200` from Meta that is missing `health_status`
+entirely, or that carries a `can_send_message` outside the three literals above — **it never becomes
+`AVAILABLE` by omission**; the class is `unknown`, the same one the sibling probe uses for "Meta did
+not answer what we asked".
+
+An Instagram instance answers `200` with `{"verdict": "not_applicable", "checked_at": "..."}`, **without
+calling Meta at all** — `health_status` has no documented equivalent on `graph.instagram.com`, the
+same absence that already applies to the health probe above.
+
+**No cache, same reasoning as the sibling probe:** every call talks to Meta, twice, so the frequency
+is yours — do not put it in a tight loop.
+
+Also note the `account_alerts` webhook (`kind: "account_alert"`) already pushes some of the same
+warnings to you — this route is the pull side of the same information, for when you want to ask
+instead of wait.
+
+---
+
 ## Two different questions — and the second one has its OWN source, which survives your outage (2026-08-06, updated 2026-08-07)
 
 When a consumer wants to "know the status", it is almost always **two** questions, and they have
