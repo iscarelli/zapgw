@@ -2926,6 +2926,21 @@ devolve o id de terceiro da Meta por esta rota. O `errors[]` de cada entidade ca
 `description` e `possible_solution` que a PRÓPRIA Meta escreveu, não nós; `additional_info` é texto de
 diagnóstico livre, também da Meta.
 
+🔴 **Medido em 2026-09-23, segunda chamada real:** o `entities` do próprio `phone_health_status` já
+traz a cadeia WABA/BUSINESS/APP, não só `PHONE_NUMBER` — então, antes deste conserto, juntá-lo com o
+`entities` do `waba_health_status` repetia WABA, BUSINESS e APP, e as duas cópias da mesma entidade
+podiam **divergir** (a mesma entidade `APP` voltava com o erro `138025` da Meta numa cópia e sem ele na
+outra). `entities` agora é **deduplicado por `entity_type`**, uma entrada por tipo, na ordem da
+primeira aparição:
+
+- `can_send_message` — o PIOR entre as cópias, mesma ordem do campo do topo
+  (`BLOCKED` > `LIMITED` > `AVAILABLE`).
+- `errors` — a união, mantendo a primeira ocorrência de cada `code`. O caso comum é o MESMO código nas
+  duas cópias de uma entidade; ele sobrevive uma vez, não uma vez por cópia.
+- `additional_info` — a união, sem repetir a mesma string.
+
+`payment_method` não é afetado por esta mudança — continua vindo só de `waba_funding`.
+
 `payment_method` é um de três literais, e a diferença entre os dois últimos importa — não os confunda:
 
 - **`"present"`** — `waba_funding` respondeu e `primary_funding_id` veio não-vazio.
@@ -2961,6 +2976,20 @@ condição em `waba_health_status` degrada em vez disso: vai para `unavailable` 
 Uma instância Instagram responde `200` com `{"verdict": "not_applicable", "checked_at": "..."}`,
 **sem chamar a Meta**: `health_status` não tem equivalente documentado em `graph.instagram.com`, a
 mesma ausência que já vale para o probe de saúde acima.
+
+🔴 **Fatos medidos em 2026-09-23, contra a Meta real — leia antes de montar um alarme em cima desta
+rota:**
+
+- `primary_funding_id` exige que o Business dono do app seja **Business Solution Provider** (é o
+  código de erro `10` da Meta — ver a divisão acima). Para um app que NÃO é BSP, `waba_funding` recusa
+  em toda chamada, então `payment_method` volta `"unavailable"` **sempre** nesta implantação — não é
+  algo que dá para observar como sinal. O problema de pagamento, se existir, tem de aparecer em
+  `can_send_message` e `errors`; `payment_method` não avisa.
+- `LIMITED` pode ser estado **permanente** de uma conta que envia normalmente — causas medidas incluem
+  negócio não verificado e nome de exibição ainda não aprovado pela Meta, nenhuma das duas impede o
+  envio. **Não alarme em `can_send_message != "AVAILABLE"`** — isso dispara em contas funcionando como
+  esperado. Alarme em `can_send_message == "BLOCKED"`, ou num `errors[].code` que você ainda não tinha
+  visto.
 
 **Sem cache, mesma razão do probe irmão:** toda chamada fala com a Meta, até três vezes, então a
 frequência é sua — não o coloque num laço apertado.

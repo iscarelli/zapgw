@@ -466,32 +466,6 @@ instancias foram rotacionadas. Duas licoes que custaram na hora e valem alem des
 
 > A fila do periodo privado esta em `iscarelli/zapgw-dev`, congelada. Tarefa nova nasce aqui.
 
-## [ ] T-256  Account-health: deduplicate entities by entity_type
-Why:     segunda chamada real (consumidor, v0.71.0, 2026-09-23 02:13 UTC) mediu que o `health_status`
-         do NUMERO ja' traz WABA/BUSINESS/APP, entao a uniao com a consulta da WABA repete as tres —
-         e as copias DIVERGEM (APP com erro `138025` numa, sem erro na outra).
-Files:   internal/outbound/account_health_handler.go + _test, docs/CONTRATO-CONSUMIDOR.md +
-         docs/CONTRATO-CONSUMIDOR.pt-BR.md, docs/CHANGELOG.md
-Do:
-  - Ao montar `entities`, fundir por `entity_type`: uma entrada por tipo, na ordem da primeira
-    aparicao; `can_send_message` = o pior das copias (BLOCKED > LIMITED > AVAILABLE; valor fora dos
-    tres segue a regra que ja' existe para ele); `errors` = uniao sem repetir `code` (mantem a
-    primeira ocorrencia de cada code); `additional_info` = uniao sem repetir string. Nada mais muda
-    (`can_send_message` do topo, `unavailable`, `payment_method`, 503).
-  - Contrato (EN + pt-BR), secao do account-health: (1) entidades deduplicadas por tipo, com a regra
-    acima; (2) FATOS MEDIDOS em 2026-09-23 contra a Meta real: o `health_status` do numero traz a
-    cadeia WABA/BUSINESS/APP; `primary_funding_id` exige que o dono do app seja Business Solution
-    Provider (code `10`), entao para um app que nao e' BSP `payment_method` e' SEMPRE `"unavailable"`
-    e o sinal de pagamento vem de `can_send_message` + `errors`; `LIMITED` pode ser estado
-    permanente de uma conta que envia normalmente (negocio nao verificado, nome nao aprovado) —
-    trocar a recomendacao "alarme se != AVAILABLE" por "alarme em BLOCKED ou em `code` novo".
-    Sem ids nem nomes reais nos exemplos.
-Verify:  os quatro comandos do CLAUDE.md verdes. Teste com httptest reproduzindo a forma medida:
-         numero devolve PHONE_NUMBER+WABA+BUSINESS+APP(com erro 138025), WABA devolve
-         WABA+BUSINESS+APP(sem erro) -> 4 entidades, APP com o erro 138025 uma vez so', BUSINESS
-         com o erro 141010 uma vez so'; e um caso em que a mesma entidade vem AVAILABLE numa copia e
-         BLOCKED na outra -> BLOCKED.
-
 ## [ ] T-248  Seven response keys and literals still Portuguese in code, among English siblings
 After:   DECIDIDO em 2026-09-19 — opcao (1): renomear TUDO de uma vez, bump MINOR, aviso aos dois
          consumidores ANTES do deploy (o dono manda o texto; sem canal). Segurada por ORCAMENTO

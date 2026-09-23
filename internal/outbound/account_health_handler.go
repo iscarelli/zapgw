@@ -30,6 +30,16 @@
 // same as before); the other two failing independently degrades the `200`
 // instead of erasing it — their failure lands in the `unavailable` array
 // (see accountHealthResponse) instead of taking the whole response down.
+//
+// WHY ENTITIES ARE DEDUPLICATED BY entity_type (T-256): the second real call
+// (consumer, v0.71.0, 2026-09-23 02:13 UTC) measured that
+// phone_health_status's own `entities` already carries the WABA/BUSINESS/APP
+// chain, not just PHONE_NUMBER — so concatenating it with
+// waba_health_status's entities repeats those three, and the copies can
+// DISAGREE (the same APP entity came back with Meta error 138025 in one copy
+// and without it in the other). mergeEntitiesByType folds same-type entities
+// into one, keeping the WORSE can_send_message and the UNION of errors and
+// additional_info (see its own comment for the exact rule).
 package outbound
 
 import (
@@ -277,10 +287,79 @@ func (h *AccountHealthHandler) accountHealth(w http.ResponseWriter, r *http.Requ
 	_ = json.NewEncoder(w).Encode(accountHealthResponse{
 		CanSendMessage: canSend,
 		PaymentMethod:  paymentMethod,
-		Entities:       entities,
+		Entities:       mergeEntitiesByType(entities),
 		Unavailable:    unavailable,
 		CheckedAt:      time.Now().UTC().Format(time.RFC3339),
 	})
+}
+
+// mergeEntitiesByType folds `entities` down to ONE entry per entity_type
+// (T-256) — phone_health_status and waba_health_status can both answer with
+// the WABA/BUSINESS/APP chain (measured 2026-09-23), so concatenating their
+// entities repeats those three, and the repeats can disagree with each
+// other. Order is the order of FIRST appearance, same discipline as the
+// merge functions below:
+//
+//   - can_send_message: the WORSE of the copies (worstCanSendMessage — same
+//     rank table the top-level field already uses, so a value outside the
+//     three recognized literals follows the SAME existing rule: it ranks as
+//     if it were AVAILABLE, never masking a real BLOCKED/LIMITED).
+//   - errors: the union, keeping the FIRST occurrence of each `code` — a
+//     code repeated across copies (the common case: the same Meta error on
+//     both) survives once, not once per copy.
+//   - additional_info: the union, without repeating the same string.
+func mergeEntitiesByType(list []accountHealthEntityResponse) []accountHealthEntityResponse {
+	merged := make([]accountHealthEntityResponse, 0, len(list))
+	index := make(map[string]int, len(list))
+	for _, e := range list {
+		if i, ok := index[e.EntityType]; ok {
+			existing := &merged[i]
+			existing.CanSendMessage = worstCanSendMessage(existing.CanSendMessage, e.CanSendMessage)
+			existing.Errors = mergeErrorsByCode(existing.Errors, e.Errors)
+			existing.AdditionalInfo = mergeStrings(existing.AdditionalInfo, e.AdditionalInfo)
+			continue
+		}
+		index[e.EntityType] = len(merged)
+		merged = append(merged, e)
+	}
+	return merged
+}
+
+// mergeErrorsByCode unions two entities' `errors`, keeping the FIRST
+// occurrence of each `code` — see mergeEntitiesByType's comment for why a
+// repeated code (the same Meta error surviving into both copies of an
+// entity) must not become two identical entries.
+func mergeErrorsByCode(a, b []accountHealthErrorResponse) []accountHealthErrorResponse {
+	seen := make(map[int]bool, len(a)+len(b))
+	out := make([]accountHealthErrorResponse, 0, len(a)+len(b))
+	for _, list := range [][]accountHealthErrorResponse{a, b} {
+		for _, er := range list {
+			if seen[er.Code] {
+				continue
+			}
+			seen[er.Code] = true
+			out = append(out, er)
+		}
+	}
+	return out
+}
+
+// mergeStrings unions two string slices without repeating a value — used for
+// `additional_info`, which (unlike errors) has no code to key on, so the
+// string itself is the identity.
+func mergeStrings(a, b []string) []string {
+	seen := make(map[string]bool, len(a)+len(b))
+	out := make([]string, 0, len(a)+len(b))
+	for _, list := range [][]string{a, b} {
+		for _, s := range list {
+			if seen[s] {
+				continue
+			}
+			seen[s] = true
+			out = append(out, s)
+		}
+	}
+	return out
 }
 
 // respondUnhealthyForQuery is respondUnhealthy (health_handler.go), with the

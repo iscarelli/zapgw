@@ -234,6 +234,72 @@ func TestAccountHealthPicksTheWorseOfWABAAndNumber(t *testing.T) {
 	}
 }
 
+// (T-256's Verify) phone_health_status's own entities already carry the
+// WABA/BUSINESS/APP chain (measured 2026-09-23, second real call), so
+// concatenating them with waba_health_status's entities repeats WABA,
+// BUSINESS and APP — and the copies can disagree. mergeEntitiesByType must
+// fold the repeats into one entry per entity_type: BLOCKED wins over
+// AVAILABLE for the same entity, and a Meta error code repeated across both
+// copies of an entity survives exactly once, not once per copy.
+func TestAccountHealthDeduplicatesEntitiesByType(t *testing.T) {
+	m := healthyAccountMeta()
+	m.respondPhone(http.StatusOK, `{"health_status":{"can_send_message":"AVAILABLE","entities":[`+
+		`{"entity_type":"PHONE_NUMBER","can_send_message":"AVAILABLE"},`+
+		`{"entity_type":"WABA","can_send_message":"AVAILABLE"},`+
+		`{"entity_type":"BUSINESS","can_send_message":"AVAILABLE",`+
+		`"errors":[{"error_code":141010,"error_description":"business not verified","possible_solution":"verify the business"}]},`+
+		`{"entity_type":"APP","can_send_message":"AVAILABLE",`+
+		`"errors":[{"error_code":138025,"error_description":"app not approved","possible_solution":"submit the app for review"}]}`+
+		`]}}`)
+	m.respondWABAHealth(http.StatusOK, `{"health_status":{"can_send_message":"AVAILABLE","entities":[`+
+		`{"entity_type":"WABA","can_send_message":"BLOCKED"},`+
+		`{"entity_type":"BUSINESS","can_send_message":"AVAILABLE",`+
+		`"errors":[{"error_code":141010,"error_description":"business not verified","possible_solution":"verify the business"}]},`+
+		`{"entity_type":"APP","can_send_message":"AVAILABLE"}`+
+		`]}}`)
+	h := testAccountHealthHandler(t, m, "lojinha")
+
+	rec := askAccountHealth(t, h, "token-do-a", "lojinha")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200; body = %s", rec.Code, rec.Body.String())
+	}
+	var resp testAccountHealthResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("body does not deserialize: %v (body = %q)", err, rec.Body.String())
+	}
+	if len(resp.Entities) != 4 {
+		t.Fatalf("entities = %d, want 4 (PHONE_NUMBER, WABA, BUSINESS, APP, deduplicated) — got %+v", len(resp.Entities), resp.Entities)
+	}
+	byType := make(map[string]testAccountHealthEntity, len(resp.Entities))
+	for _, e := range resp.Entities {
+		if _, dup := byType[e.EntityType]; dup {
+			t.Fatalf("entity_type %q appears more than once: %+v", e.EntityType, resp.Entities)
+		}
+		byType[e.EntityType] = e
+	}
+	waba, ok := byType["WABA"]
+	if !ok {
+		t.Fatal("no WABA entity in the response")
+	}
+	if waba.CanSendMessage != "BLOCKED" {
+		t.Errorf("WABA can_send_message = %q, want %q (the WORSE of AVAILABLE and BLOCKED)", waba.CanSendMessage, "BLOCKED")
+	}
+	business, ok := byType["BUSINESS"]
+	if !ok {
+		t.Fatal("no BUSINESS entity in the response")
+	}
+	if len(business.Errors) != 1 || business.Errors[0].Code != 141010 {
+		t.Errorf("BUSINESS errors = %+v, want exactly one entry, code 141010 (same code in both copies, kept once)", business.Errors)
+	}
+	app, ok := byType["APP"]
+	if !ok {
+		t.Fatal("no APP entity in the response")
+	}
+	if len(app.Errors) != 1 || app.Errors[0].Code != 138025 {
+		t.Errorf("APP errors = %+v, want exactly one entry, code 138025 (only phone_health_status's copy carries it)", app.Errors)
+	}
+}
+
 // (d of T-255's Verify) payment_method mirrors primary_funding_id's
 // PRESENCE ("present"/"absent"), and the VALUE itself never appears
 // anywhere in the body.
