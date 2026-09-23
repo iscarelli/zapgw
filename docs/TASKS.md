@@ -6,13 +6,20 @@
 > Escrito ao fim de 2026-08-30, o dia em que o repositorio virou publico. Bloco de retomada
 > mentindo e' pior que bloco nenhum: e' o primeiro texto que a proxima sessao le.
 
-### 📌 2026-09-22 — `v0.70.0` EM PRODUCAO (medido: `HEALTH OK` + `VERSION MATCHES 0.70.0`). T-254.
+### 📌 2026-09-22 — `v0.70.0` EM PRODUCAO (medido: `HEALTH OK` + `VERSION MATCHES 0.70.0`). T-254 rodou contra a Meta real; T-255 (nesta arvore, ainda NAO implantada) responde ao que ela mediu.
 
 - `GET /v1/instances/{slug}/account-health` (pedido do consumidor apos o `131042` de 09-21).
   Montada: sem token responde `401`, rota inexistente `404` (medido do no').
-- ⚠️ **Nunca rodou contra a Meta real.** Nao provado: se o token da instancia le `health_status` e
-  `primary_funding_id` da WABA, e o que a Meta devolve numa conta SEM pagamento (`has_payment_method:
-  false` e' inferido da ausencia). A primeira chamada do consumidor e' a prova; pedir o resultado.
+- ✅ **A primeira chamada real (consumidor, 2026-09-22) aconteceu** — voltou `503` com Meta code `10`
+  ("requires... Business Solution Provider"), nao um resultado limpo. A chamada da T-254 juntava
+  `health_status,primary_funding_id` numa unica consulta na WABA, entao nao dava para saber QUAL dos
+  dois campos a Meta recusou.
+- **T-255 dividiu em tres consultas independentes** (`phone_health_status`, `waba_health_status`,
+  `waba_funding`) para a proxima chamada real isolar qual campo causa o code `10` — mas essa divisao
+  **so' foi provada por httptest ate' agora**, nunca contra a Meta real (o verify deste projeto nao
+  alcanca isso — ver "What the verify does NOT reach" no CLAUDE.md). Falta: mesclar, implantar, e
+  pedir ao consumidor o resultado da proxima chamada — ai' sim medimos QUAL campo pede BSP e se
+  `payment_method` reconhece uma conta real sem pagamento.
 
 ### 📌 2026-09-19 05:54 — `v0.69.0` EM PRODUCAO (medido: `HEALTH OK` + `VERSION MATCHES 0.69.0`). Alertas ao operador LIGADOS.
 
@@ -458,39 +465,6 @@ instancias foram rotacionadas. Duas licoes que custaram na hora e valem alem des
 ## Active
 
 > A fila do periodo privado esta em `iscarelli/zapgw-dev`, congelada. Tarefa nova nasce aqui.
-
-## [ ] T-255  Account-health: split the Meta queries so one refused field does not blind the route
-Why:     primeira chamada real (consumidor, 2026-09-22) voltou `503` com Meta code `10` ("requires
-         that the Business that owns this App is a Business Solution Provider") e nao sabemos QUAL
-         campo/consulta pediu BSP — a T-254 juntava `health_status,primary_funding_id` numa chamada so'.
-Files:   internal/meta/account_health.go + _test, internal/outbound/account_health_handler.go + _test,
-         docs/CONTRATO-CONSUMIDOR.md + docs/CONTRATO-CONSUMIDOR.pt-BR.md, docs/CHANGELOG.md
-Do:
-  - TRES consultas independentes (mesmo contexto/prazo `InstanceDeadline`):
-    (1) `GET /{phone_number_id}?fields=health_status` — `phone_health_status`
-    (2) `GET /{waba_id}?fields=health_status` — `waba_health_status`
-    (3) `GET /{waba_id}?fields=primary_funding_id` — `waba_funding`
-  - (1) falhar -> `503` como hoje (sem ela nao ha' sinal nenhum). A `message` do erro comeca com o nome
-    da consulta (`phone_health_status: <mensagem da Meta>`), para o 503 dizer QUEM foi recusado.
-  - (2) ou (3) falhar -> a rota continua `200`; a falha entra num array `unavailable`:
-    `[{"query":"waba_health_status"|"waba_funding","class":..., "meta_code":..., "message":...}]`
-    (mesma higiene de `respondUnhealthy`: nunca corpo cru, nunca token). `unavailable` omitido se vazio.
-  - `can_send_message` do topo = pior entre as consultas de health que RESPONDERAM; `entities` = uniao
-    delas (sem `id`, como hoje). Resposta sem health_status reconhecivel em (1) -> `503 unknown` (como
-    hoje); em (2) -> vai para `unavailable` com classe `unknown`.
-  - 🔴 `has_payment_method` (bool) SAI e da' lugar a `payment_method`: `"present"` (valor nao-vazio),
-    `"absent"` (consulta respondeu sem o campo/vazio), `"unavailable"` (consulta (3) falhou — e ai' ela
-    aparece em `unavailable`). NUNCA `absent` quando a consulta falhou. A rota tem um dia e um unico
-    consumidor, que pediu exatamente isso e ainda nao le o campo.
-  - Contrato (EN + pt-BR): atualizar a secao da T-254 com o formato novo e registrar o fato medido:
-    em 2026-09-22 a chamada combinada `health_status,primary_funding_id` na WABA voltou code `10`
-    (exige BSP) para este app; qual das duas causa ainda e' medida pela proxima chamada real.
-Verify:  os quatro comandos do CLAUDE.md verdes. Testes (httptest): (a) (3) responde code 10 ->
-         `200`, `payment_method:"unavailable"`, `unavailable[0].query=="waba_funding"`, meta_code 10;
-         (b) (2) falha e (1) ok -> `200`, can_send_message vem so' de (1), `unavailable` com
-         `waba_health_status`; (c) (1) falha -> `503` e a message comeca com `phone_health_status:`;
-         (d) funding ausente -> `"absent"`, presente -> `"present"` e o valor NAO aparece no corpo;
-         (e) nenhum teste antigo de `has_payment_method` sobrevive (grep vazio em cmd/ internal/ docs/CONTRATO*).
 
 ## [ ] T-248  Seven response keys and literals still Portuguese in code, among English siblings
 After:   DECIDIDO em 2026-09-19 — opcao (1): renomear TUDO de uma vez, bump MINOR, aviso aos dois

@@ -1,5 +1,6 @@
 // GET /v1/instances/{slug}/account-health — is this ACCOUNT still fit to
-// send, beyond the token? (T-254)
+// send, beyond the token? (T-254, split into three independent Meta queries
+// by T-255)
 //
 // WHY IT EXISTS: on 2026-09-21 the Graph API refused a template send with
 // error 131042 (the WABA has no payment method on file), and the consumer
@@ -17,6 +18,18 @@
 // NO CACHE, and NO LOG PER CALL, same reasoning as health_handler.go: the
 // frequency belongs to whoever calls, and a repeated alarm trains the
 // operator to ignore it (docs/ARMADILHAS.md).
+//
+// WHY THREE CALLS, NOT TWO: T-254 shipped combining `health_status` and
+// `primary_funding_id` into ONE call to the WABA. The first real call
+// (2026-09-22, through a consumer) came back `503` with Meta error code
+// `10` ("requires... Business Solution Provider"), and there was no way to
+// tell which of the two fields Meta actually refused — a single combined
+// call means a refusal on EITHER field blinds the whole route. T-255 splits
+// it into `phone_health_status`, `waba_health_status`, and `waba_funding`:
+// only `phone_health_status` failing still means "no signal at all" (`503`,
+// same as before); the other two failing independently degrades the `200`
+// instead of erasing it — their failure lands in the `unavailable` array
+// (see accountHealthResponse) instead of taking the whole response down.
 package outbound
 
 import (
@@ -58,6 +71,17 @@ func NewAccountHealthHandler(store *config.Store, auth *Authenticator, client *m
 	return mux
 }
 
+// The three query names T-255 introduced — they travel in the response
+// itself (accountHealthUnavailableEntry.Query, and the "<query>: " prefix on
+// a 503's message), so a caller reading a degraded 200 or a refused 503
+// knows WHICH of the three Graph calls is behind it, without having to
+// reverse-engineer it from the message text.
+const (
+	queryPhoneHealthStatus = "phone_health_status"
+	queryWABAHealthStatus  = "waba_health_status"
+	queryWABAFunding       = "waba_funding"
+)
+
 // accountHealthErrorResponse is one item of an entity's `errors` — Meta's
 // own `error_code`/`error_description`/`possible_solution`, renamed to the
 // short keys this route uses.
@@ -68,9 +92,9 @@ type accountHealthErrorResponse struct {
 }
 
 // accountHealthEntityResponse is one item of `entities` — the UNION of the
-// WABA call and the phone number call, WITHOUT the `id` key Meta sends: a
-// third party's Meta id never leaves this route (see
-// internal/meta/account_health.go, AccountHealthEntity).
+// calls that answered, WITHOUT the `id` key Meta sends: a third party's Meta
+// id never leaves this route (see internal/meta/account_health.go,
+// AccountHealthEntity).
 type accountHealthEntityResponse struct {
 	EntityType     string                       `json:"entity_type"`
 	CanSendMessage string                       `json:"can_send_message"`
@@ -78,31 +102,60 @@ type accountHealthEntityResponse struct {
 	AdditionalInfo []string                     `json:"additional_info"`
 }
 
+// accountHealthUnavailableEntry is one item of `unavailable` — a query that
+// failed WITHOUT taking the whole `200` down with it (T-255). Same hygiene
+// as respondUnhealthy's body: never the raw Meta response, never the token.
+type accountHealthUnavailableEntry struct {
+	// Query is one of the three names above — WHICH call this failure came
+	// from.
+	Query    string `json:"query"`
+	Class    string `json:"class"`
+	MetaCode int    `json:"meta_code"`
+	Message  string `json:"message"`
+}
+
 // accountHealthResponse is the body of the `200`.
 //
-// HasPaymentMethod is INFERRED from `primary_funding_id` coming back
-// non-empty on the WABA call — it has NEVER been measured against a real
-// account WITHOUT a payment method (docs/CONTRATO-CONSUMIDOR.md says so in
-// the section this struct documents). The VALUE of primary_funding_id
-// itself never reaches this struct: internal/meta/account_health.go parses
-// it straight into a bool and discards it.
+// PaymentMethod replaces T-254's original boolean field for this same
+// question (T-255): a bool could not tell "no payment method on file" apart
+// from "we could not even ask" — and the two need different reactions from
+// whoever reads this. It is one of three literals:
+//
+//   - "present" — waba_funding answered and primary_funding_id came back
+//     non-empty.
+//   - "absent"  — waba_funding answered WITHOUT the field, or with it empty.
+//     NEVER used when waba_funding itself failed — that is "unavailable".
+//   - "unavailable" — the waba_funding query failed; the failure itself is
+//     in `unavailable`, with Query == "waba_funding".
+//
+// The VALUE of primary_funding_id itself never reaches this struct:
+// internal/meta/account_health.go parses it straight into a bool and
+// discards it.
+//
+// Unavailable lists the queries (waba_health_status, waba_funding) that
+// failed WITHOUT taking the response down — omitted entirely when empty, so
+// a fully healthy account's response looks exactly like T-254's did.
+// phone_health_status never appears here: it failing is ALWAYS a `503`
+// instead (see the file header), because without it there is no signal at
+// all.
 //
 // CheckedAt is the instant THIS call talked to Meta — same role as
 // healthResponse.VerifiedAt, and for the same reason: without cache it is
 // always "now", and a consumer or proxy that caches this response cannot
 // present it as fresh, because the age is written into it.
 type accountHealthResponse struct {
-	CanSendMessage   string                        `json:"can_send_message"`
-	HasPaymentMethod bool                          `json:"has_payment_method"`
-	Entities         []accountHealthEntityResponse `json:"entities"`
-	CheckedAt        string                        `json:"checked_at"`
+	CanSendMessage string                          `json:"can_send_message"`
+	PaymentMethod  string                          `json:"payment_method"`
+	Entities       []accountHealthEntityResponse   `json:"entities"`
+	Unavailable    []accountHealthUnavailableEntry `json:"unavailable,omitempty"`
+	CheckedAt      string                          `json:"checked_at"`
 }
 
 // accountHealthNotApplicableResponse is the `200` a non-WhatsApp instance
 // gets — same shape idea as health_handler.go's Verdict field, kept as its
 // own tiny struct because accountHealthResponse's fields (can_send_message,
-// has_payment_method, entities) have no meaning to answer for a type that
-// was never asked.
+// payment_method, entities) have no meaning to answer for a type that was
+// never asked.
 type accountHealthNotApplicableResponse struct {
 	Verdict   string `json:"verdict"`
 	CheckedAt string `json:"checked_at"`
@@ -144,7 +197,7 @@ func (h *AccountHealthHandler) accountHealth(w http.ResponseWriter, r *http.Requ
 	}
 	if !inst.Active {
 		// 503 like health: a paused instance does not send, so it is not
-		// healthy — and we do not spend two calls to Meta for a channel
+		// healthy — and we do not spend three calls to Meta for a channel
 		// that cannot send anyway.
 		respondError(w, http.StatusServiceUnavailable, "retryable", "instancia pausada", 0)
 		return
@@ -166,40 +219,109 @@ func (h *AccountHealthHandler) accountHealth(w http.ResponseWriter, r *http.Requ
 	}
 
 	// The CALL's deadline, chosen by the instance — same reasoning as
-	// health_handler.go. It covers BOTH calls below, not one each: a
+	// health_handler.go. It covers ALL THREE calls below, not one each: a
 	// consumer that set a short timeout on the instance did so for the
-	// whole probe, not for half of it.
+	// whole probe, not for a third of it.
 	ctx, cancel := context.WithTimeout(r.Context(), InstanceDeadline(inst))
 	defer cancel()
 
-	waba, err := h.client.ObserveWABAHealth(ctx, inst.WabaID, inst.SendToken)
-	if err != nil {
-		respondUnhealthy(w, err)
-		return
-	}
-	if !recognizedCanSendMessage(waba.CanSendMessage) {
-		respondUnrecognizedAccountHealth(w)
-		return
-	}
-
+	// (1) phone_health_status. Failing here is the ONLY failure that stays
+	// a 503: without it there is no signal at all (see the file header).
+	// The message is prefixed with the query name so a 503 says WHO was
+	// refused, instead of forcing the reader to guess from the text alone.
 	phone, err := h.client.ObservePhoneHealth(ctx, inst.PhoneNumberID, inst.SendToken)
 	if err != nil {
-		respondUnhealthy(w, err)
+		respondUnhealthyForQuery(w, queryPhoneHealthStatus, err)
 		return
 	}
 	if !recognizedCanSendMessage(phone.CanSendMessage) {
-		respondUnrecognizedAccountHealth(w)
+		respondUnrecognizedAccountHealth(w, queryPhoneHealthStatus)
 		return
+	}
+
+	canSend := phone.CanSendMessage
+	entities := entityResponses(phone.Entities)
+	var unavailable []accountHealthUnavailableEntry
+
+	// (2) waba_health_status. Failing — Meta error OR an unrecognized
+	// answer — degrades the response instead of erasing it: it lands in
+	// `unavailable`, and can_send_message/entities come from
+	// phone_health_status alone.
+	waba, err := h.client.ObserveWABAHealth(ctx, inst.WabaID, inst.SendToken)
+	switch {
+	case err != nil:
+		unavailable = append(unavailable, unavailableEntryFromError(queryWABAHealthStatus, err))
+	case !recognizedCanSendMessage(waba.CanSendMessage):
+		unavailable = append(unavailable, unavailableEntryUnrecognized(queryWABAHealthStatus))
+	default:
+		canSend = worstCanSendMessage(canSend, waba.CanSendMessage)
+		entities = append(entities, entityResponses(waba.Entities)...)
+	}
+
+	// (3) waba_funding. Failing — same as (2) — degrades PaymentMethod to
+	// "unavailable" instead of erasing the response; it NEVER reads as
+	// "absent" (see accountHealthResponse's comment on why the two must not
+	// collapse).
+	paymentMethod := "absent"
+	funding, err := h.client.ObserveWABAFunding(ctx, inst.WabaID, inst.SendToken)
+	switch {
+	case err != nil:
+		unavailable = append(unavailable, unavailableEntryFromError(queryWABAFunding, err))
+		paymentMethod = "unavailable"
+	case funding.HasFundingID:
+		paymentMethod = "present"
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	_ = json.NewEncoder(w).Encode(accountHealthResponse{
-		CanSendMessage:   worstCanSendMessage(waba.CanSendMessage, phone.CanSendMessage),
-		HasPaymentMethod: waba.HasFundingID,
-		Entities:         accountHealthEntities(waba.Entities, phone.Entities),
-		CheckedAt:        time.Now().UTC().Format(time.RFC3339),
+		CanSendMessage: canSend,
+		PaymentMethod:  paymentMethod,
+		Entities:       entities,
+		Unavailable:    unavailable,
+		CheckedAt:      time.Now().UTC().Format(time.RFC3339),
 	})
+}
+
+// respondUnhealthyForQuery is respondUnhealthy (health_handler.go), with the
+// query's name prefixed onto the message — the ONLY place in this route a
+// Graph failure still becomes a `503` (phone_health_status; see the file
+// header for why the other two queries degrade the `200` instead).
+func respondUnhealthyForQuery(w http.ResponseWriter, query string, err error) {
+	class, message, code := classifyHealthProbeError(err)
+	respondError(w, http.StatusServiceUnavailable, string(class), query+": "+message, code)
+}
+
+// unavailableEntryFromError turns a Graph failure on waba_health_status or
+// waba_funding into an `unavailable` entry instead of a `503` — the SAME
+// classification respondUnhealthy uses, just carried in the array instead of
+// in the top-level error body.
+func unavailableEntryFromError(query string, err error) accountHealthUnavailableEntry {
+	class, message, code := classifyHealthProbeError(err)
+	return accountHealthUnavailableEntry{
+		Query:    query,
+		Class:    string(class),
+		MetaCode: code,
+		Message:  message,
+	}
+}
+
+// unrecognizedHealthStatusMessage is the text both
+// respondUnrecognizedAccountHealth and unavailableEntryUnrecognized use for
+// a 2xx response that came back WITHOUT a health_status this route trusts.
+const unrecognizedHealthStatusMessage = "resposta da Meta sem health_status reconhecivel"
+
+// unavailableEntryUnrecognized is unavailableEntryFromError's sibling for
+// the "Meta answered 200 but not with a health_status we recognize" case —
+// there is no *meta.MetaError to classify here, so the class is `unknown`
+// directly, same as respondUnrecognizedAccountHealth uses for
+// phone_health_status.
+func unavailableEntryUnrecognized(query string) accountHealthUnavailableEntry {
+	return accountHealthUnavailableEntry{
+		Query:   query,
+		Class:   string(meta.ClassUnknown),
+		Message: unrecognizedHealthStatusMessage,
+	}
 }
 
 // respondUnrecognizedAccountHealth is the branch that keeps a `200` from
@@ -207,10 +329,12 @@ func (h *AccountHealthHandler) accountHealth(w http.ResponseWriter, r *http.Requ
 // with a `can_send_message` outside the three literals Meta documents, is
 // exactly as uninformative as no response at all — and gets the SAME class
 // (`unknown`) respondUnhealthy already uses for "Meta didn't answer what we
-// asked".
-func respondUnrecognizedAccountHealth(w http.ResponseWriter) {
+// asked". Only reached for phone_health_status (query): the other two
+// queries route the same condition through unavailableEntryUnrecognized
+// instead, because they degrade the 200 rather than replacing it.
+func respondUnrecognizedAccountHealth(w http.ResponseWriter, query string) {
 	respondError(w, http.StatusServiceUnavailable, string(meta.ClassUnknown),
-		"resposta da Meta sem health_status reconhecivel", 0)
+		query+": "+unrecognizedHealthStatusMessage, 0)
 }
 
 // recognizedCanSendMessage is the CLOSED vocabulary this route trusts for
@@ -235,40 +359,41 @@ var canSendMessageRank = map[string]int{
 	"BLOCKED":   2,
 }
 
-// worstCanSendMessage returns the WORSE of the WABA's and the phone
-// number's own `can_send_message` — the account is only as fit to send as
-// its most restricted half.
-func worstCanSendMessage(waba, phone string) string {
-	if canSendMessageRank[waba] >= canSendMessageRank[phone] {
-		return waba
+// worstCanSendMessage returns the WORSE of two of the route's own
+// can_send_message values — the account is only as fit to send as its most
+// restricted half. Only ever called with values recognizedCanSendMessage
+// already accepted.
+func worstCanSendMessage(a, b string) string {
+	if canSendMessageRank[a] >= canSendMessageRank[b] {
+		return a
 	}
-	return phone
+	return b
 }
 
-// accountHealthEntities is the UNION of both calls' entities, in order
-// (WABA first, phone number second) — Meta's `id` never crosses into the
-// response type (accountHealthEntityResponse has no field for it).
-func accountHealthEntities(lists ...[]meta.AccountHealthEntity) []accountHealthEntityResponse {
-	out := make([]accountHealthEntityResponse, 0)
-	for _, list := range lists {
-		for _, e := range list {
-			errs := make([]accountHealthErrorResponse, 0, len(e.Errors))
-			for _, er := range e.Errors {
-				errs = append(errs, accountHealthErrorResponse{
-					Code:             er.Code,
-					Description:      er.Description,
-					PossibleSolution: er.PossibleSolution,
-				})
-			}
-			info := make([]string, 0, len(e.AdditionalInfo))
-			info = append(info, e.AdditionalInfo...)
-			out = append(out, accountHealthEntityResponse{
-				EntityType:     e.EntityType,
-				CanSendMessage: e.CanSendMessage,
-				Errors:         errs,
-				AdditionalInfo: info,
+// entityResponses converts ONE query's entities into the response shape —
+// Meta's `id` never crosses into it (accountHealthEntityResponse has no
+// field for it). The caller concatenates the results of the queries that
+// actually answered (T-255: a query that failed contributes NO entities,
+// its failure goes into `unavailable` instead).
+func entityResponses(list []meta.AccountHealthEntity) []accountHealthEntityResponse {
+	out := make([]accountHealthEntityResponse, 0, len(list))
+	for _, e := range list {
+		errs := make([]accountHealthErrorResponse, 0, len(e.Errors))
+		for _, er := range e.Errors {
+			errs = append(errs, accountHealthErrorResponse{
+				Code:             er.Code,
+				Description:      er.Description,
+				PossibleSolution: er.PossibleSolution,
 			})
 		}
+		info := make([]string, 0, len(e.AdditionalInfo))
+		info = append(info, e.AdditionalInfo...)
+		out = append(out, accountHealthEntityResponse{
+			EntityType:     e.EntityType,
+			CanSendMessage: e.CanSendMessage,
+			Errors:         errs,
+			AdditionalInfo: info,
+		})
 	}
 	return out
 }

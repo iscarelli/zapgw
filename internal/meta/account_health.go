@@ -1,5 +1,5 @@
 // What the Graph API says about the ACCOUNT's ability to send, beyond the
-// token (T-254).
+// token (T-254, split into three independent queries by T-255).
 //
 // WHY THIS EXISTS: on 2026-09-21 the Meta Graph API refused a template send
 // with error 131042 ("the WABA has no payment method on file"), and the
@@ -11,13 +11,18 @@
 // This file is the third, narrower question: Meta's own verdict on whether
 // sending would even be attempted.
 //
-// TWO SEPARATE CALLS, because the two fields live on TWO DIFFERENT Graph
-// nodes: `health_status` exists on BOTH the WABA and the phone number, but
-// `primary_funding_id` (whether a payment method is on file) only exists on
-// the WABA. Asking the WABA for BOTH and the number for only `health_status`
-// keeps every request field one that node actually answers — a `fields=`
-// naming something a node does not have answers 400, taking the WHOLE
-// response down with it (same lesson as numberFields in number.go).
+// THREE SEPARATE CALLS, not two. T-254 shipped with the WABA call asking for
+// BOTH `health_status` and `primary_funding_id` at once — and the first real
+// call (2026-09-22, through a consumer) came back `503` with Meta error code
+// `10` ("requires that the Business that owns this App is a Business
+// Solution Provider"), with no way to tell WHICH of the two fields Meta
+// refused. T-255 splits the WABA call in two so a refusal on one field can
+// never blind the route to the other: `health_status` exists on BOTH the
+// WABA and the phone number, `primary_funding_id` only on the WABA, and now
+// every request asks for exactly ONE field — a `fields=` naming something a
+// node does not have answers 400, taking the WHOLE response down with it
+// (same lesson as numberFields in number.go), and combining two fields in
+// one call meant a refusal on either one lost the other too.
 package meta
 
 import (
@@ -30,14 +35,16 @@ import (
 	"strings"
 )
 
-// accountHealthFields is what ObservePhoneHealth requests: the phone number
-// node does not have `primary_funding_id` — asking for it there would risk
-// a 400 that erases `health_status` along with it.
+// accountHealthFields is what ObservePhoneHealth and ObserveWABAHealth both
+// request — `health_status` is the only field either of those two calls
+// ever asks for.
 const accountHealthFields = "health_status"
 
-// accountHealthFieldsWithFunding is what ObserveWABAHealth requests — the
-// WABA node is the ONLY one of the two with a funding source at all.
-const accountHealthFieldsWithFunding = "health_status,primary_funding_id"
+// accountFundingFields is what ObserveWABAFunding requests — the WABA node
+// is the ONLY one of the two nodes with a funding source at all, and this
+// is now its OWN call, never bundled with `health_status` (see the file
+// header for why).
+const accountFundingFields = "primary_funding_id"
 
 // AccountHealthEntity is one item of `health_status.entities`, as Meta sends
 // it — WITHOUT the `id` key Meta includes on every entity. T-254 decided
@@ -89,29 +96,38 @@ type AccountHealthObservation struct {
 	// Entities is `health_status.entities`.
 	Entities []AccountHealthEntity
 	// HasFundingID reports whether `primary_funding_id` came back
-	// NON-EMPTY. Only ObserveWABAHealth can ever set this true —
-	// ObservePhoneHealth never requests the field, so it is always false
-	// there. 🔴 THE VALUE of primary_funding_id is NEVER kept anywhere past
-	// this parse: it is read straight into this bool and discarded — it
-	// does not survive in this struct, in a log, or in an error.
+	// NON-EMPTY. Only ObserveWABAFunding can ever set this true —
+	// ObserveWABAHealth and ObservePhoneHealth never request the field, so
+	// it is always false on their observations. 🔴 THE VALUE of
+	// primary_funding_id is NEVER kept anywhere past this parse: it is read
+	// straight into this bool and discarded — it does not survive in this
+	// struct, in a log, or in an error.
 	HasFundingID bool
 }
 
-// ObserveWABAHealth asks the WABA node for `health_status` AND
-// `primary_funding_id` — the ONLY of the two calls that can answer whether a
-// payment method is on file.
+// ObserveWABAHealth asks the WABA node for `health_status` ONLY — see
+// ObserveWABAFunding for the funding question, now its own call (T-255).
 //
 // The token goes in the HEADER, never in the URL, same reason as
 // CheckCredential and ObserveNumber.
 func (c *Client) ObserveWABAHealth(ctx context.Context, wabaID, token string) (AccountHealthObservation, error) {
-	return c.observeAccountHealth(ctx, wabaID, token, accountHealthFieldsWithFunding)
+	return c.observeAccountHealth(ctx, wabaID, token, accountHealthFields)
 }
 
 // ObservePhoneHealth asks the phone number node for `health_status` only —
 // see accountHealthFields for why `primary_funding_id` is never requested
-// here.
+// here (the phone number node does not have that field at all).
 func (c *Client) ObservePhoneHealth(ctx context.Context, phoneNumberID, token string) (AccountHealthObservation, error) {
 	return c.observeAccountHealth(ctx, phoneNumberID, token, accountHealthFields)
+}
+
+// ObserveWABAFunding asks the WABA node for `primary_funding_id` ONLY — the
+// ONLY of the three calls that can answer whether a payment method is on
+// file. Split out from ObserveWABAHealth by T-255 so that Meta refusing this
+// field (measured 2026-09-22: error code 10, "requires... Business Solution
+// Provider") never also blinds the route to the WABA's `health_status`.
+func (c *Client) ObserveWABAFunding(ctx context.Context, wabaID, token string) (AccountHealthObservation, error) {
+	return c.observeAccountHealth(ctx, wabaID, token, accountFundingFields)
 }
 
 // observeAccountHealth is the ONE function both exported calls above go

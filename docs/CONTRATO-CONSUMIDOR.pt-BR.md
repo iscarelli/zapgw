@@ -2876,7 +2876,7 @@ que você escolhe.
 
 ---
 
-## Saber se a CONTA ainda está apta a enviar, além do token — `GET /v1/instances/{slug}/account-health` (2026-09-22)
+## Saber se a CONTA ainda está apta a enviar, além do token — `GET /v1/instances/{slug}/account-health` (2026-09-22, dividida em três consultas independentes em 2026-09-22)
 
 **`GET /v1/instances/{slug}/account-health`** · `Authorization: Bearer <seu token>`
 
@@ -2890,47 +2890,78 @@ de verdade falhando para um cliente. Esta rota pergunta isso à Meta diretamente
 instância, para você poder consultar (o plano que ouvimos foi a cada 15-30 minutos) **antes** do seu
 próprio cliente pagar o preço de descobrir do jeito difícil.
 
-Ela faz **duas** chamadas à Meta — uma para a WABA, uma para o número — porque os dois campos moram em
-dois nós diferentes do Graph: `health_status` existe nos dois, mas se há forma de pagamento cadastrada
-só existe na WABA. **Qualquer uma das duas chamadas falhando dá `503`, nunca `200`** — a mesma
-taxonomia do probe acima (`config` / `retryable` / `unknown`), no mesmo corpo de erro.
+🔴 **Medido em 2026-09-22:** esta rota originalmente combinava `health_status` e `primary_funding_id`
+numa ÚNICA chamada para a WABA. A primeira chamada real, através de um consumidor, voltou `503` com o
+código de erro `10` da Meta ("requires... that the Business that owns this App is a Business Solution
+Provider"), e não havia como saber qual dos dois campos a Meta de fato recusou — uma chamada combinada
+faz a recusa de QUALQUER um dos dois cegar a rota inteira. Qual dos dois causa o `10` para este app
+ainda é medido pela próxima chamada real; a rota foi dividida no mesmo dia para que essa pergunta possa
+ser respondida independentemente do resto.
 
-Apto a enviar → `200`:
+Agora ela faz **três** chamadas independentes à Meta — `phone_health_status`, `waba_health_status` e
+`waba_funding` — porque cada campo mora no seu próprio nó/pergunta do Graph: `health_status` existe na
+WABA e no número, `primary_funding_id` só na WABA. **Só `phone_health_status` falhando ainda dá
+`503`** — sem ela não há sinal nenhum, e a mensagem vem prefixada com o nome da consulta (ex.:
+`"phone_health_status: <mensagem da Meta>"`), para você saber qual das três foi recusada.
+**`waba_health_status` ou `waba_funding` falhando não derruba mais a resposta inteira** — o `200`
+continua vindo, degradado, com a falha registrada em `unavailable`.
+
+Apto a enviar, tudo respondeu → `200`:
 
 ```jsonc
-{ "can_send_message": "AVAILABLE",   // o PIOR entre o valor da WABA e o do número
-  "has_payment_method": true,
+{ "can_send_message": "AVAILABLE",   // o PIOR entre phone_health_status e waba_health_status
+  "payment_method": "present",
   "entities": [
-    { "entity_type": "WABA", "can_send_message": "AVAILABLE", "errors": [], "additional_info": [] },
-    { "entity_type": "PHONE_NUMBER", "can_send_message": "AVAILABLE", "errors": [], "additional_info": [] }
+    { "entity_type": "PHONE_NUMBER", "can_send_message": "AVAILABLE", "errors": [], "additional_info": [] },
+    { "entity_type": "WABA", "can_send_message": "AVAILABLE", "errors": [], "additional_info": [] }
   ],
   "checked_at": "2026-09-22T12:00:00Z" }
 ```
 
 `can_send_message` é `AVAILABLE`, `LIMITED` ou `BLOCKED` — **LITERAL**, nunca traduzido, e ordenado do
-pior para o melhor quando a WABA e o número discordam (`BLOCKED` > `LIMITED` > `AVAILABLE`).
-`entities` é a união do que as duas chamadas responderam, **sem o id da Meta** de nenhuma das duas
-entidades: este gateway não devolve o id de terceiro da Meta por esta rota. O `errors[]` de cada
-entidade carrega o `code`, `description` e `possible_solution` que a PRÓPRIA Meta escreveu, não nós;
-`additional_info` é texto de diagnóstico livre, também da Meta.
+pior para o melhor quando as duas consultas de saúde discordam (`BLOCKED` > `LIMITED` > `AVAILABLE`),
+tirado de qual das duas consultas de saúde respondeu. `entities` é a união do que as consultas de
+saúde que responderam contribuíram, **sem o id da Meta** de nenhuma das entidades: este gateway não
+devolve o id de terceiro da Meta por esta rota. O `errors[]` de cada entidade carrega o `code`,
+`description` e `possible_solution` que a PRÓPRIA Meta escreveu, não nós; `additional_info` é texto de
+diagnóstico livre, também da Meta.
 
-🔴 **`has_payment_method` é INFERIDO, não medido contra uma conta real sem pagamento.** É `true`
-quando o `primary_funding_id` da Meta veio não-vazio, `false` quando está ausente ou vazio — e é a
-**única** coisa que esta rota faz com esse campo: o valor em si nunca aparece nesta resposta, em log,
-ou em erro. Ainda não vimos este campo voltar `false` para uma conta real que de fato não tem forma de
-pagamento; trate como correto por indução até que isso seja medido.
+`payment_method` é um de três literais, e a diferença entre os dois últimos importa — não os confunda:
 
-Qualquer desfecho que não seja "a Meta respondeu um `health_status` reconhecível nas duas chamadas" →
-**`503`**, com o mesmo corpo de erro do envio. Isso inclui um `200` da Meta sem `health_status`
-nenhum, ou com um `can_send_message` fora dos três literais acima — **nunca vira `AVAILABLE` por
-omissão**; a classe é `unknown`, a mesma que o probe irmão usa para "a Meta não respondeu o que
-perguntamos".
+- **`"present"`** — `waba_funding` respondeu e `primary_funding_id` veio não-vazio.
+- **`"absent"`** — `waba_funding` respondeu SEM o campo, ou com ele vazio. Isso é uma medição real: a
+  conta não tem forma de pagamento cadastrada.
+- **`"unavailable"`** — a própria consulta `waba_funding` falhou; a falha está em `unavailable`, com
+  `query: "waba_funding"`. **Nunca confunda com `"absent"`** — um é "sem forma de pagamento", o outro
+  é "nem conseguimos perguntar".
+
+O VALOR de `primary_funding_id` em si nunca aparece nesta resposta, em log, ou em erro — parseá-lo
+para `payment_method` é a única coisa que esta rota faz com ele.
+
+`unavailable` lista as consultas (`waba_health_status`, `waba_funding`) que falharam SEM derrubar o
+`200` com elas — **omitido por completo quando vazio**, então a resposta de uma conta totalmente
+saudável fica igual a antes da divisão. Cada item:
+
+```jsonc
+{ "query": "waba_funding", "class": "config", "meta_code": 10,
+  "message": "(#10) requires... Business Solution Provider" }
+```
+
+`phone_health_status` nunca aparece em `unavailable` — ela falhando é sempre o caso `503` acima, porque
+sem ela não há sinal nenhum.
+
+Qualquer desfecho em `phone_health_status` que não seja "a Meta respondeu um `health_status`
+reconhecível" → **`503`**, com o mesmo corpo de erro do envio, mensagem prefixada com
+`"phone_health_status: "`. Isso inclui um `200` da Meta sem `health_status` nenhum, ou com um
+`can_send_message` fora dos três literais acima — **nunca vira `AVAILABLE` por omissão**; a classe é
+`unknown`, a mesma que o probe irmão usa para "a Meta não respondeu o que perguntamos". A MESMA
+condição em `waba_health_status` degrada em vez disso: vai para `unavailable` com classe `unknown`.
 
 Uma instância Instagram responde `200` com `{"verdict": "not_applicable", "checked_at": "..."}`,
 **sem chamar a Meta**: `health_status` não tem equivalente documentado em `graph.instagram.com`, a
 mesma ausência que já vale para o probe de saúde acima.
 
-**Sem cache, mesma razão do probe irmão:** toda chamada fala com a Meta, duas vezes, então a
+**Sem cache, mesma razão do probe irmão:** toda chamada fala com a Meta, até três vezes, então a
 frequência é sua — não o coloque num laço apertado.
 
 Repare também que o webhook `account_alerts` (`kind: "account_alert"`) já empurra alguns dos mesmos
