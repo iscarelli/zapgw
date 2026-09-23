@@ -6,6 +6,14 @@
 > Escrito ao fim de 2026-08-30, o dia em que o repositorio virou publico. Bloco de retomada
 > mentindo e' pior que bloco nenhum: e' o primeiro texto que a proxima sessao le.
 
+### 📌 2026-09-22 — `v0.70.0` EM PRODUCAO (medido: `HEALTH OK` + `VERSION MATCHES 0.70.0`). T-254.
+
+- `GET /v1/instances/{slug}/account-health` (pedido do consumidor apos o `131042` de 09-21).
+  Montada: sem token responde `401`, rota inexistente `404` (medido do no').
+- ⚠️ **Nunca rodou contra a Meta real.** Nao provado: se o token da instancia le `health_status` e
+  `primary_funding_id` da WABA, e o que a Meta devolve numa conta SEM pagamento (`has_payment_method:
+  false` e' inferido da ausencia). A primeira chamada do consumidor e' a prova; pedir o resultado.
+
 ### 📌 2026-09-19 05:54 — `v0.69.0` EM PRODUCAO (medido: `HEALTH OK` + `VERSION MATCHES 0.69.0`). Alertas ao operador LIGADOS.
 
 - **T-252** (`404` do callback -> `502` para a Meta, sem alarme) e **T-253** (alertas ao operador no
