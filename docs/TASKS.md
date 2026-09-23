@@ -451,6 +451,46 @@ instancias foram rotacionadas. Duas licoes que custaram na hora e valem alem des
 
 > A fila do periodo privado esta em `iscarelli/zapgw-dev`, congelada. Tarefa nova nasce aqui.
 
+## [ ] T-254  Account sending-health read route (health_status + payment method presence)
+Why:     em 2026-09-21 a Meta recusou template com 131042 (WABA sem forma de pagamento) e o
+         consumidor so' soube pela falha de um cliente; ele quer consultar ANTES (a cada 15-30 min).
+Files:   internal/meta/account_health.go (novo) + _test, internal/outbound/account_health_handler.go
+         (novo) + _test, internal/outbound/isolation_test.go, cmd/zapgw/main.go,
+         docs/CONTRATO-CONSUMIDOR.md + docs/CONTRATO-CONSUMIDOR.pt-BR.md (secao nova, curta),
+         docs/CHANGELOG.md
+Do:
+  - Rota `GET /v1/instances/{slug}/account-health`, MESMA sequencia de guardas de
+    `internal/outbound/health_handler.go` (autentica -> CanUse -> FindInstance -> ativa?), mesmos
+    status/erros. Construtor `NewAccountHealthHandler(store, auth, client, AllTypes)`; tipo nao
+    WhatsApp responde 200 com `verdict: NotApplicable` SEM chamar a Meta (igual ao health). Sem
+    cache, sem log por chamada (mesmos motivos do health).
+  - Meta (confirmado na doc em 2026-09-22): `GET /{waba_id}?fields=health_status,primary_funding_id`
+    e `GET /{phone_number_id}?fields=health_status`, com `inst.SendToken`. `health_status` =
+    `{can_send_message, entities:[{entity_type, id, can_send_message, errors:[{error_code,
+    error_description, possible_solution}], additional_info:[...]}]}`. Duas chamadas; qualquer uma
+    falhando (transporte, prazo, erro da Meta) -> `respondUnhealthy` (503 + classe), NUNCA 200.
+    Resposta 200 sem `health_status` ou com `can_send_message` fora de AVAILABLE/LIMITED/BLOCKED
+    -> 503 classe `unknown` ("resposta da Meta sem health_status reconhecivel") — nunca virar
+    AVAILABLE por omissao.
+  - Resposta 200 (chaves em INGLES):
+    `{"can_send_message": pior entre WABA e numero (BLOCKED > LIMITED > AVAILABLE),
+      "has_payment_method": true se `primary_funding_id` veio nao-vazio, false se ausente/vazio,
+      "entities": [{"entity_type", "can_send_message", "errors":[{"code","description",
+      "possible_solution"}], "additional_info":[...]}]  (uniao das duas chamadas, SEM o `id` da
+      entidade — id de terceiro nao sai), "checked_at": RFC3339 UTC}`.
+  - 🔴 O VALOR de `primary_funding_id` nunca sai: nem na resposta, nem em log, nem em erro, nem em
+    struct exportada (parse para `bool` na hora). `error_data`/corpo cru da Meta tambem nao.
+  - Contrato: secao curta com rota, formato, a regra "503 = nao consegui olhar, nunca OK", e o
+    aviso de que `has_payment_method:false` e' INFERIDO da ausencia do campo e nunca foi medido
+    contra uma conta real sem pagamento. Mencionar que o webhook `account_alerts` ja' chega como
+    `kind: "account_alert"` e e' o aviso empurrado.
+Verify:  os quatro comandos do CLAUDE.md verdes. Testes com httptest/fakegraph provando: (a) WABA
+         LIMITED + numero AVAILABLE -> LIMITED; (b) funding ausente -> false, presente -> true e o
+         valor do funding NAO aparece no corpo (assert por substring); (c) Meta 500/timeout/token
+         invalido em QUALQUER das duas chamadas -> 503, nunca 200; (d) 200 sem health_status -> 503;
+         (e) instancia Instagram -> 200 NotApplicable e zero chamadas a Meta; (f) linha nova na
+         tabela de isolamento, e ela FALHA se a guarda CanUse for removida (rodar uma vez, restaurar).
+
 
 ## [ ] T-248  Seven response keys and literals still Portuguese in code, among English siblings
 After:   DECIDIDO em 2026-09-19 — opcao (1): renomear TUDO de uma vez, bump MINOR, aviso aos dois
