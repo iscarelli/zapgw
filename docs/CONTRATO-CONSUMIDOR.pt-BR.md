@@ -2876,6 +2876,69 @@ que você escolhe.
 
 ---
 
+## Saber se a CONTA ainda está apta a enviar, além do token — `GET /v1/instances/{slug}/account-health` (2026-09-22)
+
+**`GET /v1/instances/{slug}/account-health`** · `Authorization: Bearer <seu token>`
+
+Mesmas regras do probe acima: rota da **LAN**, só as instâncias vinculadas a você respondem (`403`
+para as outras, sem que o gateway chegue a falar com a Meta), sem cache, sem log por chamada.
+
+Ele existe porque `GET /v1/instances/{slug}/health` só prova que o **token** ainda é aceito — nunca
+pergunta se a **conta** em si está apta a enviar. Em 2026-09-21 a Graph API recusou um template com o
+erro `131042` ("a WABA não tem forma de pagamento cadastrada"), e a única forma de saber foi um envio
+de verdade falhando para um cliente. Esta rota pergunta isso à Meta diretamente, com o token daquela
+instância, para você poder consultar (o plano que ouvimos foi a cada 15-30 minutos) **antes** do seu
+próprio cliente pagar o preço de descobrir do jeito difícil.
+
+Ela faz **duas** chamadas à Meta — uma para a WABA, uma para o número — porque os dois campos moram em
+dois nós diferentes do Graph: `health_status` existe nos dois, mas se há forma de pagamento cadastrada
+só existe na WABA. **Qualquer uma das duas chamadas falhando dá `503`, nunca `200`** — a mesma
+taxonomia do probe acima (`config` / `retryable` / `unknown`), no mesmo corpo de erro.
+
+Apto a enviar → `200`:
+
+```jsonc
+{ "can_send_message": "AVAILABLE",   // o PIOR entre o valor da WABA e o do número
+  "has_payment_method": true,
+  "entities": [
+    { "entity_type": "WABA", "can_send_message": "AVAILABLE", "errors": [], "additional_info": [] },
+    { "entity_type": "PHONE_NUMBER", "can_send_message": "AVAILABLE", "errors": [], "additional_info": [] }
+  ],
+  "checked_at": "2026-09-22T12:00:00Z" }
+```
+
+`can_send_message` é `AVAILABLE`, `LIMITED` ou `BLOCKED` — **LITERAL**, nunca traduzido, e ordenado do
+pior para o melhor quando a WABA e o número discordam (`BLOCKED` > `LIMITED` > `AVAILABLE`).
+`entities` é a união do que as duas chamadas responderam, **sem o id da Meta** de nenhuma das duas
+entidades: este gateway não devolve o id de terceiro da Meta por esta rota. O `errors[]` de cada
+entidade carrega o `code`, `description` e `possible_solution` que a PRÓPRIA Meta escreveu, não nós;
+`additional_info` é texto de diagnóstico livre, também da Meta.
+
+🔴 **`has_payment_method` é INFERIDO, não medido contra uma conta real sem pagamento.** É `true`
+quando o `primary_funding_id` da Meta veio não-vazio, `false` quando está ausente ou vazio — e é a
+**única** coisa que esta rota faz com esse campo: o valor em si nunca aparece nesta resposta, em log,
+ou em erro. Ainda não vimos este campo voltar `false` para uma conta real que de fato não tem forma de
+pagamento; trate como correto por indução até que isso seja medido.
+
+Qualquer desfecho que não seja "a Meta respondeu um `health_status` reconhecível nas duas chamadas" →
+**`503`**, com o mesmo corpo de erro do envio. Isso inclui um `200` da Meta sem `health_status`
+nenhum, ou com um `can_send_message` fora dos três literais acima — **nunca vira `AVAILABLE` por
+omissão**; a classe é `unknown`, a mesma que o probe irmão usa para "a Meta não respondeu o que
+perguntamos".
+
+Uma instância Instagram responde `200` com `{"verdict": "not_applicable", "checked_at": "..."}`,
+**sem chamar a Meta**: `health_status` não tem equivalente documentado em `graph.instagram.com`, a
+mesma ausência que já vale para o probe de saúde acima.
+
+**Sem cache, mesma razão do probe irmão:** toda chamada fala com a Meta, duas vezes, então a
+frequência é sua — não o coloque num laço apertado.
+
+Repare também que o webhook `account_alerts` (`kind: "account_alert"`) já empurra alguns dos mesmos
+avisos para você — esta rota é o lado de PUXAR a mesma informação, para quando você prefere perguntar
+em vez de esperar.
+
+---
+
 ## Duas perguntas diferentes — e a segunda tem fonte PRÓPRIA, que sobrevive à sua queda (2026-08-06, atualizado 2026-08-07)
 
 Quando um consumidor quer "saber o status", quase sempre são **duas** perguntas, e elas têm fontes

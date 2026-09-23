@@ -155,6 +155,12 @@ func outboundRoutes() []outboundRoute {
 			},
 		},
 		{
+			route: "GET /v1/instances/{slug}/account-health",
+			build: func(slug string) *http.Request {
+				return newRequest(http.MethodGet, "/v1/instances/"+slug+"/account-health", "")
+			},
+		},
+		{
 			route: "GET /v1/estado",
 			build: func(slug string) *http.Request {
 				return newRequest(http.MethodGet, "/v1/estado?instancia="+slug, "")
@@ -260,6 +266,7 @@ func allOutboundRoutes(t *testing.T, srv *httptest.Server) http.Handler {
 	mux.Handle("/v1/media/", media)
 	mux.Handle("/v1/uploads", NewUploadsHandler(store, auth, client, counter, WhatsAppOnly))
 	mux.Handle("/v1/instances/", NewHealthHandler(store, auth, client, AllTypes))
+	mux.Handle("/v1/instances/{slug}/account-health", NewAccountHealthHandler(store, auth, client, AllTypes))
 	mux.Handle("/v1/estado", NewStateHandler(store, auth, NewWatchdog(store, client), nil,
 		IngressSource{}, nil, nil, testVersion, config.DefaultRetentionDays, counter, AllTypes))
 	mux.Handle("/v1/cadastro", NewRegistrationHandler(store, auth, maxBytes, counter, WhatsAppOnly))

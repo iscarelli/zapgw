@@ -62,7 +62,7 @@ type healthResponse struct {
 	Version string `json:"versao"`
 }
 
-func routes(inboundHandler, outboundHandler, healthHandler, templatesHandler, mediaHandler, uploadsHandler, stateHandler, readsHandler, enrollmentHandler, smokeHandler, pauseHandler, blockingHandler, profileHandler http.Handler) http.Handler {
+func routes(inboundHandler, outboundHandler, healthHandler, templatesHandler, mediaHandler, uploadsHandler, stateHandler, readsHandler, enrollmentHandler, smokeHandler, pauseHandler, blockingHandler, profileHandler, accountHealthHandler http.Handler) http.Handler {
 	mux := http.NewServeMux()
 
 	// NOT INFORMATIVE ABOUT THE CHANNEL, on purpose: this `200` says the
@@ -173,6 +173,19 @@ func routes(inboundHandler, outboundHandler, healthHandler, templatesHandler, me
 		// tenant's Graph API, and DESCRIBES their BUSINESS (address,
 		// email, website) — not something to send over the public port.
 		mux.Handle("/v1/perfil", profileHandler)
+	}
+	if accountHealthHandler != nil {
+		// A LAN route, like the other instance routes (T-254): it spends
+		// TWO calls on the tenant's Graph API credential per request.
+		//
+		// Registered as its OWN, MORE SPECIFIC pattern — NOT folded into
+		// healthHandler's "/v1/instances/" subtree above — because that
+		// registration is a DIFFERENT handler (a separate constructor, a
+		// separate file, T-254's own isolation-table entry). net/http's
+		// ServeMux resolves the overlap by specificity: a request for
+		// ".../account-health" matches THIS pattern, everything else under
+		// "/v1/instances/" still falls through to healthHandler.
+		mux.Handle("/v1/instances/{slug}/account-health", accountHealthHandler)
 	}
 	return mux
 }
@@ -502,6 +515,11 @@ func main() {
 	// equivalent credential check, without calling Meta; see
 	// outbound.HealthHandler.health).
 	health := outbound.NewHealthHandler(store, authenticator, metaClient, outbound.AllTypes)
+	// T-254: AllTypes — same reasoning as health, above: this route serves
+	// BOTH types and answers NotApplicable, without calling Meta, for the
+	// one that has no equivalent (health_status has no documented
+	// equivalent on graph.instagram.com either).
+	accountHealth := outbound.NewAccountHealthHandler(store, authenticator, metaClient, outbound.AllTypes)
 	// T-111: WhatsAppOnly — the catalog uses inst.WabaID, a field exclusive
 	// to WhatsApp; Instagram has no template in this slice (the same
 	// restriction as sending, which only accepts "texto" for Instagram).
@@ -623,7 +641,7 @@ func main() {
 		version, counterDays, counter, outbound.AllTypes)
 
 	log.Printf("zapgw listening on %s", address)
-	if err := http.ListenAndServe(address, routes(h, leadership.Require(out), health, templates, media, uploads, state, reads, enrollment, smokeRoute, pauseRoute, blockingRoute, profileRoute)); err != nil {
+	if err := http.ListenAndServe(address, routes(h, leadership.Require(out), health, templates, media, uploads, state, reads, enrollment, smokeRoute, pauseRoute, blockingRoute, profileRoute, accountHealth)); err != nil {
 		log.Fatalf("zapgw: server crashed: %v", err)
 	}
 }
