@@ -2,7 +2,10 @@
 
 One line per version shipped, in the same commit as the bump. The entry states the **effect**, not the diff.
 
-## Unreleased
+## v0.70.0 — 2026-09-22
+
+MINOR: new read route `GET /v1/instances/{slug}/account-health` — whether the WhatsApp account and
+number can send (`health_status`) and whether a payment method is on file (T-254).
 
 - **Account sending-health read route** (T-254) — new `GET /v1/instances/{slug}/account-health`
   answers whether the ACCOUNT (not just the token) is fit to send: it asks Meta for `health_status`
