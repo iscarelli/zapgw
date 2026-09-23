@@ -199,12 +199,23 @@ func (h *HealthHandler) health(w http.ResponseWriter, r *http.Request) {
 // `error.code` — the rest of the body stays out because Meta's `error_data`
 // can echo the payload that was sent, with phone number and message text.
 func respondUnhealthy(w http.ResponseWriter, err error) {
-	class := meta.ClassUnknown
+	class, message, code := classifyHealthProbeError(err)
+	respondError(w, http.StatusServiceUnavailable, string(class), message, code)
+}
+
+// classifyHealthProbeError is respondUnhealthy's classification, pulled out
+// on its own (T-255) so account_health_handler.go's three split queries can
+// reach the SAME (class, message, code) triple respondUnhealthy always used
+// — once to build a `503` the usual way (respondUnhealthyForQuery, with the
+// query's name prefixed onto the message), once to build an `unavailable`
+// array entry (unavailableEntryFromError) instead of a top-level error.
+func classifyHealthProbeError(err error) (class meta.ErrorClass, message string, code int) {
+	class = meta.ClassUnknown
 	// Default: the call didn't end in a response from Meta (transport,
 	// deadline exceeded, reading). We don't know whether the token is
 	// valid — and saying "retryable" would assert that we know.
-	message := "nao foi possivel falar com a Meta; a saude deste canal nao pode ser confirmada agora"
-	code := 0
+	message = "nao foi possivel falar com a Meta; a saude deste canal nao pode ser confirmada agora"
+	code = 0
 
 	var me *meta.MetaError
 	switch {
@@ -220,5 +231,5 @@ func respondUnhealthy(w http.ResponseWriter, err error) {
 		message = me.Message
 		code = me.MetaCode
 	}
-	respondError(w, http.StatusServiceUnavailable, string(class), message, code)
+	return class, message, code
 }

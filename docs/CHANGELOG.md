@@ -2,6 +2,23 @@
 
 One line per version shipped, in the same commit as the bump. The entry states the **effect**, not the diff.
 
+## Unreleased
+
+- **Account-health: split the Meta queries so one refused field does not blind the route** (T-255) —
+  `GET /v1/instances/{slug}/account-health` now makes THREE independent Meta calls
+  (`phone_health_status`, `waba_health_status`, `waba_funding`) instead of T-254's original two
+  (the WABA call combined `health_status` and `primary_funding_id`). The first real call
+  (2026-09-22, through the consumer) came back `503` with Meta error code `10` ("requires... a
+  Business Solution Provider") with no way to tell which of the two fields caused it. Now, only
+  `phone_health_status` failing is still `503` (message prefixed with the query's name); `waba_health_status`
+  or `waba_funding` failing degrades the `200` instead — the failure lands in a new `unavailable`
+  array, omitted when empty. `has_payment_method` (bool) is replaced by `payment_method`
+  (`"present"`/`"absent"`/`"unavailable"`), so "no payment method" and "could not ask" are no longer
+  the same value. `internal/meta/account_health.go` gained `ObserveWABAFunding`; the WABA node's
+  `health_status` and `primary_funding_id` are now separate requests. Contract
+  (`docs/CONTRATO-CONSUMIDOR.md` + pt-BR) updated with the new shape and the measured 2026-09-22
+  fact. _Completed 2026-09-22 23:08._
+
 ## v0.70.0 — 2026-09-22
 
 MINOR: new read route `GET /v1/instances/{slug}/account-health` — whether the WhatsApp account and

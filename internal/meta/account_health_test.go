@@ -8,21 +8,22 @@ import (
 	"testing"
 )
 
-// The WABA call asks for BOTH fields; the phone number call asks for
-// health_status ONLY — asking the phone number node for primary_funding_id
-// risks a 400 that erases health_status along with it (see the file header
-// on account_health.go).
-func TestObserveWABAHealthAsksForBothFields(t *testing.T) {
+// T-255: each of the three calls asks for EXACTLY ONE field — combining
+// health_status and primary_funding_id into one WABA call (T-254's original
+// shape) meant a refusal on either field erased the other; splitting them
+// means a refusal on one never blinds the caller to the other.
+func TestObserveWABAHealthAsksOnlyForHealthStatus(t *testing.T) {
 	c, urls, authorizations := respondingGraph(t, http.StatusOK, `{"health_status":{"can_send_message":"AVAILABLE","entities":[]}}`)
 
 	if _, err := c.ObserveWABAHealth(context.Background(), "WABAID1", "token-secreto"); err != nil {
 		t.Fatalf("ObserveWABAHealth: %v", err)
 	}
 	url := (*urls)[0]
-	for _, field := range []string{"health_status", "primary_funding_id"} {
-		if !strings.Contains(url, field) {
-			t.Errorf("the URL %q does not request %q", url, field)
-		}
+	if !strings.Contains(url, "health_status") {
+		t.Errorf("the URL %q does not request health_status", url)
+	}
+	if strings.Contains(url, "primary_funding_id") {
+		t.Errorf("the URL %q requests primary_funding_id — that is now ObserveWABAFunding's own call (T-255)", url)
 	}
 	if strings.Contains(url, "token-secreto") {
 		t.Errorf("the token leaked into the URL: %q", url)
@@ -48,11 +49,35 @@ func TestObservePhoneHealthAsksOnlyForHealthStatus(t *testing.T) {
 	}
 }
 
+// ObserveWABAFunding is the split-out third call (T-255): it asks the WABA
+// node for primary_funding_id ONLY, never bundled with health_status.
+func TestObserveWABAFundingAsksOnlyForPrimaryFundingID(t *testing.T) {
+	c, urls, authorizations := respondingGraph(t, http.StatusOK, `{"primary_funding_id":"1234567890123"}`)
+
+	if _, err := c.ObserveWABAFunding(context.Background(), "WABAID1", "token-secreto"); err != nil {
+		t.Fatalf("ObserveWABAFunding: %v", err)
+	}
+	url := (*urls)[0]
+	if !strings.Contains(url, "primary_funding_id") {
+		t.Errorf("the URL %q does not request primary_funding_id", url)
+	}
+	if strings.Contains(url, "health_status") {
+		t.Errorf("the URL %q requests health_status — that is ObserveWABAHealth's own call (T-255)", url)
+	}
+	if strings.Contains(url, "token-secreto") {
+		t.Errorf("the token leaked into the URL: %q", url)
+	}
+	if (*authorizations)[0] != "Bearer token-secreto" {
+		t.Errorf("Authorization = %q", (*authorizations)[0])
+	}
+}
+
 // The full shape the Do section of T-254 describes, checked against a
 // REALISTIC body: top-level can_send_message, an entity with its OWN
 // can_send_message, an error with all three of its fields, and
 // additional_info. Every value survives LITERAL, same discipline as
-// NumberObservation.
+// NumberObservation. T-255 split this call away from primary_funding_id —
+// see TestAccountHealthFundingKeepsLiteralValue below for that field.
 func TestAccountHealthKeepsLiteralValues(t *testing.T) {
 	c, _, _ := respondingGraph(t, http.StatusOK, `{
 		"health_status": {
@@ -69,8 +94,7 @@ func TestAccountHealthKeepsLiteralValues(t *testing.T) {
 					"additional_info": ["informational note"]
 				}
 			]
-		},
-		"primary_funding_id": "1234567890123"
+		}
 	}`)
 
 	obs, err := c.ObserveWABAHealth(context.Background(), "WABAID1", "t")
@@ -80,8 +104,8 @@ func TestAccountHealthKeepsLiteralValues(t *testing.T) {
 	if obs.CanSendMessage != "LIMITED" {
 		t.Errorf("CanSendMessage = %q, want the LITERAL %q", obs.CanSendMessage, "LIMITED")
 	}
-	if !obs.HasFundingID {
-		t.Error("HasFundingID = false, want true — primary_funding_id came back non-empty")
+	if obs.HasFundingID {
+		t.Error("HasFundingID = true, want false — this call never requests primary_funding_id (T-255)")
 	}
 	if len(obs.Entities) != 1 {
 		t.Fatalf("Entities = %d, want 1", len(obs.Entities))
@@ -105,18 +129,36 @@ func TestAccountHealthKeepsLiteralValues(t *testing.T) {
 	}
 }
 
+// ObserveWABAFunding's own literal check (T-255): the split-out call reads
+// primary_funding_id correctly and does NOT invent a health_status it was
+// never asked for.
+func TestAccountHealthFundingKeepsLiteralValue(t *testing.T) {
+	c, _, _ := respondingGraph(t, http.StatusOK, `{"primary_funding_id":"1234567890123"}`)
+
+	obs, err := c.ObserveWABAFunding(context.Background(), "WABAID1", "t")
+	if err != nil {
+		t.Fatalf("ObserveWABAFunding: %v", err)
+	}
+	if !obs.HasFundingID {
+		t.Error("HasFundingID = false, want true — primary_funding_id came back non-empty")
+	}
+	if obs.CanSendMessage != "" || len(obs.Entities) != 0 {
+		t.Errorf("obs = %+v, want CanSendMessage/Entities empty — this call never asked for health_status", obs)
+	}
+}
+
 // primary_funding_id ABSENT is the same "no payment method on file" as
 // primary_funding_id being an empty string — both read as HasFundingID ==
 // false, never true by omission.
 func TestAccountHealthFundingIDAbsentOrEmptyIsFalse(t *testing.T) {
 	for _, body := range []string{
-		`{"health_status":{"can_send_message":"AVAILABLE","entities":[]}}`,
-		`{"health_status":{"can_send_message":"AVAILABLE","entities":[]},"primary_funding_id":""}`,
+		`{}`,
+		`{"primary_funding_id":""}`,
 	} {
 		c, _, _ := respondingGraph(t, http.StatusOK, body)
-		obs, err := c.ObserveWABAHealth(context.Background(), "WABAID1", "t")
+		obs, err := c.ObserveWABAFunding(context.Background(), "WABAID1", "t")
 		if err != nil {
-			t.Fatalf("ObserveWABAHealth: %v", err)
+			t.Fatalf("ObserveWABAFunding: %v", err)
 		}
 		if obs.HasFundingID {
 			t.Errorf("body %q: HasFundingID = true, want false", body)

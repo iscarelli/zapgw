@@ -2895,7 +2895,7 @@ you choose.
 
 ---
 
-## Knowing whether the ACCOUNT is still fit to send, beyond the token — `GET /v1/instances/{slug}/account-health` (2026-09-22)
+## Knowing whether the ACCOUNT is still fit to send, beyond the token — `GET /v1/instances/{slug}/account-health` (2026-09-22, split into three independent queries 2026-09-22)
 
 **`GET /v1/instances/{slug}/account-health`** · `Authorization: Bearer <your token>`
 
@@ -2909,48 +2909,82 @@ out was a real customer's failed send. This route asks Meta the question directl
 instance's token, so you can poll it (the plan we heard was every 15-30 minutes) **before** your own
 customer pays the price of finding out the hard way.
 
-It makes **two** calls to Meta — one to the WABA, one to the phone number — because the two fields
-live on two different Graph nodes: `health_status` exists on both, but whether a payment method is on
-file only exists on the WABA. **Either call failing is `503`, never `200`** — the same taxonomy as the
-probe above (`config` / `retryable` / `unknown`), through the exact same error body.
+🔴 **Measured 2026-09-22:** this route originally combined `health_status` and `primary_funding_id`
+into ONE call to the WABA. The first real call through a consumer came back `503` with Meta error
+code `10` ("requires... that the Business that owns this App is a Business Solution Provider"), and
+there was no way to tell which of the two fields Meta actually refused — a combined call means a
+refusal on either one blinds the whole route. Which of the two causes the `10` for this app is still
+measured by the next real call; the route was split the same day so that question can be answered
+independently of everything else.
 
-Fit to send → `200`:
+It now makes **three** independent calls to Meta — `phone_health_status`, `waba_health_status`, and
+`waba_funding` — because each field lives on its own Graph node/question:
+`health_status` exists on both the WABA and the phone number, `primary_funding_id` only on the WABA.
+**Only `phone_health_status` failing is still `503`** — without it there is no signal at all, and the
+message is prefixed with the query's name (e.g. `"phone_health_status: <Meta's message>"`) so you know
+which of the three was refused. **`waba_health_status` or `waba_funding` failing no longer takes the
+whole response down** — the `200` still comes back, degraded, with the failure recorded in
+`unavailable` instead.
+
+Fit to send, everything answered → `200`:
 
 ```jsonc
-{ "can_send_message": "AVAILABLE",   // the WORSE of the WABA's and the number's own value
-  "has_payment_method": true,
+{ "can_send_message": "AVAILABLE",   // the WORSE of phone_health_status and waba_health_status
+  "payment_method": "present",
   "entities": [
-    { "entity_type": "WABA", "can_send_message": "AVAILABLE", "errors": [], "additional_info": [] },
-    { "entity_type": "PHONE_NUMBER", "can_send_message": "AVAILABLE", "errors": [], "additional_info": [] }
+    { "entity_type": "PHONE_NUMBER", "can_send_message": "AVAILABLE", "errors": [], "additional_info": [] },
+    { "entity_type": "WABA", "can_send_message": "AVAILABLE", "errors": [], "additional_info": [] }
   ],
   "checked_at": "2026-09-22T12:00:00Z" }
 ```
 
 `can_send_message` is `AVAILABLE`, `LIMITED`, or `BLOCKED` — **LITERAL**, never translated, ordered
-worst-first when the WABA and the number disagree (`BLOCKED` > `LIMITED` > `AVAILABLE`). `entities` is
-the union of what both calls answered, **without the Meta id** of either entity: this gateway does not
+worst-first when the two health calls disagree (`BLOCKED` > `LIMITED` > `AVAILABLE`), and taken from
+whichever of the two health queries actually answered. `entities` is the union of what the health
+queries that answered contributed, **without the Meta id** of either entity: this gateway does not
 echo a third party's Meta id back through this route. Each entity's `errors[]` carries Meta's own
 `code`, `description`, and `possible_solution` — text written by Meta, not by us; `additional_info` is
 free-form diagnostic text, also Meta's own.
 
-🔴 **`has_payment_method` is INFERRED, not measured against a real account without one.** It is `true`
-when Meta's `primary_funding_id` came back non-empty, `false` when it is absent or empty — and it is
-the **only** thing this route ever does with that field: the value itself never appears in this
-response, in a log, or in an error. We have not yet seen this field come back `false` for a real
-account that actually lacks a payment method; treat it as directionally correct until it has been.
+`payment_method` is one of three literals, and the difference between the last two matters — do not
+collapse them:
 
-Any outcome that is not "Meta answered a recognized `health_status` for both calls" → **`503`**, with
-the same error body as sending. This includes a `200` from Meta that is missing `health_status`
-entirely, or that carries a `can_send_message` outside the three literals above — **it never becomes
-`AVAILABLE` by omission**; the class is `unknown`, the same one the sibling probe uses for "Meta did
-not answer what we asked".
+- **`"present"`** — `waba_funding` answered and `primary_funding_id` came back non-empty.
+- **`"absent"`** — `waba_funding` answered WITHOUT the field, or with it empty. This is a real
+  measurement: the account has no payment method on file.
+- **`"unavailable"`** — the `waba_funding` query itself failed; the failure is in `unavailable`, with
+  `query: "waba_funding"`. **Never confuse this with `"absent"`** — one is "no payment method", the
+  other is "we could not even ask".
+
+The VALUE of `primary_funding_id` itself never appears anywhere in this response, in a log, or in an
+error — parsing it into `payment_method` is the only thing this route ever does with it.
+
+`unavailable` lists the queries (`waba_health_status`, `waba_funding`) that failed WITHOUT taking the
+`200` down with them — **omitted entirely when empty**, so a fully healthy account's response looks
+exactly like before the split. Each entry:
+
+```jsonc
+{ "query": "waba_funding", "class": "config", "meta_code": 10,
+  "message": "(#10) requires... Business Solution Provider" }
+```
+
+`phone_health_status` never appears in `unavailable` — it failing is always the `503` case above
+instead, because without it there is no signal at all.
+
+Any outcome on `phone_health_status` that is not "Meta answered a recognized `health_status`" →
+**`503`**, with the same error body as sending, message prefixed `"phone_health_status: "`. This
+includes a `200` from Meta that is missing `health_status` entirely, or that carries a
+`can_send_message` outside the three literals above — **it never becomes `AVAILABLE` by omission**;
+the class is `unknown`, the same one the sibling probe uses for "Meta did not answer what we asked".
+The SAME condition on `waba_health_status` degrades instead: it lands in `unavailable` with class
+`unknown`.
 
 An Instagram instance answers `200` with `{"verdict": "not_applicable", "checked_at": "..."}`, **without
 calling Meta at all** — `health_status` has no documented equivalent on `graph.instagram.com`, the
 same absence that already applies to the health probe above.
 
-**No cache, same reasoning as the sibling probe:** every call talks to Meta, twice, so the frequency
-is yours — do not put it in a tight loop.
+**No cache, same reasoning as the sibling probe:** every call talks to Meta, up to three times, so the
+frequency is yours — do not put it in a tight loop.
 
 Also note the `account_alerts` webhook (`kind: "account_alert"`) already pushes some of the same
 warnings to you — this route is the pull side of the same information, for when you want to ask
