@@ -459,6 +459,39 @@ instancias foram rotacionadas. Duas licoes que custaram na hora e valem alem des
 
 > A fila do periodo privado esta em `iscarelli/zapgw-dev`, congelada. Tarefa nova nasce aqui.
 
+## [ ] T-255  Account-health: split the Meta queries so one refused field does not blind the route
+Why:     primeira chamada real (consumidor, 2026-09-22) voltou `503` com Meta code `10` ("requires
+         that the Business that owns this App is a Business Solution Provider") e nao sabemos QUAL
+         campo/consulta pediu BSP — a T-254 juntava `health_status,primary_funding_id` numa chamada so'.
+Files:   internal/meta/account_health.go + _test, internal/outbound/account_health_handler.go + _test,
+         docs/CONTRATO-CONSUMIDOR.md + docs/CONTRATO-CONSUMIDOR.pt-BR.md, docs/CHANGELOG.md
+Do:
+  - TRES consultas independentes (mesmo contexto/prazo `InstanceDeadline`):
+    (1) `GET /{phone_number_id}?fields=health_status` — `phone_health_status`
+    (2) `GET /{waba_id}?fields=health_status` — `waba_health_status`
+    (3) `GET /{waba_id}?fields=primary_funding_id` — `waba_funding`
+  - (1) falhar -> `503` como hoje (sem ela nao ha' sinal nenhum). A `message` do erro comeca com o nome
+    da consulta (`phone_health_status: <mensagem da Meta>`), para o 503 dizer QUEM foi recusado.
+  - (2) ou (3) falhar -> a rota continua `200`; a falha entra num array `unavailable`:
+    `[{"query":"waba_health_status"|"waba_funding","class":..., "meta_code":..., "message":...}]`
+    (mesma higiene de `respondUnhealthy`: nunca corpo cru, nunca token). `unavailable` omitido se vazio.
+  - `can_send_message` do topo = pior entre as consultas de health que RESPONDERAM; `entities` = uniao
+    delas (sem `id`, como hoje). Resposta sem health_status reconhecivel em (1) -> `503 unknown` (como
+    hoje); em (2) -> vai para `unavailable` com classe `unknown`.
+  - 🔴 `has_payment_method` (bool) SAI e da' lugar a `payment_method`: `"present"` (valor nao-vazio),
+    `"absent"` (consulta respondeu sem o campo/vazio), `"unavailable"` (consulta (3) falhou — e ai' ela
+    aparece em `unavailable`). NUNCA `absent` quando a consulta falhou. A rota tem um dia e um unico
+    consumidor, que pediu exatamente isso e ainda nao le o campo.
+  - Contrato (EN + pt-BR): atualizar a secao da T-254 com o formato novo e registrar o fato medido:
+    em 2026-09-22 a chamada combinada `health_status,primary_funding_id` na WABA voltou code `10`
+    (exige BSP) para este app; qual das duas causa ainda e' medida pela proxima chamada real.
+Verify:  os quatro comandos do CLAUDE.md verdes. Testes (httptest): (a) (3) responde code 10 ->
+         `200`, `payment_method:"unavailable"`, `unavailable[0].query=="waba_funding"`, meta_code 10;
+         (b) (2) falha e (1) ok -> `200`, can_send_message vem so' de (1), `unavailable` com
+         `waba_health_status`; (c) (1) falha -> `503` e a message comeca com `phone_health_status:`;
+         (d) funding ausente -> `"absent"`, presente -> `"present"` e o valor NAO aparece no corpo;
+         (e) nenhum teste antigo de `has_payment_method` sobrevive (grep vazio em cmd/ internal/ docs/CONTRATO*).
+
 ## [ ] T-248  Seven response keys and literals still Portuguese in code, among English siblings
 After:   DECIDIDO em 2026-09-19 — opcao (1): renomear TUDO de uma vez, bump MINOR, aviso aos dois
          consumidores ANTES do deploy (o dono manda o texto; sem canal). Segurada por ORCAMENTO
