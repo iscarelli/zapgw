@@ -6,20 +6,14 @@
 > Escrito ao fim de 2026-08-30, o dia em que o repositorio virou publico. Bloco de retomada
 > mentindo e' pior que bloco nenhum: e' o primeiro texto que a proxima sessao le.
 
-### 📌 2026-09-22 — `v0.71.0` (T-255) implantada por cima da `v0.70.0` (T-254). Falta a chamada real do consumidor.
+### 📌 2026-09-23 — `v0.71.1` EM PRODUCAO (T-254/255/256): `GET /v1/instances/{slug}/account-health` PROVADA contra a Meta real.
 
-- `GET /v1/instances/{slug}/account-health` (pedido do consumidor apos o `131042` de 09-21).
-  Montada: sem token responde `401`, rota inexistente `404` (medido do no').
-- ✅ **A primeira chamada real (consumidor, 2026-09-22) aconteceu** — voltou `503` com Meta code `10`
-  ("requires... Business Solution Provider"), nao um resultado limpo. A chamada da T-254 juntava
-  `health_status,primary_funding_id` numa unica consulta na WABA, entao nao dava para saber QUAL dos
-  dois campos a Meta recusou.
-- **T-255 dividiu em tres consultas independentes** (`phone_health_status`, `waba_health_status`,
-  `waba_funding`) para a proxima chamada real isolar qual campo causa o code `10` — mas essa divisao
-  **so' foi provada por httptest ate' agora**, nunca contra a Meta real (o verify deste projeto nao
-  alcanca isso — ver "What the verify does NOT reach" no CLAUDE.md). Falta: mesclar, implantar, e
-  pedir ao consumidor o resultado da proxima chamada — ai' sim medimos QUAL campo pede BSP e se
-  `payment_method` reconhece uma conta real sem pagamento.
+- Pedido do consumidor apos o `131042` (WABA sem pagamento) de 09-21. Tres chamadas reais dele:
+  (1) v0.70.0 -> `503` code `10` (BSP) com a consulta combinada; (2) v0.71.0 (consultas separadas)
+  -> `200` em 2026-09-23 02:13 UTC; (3) pendente contra a v0.71.1 (dedupe), nao pedida como prova.
+- MEDIDO: so' `primary_funding_id` exige BSP -> `payment_method` e' sempre `"unavailable"` para este
+  app; o `health_status` do numero traz WABA/BUSINESS/APP; `LIMITED` e' o estado permanente da conta
+  do consumidor (negocio nao verificado), que envia normalmente — ele alarma por BLOCKED ou `code` novo.
 
 ### 📌 2026-09-19 05:54 — `v0.69.0` EM PRODUCAO (medido: `HEALTH OK` + `VERSION MATCHES 0.69.0`). Alertas ao operador LIGADOS.
 

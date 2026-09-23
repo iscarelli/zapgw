@@ -2,7 +2,9 @@
 
 One line per version shipped, in the same commit as the bump. The entry states the **effect**, not the diff.
 
-## Unreleased
+## v0.71.1 — 2026-09-23
+
+PATCH: `account-health` returns one entity per `entity_type` (worst `can_send_message`, union of `errors` by code) instead of repeating WABA/BUSINESS/APP from both health queries (T-256).
 
 - **Account-health: deduplicate entities by entity_type** (T-256) — the second real call
   (consumer, v0.71.0, 2026-09-23 02:13 UTC) measured that `phone_health_status`'s own `entities`
