@@ -2929,8 +2929,9 @@ diagnóstico livre, também da Meta.
 `payment_method` é um de três literais, e a diferença entre os dois últimos importa — não os confunda:
 
 - **`"present"`** — `waba_funding` respondeu e `primary_funding_id` veio não-vazio.
-- **`"absent"`** — `waba_funding` respondeu SEM o campo, ou com ele vazio. Isso é uma medição real: a
-  conta não tem forma de pagamento cadastrada.
+- **`"absent"`** — `waba_funding` respondeu SEM o campo, ou com ele vazio. Lê-se como "sem forma
+  de pagamento" — mas essa leitura é INFERIDA da ausência do campo e nunca foi medida numa conta
+  real sem pagamento.
 - **`"unavailable"`** — a própria consulta `waba_funding` falhou; a falha está em `unavailable`, com
   `query: "waba_funding"`. **Nunca confunda com `"absent"`** — um é "sem forma de pagamento", o outro
   é "nem conseguimos perguntar".

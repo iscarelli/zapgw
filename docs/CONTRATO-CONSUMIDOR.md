@@ -2950,8 +2950,9 @@ free-form diagnostic text, also Meta's own.
 collapse them:
 
 - **`"present"`** — `waba_funding` answered and `primary_funding_id` came back non-empty.
-- **`"absent"`** — `waba_funding` answered WITHOUT the field, or with it empty. This is a real
-  measurement: the account has no payment method on file.
+- **`"absent"`** — `waba_funding` answered WITHOUT the field, or with it empty. Read as "no payment
+  method on file" — but that reading is INFERRED from the field's absence and has never been measured
+  against a real account without one.
 - **`"unavailable"`** — the `waba_funding` query itself failed; the failure is in `unavailable`, with
   `query: "waba_funding"`. **Never confuse this with `"absent"`** — one is "no payment method", the
   other is "we could not even ask".
