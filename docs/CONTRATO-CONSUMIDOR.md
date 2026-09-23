@@ -2946,6 +2946,21 @@ echo a third party's Meta id back through this route. Each entity's `errors[]` c
 `code`, `description`, and `possible_solution` — text written by Meta, not by us; `additional_info` is
 free-form diagnostic text, also Meta's own.
 
+🔴 **Measured 2026-09-23, second real call:** `phone_health_status`'s own `entities` already carries the
+WABA/BUSINESS/APP chain, not just `PHONE_NUMBER` — so before this fix, joining it with
+`waba_health_status`'s entities repeated WABA, BUSINESS, and APP, and the two copies of the same
+entity could **disagree** (the same `APP` entity came back with Meta error `138025` in one copy and
+without it in the other). `entities` is now **deduplicated by `entity_type`**, one entry per type, in
+the order of first appearance:
+
+- `can_send_message` — the WORSE of the copies, same rank as the top-level field
+  (`BLOCKED` > `LIMITED` > `AVAILABLE`).
+- `errors` — the union, keeping the first occurrence of each `code`. The common case is the SAME code
+  on both copies of an entity; it survives once, not once per copy.
+- `additional_info` — the union, without repeating the same string.
+
+`payment_method` is unaffected by this change — it still comes only from `waba_funding`.
+
 `payment_method` is one of three literals, and the difference between the last two matters — do not
 collapse them:
 
@@ -2983,6 +2998,20 @@ The SAME condition on `waba_health_status` degrades instead: it lands in `unavai
 An Instagram instance answers `200` with `{"verdict": "not_applicable", "checked_at": "..."}`, **without
 calling Meta at all** — `health_status` has no documented equivalent on `graph.instagram.com`, the
 same absence that already applies to the health probe above.
+
+🔴 **Facts measured 2026-09-23, against the real Meta API — read these before you build an alarm on
+top of this route:**
+
+- `primary_funding_id` requires the app's owning Business to be a **Business Solution Provider**
+  (this is Meta error code `10` — see the split above). For an app that is **not** a BSP,
+  `waba_funding` refuses on every call, so `payment_method` comes back `"unavailable"` **every time**
+  for this deployment — it is not something you can watch as a signal. Whatever payment problem exists
+  has to show up in `can_send_message` and `errors` instead; `payment_method` cannot tell you.
+- `LIMITED` can be a **permanent** state of an account that sends normally — measured causes include
+  an unverified business and a display name not yet approved by Meta, neither of which stops sending.
+  **Do not alarm on `can_send_message != "AVAILABLE"`** — that fires on accounts that are working as
+  intended. Alarm on `can_send_message == "BLOCKED"`, or on an `errors[].code` you have not seen
+  before.
 
 **No cache, same reasoning as the sibling probe:** every call talks to Meta, up to three times, so the
 frequency is yours — do not put it in a tight loop.

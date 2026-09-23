@@ -2,6 +2,22 @@
 
 One line per version shipped, in the same commit as the bump. The entry states the **effect**, not the diff.
 
+## Unreleased
+
+- **Account-health: deduplicate entities by entity_type** (T-256) — the second real call
+  (consumer, v0.71.0, 2026-09-23 02:13 UTC) measured that `phone_health_status`'s own `entities`
+  already carries the WABA/BUSINESS/APP chain, so joining it with `waba_health_status`'s entities
+  repeated WABA, BUSINESS and APP — and the copies could disagree (the same `APP` entity came back
+  with Meta error `138025` in one and without it in the other). `entities` is now deduplicated by
+  `entity_type`, one entry per type, in the order of first appearance: `can_send_message` becomes the
+  WORSE of the copies, `errors` becomes their union keeping the first occurrence of each `code`, and
+  `additional_info` becomes their union without repeating a string. Contract
+  (`docs/CONTRATO-CONSUMIDOR.md` + pt-BR) documents the dedup rule and the facts measured
+  2026-09-23: for an app that is not a Business Solution Provider, `payment_method` is always
+  `"unavailable"` (Meta error code `10` on every `waba_funding` call), and `LIMITED` can be a
+  permanent state of an account that sends normally — the recommended alarm is `BLOCKED` or an
+  unseen `errors[].code`, not `!= "AVAILABLE"`.
+
 ## v0.71.0 — 2026-09-22
 
 MINOR: `account-health` makes three independent Meta queries, so one refused field (the first real call got code `10`, BSP) no longer blinds the route; `has_payment_method` becomes `payment_method` (`present`/`absent`/`unavailable`) (T-255).
