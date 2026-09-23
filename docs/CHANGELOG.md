@@ -2,7 +2,9 @@
 
 One line per version shipped, in the same commit as the bump. The entry states the **effect**, not the diff.
 
-## Unreleased
+## v0.71.0 — 2026-09-22
+
+MINOR: `account-health` makes three independent Meta queries, so one refused field (the first real call got code `10`, BSP) no longer blinds the route; `has_payment_method` becomes `payment_method` (`present`/`absent`/`unavailable`) (T-255).
 
 - **Account-health: split the Meta queries so one refused field does not blind the route** (T-255) —
   `GET /v1/instances/{slug}/account-health` now makes THREE independent Meta calls

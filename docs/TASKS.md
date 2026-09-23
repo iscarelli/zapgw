@@ -6,7 +6,7 @@
 > Escrito ao fim de 2026-08-30, o dia em que o repositorio virou publico. Bloco de retomada
 > mentindo e' pior que bloco nenhum: e' o primeiro texto que a proxima sessao le.
 
-### 📌 2026-09-22 — `v0.70.0` EM PRODUCAO (medido: `HEALTH OK` + `VERSION MATCHES 0.70.0`). T-254 rodou contra a Meta real; T-255 (nesta arvore, ainda NAO implantada) responde ao que ela mediu.
+### 📌 2026-09-22 — `v0.71.0` (T-255) implantada por cima da `v0.70.0` (T-254). Falta a chamada real do consumidor.
 
 - `GET /v1/instances/{slug}/account-health` (pedido do consumidor apos o `131042` de 09-21).
   Montada: sem token responde `401`, rota inexistente `404` (medido do no').
