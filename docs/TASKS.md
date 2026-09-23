@@ -10,7 +10,7 @@
 
 - Pedido do consumidor apos o `131042` (WABA sem pagamento) de 09-21. Tres chamadas reais dele:
   (1) v0.70.0 -> `503` code `10` (BSP) com a consulta combinada; (2) v0.71.0 (consultas separadas)
-  -> `200` em 2026-09-23 02:13 UTC; (3) pendente contra a v0.71.1 (dedupe), nao pedida como prova.
+  -> `200` em 2026-09-23 02:13 UTC; (3) v0.71.1 -> dedupe conferida pelo consumidor em producao (4 entidades, `138025` da APP presente).
 - MEDIDO: so' `primary_funding_id` exige BSP -> `payment_method` e' sempre `"unavailable"` para este
   app; o `health_status` do numero traz WABA/BUSINESS/APP; `LIMITED` e' o estado permanente da conta
   do consumidor (negocio nao verificado), que envia normalmente — ele alarma por BLOCKED ou `code` novo.
