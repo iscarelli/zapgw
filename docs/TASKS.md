@@ -460,6 +460,57 @@ instancias foram rotacionadas. Duas licoes que custaram na hora e valem alem des
 
 > A fila do periodo privado esta em `iscarelli/zapgw-dev`, congelada. Tarefa nova nasce aqui.
 
+## [ ] T-257  Send media card carousel templates (`cards`) on POST /v1/messages
+Why:     Pedido de um consumidor (canal, 2026-10-22 17:27): convite com VARIAS fotos. Dono
+         em 2026-10-22: "pode fazer; a decisao de usar e' deles" — categoria (a Meta: carrossel so'
+         MARKETING) e' problema do consumidor, nao do gateway. Criar o template ja passa hoje
+         (`componentes` cru, `templates_handler.go:935`); ENVIAR nao existe.
+Files:   internal/outbound/message.go, internal/outbound/body.go, internal/outbound/input_aliases.go,
+         os `_test.go` desses tres, docs/CONTRATO-CONSUMIDOR.md + docs/CONTRATO-CONSUMIDOR.pt-BR.md
+         (secao "Template: header and button" e a tabela de chaves de entrada), docs/CHANGELOG.md
+Do:      Forma DECIDIDA pelo planner — nao invente nome:
+         1. `Request` ganha `Cards []TemplateCard \`json:"cartoes,omitempty"\`` (so' em `tipo: "template"`).
+            `TemplateCard { Header *TemplateHeader \`json:"cabecalho"\`; Variables []string
+            \`json:"variaveis,omitempty"\`; TemplateButtons []TemplateButtonUnion
+            \`json:"botoes_template,omitempty"\` }` — REUSA os tipos existentes.
+         2. Alias de entrada: topo `"cards": "cartoes"`; dentro de cada cartao `"header"->"cabecalho"`,
+            `"variables"->"variaveis"`, `"template_buttons"->"botoes_template"`, e dentro de
+            `cabecalho`/cada botao do cartao os MESMOS mapas ja usados no topo (`templateHeaderAlias`,
+            `templateButtonAlias`). O portao `TestRequestTopLevelKeysAreAllAccountedFor` tem de passar
+            sem ser editado para afrouxar.
+         3. Validate, em `case "template"`, quando `len(Cards) > 0`:
+            - 2 a 10 cartoes (fora disso `ErrFieldTooLong`/`ErrFieldRequired` com `cartoes (N itens...)`);
+            - topo `cabecalho` e topo `botoes_template` PROIBIDOS com `cartoes` (`ErrFieldForbidden`,
+              mensagem dizendo que no carrossel cabecalho e botoes vao DENTRO de cada cartao);
+              `variaveis` do topo continua permitido (e' o `body` da mensagem);
+            - cada cartao: `cabecalho` OBRIGATORIO e so' `imagem` ou `video` (texto/documento ->
+              erro nomeando `cartoes[i].cabecalho.tipo`); valida o cabecalho e os botoes do cartao
+              com a MESMA logica de `validateHeader`/`validateTemplateButtons` (extraia para funcao
+              que recebe o valor, nao duplique), com o caminho `cartoes[i].` no texto do erro;
+            - todos os cartoes com o MESMO tipo de cabecalho, o MESMO numero de variaveis e o MESMO
+              conjunto (indice, tipo) de botoes — Meta: "All cards defined on a template must have the
+              same components"; recusar aqui em vez de deixar a Meta recusar.
+         4. `templateComponents`: com cartoes, a saida e' `[body (se houver variaveis do topo),
+            {"type":"carousel","cards":[{"card_index":i,"components":[header, body (se variaveis do
+            cartao), botoes...]}]}]`. Header/botoes do cartao montados pelas MESMAS funcoes do topo
+            (`headerParameter` e o laco de botoes, extraido). `index` do botao STRING. Forma de
+            referencia, copiada da doc da Meta (developers.facebook.com/docs/whatsapp/cloud-api/guides/
+            send-message-templates/media-card-carousel-templates): `{"type":"carousel","cards":[{
+            "card_index":0,"components":[{"type":"header","parameters":[{"type":"image","image":{"id":
+            "<ID>"}}]},{"type":"button","sub_type":"quick_reply","index":"0","parameters":[{"type":
+            "payload","payload":"<P>"}]},{"type":"button","sub_type":"url","index":"1","parameters":[{
+            "type":"text","text":"<S>"}]}]}]}`. Sem cartoes, o corpo fica BYTE A BYTE igual ao de hoje.
+         5. Contrato (EN + pt-BR): subsecao "Carousel template (`cards`)" com exemplo sintetico, as
+            regras do item 3, e a ressalva: "Meta only allows carousel in MARKETING templates; the
+            gateway does not check the category". Marcar envio real como NAO MEDIDO contra a Meta.
+Verify:  os quatro do CLAUDE.md verdes; e testes novos que FALHAM sem a mudanca:
+         (a) corpo de carrossel com 2 cartoes (imagem + quick_reply + url) igual, chave a chave, a
+             forma do item 4; (b) template sem `cartoes` byte a byte igual (os testes existentes de
+             corpo passam sem edicao); (c) Validate recusa: 1 cartao, 11 cartoes, cartao sem cabecalho,
+             cabecalho `texto` em cartao, `cabecalho` no topo junto com `cartoes`, cartoes com
+             tipos/numero de variaveis/botoes diferentes, `cartoes` em `tipo: "texto"`; (d) o mesmo
+             pedido escrito com chaves INGLESAS (`cards`, `header`, `kind`, `template_buttons`) produz
+             o mesmo corpo. Prova real so' com o consumidor, depois do deploy.
 ## [ ] T-248  Seven response keys and literals still Portuguese in code, among English siblings
 After:   DECIDIDO em 2026-09-19 — opcao (1): renomear TUDO de uma vez, bump MINOR, aviso aos dois
          consumidores ANTES do deploy (o dono manda o texto; sem canal). Segurada por ORCAMENTO
