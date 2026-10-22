@@ -6,6 +6,13 @@
 > Escrito ao fim de 2026-08-30, o dia em que o repositorio virou publico. Bloco de retomada
 > mentindo e' pior que bloco nenhum: e' o primeiro texto que a proxima sessao le.
 
+### 📌 2026-10-22 — `v0.72.0` EM PRODUCAO (T-257, medido: `HEALTH OK` + `VERSION MATCHES 0.72.0`): envio de template carrossel (`cards`).
+
+- Pedido de um consumidor (convite com varias fotos). Dono: "pode fazer; a decisao de usar e' deles" —
+  a Meta so' aceita carrossel em MARKETING, e o gateway NAO confere categoria.
+- ⚠️ **Envio real contra a Meta NAO medido.** A prova e' o primeiro envio do consumidor (pedido e
+  resposta verbatim no canal). Ate' la', o corpo so' foi conferido contra o exemplo da doc da Meta.
+
 ### 📌 2026-09-23 — `v0.71.1` EM PRODUCAO (T-254/255/256): `GET /v1/instances/{slug}/account-health` PROVADA contra a Meta real.
 
 - Pedido do consumidor apos o `131042` (WABA sem pagamento) de 09-21. Tres chamadas reais dele:
