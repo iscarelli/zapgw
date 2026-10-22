@@ -2,7 +2,9 @@
 
 One line per version shipped, in the same commit as the bump. The entry states the **effect**, not the diff.
 
-## Unreleased
+## v0.72.0 — 2026-10-22
+
+MINOR: `POST /v1/messages` sends media card carousel templates — new `cards` field (alias `cartoes`) on `kind: "template"`; templates without it are unchanged (T-257).
 
 - **Send media card carousel templates (`cards`) on POST /v1/messages** (T-257) — `tipo: "template"`
   accepts `cartoes` (alias `cards`, 2 to 10 cards, header and buttons inside each card) and assembles
