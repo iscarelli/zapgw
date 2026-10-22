@@ -1775,3 +1775,49 @@ func TestInputOldNameCounterOnSections(t *testing.T) {
 		t.Fatalf("after the request with 'sections': counter = %d, want 1 (cannot go up again)", got)
 	}
 }
+
+// T-257: the same carousel request written with ENGLISH keys (`cards`,
+// `header`, `kind`, `template_buttons`, `variables`) must produce the same
+// Graph API body and the same hash as the Portuguese spelling.
+func TestInputAcceptsEnglishCarouselKeysWithIdenticalBody(t *testing.T) {
+	const pt = `{"instancia":"lojinha","para":"5511999990000","tipo":"template","template":"c","idioma":"pt_BR",` +
+		`"variaveis":["Ana"],"cartoes":[` +
+		`{"cabecalho":{"tipo":"imagem","media_id":"I1"},"variaveis":["a"],"botoes_template":[{"indice":0,"tipo":"resposta_rapida","payload":"p"},{"indice":1,"tipo":"url","texto":"s"}]},` +
+		`{"cabecalho":{"tipo":"imagem","media_id":"I2"},"variaveis":["b"],"botoes_template":[{"indice":0,"tipo":"resposta_rapida","payload":"p"},{"indice":1,"tipo":"url","texto":"s"}]}]}`
+	const en = `{"instance":"lojinha","to":"5511999990000","kind":"template","template":"c","language":"pt_BR",` +
+		`"variables":["Ana"],"cards":[` +
+		`{"header":{"kind":"imagem","media_id":"I1"},"variables":["a"],"template_buttons":[{"index":0,"kind":"quick_reply","payload":"p"},{"index":1,"kind":"url","text":"s"}]},` +
+		`{"header":{"kind":"imagem","media_id":"I2"},"variables":["b"],"template_buttons":[{"index":0,"kind":"quick_reply","payload":"p"},{"index":1,"kind":"url","text":"s"}]}]}`
+
+	decode := func(raw string) (Request, []string) {
+		out, old, err := translateRequestBody([]byte(raw))
+		if err != nil {
+			t.Fatalf("translate: %v", err)
+		}
+		var r Request
+		if err := json.Unmarshal(out, &r); err != nil {
+			t.Fatalf("Unmarshal: %v", err)
+		}
+		if err := r.Validate(); err != nil {
+			t.Fatalf("Validate: %v", err)
+		}
+		return r, old
+	}
+	rpt, oldPT := decode(pt)
+	ren, oldEN := decode(en)
+
+	bpt, _ := json.Marshal(MetaBody(rpt))
+	ben, _ := json.Marshal(MetaBody(ren))
+	if string(bpt) != string(ben) {
+		t.Errorf("different bodies:\nPT: %s\nEN: %s", bpt, ben)
+	}
+	if !strings.Contains(string(ben), `"type":"carousel"`) {
+		t.Errorf("no carousel in body: %s", ben)
+	}
+	if RequestHash(rpt) != RequestHash(ren) {
+		t.Error("PT and EN spellings hash differently")
+	}
+	if len(oldPT) == 0 || len(oldEN) != 0 {
+		t.Errorf("old-name counter: PT=%v EN=%v, want PT non-empty and EN empty", oldPT, oldEN)
+	}
+}

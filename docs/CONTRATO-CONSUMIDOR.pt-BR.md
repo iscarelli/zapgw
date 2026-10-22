@@ -1599,6 +1599,7 @@ diferente.
   "cabecalho": {"tipo": "documento", "media_id": "…", "nome_arquivo": "recibo.pdf"}, // template, opcional
   "botoes_template": [{"indice": 0, "tipo": "url", "texto": "…"}, // template, opcional
                        {"indice": 1, "tipo": "resposta_rapida", "payload": "…"}],
+  "cartoes": [{"cabecalho": {"tipo": "imagem", "media_id": "…"}, "variaveis": ["…"], "botoes_template": [/* como acima */]}], // template, opcional — carrossel de cartões de mídia, de 2 a 10 cartões; veja "Template de carrossel"
   "botoes": [{"id":"SIM","titulo":"Sim"}],        // botoes (mensagem interativa — NAO e template) — titulo: maximo 20 caracteres, lista: maximo 3 itens
   "botao_titulo": "Abrir", "botao_url": "https://…", // cta_url — botao_titulo: maximo 20 caracteres, botao_url obrigatório só em cta_url
   "secoes": [{"titulo": "…", "itens": [{"id":"…","titulo":"…","descricao":"…"}]}], // lista, obrigatório — botao_titulo (reusado de cta_url) é o rótulo do botão que abre a lista; ver a seção própria para os tetos
@@ -2069,6 +2070,50 @@ Exemplo — **corpo + botão** (`orcamento_disponivel`: uma variável de corpo e
 Um template só com `variaveis` continua funcionando exatamente como antes: o corpo que vai para a
 Meta é byte a byte o mesmo, e o hash de idempotência dele também (os dois estão presos por teste de
 não-regressão). Você não precisa mudar nada no que já manda.
+
+### Template de carrossel (`cards`) (T-257)
+
+Um template de carrossel de cartões de mídia é enviado com `cartoes` (alias em inglês `cards`), junto
+de `tipo: "template"`. No carrossel o **cabeçalho e os botões ficam DENTRO de cada cartão**; o
+`variaveis` do topo continua sendo o corpo da mensagem.
+
+```json
+{
+  "instancia": "lojinha",
+  "para": "5511999990000",
+  "tipo": "template",
+  "template": "convite_carrossel",
+  "idioma": "pt_BR",
+  "variaveis": ["Maria"],
+  "cartoes": [
+    {"cabecalho": {"tipo": "imagem", "media_id": "MEDIA-EXAMPLE-1"},
+     "botoes_template": [{"indice": 0, "tipo": "resposta_rapida", "payload": "quero:1"},
+                         {"indice": 1, "tipo": "url", "texto": "sufixo-1"}]},
+    {"cabecalho": {"tipo": "imagem", "media_id": "MEDIA-EXAMPLE-2"},
+     "botoes_template": [{"indice": 0, "tipo": "resposta_rapida", "payload": "quero:2"},
+                         {"indice": 1, "tipo": "url", "texto": "sufixo-2"}]}
+  ]
+}
+```
+
+Cada cartão aceita `cabecalho` (**obrigatório**), `variaveis` (opcional, o corpo do próprio cartão) e
+`botoes_template`, com as mesmas formas do topo. Chaves em inglês dentro do cartão: `header`,
+`variables`, `template_buttons` (e `kind`/`text`/`file_name`/`index` dentro delas, como no topo). O
+gateway recusa, com `400` nomeando o campo (por exemplo `cartoes[1].cabecalho.tipo`):
+
+- menos de **2** ou mais de **10** cartões;
+- `cabecalho` ou `botoes_template` no topo junto com `cartoes` (eles vão dentro de cada cartão);
+- cartão sem `cabecalho`, ou com `cabecalho.tipo` diferente de `imagem` ou `video`;
+- cartões que não têm todos os mesmos componentes — Meta: *"All cards defined on a template must have
+  the same components"*: mesmo tipo de cabeçalho, mesmo número de `variaveis`, mesmo conjunto de pares
+  (`indice`, `tipo`) de botão;
+- `cartoes` em qualquer `tipo` que não seja `template`.
+
+> ⚠️ A Meta só permite carrossel em templates **MARKETING**; o gateway não confere a categoria.
+>
+> 🔴 **NÃO MEDIDO contra a Meta.** O corpo segue a documentação dela (um componente `carousel` com
+> `cards[].card_index` e blocos `header`/`button` por cartão); envio real ainda não foi feito. O
+> primeiro é a prova.
 
 ### `contatos` — e o campo que decide se o cartão SERVE (2026-08-20)
 

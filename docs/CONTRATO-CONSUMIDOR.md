@@ -1614,6 +1614,7 @@ does not count as a different request.
   "cabecalho": {"tipo": "documento", "media_id": "…", "nome_arquivo": "recibo.pdf"}, // template, optional
   "botoes_template": [{"indice": 0, "tipo": "url", "texto": "…"}, // template, optional
                        {"indice": 1, "tipo": "resposta_rapida", "payload": "…"}],
+  "cartoes": [{"cabecalho": {"tipo": "imagem", "media_id": "…"}, "variaveis": ["…"], "botoes_template": [/* as above */]}], // template, optional — media card carousel, 2 to 10 cards; see "Carousel template"
   "botoes": [{"id":"SIM","titulo":"Sim"}],        // botoes (interactive message — NOT a template) — titulo: max 20 characters, list: max 3 items
   "botao_titulo": "Abrir", "botao_url": "https://…", // cta_url — botao_titulo: max 20 characters, botao_url required only in cta_url
   "secoes": [{"titulo": "…", "itens": [{"id":"…","titulo":"…","descricao":"…"}]}], // lista, required — botao_titulo (reused from cta_url) is the label of the button that opens the list; see its own section for the ceilings
@@ -2082,6 +2083,50 @@ Example — **body + button** (`orcamento_disponivel`: one body variable and the
 A template with only `variaveis` keeps working exactly as before: the body that goes to Meta is byte
 for byte the same, and so is its idempotency hash (both are pinned by regression tests). You need
 change nothing in what you already send.
+
+### Carousel template (`cards`) (T-257)
+
+A media card carousel template is sent with `cartoes` (English alias `cards`), next to
+`tipo: "template"`. In a carousel the **header and the buttons live inside each card**; the top-level
+`variaveis` stays the message body.
+
+```json
+{
+  "instancia": "lojinha",
+  "para": "5511999990000",
+  "tipo": "template",
+  "template": "convite_carrossel",
+  "idioma": "pt_BR",
+  "variaveis": ["Maria"],
+  "cartoes": [
+    {"cabecalho": {"tipo": "imagem", "media_id": "MEDIA-EXAMPLE-1"},
+     "botoes_template": [{"indice": 0, "tipo": "resposta_rapida", "payload": "quero:1"},
+                         {"indice": 1, "tipo": "url", "texto": "sufixo-1"}]},
+    {"cabecalho": {"tipo": "imagem", "media_id": "MEDIA-EXAMPLE-2"},
+     "botoes_template": [{"indice": 0, "tipo": "resposta_rapida", "payload": "quero:2"},
+                         {"indice": 1, "tipo": "url", "texto": "sufixo-2"}]}
+  ]
+}
+```
+
+Each card takes `cabecalho` (**required**), `variaveis` (optional, the card's own body) and
+`botoes_template`, with the same shapes as the top level. English keys inside a card:
+`header`, `variables`, `template_buttons` (and `kind`/`text`/`file_name`/`index` in them, as at the top
+level). The gateway refuses, with a `400` naming the field (for example `cartoes[1].cabecalho.tipo`):
+
+- fewer than **2** or more than **10** cards;
+- a top-level `cabecalho` or `botoes_template` together with `cartoes` (they go inside each card);
+- a card without `cabecalho`, or whose `cabecalho.tipo` is not `imagem` or `video`;
+- cards that do not all have the same components — Meta: *"All cards defined on a template must have
+  the same components"*: same header type, same number of `variaveis`, same set of button
+  (`indice`, `tipo`) pairs;
+- `cartoes` in any `tipo` other than `template`.
+
+> ⚠️ Meta only allows carousel in **MARKETING** templates; the gateway does not check the category.
+>
+> 🔴 **NOT MEASURED against Meta.** The body follows Meta's documentation (a `carousel` component with
+> `cards[].card_index` and per-card `header`/`button` blocks); a real send has not been done yet.
+> Treat the first one as the proof.
 
 ### `contatos` — and the field that decides whether the card IS USEFUL (2026-08-20)
 
