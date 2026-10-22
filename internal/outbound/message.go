@@ -16,6 +16,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -93,6 +94,10 @@ var (
 	// M)" or "... (N items, maximum M)") — never leave just "above the
 	// limit" without saying what was exceeded.
 	ErrFieldTooLong = errors.New("outbound: campo acima do limite")
+
+	// ErrCardsMismatch (T-257): the cards of a carousel do not all have the
+	// same components. Meta refuses it; the gateway refuses it first.
+	ErrCardsMismatch = errors.New("outbound: cartoes do carrossel com componentes diferentes")
 
 	// ErrInvalidContactDate: `contatos[i].birthday` filled in but outside
 	// the `YYYY-MM-DD` shape — the ONLY `contatos` field with a format
@@ -239,6 +244,20 @@ type TemplateButtonUnion struct {
 	Text string `json:"texto,omitempty"`
 	// Payload: only in `tipo: "resposta_rapida"`. Opaque — see the type's comment.
 	Payload string `json:"payload,omitempty"`
+}
+
+// TemplateCard is ONE card of a media card carousel template (T-257), an
+// element of `Request.Cards` (`cartoes`). It REUSES the existing types: a
+// card's header is a TemplateHeader (image or video only -- see
+// validateCards), its body variables are plain strings and its buttons are
+// TemplateButtonUnion, so nothing about those shapes is written twice.
+//
+// Meta: "All cards defined on a template must have the same components" --
+// validateCards refuses a mismatch here instead of letting Meta refuse it.
+type TemplateCard struct {
+	Header          *TemplateHeader       `json:"cabecalho"`
+	Variables       []string              `json:"variaveis,omitempty"`
+	TemplateButtons []TemplateButtonUnion `json:"botoes_template,omitempty"`
 }
 
 // ListItem is a row (`row`) inside a ListSection, the body of
@@ -558,6 +577,13 @@ type Request struct {
 	// fields by hand; today it's structural, with nothing to remember.
 	TemplateButtons []TemplateButtonUnion `json:"botoes_template,omitempty"`
 
+	// Cards (T-257): the cards of a media card carousel template, only in
+	// `tipo:"template"`. In a carousel the header and the buttons live INSIDE
+	// each card; the top-level `cabecalho` and `botoes_template` are refused
+	// together with `cartoes`, while the top-level `variaveis` stays the
+	// message `body`. See validateCards.
+	Cards []TemplateCard `json:"cartoes,omitempty"`
+
 	// Components exists to be REFUSED, and is not a wasted field.
 	//
 	// Without it, a `"components": [...]` in the body would be silently
@@ -771,6 +797,9 @@ func (p *Request) Validate() error {
 		if err := p.validateTemplateButtons(); err != nil {
 			return err
 		}
+		if err := p.validateCards(); err != nil {
+			return err
+		}
 	case "botoes":
 		// The mix-up comes BEFORE the required fields: the real cause is
 		// the mix-up, and reporting "missing botao_titulo" makes whoever
@@ -956,6 +985,10 @@ func (p *Request) Validate() error {
 			return fmt.Errorf("%w: botoes_template em %s (so template tem components, "+
 				"e eles sumiriam sem erro)", ErrFieldForbidden, p.Type)
 		}
+		if len(p.Cards) > 0 {
+			return fmt.Errorf("%w: cartoes em %s (so template tem components, "+
+				"e eles sumiriam sem erro)", ErrFieldForbidden, p.Type)
+		}
 	}
 
 	// `cabecalho_texto`/`rodape` (FREE-TEXT header/footer of the
@@ -1071,7 +1104,15 @@ var mediaHeaders = map[meta.Category]bool{
 // accepting the field in the wrong type would erase it with no error at
 // all — this project's most expensive failure shape.
 func (p *Request) validateHeader() error {
-	c := p.Header
+	return validateHeaderValue(p.Header, "cabecalho")
+}
+
+// validateHeaderValue is validateHeader's logic over ONE TemplateHeader,
+// with `path` naming the field in the error text ("cabecalho" at the top
+// level, "cartoes[1].cabecalho" inside a carousel card -- T-257). One
+// implementation for both places: a second copy would diverge on the first
+// change.
+func validateHeaderValue(c *TemplateHeader, path string) error {
 	if c == nil {
 		return nil
 	}
@@ -1084,13 +1125,13 @@ func (p *Request) validateHeader() error {
 
 	if c.Type == "texto" {
 		if c.MediaID != "" {
-			return fmt.Errorf("%w: cabecalho.media_id em cabecalho de texto", ErrFieldForbidden)
+			return fmt.Errorf("%w: %s.media_id em cabecalho de texto", ErrFieldForbidden, path)
 		}
 		if c.Filename != "" {
-			return fmt.Errorf("%w: cabecalho.nome_arquivo em cabecalho de texto", ErrFieldForbidden)
+			return fmt.Errorf("%w: %s.nome_arquivo em cabecalho de texto", ErrFieldForbidden, path)
 		}
 		if c.Text == "" {
-			return fmt.Errorf("%w: cabecalho.texto", ErrFieldRequired)
+			return fmt.Errorf("%w: %s.texto", ErrFieldRequired, path)
 		}
 		return nil
 	}
@@ -1103,18 +1144,18 @@ func (p *Request) validateHeader() error {
 			ErrUnknownHeaderType, c.Type)
 	}
 	if c.Text != "" {
-		return fmt.Errorf("%w: cabecalho.texto em cabecalho de %s (so o cabecalho de "+
-			"texto o carrega, e ele sumiria sem erro)", ErrFieldForbidden, cat)
+		return fmt.Errorf("%w: %s.texto em cabecalho de %s (so o cabecalho de "+
+			"texto o carrega, e ele sumiria sem erro)", ErrFieldForbidden, path, cat)
 	}
 	if c.MediaID == "" {
-		return fmt.Errorf("%w: cabecalho.media_id (obtenha um em POST /v1/media)", ErrFieldRequired)
+		return fmt.Errorf("%w: %s.media_id (obtenha um em POST /v1/media)", ErrFieldRequired, path)
 	}
 	// Order matters: base64 has its OWN fix, more informative than "invalid
 	// shape", and the two cases would fall into the same refusal if the
 	// shape were checked first.
 	if containsBase64(c.MediaID) {
-		return fmt.Errorf("%w: cabecalho.media_id; suba os bytes em POST /v1/media e "+
-			"mande o media_id que ele devolve", ErrMediaBase64)
+		return fmt.Errorf("%w: %s.media_id; suba os bytes em POST /v1/media e "+
+			"mande o media_id que ele devolve", ErrMediaBase64, path)
 	}
 	// THE MEDIA HEADER IS BY media_id, NEVER BY RAW URL — and this line is
 	// the guard. A raw URL makes META GO FETCH the file, and when it
@@ -1124,18 +1165,108 @@ func (p *Request) validateHeader() error {
 	// from meta.MediaIDValid, which is the SAME rule used to assemble a
 	// URL with the id — not a copy of it.
 	if !meta.MediaIDValid(c.MediaID) {
-		return fmt.Errorf("%w: cabecalho.media_id (URL crua nao serve: a Meta iria BUSCAR o "+
+		return fmt.Errorf("%w: %s.media_id (URL crua nao serve: a Meta iria BUSCAR o "+
 			"arquivo e falha calado quando nao busca; suba os bytes em POST /v1/media)",
-			ErrInvalidMediaID)
+			ErrInvalidMediaID, path)
 	}
 	// THE SAME table the assembler consults (meta/media.go): only document
 	// has a filename, so accepting it in the others would silently discard
 	// it.
 	if c.Filename != "" && !meta.AcceptsFilename(cat) {
-		return fmt.Errorf("%w: cabecalho.nome_arquivo em %s (so documento tem nome de "+
-			"arquivo, e ele sumiria sem erro)", ErrFieldForbidden, cat)
+		return fmt.Errorf("%w: %s.nome_arquivo em %s (so documento tem nome de "+
+			"arquivo, e ele sumiria sem erro)", ErrFieldForbidden, path, cat)
 	}
 	return nil
+}
+
+// Carousel ceilings (T-257), from Meta's media card carousel documentation:
+// at least 2 and at most 10 cards.
+const (
+	carouselMinCards = 2
+	carouselMaxCards = 10
+)
+
+// validateCards checks `cartoes`, the cards of a media card carousel
+// template (T-257). No-op when the list is empty, so a template without
+// cards goes through exactly what it went through before.
+//
+// The gateway does NOT check the template's category: Meta only allows a
+// carousel in MARKETING templates, and that is the consumer's concern.
+func (p *Request) validateCards() error {
+	if len(p.Cards) == 0 {
+		return nil
+	}
+	n := len(p.Cards)
+	if n < carouselMinCards {
+		return fmt.Errorf("%w: cartoes (%d itens, minimo %d)", ErrFieldRequired, n, carouselMinCards)
+	}
+	if n > carouselMaxCards {
+		return fmt.Errorf("%w: cartoes (%d itens, maximo %d)", ErrFieldTooLong, n, carouselMaxCards)
+	}
+	// In a carousel the header and the buttons live inside each card: a
+	// top-level one would be discarded by assembly with no error.
+	if p.Header != nil {
+		return fmt.Errorf("%w: cabecalho junto com cartoes (no carrossel o cabecalho vai "+
+			"DENTRO de cada cartao, em cartoes[i].cabecalho)", ErrFieldForbidden)
+	}
+	if len(p.TemplateButtons) > 0 {
+		return fmt.Errorf("%w: botoes_template junto com cartoes (no carrossel os botoes vao "+
+			"DENTRO de cada cartao, em cartoes[i].botoes_template)", ErrFieldForbidden)
+	}
+
+	for i := range p.Cards {
+		c := &p.Cards[i]
+		path := fmt.Sprintf("cartoes[%d]", i)
+		if c.Header == nil {
+			return fmt.Errorf("%w: %s.cabecalho", ErrFieldRequired, path)
+		}
+		c.Header.Type = strings.TrimSpace(c.Header.Type)
+		if c.Header.Type != "imagem" && c.Header.Type != "video" {
+			return fmt.Errorf("%w: %s.cabecalho.tipo %q (o cabecalho de cartao e imagem ou video)",
+				ErrUnknownHeaderType, path, c.Header.Type)
+		}
+		if err := validateHeaderValue(c.Header, path+".cabecalho"); err != nil {
+			return err
+		}
+		for j, v := range c.Variables {
+			c.Variables[j] = strings.TrimSpace(v)
+		}
+		if err := validateTemplateButtonList(c.TemplateButtons, path+".botoes_template"); err != nil {
+			return err
+		}
+	}
+
+	// Meta: "All cards defined on a template must have the same components".
+	first := &p.Cards[0]
+	want := buttonSignature(first.TemplateButtons)
+	for i := 1; i < len(p.Cards); i++ {
+		c := &p.Cards[i]
+		if c.Header.Type != first.Header.Type {
+			return fmt.Errorf("%w: cartoes[%d].cabecalho.tipo %q difere do cartoes[0] (%q); "+
+				"todos os cartoes tem os mesmos componentes", ErrCardsMismatch, i, c.Header.Type, first.Header.Type)
+		}
+		if len(c.Variables) != len(first.Variables) {
+			return fmt.Errorf("%w: cartoes[%d].variaveis tem %d itens e cartoes[0] tem %d; "+
+				"todos os cartoes tem os mesmos componentes", ErrCardsMismatch, i, len(c.Variables), len(first.Variables))
+		}
+		if buttonSignature(c.TemplateButtons) != want {
+			return fmt.Errorf("%w: cartoes[%d].botoes_template difere do cartoes[0] "+
+				"(mesmo conjunto de indice e tipo); todos os cartoes tem os mesmos componentes",
+				ErrCardsMismatch, i)
+		}
+	}
+	return nil
+}
+
+// buttonSignature is the (index, type) set of a card's buttons, order
+// independent, as a comparable string.
+func buttonSignature(list []TemplateButtonUnion) string {
+	parts := make([]string, 0, len(list))
+	for _, b := range list {
+		parts = append(parts, fmt.Sprintf("%d:%s", b.Index, b.Type))
+	}
+	sort.Strings(parts)
+	return strings.Join(parts, ",")
 }
 
 // validateTemplateButtons checks `botoes_template`, the ONLY template
@@ -1157,17 +1288,25 @@ func (p *Request) validateHeader() error {
 // because it doesn't depend on anyone remembering the guard on the day
 // someone touches this (this project's mother trap, docs/ARMADILHAS.md).
 func (p *Request) validateTemplateButtons() error {
-	seen := make(map[int]bool, len(p.TemplateButtons))
+	return validateTemplateButtonList(p.TemplateButtons, "botoes_template")
+}
 
-	for i := range p.TemplateButtons {
-		b := &p.TemplateButtons[i]
+// validateTemplateButtonList is validateTemplateButtons' logic over ONE
+// list, with `path` naming it in the error text ("botoes_template" at the
+// top level, "cartoes[1].botoes_template" inside a carousel card -- T-257).
+// Each list is its OWN index space: every card's buttons start at 0.
+func validateTemplateButtonList(list []TemplateButtonUnion, path string) error {
+	seen := make(map[int]bool, len(list))
+
+	for i := range list {
+		b := &list[i]
 		b.Type = strings.TrimSpace(b.Type)
 		b.Text = strings.TrimSpace(b.Text)
 		b.Payload = strings.TrimSpace(b.Payload)
 
 		if b.Index < 0 {
-			return fmt.Errorf("%w: botoes_template[%d].indice = %d (o indice e a posicao do botao "+
-				"no template, comecando em 0)", ErrButtonIndex, i, b.Index)
+			return fmt.Errorf("%w: %s[%d].indice = %d (o indice e a posicao do botao "+
+				"no template, comecando em 0)", ErrButtonIndex, path, i, b.Index)
 		}
 		// TWO PARAMETERS FOR THE SAME BUTTON has no defined outcome: one of
 		// the two gets discarded, and it's not us who chooses which.
@@ -1183,18 +1322,18 @@ func (p *Request) validateTemplateButtons() error {
 			// `payload` would silently vanish during assembly: only
 			// resposta_rapida carries it (templateComponents).
 			if b.Payload != "" {
-				return fmt.Errorf("%w: botoes_template[%d].payload em tipo url (so resposta_rapida "+
-					"o carrega, e ele sumiria sem erro)", ErrFieldForbidden, i)
+				return fmt.Errorf("%w: %s[%d].payload em tipo url (so resposta_rapida "+
+					"o carrega, e ele sumiria sem erro)", ErrFieldForbidden, path, i)
 			}
 			if b.Text == "" {
-				return fmt.Errorf("%w: botoes_template[%d].texto", ErrFieldRequired, i)
+				return fmt.Errorf("%w: %s[%d].texto", ErrFieldRequired, path, i)
 			}
 		case "resposta_rapida":
 			// `texto` would silently vanish during assembly: only url
 			// carries it.
 			if b.Text != "" {
-				return fmt.Errorf("%w: botoes_template[%d].texto em tipo resposta_rapida (so url "+
-					"o carrega, e ele sumiria sem erro)", ErrFieldForbidden, i)
+				return fmt.Errorf("%w: %s[%d].texto em tipo resposta_rapida (so url "+
+					"o carrega, e ele sumiria sem erro)", ErrFieldForbidden, path, i)
 			}
 			// EMPTY `payload` is a named error, not a parameter-less block:
 			// Meta would accept a quick_reply block without `payload` and
@@ -1202,7 +1341,7 @@ func (p *Request) validateTemplateButtons() error {
 			// the SAME defect this task exists to close, only caused by us
 			// instead of by Meta.
 			if b.Payload == "" {
-				return fmt.Errorf("%w: botoes_template[%d].payload", ErrFieldRequired, i)
+				return fmt.Errorf("%w: %s[%d].payload", ErrFieldRequired, path, i)
 			}
 		default:
 			return fmt.Errorf("%w: %q (use url ou resposta_rapida)", ErrUnknownTemplateButtonType, b.Type)

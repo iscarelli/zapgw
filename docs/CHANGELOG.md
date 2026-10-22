@@ -2,6 +2,13 @@
 
 One line per version shipped, in the same commit as the bump. The entry states the **effect**, not the diff.
 
+## Unreleased
+
+- **Send media card carousel templates (`cards`) on POST /v1/messages** (T-257) — `tipo: "template"`
+  accepts `cartoes` (alias `cards`, 2 to 10 cards, header and buttons inside each card) and assembles
+  Meta's `carousel` component; mismatched cards are refused before Meta sees them. Template without
+  `cartoes` is byte for byte unchanged. NOT measured against Meta yet. _Completed 2026-10-22 17:38._
+
 ## v0.71.1 — 2026-09-23
 
 PATCH: `account-health` returns one entity per `entity_type` (worst `can_send_message`, union of `errors` by code) instead of repeating WABA/BUSINESS/APP from both health queries (T-256).

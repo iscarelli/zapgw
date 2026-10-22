@@ -159,6 +159,65 @@ var requestAliasAtTopLevel = map[string]string{
 	"contacts": "contatos",
 	"flow":     "fluxo",
 	"sections": "secoes",
+	// cards/cartoes: T-257, the media card carousel template cards.
+	"cards": "cartoes",
+}
+
+// cardAlias: TemplateCard's fields (T-257), applied to EACH item of
+// `cartoes`. Inside a card, `cabecalho` is translated with
+// templateHeaderAlias and each `botoes_template` item with
+// translateTemplateButtonItem -- the SAME dictionaries as the top level.
+var cardAlias = map[string]string{
+	"header":           "cabecalho",
+	"variables":        "variaveis",
+	"template_buttons": "botoes_template",
+}
+
+// translateCardItem applies cardAlias to ONE item of `cartoes`, then the
+// nested header and button dictionaries. Same fallback rule as
+// translateSubObject: an item that is not a JSON object comes back
+// unchanged, and the real json.Unmarshal reports the shape error.
+func translateCardItem(raw json.RawMessage) (json.RawMessage, []string, error) {
+	if len(raw) == 0 {
+		return raw, nil, nil
+	}
+	var m map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &m); err != nil || m == nil {
+		return raw, nil, nil
+	}
+	oldNames, err := translateAliasesInPlace(m, cardAlias)
+	if err != nil {
+		return nil, nil, err
+	}
+	if sub, ok := m["cabecalho"]; ok {
+		translated, old, err := translateSubObject(sub, templateHeaderAlias)
+		if err != nil {
+			return nil, nil, err
+		}
+		m["cabecalho"] = translated
+		oldNames = append(oldNames, old...)
+	}
+	if sub, ok := m["botoes_template"]; ok {
+		var arr []json.RawMessage
+		if err := json.Unmarshal(sub, &arr); err == nil {
+			for i := range arr {
+				translated, old, err := translateTemplateButtonItem(arr[i])
+				if err != nil {
+					return nil, nil, err
+				}
+				arr[i] = translated
+				oldNames = append(oldNames, old...)
+			}
+			if out, merr := json.Marshal(arr); merr == nil {
+				m["botoes_template"] = out
+			}
+		}
+	}
+	out, merr := json.Marshal(m)
+	if merr != nil {
+		return raw, nil, nil
+	}
+	return out, oldNames, nil
 }
 
 // templateHeaderAlias: TemplateHeader's fields (the `cabecalho` object),
@@ -335,6 +394,25 @@ func translateRequestBody(raw []byte) ([]byte, []string, error) {
 			}
 			if out, merr := json.Marshal(arr); merr == nil {
 				m["botoes_template"] = out
+			}
+		}
+	}
+
+	// cartoes is a LIST of TemplateCard (T-257) -- each item translated
+	// positionally by translateCardItem.
+	if sub, ok := m["cartoes"]; ok {
+		var arr []json.RawMessage
+		if err := json.Unmarshal(sub, &arr); err == nil {
+			for i := range arr {
+				translated, old, err := translateCardItem(arr[i])
+				if err != nil {
+					return nil, nil, err
+				}
+				arr[i] = translated
+				oldNames = append(oldNames, old...)
+			}
+			if out, merr := json.Marshal(arr); merr == nil {
+				m["cartoes"] = out
 			}
 		}
 	}

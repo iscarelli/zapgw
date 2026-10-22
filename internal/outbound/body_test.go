@@ -1189,3 +1189,72 @@ func TestFlowBodyWithDataAndScreen(t *testing.T) {
 		t.Errorf("flow_action_payload.data.nome_cliente = %v, want Maria", data["nome_cliente"])
 	}
 }
+
+// T-257: a media card carousel template. The body must match, key by key,
+// the shape in Meta's media card carousel documentation: a `carousel`
+// component whose cards carry header, quick_reply and url button blocks,
+// with `card_index` a number and the button `index` a STRING.
+func TestTemplateCarouselBodyMatchesMetaShape(t *testing.T) {
+	card := func(img string) TemplateCard {
+		return TemplateCard{
+			Header: &TemplateHeader{Type: "imagem", MediaID: img},
+			TemplateButtons: []TemplateButtonUnion{
+				{Index: 0, Type: "resposta_rapida", Payload: "p-" + img},
+				{Index: 1, Type: "url", Text: "s-" + img},
+			},
+		}
+	}
+	body := MetaBody(Request{
+		Instance: "l", To: "5511999990000", Type: "template",
+		Template: "carrossel_teste", Language: "pt_BR",
+		Variables: []string{"Ana"},
+		Cards:     []TemplateCard{card("IMG1"), card("IMG2")},
+	})
+	got, err := json.Marshal(body["template"])
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+	const want = `{"components":[` +
+		`{"parameters":[{"text":"Ana","type":"text"}],"type":"body"},` +
+		`{"cards":[` +
+		`{"card_index":0,"components":[` +
+		`{"parameters":[{"image":{"id":"IMG1"},"type":"image"}],"type":"header"},` +
+		`{"index":"0","parameters":[{"payload":"p-IMG1","type":"payload"}],"sub_type":"quick_reply","type":"button"},` +
+		`{"index":"1","parameters":[{"text":"s-IMG1","type":"text"}],"sub_type":"url","type":"button"}]},` +
+		`{"card_index":1,"components":[` +
+		`{"parameters":[{"image":{"id":"IMG2"},"type":"image"}],"type":"header"},` +
+		`{"index":"0","parameters":[{"payload":"p-IMG2","type":"payload"}],"sub_type":"quick_reply","type":"button"},` +
+		`{"index":"1","parameters":[{"text":"s-IMG2","type":"text"}],"sub_type":"url","type":"button"}]}` +
+		`],"type":"carousel"}],` +
+		`"language":{"code":"pt_BR"},"name":"carrossel_teste"}`
+	if string(got) != want {
+		t.Errorf("carousel body mismatch:\ngot:  %s\nwant: %s", got, want)
+	}
+}
+
+// A card with its own body variables gets a card-level `body` block between
+// header and buttons; a template WITHOUT cards has no `carousel` block.
+func TestTemplateCarouselCardVariablesAndNoCardsNoCarousel(t *testing.T) {
+	c := asJSON(t, MetaBody(Request{
+		Instance: "l", To: "5511999990000", Type: "template",
+		Template: "t", Language: "pt_BR",
+		Cards: []TemplateCard{
+			{Header: &TemplateHeader{Type: "video", MediaID: "V1"}, Variables: []string{"a"}},
+			{Header: &TemplateHeader{Type: "video", MediaID: "V2"}, Variables: []string{"b"}},
+		},
+	}))
+	raw, _ := json.Marshal(c["template"])
+	if !strings.Contains(string(raw), `{"parameters":[{"text":"a","type":"text"}],"type":"body"}`) ||
+		!strings.Contains(string(raw), `"video":{"id":"V1"}`) {
+		t.Errorf("card body/video header missing: %s", raw)
+	}
+
+	plain := asJSON(t, MetaBody(Request{
+		Instance: "l", To: "5511999990000", Type: "template",
+		Template: "t", Language: "pt_BR", Variables: []string{"x"},
+	}))
+	raw, _ = json.Marshal(plain["template"])
+	if strings.Contains(string(raw), "carousel") {
+		t.Errorf("template without cards grew a carousel block: %s", raw)
+	}
+}

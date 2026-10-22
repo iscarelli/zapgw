@@ -319,11 +319,7 @@ func templateComponents(p Request) []map[string]any {
 	}
 
 	if len(p.Variables) > 0 {
-		params := make([]map[string]any, 0, len(p.Variables))
-		for _, v := range p.Variables {
-			params = append(params, map[string]any{"type": "text", "text": v})
-		}
-		comps = append(comps, map[string]any{"type": "body", "parameters": params})
+		comps = append(comps, map[string]any{"type": "body", "parameters": textParameters(p.Variables)})
 	}
 
 	// ONE BLOCK PER BUTTON, each with its OWN index: two parameters in the same
@@ -338,7 +334,48 @@ func templateComponents(p Request) []map[string]any {
 	// "resposta_rapida" — there is no third case here, and that's why there is no
 	// `default` in the switch below (MetaBody does not revalidate, see the comment at the
 	// top of the file).
-	for _, b := range p.TemplateButtons {
+	comps = append(comps, buttonComponents(p.TemplateButtons)...)
+
+	// Media card carousel (T-257): ONE `carousel` block after the body, each
+	// card carrying its own header, body and buttons -- built by the SAME
+	// functions as the top level. Absent when there are no cards, so a
+	// template without `cartoes` is byte for byte what it always was.
+	if len(p.Cards) > 0 {
+		cards := make([]map[string]any, 0, len(p.Cards))
+		for i, c := range p.Cards {
+			var cc []map[string]any
+			if c.Header != nil {
+				cc = append(cc, map[string]any{
+					"type":       "header",
+					"parameters": []map[string]any{headerParameter(*c.Header)},
+				})
+			}
+			if len(c.Variables) > 0 {
+				cc = append(cc, map[string]any{"type": "body", "parameters": textParameters(c.Variables)})
+			}
+			cc = append(cc, buttonComponents(c.TemplateButtons)...)
+			cards = append(cards, map[string]any{"card_index": i, "components": cc})
+		}
+		comps = append(comps, map[string]any{"type": "carousel", "cards": cards})
+	}
+
+	return comps
+}
+
+// textParameters turns the body variables into `text` parameters.
+func textParameters(vars []string) []map[string]any {
+	params := make([]map[string]any, 0, len(vars))
+	for _, v := range vars {
+		params = append(params, map[string]any{"type": "text", "text": v})
+	}
+	return params
+}
+
+// buttonComponents assembles one `button` block per button, in list order.
+// Shared by the top level and by each carousel card (T-257).
+func buttonComponents(list []TemplateButtonUnion) []map[string]any {
+	var comps []map[string]any
+	for _, b := range list {
 		switch b.Type {
 		case "url":
 			// THE FORMAT IS THE SAME that `botoes_url` produced until T-045, byte for
@@ -367,7 +404,6 @@ func templateComponents(p Request) []map[string]any {
 			})
 		}
 	}
-
 	return comps
 }
 

@@ -2560,3 +2560,113 @@ func TestValidateFlowNormalizesTheFields(t *testing.T) {
 		t.Errorf("fluxo.tela = %q, want trimmed", p.Flow.Screen)
 	}
 }
+
+// --- T-257: media card carousel (`cartoes`) --------------------------------
+
+func carouselCard(mediaID string) TemplateCard {
+	return TemplateCard{
+		Header: &TemplateHeader{Type: "imagem", MediaID: mediaID},
+		TemplateButtons: []TemplateButtonUnion{
+			{Index: 0, Type: "resposta_rapida", Payload: "p"},
+			{Index: 1, Type: "url", Text: "s"},
+		},
+	}
+}
+
+func carouselRequest(cards ...TemplateCard) Request {
+	return Request{
+		Instance: "lojinha", To: "5511999990000", Type: "template",
+		Template: "carrossel_teste", Language: "pt_BR", Cards: cards,
+	}
+}
+
+func TestValidateCarouselAcceptsTwoToTenCards(t *testing.T) {
+	for _, n := range []int{2, 10} {
+		cards := make([]TemplateCard, n)
+		for i := range cards {
+			cards[i] = carouselCard(fmt.Sprintf("IMG%d", i))
+		}
+		r := carouselRequest(cards...)
+		r.Variables = []string{"Ana"} // the top-level body stays allowed
+		if err := r.Validate(); err != nil {
+			t.Errorf("%d cards: %v", n, err)
+		}
+	}
+}
+
+func TestValidateCarouselRefusals(t *testing.T) {
+	eleven := make([]TemplateCard, 11)
+	for i := range eleven {
+		eleven[i] = carouselCard(fmt.Sprintf("IMG%d", i))
+	}
+	textCard := carouselCard("IMG1")
+	textCard.Header = &TemplateHeader{Type: "texto", Text: "oi"}
+	noHeader := carouselCard("IMG1")
+	noHeader.Header = nil
+	video := carouselCard("IMG1")
+	video.Header = &TemplateHeader{Type: "video", MediaID: "V1"}
+	twoVars := carouselCard("IMG1")
+	twoVars.Variables = []string{"a"}
+	oneButton := carouselCard("IMG1")
+	oneButton.TemplateButtons = oneButton.TemplateButtons[:1]
+	otherType := carouselCard("IMG1")
+	otherType.TemplateButtons = []TemplateButtonUnion{
+		{Index: 0, Type: "url", Text: "s"}, {Index: 1, Type: "url", Text: "s"},
+	}
+
+	withTopHeader := carouselRequest(carouselCard("A"), carouselCard("B"))
+	withTopHeader.Header = &TemplateHeader{Type: "imagem", MediaID: "A"}
+	withTopButtons := carouselRequest(carouselCard("A"), carouselCard("B"))
+	withTopButtons.TemplateButtons = []TemplateButtonUnion{{Index: 0, Type: "url", Text: "s"}}
+	inText := textRequest()
+	inText.Cards = []TemplateCard{carouselCard("A"), carouselCard("B")}
+
+	cases := []struct {
+		name string
+		req  Request
+		want error
+		sub  string
+	}{
+		{"one card", carouselRequest(carouselCard("A")), ErrFieldRequired, "cartoes (1 itens"},
+		{"eleven cards", carouselRequest(eleven...), ErrFieldTooLong, "cartoes (11 itens"},
+		{"card without header", carouselRequest(carouselCard("A"), noHeader), ErrFieldRequired, "cartoes[1].cabecalho"},
+		{"text header in card", carouselRequest(carouselCard("A"), textCard), ErrUnknownHeaderType, "cartoes[1].cabecalho.tipo"},
+		{"top header with cards", withTopHeader, ErrFieldForbidden, "cabecalho junto com cartoes"},
+		{"top buttons with cards", withTopButtons, ErrFieldForbidden, "botoes_template junto com cartoes"},
+		{"different header type", carouselRequest(carouselCard("A"), video), ErrCardsMismatch, "cartoes[1].cabecalho.tipo"},
+		{"different variable count", carouselRequest(carouselCard("A"), twoVars), ErrCardsMismatch, "cartoes[1].variaveis"},
+		{"different button count", carouselRequest(carouselCard("A"), oneButton), ErrCardsMismatch, "cartoes[1].botoes_template"},
+		{"different button types", carouselRequest(carouselCard("A"), otherType), ErrCardsMismatch, "cartoes[1].botoes_template"},
+		{"cards in texto", inText, ErrFieldForbidden, "cartoes em texto"},
+	}
+	for _, c := range cases {
+		c := c
+		t.Run(c.name, func(t *testing.T) {
+			err := c.req.Validate()
+			if !errors.Is(err, c.want) {
+				t.Fatalf("err = %v, want %v", err, c.want)
+			}
+			if !strings.Contains(err.Error(), c.sub) {
+				t.Errorf("message %q does not mention %q", err.Error(), c.sub)
+			}
+		})
+	}
+}
+
+// A bad header or button inside a card is reported with the card's path.
+func TestValidateCarouselErrorsCarryTheCardPath(t *testing.T) {
+	bad := carouselCard("A")
+	bad.Header.MediaID = ""
+	r := carouselRequest(carouselCard("A"), bad)
+	err := r.Validate()
+	if !errors.Is(err, ErrFieldRequired) || !strings.Contains(err.Error(), "cartoes[1].cabecalho.media_id") {
+		t.Errorf("err = %v", err)
+	}
+	bad = carouselCard("A")
+	bad.TemplateButtons[1].Text = ""
+	r = carouselRequest(carouselCard("A"), bad)
+	err = r.Validate()
+	if !errors.Is(err, ErrFieldRequired) || !strings.Contains(err.Error(), "cartoes[1].botoes_template[1].texto") {
+		t.Errorf("err = %v", err)
+	}
+}
