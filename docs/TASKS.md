@@ -10,9 +10,11 @@
 
 - `cabecalho_midia` (foto/video/documento no header de `botoes` e `cta_url`) e `tipo: "carrossel"`
   (carrossel interativo em texto livre, so' na janela de 24 h). Pedido do mesmo consumidor; dono: "pode construir".
-- ⚠️ **Nada medido contra a Meta.** Tres duvidas que so' o envio real resolve: `id` (nao `link`) no
-  header do `cta_url` e do carrossel; `"type":"cta_url"` em cartao de resposta rapida (copiado
-  literal da pagina da Meta); `filename` no header de documento. Avisado no canal as 22:03.
+- ✅ **Medido pelo consumidor as 22:04 (-0300), numero de teste:** `cabecalho_midia` imagem por `id`
+  em `botoes` -> `sent` + `delivered`; `carrossel` com 7 cartoes de resposta rapida, header por `id`
+  e `"type":"cta_url"` no cartao -> `sent` (o `delivered` nao tinha chegado ate' 22:05).
+- ⚠️ **Ainda NAO medido:** `cta_url` com midia; `filename` no header de documento; como o carrossel
+  de resposta rapida aparece no aparelho.
 
 ### 📌 2026-10-22 — `v0.72.0` EM PRODUCAO (T-257, medido: `HEALTH OK` + `VERSION MATCHES 0.72.0`): envio de template carrossel (`cards`).
 
