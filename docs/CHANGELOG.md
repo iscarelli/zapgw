@@ -2,7 +2,9 @@
 
 One line per version shipped, in the same commit as the bump. The entry states the **effect**, not the diff.
 
-## Unreleased
+## v0.73.1 — 2026-10-22
+
+PATCH: `tipo: "carrossel"` refuses a card without `texto` (`400`), because Meta silently never delivers it (T-260).
 
 - **Require card text in the interactive carousel (Meta silently drops cards without body)** (T-260) —
   every card of `tipo: "carrossel"` now needs a non-blank `texto`, refused with a `400` naming
