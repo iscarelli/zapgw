@@ -12,8 +12,9 @@
 - ⚠️ **Envio real contra a Meta NAO medido** — a prova e' o primeiro envio do consumidor com template
   UTILITY aprovado com header LOCATION. Se UTILITY aceita esse header: nao se sabe.
 - Efeito colateral: `localizacao` livre agora recusa coordenada fora de -90..90 / -180..180.
-- 🙋 Pendente com o dono: medir dois links em `cta_url` (envio cru na Graph). Autorizado por ele, mas
-  o classificador do auto mode barrou o probe; ele decide se libera.
+- 📏 **Medido 09:29 (-0300), envio cru na Graph v25.0:** `cta_url` com DOIS links e' `400` (codigo 100)
+  nas duas formas (`action.buttons[]` com `parameters`; `action.parameters` como lista). Um link: `200`
+  e chegou no aparelho. A regra "um link por mensagem livre" do `body.go` agora esta' medida.
 
 ### 📌 2026-10-22 22:2x — `v0.73.1` EM PRODUCAO (T-260, medido: `HEALTH OK` + `VERSION MATCHES 0.73.1`).
 
