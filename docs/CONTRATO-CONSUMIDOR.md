@@ -1605,7 +1605,7 @@ does not count as a different request.
 ```jsonc
 { "instancia": "lojinha",
   "para": "5511999990000",
-  "tipo": "texto" | "template" | "botoes" | "cta_url" | "lista" | "midia" | "reacao" | "localizacao" | "contatos" | "pedir_localizacao" | "flow",
+  "tipo": "texto" | "template" | "botoes" | "cta_url" | "lista" | "midia" | "reacao" | "localizacao" | "contatos" | "pedir_localizacao" | "flow" | "carrossel",
   "responder_a": "wamid…",   // optional; FORBIDDEN in template
 
   "texto": "…",                                   // texto, botoes, cta_url, lista, pedir_localizacao, flow
@@ -1614,7 +1614,7 @@ does not count as a different request.
   "cabecalho": {"tipo": "documento", "media_id": "…", "nome_arquivo": "recibo.pdf"}, // template, optional
   "botoes_template": [{"indice": 0, "tipo": "url", "texto": "…"}, // template, optional
                        {"indice": 1, "tipo": "resposta_rapida", "payload": "…"}],
-  "cartoes": [{"cabecalho": {"tipo": "imagem", "media_id": "…"}, "variaveis": ["…"], "botoes_template": [/* as above */]}], // template, optional — media card carousel, 2 to 10 cards; see "Carousel template"
+  "cartoes": [{"cabecalho": {"tipo": "imagem", "media_id": "…"}, "variaveis": ["…"], "botoes_template": [/* as above */]}], // template, optional — media card carousel, 2 to 10 cards; see "Carousel template"; in `carrossel` each card also takes `texto`, `botoes` or `botao_titulo`+`botao_url`, see "Interactive carousel"
   "botoes": [{"id":"SIM","titulo":"Sim"}],        // botoes (interactive message — NOT a template) — titulo: max 20 characters, list: max 3 items
   "botao_titulo": "Abrir", "botao_url": "https://…", // cta_url — botao_titulo: max 20 characters, botao_url required only in cta_url
   "secoes": [{"titulo": "…", "itens": [{"id":"…","titulo":"…","descricao":"…"}]}], // lista, required — botao_titulo (reused from cta_url) is the label of the button that opens the list; see its own section for the ceilings
@@ -2144,6 +2144,51 @@ level). The gateway refuses, with a `400` naming the field (for example `cartoes
 > 🔴 **NOT MEASURED against Meta.** The body follows Meta's documentation (a `carousel` component with
 > `cards[].card_index` and per-card `header`/`button` blocks); a real send has not been done yet.
 > Treat the first one as the proof.
+
+### Interactive carousel (`kind: "carrossel"`) (T-259)
+
+The same media card carousel **without a template**: free-form, so it only goes out **inside the 24 h
+window** (no approval, no category). Use the template carousel above outside the window.
+
+```json
+{
+  "instancia": "lojinha",
+  "para": "5511999990000",
+  "tipo": "carrossel",
+  "texto": "Our new arrivals",
+  "cartoes": [
+    {"cabecalho": {"tipo": "imagem", "media_id": "MEDIA-EXAMPLE-1"}, "texto": "Blue model",
+     "botoes": [{"id": "quero:1", "titulo": "I want it"}]},
+    {"cabecalho": {"tipo": "imagem", "media_id": "MEDIA-EXAMPLE-2"}, "texto": "Red model",
+     "botoes": [{"id": "quero:2", "titulo": "I want it"}]}
+  ]
+}
+```
+
+`texto` (the message body) and `cartoes` (2 to 10 cards, the same field as in the template carousel)
+are required; English alias `kind: "carousel"`. Each card takes `cabecalho` (**required**, `imagem` or
+`video` by `media_id`), `texto` (optional, the card body) and **one** kind of button:
+
+- `botoes` (`[{"id","titulo"}]`, quick reply, same item as `kind: "botoes"`; up to 3 per card), or
+- `botao_titulo` + `botao_url` (a URL button, same names as `kind: "cta_url"`).
+
+English keys inside a card: `header`, `text`, `buttons` (items: `id`, `title`), `button_title`,
+`button_url`. The gateway refuses, with a `400` naming the field:
+
+- fewer than **2** or more than **10** cards, or no `texto`;
+- a card without `cabecalho`, or with a `cabecalho.tipo` other than `imagem` or `video`;
+- a card with no button, or with both kinds; cards that do not all have the same header type, the same
+  button kind and the same number of buttons (Meta's rule);
+- `variaveis` or `botoes_template` inside a card (they belong to the template carousel), and, in a
+  **template** card, `texto`, `botoes`, `botao_titulo` or `botao_url`;
+- at the top level, `cabecalho`, `cabecalho_texto`, `cabecalho_midia`, `rodape`, `botoes`,
+  `botao_titulo`, `botao_url` or `botoes_template` (Meta supports no main header, footer or
+  component in a carousel).
+
+> 🔴 **NOT MEASURED against Meta.** The body is frozen from Meta's interactive media carousel page
+> (read 2026-10-22). Two points of it are taken literally and unverified: the card-level `type` is
+> `cta_url` even on quick-reply cards, and the header goes by `id` (the page's example uses a public
+> `link`). A real send has not been done yet; treat the first one as the proof.
 
 ### `contatos` — and the field that decides whether the card IS USEFUL (2026-08-20)
 

@@ -96,6 +96,48 @@ func MetaBody(p Request) map[string]any {
 		body["type"] = kind
 		body[kind] = media
 
+	case "carrossel":
+		// Interactive media carousel (T-259). Shape frozen in
+		// TestInteractiveCarouselBodyMatchesMetaShape from Meta's page (read
+		// 2026-10-22). The card-level `type` is "cta_url" for BOTH button
+		// kinds, exactly as the page's examples have it.
+		cards := make([]map[string]any, 0, len(p.Cards))
+		for i, c := range p.Cards {
+			card := map[string]any{
+				"card_index": i,
+				"type":       "cta_url",
+				"header":     headerParameter(*c.Header),
+			}
+			if c.Text != "" {
+				card["body"] = map[string]any{"text": c.Text}
+			}
+			if len(c.Buttons) > 0 {
+				buttons := make([]map[string]any, 0, len(c.Buttons))
+				for _, b := range c.Buttons {
+					buttons = append(buttons, map[string]any{
+						"type":        "quick_reply",
+						"quick_reply": map[string]any{"id": b.ID, "title": b.Title},
+					})
+				}
+				card["action"] = map[string]any{"buttons": buttons}
+			} else {
+				card["action"] = map[string]any{
+					"name": "cta_url",
+					"parameters": map[string]any{
+						"display_text": c.ButtonTitle,
+						"url":          c.ButtonURL,
+					},
+				}
+			}
+			cards = append(cards, card)
+		}
+		body["type"] = "interactive"
+		body["interactive"] = map[string]any{
+			"type":   "carousel",
+			"body":   map[string]any{"text": p.Text},
+			"action": map[string]any{"cards": cards},
+		}
+
 	case "cta_url":
 		// The body WITHOUT header/footer is the format that was VERIFIED on a
 		// real device in another project on this network — a 200 from Meta would not have

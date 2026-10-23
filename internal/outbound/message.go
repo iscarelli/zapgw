@@ -254,10 +254,22 @@ type TemplateButtonUnion struct {
 //
 // Meta: "All cards defined on a template must have the same components" --
 // validateCards refuses a mismatch here instead of letting Meta refuse it.
+//
+// The same struct also carries the cards of a FREE-FORM interactive carousel
+// (`tipo: "carrossel"`, T-259): there the card has no template to fill, so
+// `Text` is its body, `Buttons` its quick replies (the SAME Button type as
+// `tipo: "botoes"`) and `ButtonTitle`/`ButtonURL` its cta_url (the SAME names
+// as `tipo: "cta_url"`). validateCards refuses these fields in a template and
+// validateCarousel refuses Variables/TemplateButtons in a carousel, so no
+// field is ever dropped silently.
 type TemplateCard struct {
 	Header          *TemplateHeader       `json:"cabecalho"`
 	Variables       []string              `json:"variaveis,omitempty"`
 	TemplateButtons []TemplateButtonUnion `json:"botoes_template,omitempty"`
+	Text            string                `json:"texto,omitempty"`
+	Buttons         []Button              `json:"botoes,omitempty"`
+	ButtonTitle     string                `json:"botao_titulo,omitempty"`
+	ButtonURL       string                `json:"botao_url,omitempty"`
 }
 
 // ListItem is a row (`row`) inside a ListSection, the body of
@@ -807,6 +819,13 @@ func (p *Request) Validate() error {
 		if err := p.validateCards(); err != nil {
 			return err
 		}
+	case "carrossel":
+		if p.Text == "" {
+			return fmt.Errorf("%w: texto", ErrFieldRequired)
+		}
+		if err := p.validateCarousel(); err != nil {
+			return err
+		}
 	case "botoes":
 		// The mix-up comes BEFORE the required fields: the real cause is
 		// the mix-up, and reporting "missing botao_titulo" makes whoever
@@ -998,8 +1017,8 @@ func (p *Request) Validate() error {
 			return fmt.Errorf("%w: botoes_template em %s (so template tem components, "+
 				"e eles sumiriam sem erro)", ErrFieldForbidden, p.Type)
 		}
-		if len(p.Cards) > 0 {
-			return fmt.Errorf("%w: cartoes em %s (so template tem components, "+
+		if len(p.Cards) > 0 && p.Type != "carrossel" {
+			return fmt.Errorf("%w: cartoes em %s (so template e carrossel tem cartoes, "+
 				"e eles sumiriam sem erro)", ErrFieldForbidden, p.Type)
 		}
 	}
@@ -1253,6 +1272,9 @@ func (p *Request) validateCards() error {
 		if err := validateHeaderValue(c.Header, path+".cabecalho"); err != nil {
 			return err
 		}
+		if err := refuseCarouselCardFields(c, path); err != nil {
+			return err
+		}
 		for j, v := range c.Variables {
 			c.Variables[j] = strings.TrimSpace(v)
 		}
@@ -1278,6 +1300,134 @@ func (p *Request) validateCards() error {
 			return fmt.Errorf("%w: cartoes[%d].botoes_template difere do cartoes[0] "+
 				"(mesmo conjunto de indice e tipo); todos os cartoes tem os mesmos componentes",
 				ErrCardsMismatch, i)
+		}
+	}
+	return nil
+}
+
+// refuseCarouselCardFields refuses, in a TEMPLATE card, the fields that only
+// a free-form carousel card has (T-259): the template's body and buttons are
+// fixed at registration, so they would vanish with no error.
+func refuseCarouselCardFields(c *TemplateCard, path string) error {
+	for _, f := range []struct {
+		name string
+		set  bool
+	}{
+		{"texto", c.Text != ""},
+		{"botoes", len(c.Buttons) > 0},
+		{"botao_titulo", c.ButtonTitle != ""},
+		{"botao_url", c.ButtonURL != ""},
+	} {
+		if f.set {
+			return fmt.Errorf("%w: %s.%s em template (so o carrossel interativo, tipo:\"carrossel\", "+
+				"tem esse campo; num template o cartao usa variaveis e botoes_template, "+
+				"e ele sumiria sem erro)", ErrFieldForbidden, path, f.name)
+		}
+	}
+	return nil
+}
+
+// validateCarousel checks the free-form interactive media carousel
+// (`tipo: "carrossel"`, T-259). Rules from Meta's page (read 2026-10-22,
+// developers.facebook.com/documentation/business-messaging/whatsapp/messages/
+// interactive-media-carousel-messages/): 2 to 10 cards; every card has an
+// image or video header; a card carries EITHER one URL button OR quick-reply
+// buttons; the button kind and count are identical across all cards.
+// The top-level fields that have no place in a carousel are refused by the
+// generic guards after the switch, except `botao_url`, refused here.
+func (p *Request) validateCarousel() error {
+	if len(p.Cards) == 0 {
+		return fmt.Errorf("%w: cartoes", ErrFieldRequired)
+	}
+	n := len(p.Cards)
+	if n < carouselMinCards {
+		return fmt.Errorf("%w: cartoes (%d itens, minimo %d)", ErrFieldRequired, n, carouselMinCards)
+	}
+	if n > carouselMaxCards {
+		return fmt.Errorf("%w: cartoes (%d itens, maximo %d)", ErrFieldTooLong, n, carouselMaxCards)
+	}
+	if p.ButtonURL != "" {
+		return fmt.Errorf("%w: botao_url em carrossel (o botao vai DENTRO de cada "+
+			"cartao, em cartoes[i].botao_url)", ErrFieldForbidden)
+	}
+	for i := range p.Cards {
+		c := &p.Cards[i]
+		path := fmt.Sprintf("cartoes[%d]", i)
+		if c.Header == nil {
+			return fmt.Errorf("%w: %s.cabecalho", ErrFieldRequired, path)
+		}
+		c.Header.Type = strings.TrimSpace(c.Header.Type)
+		if c.Header.Type != "imagem" && c.Header.Type != "video" {
+			return fmt.Errorf("%w: %s.cabecalho.tipo %q (o cabecalho de cartao e imagem ou video)",
+				ErrUnknownHeaderType, path, c.Header.Type)
+		}
+		if err := validateHeaderValue(c.Header, path+".cabecalho"); err != nil {
+			return err
+		}
+		if len(c.Variables) > 0 {
+			return fmt.Errorf("%w: %s.variaveis em carrossel (o carrossel interativo nao tem "+
+				"template; o corpo do cartao e `texto`, e elas sumiriam sem erro)", ErrFieldForbidden, path)
+		}
+		if len(c.TemplateButtons) > 0 {
+			return fmt.Errorf("%w: %s.botoes_template em carrossel (o carrossel interativo nao "+
+				"tem template; use `botoes` ou botao_titulo+botao_url, e eles sumiriam sem erro)",
+				ErrFieldForbidden, path)
+		}
+		c.Text = strings.TrimSpace(c.Text)
+		c.ButtonTitle = strings.TrimSpace(c.ButtonTitle)
+		c.ButtonURL = strings.TrimSpace(c.ButtonURL)
+		hasURL := c.ButtonTitle != "" || c.ButtonURL != ""
+		if hasURL && len(c.Buttons) > 0 {
+			return fmt.Errorf("%w: %s (um cartao tem resposta rapida OU botao de url, nao os dois)",
+				ErrMixedButtons, path)
+		}
+		switch {
+		case hasURL:
+			if c.ButtonTitle == "" {
+				return fmt.Errorf("%w: %s.botao_titulo", ErrFieldRequired, path)
+			}
+			if c.ButtonURL == "" {
+				return fmt.Errorf("%w: %s.botao_url", ErrFieldRequired, path)
+			}
+			if n := utf8.RuneCountInString(c.ButtonTitle); n > ctaURLDisplayTextLimit {
+				return fmt.Errorf("%w: %s.botao_titulo (%d runas, maximo %d)",
+					ErrFieldTooLong, path, n, ctaURLDisplayTextLimit)
+			}
+		case len(c.Buttons) > 0:
+			if n := len(c.Buttons); n > quickReplyButtonCountLimit {
+				return fmt.Errorf("%w: %s.botoes (%d itens, maximo %d)",
+					ErrFieldTooLong, path, n, quickReplyButtonCountLimit)
+			}
+			for j := range c.Buttons {
+				b := &c.Buttons[j]
+				b.ID = strings.TrimSpace(b.ID)
+				b.Title = strings.TrimSpace(b.Title)
+				if b.ID == "" {
+					return fmt.Errorf("%w: %s.botoes[%d].id", ErrFieldRequired, path, j)
+				}
+				if b.Title == "" {
+					return fmt.Errorf("%w: %s.botoes[%d].titulo", ErrFieldRequired, path, j)
+				}
+				if n := utf8.RuneCountInString(b.Title); n > quickReplyButtonTitleLimit {
+					return fmt.Errorf("%w: %s.botoes[%d].titulo (%d runas, maximo %d)",
+						ErrFieldTooLong, path, j, n, quickReplyButtonTitleLimit)
+				}
+			}
+		default:
+			return fmt.Errorf("%w: %s.botoes ou %s.botao_titulo+botao_url", ErrFieldRequired, path, path)
+		}
+	}
+	// Meta: button type and count identical across all cards.
+	first := &p.Cards[0]
+	for i := 1; i < len(p.Cards); i++ {
+		c := &p.Cards[i]
+		if c.Header.Type != first.Header.Type {
+			return fmt.Errorf("%w: cartoes[%d].cabecalho.tipo %q difere do cartoes[0] (%q); "+
+				"todos os cartoes tem o mesmo tipo de cabecalho", ErrCardsMismatch, i, c.Header.Type, first.Header.Type)
+		}
+		if (c.ButtonURL != "") != (first.ButtonURL != "") || len(c.Buttons) != len(first.Buttons) {
+			return fmt.Errorf("%w: cartoes[%d] tem botoes de outro tipo ou quantidade que cartoes[0]; "+
+				"todos os cartoes tem o mesmo tipo e numero de botoes", ErrCardsMismatch, i)
 		}
 	}
 	return nil

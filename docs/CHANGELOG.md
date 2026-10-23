@@ -4,6 +4,12 @@ One line per version shipped, in the same commit as the bump. The entry states t
 
 ## Unreleased
 
+- **Send interactive media carousel messages (free-form, no template)** (T-259) — new
+  `tipo: "carrossel"` (alias `carousel`) with `texto` and `cartoes` (2 to 10 cards); each card takes
+  `cabecalho` (image or video), optional `texto` and either `botoes` (quick reply) or
+  `botao_titulo` + `botao_url`. Only inside the 24 h window. Mismatched cards and misplaced fields
+  are refused before Meta sees them; the template carousel body is unchanged. NOT measured against
+  Meta yet. _Completed 2026-10-22 22:05._
 - **Media header on interactive buttons and cta_url messages (`cabecalho_midia`)** (T-258) —
   `tipo: "botoes"` and `tipo: "cta_url"` accept one image, video or document header by `media_id`
   (alias `header_media`), reusing the template header object; refused in every other type, together

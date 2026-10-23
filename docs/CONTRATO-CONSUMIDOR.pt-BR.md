@@ -1590,7 +1590,7 @@ diferente.
 ```jsonc
 { "instancia": "lojinha",
   "para": "5511999990000",
-  "tipo": "texto" | "template" | "botoes" | "cta_url" | "lista" | "midia" | "reacao" | "localizacao" | "contatos" | "pedir_localizacao" | "flow",
+  "tipo": "texto" | "template" | "botoes" | "cta_url" | "lista" | "midia" | "reacao" | "localizacao" | "contatos" | "pedir_localizacao" | "flow" | "carrossel",
   "responder_a": "wamid…",   // opcional; PROIBIDO em template
 
   "texto": "…",                                   // texto, botoes, cta_url, lista, pedir_localizacao, flow
@@ -1599,7 +1599,7 @@ diferente.
   "cabecalho": {"tipo": "documento", "media_id": "…", "nome_arquivo": "recibo.pdf"}, // template, opcional
   "botoes_template": [{"indice": 0, "tipo": "url", "texto": "…"}, // template, opcional
                        {"indice": 1, "tipo": "resposta_rapida", "payload": "…"}],
-  "cartoes": [{"cabecalho": {"tipo": "imagem", "media_id": "…"}, "variaveis": ["…"], "botoes_template": [/* como acima */]}], // template, opcional — carrossel de cartões de mídia, de 2 a 10 cartões; veja "Template de carrossel"
+  "cartoes": [{"cabecalho": {"tipo": "imagem", "media_id": "…"}, "variaveis": ["…"], "botoes_template": [/* como acima */]}], // template, opcional — carrossel de cartões de mídia, de 2 a 10 cartões; veja "Template de carrossel"; em `carrossel` cada cartão aceita também `texto`, `botoes` ou `botao_titulo`+`botao_url`, veja "Carrossel interativo"
   "botoes": [{"id":"SIM","titulo":"Sim"}],        // botoes (mensagem interativa — NAO e template) — titulo: maximo 20 caracteres, lista: maximo 3 itens
   "botao_titulo": "Abrir", "botao_url": "https://…", // cta_url — botao_titulo: maximo 20 caracteres, botao_url obrigatório só em cta_url
   "secoes": [{"titulo": "…", "itens": [{"id":"…","titulo":"…","descricao":"…"}]}], // lista, obrigatório — botao_titulo (reusado de cta_url) é o rótulo do botão que abre a lista; ver a seção própria para os tetos
@@ -2131,6 +2131,51 @@ gateway recusa, com `400` nomeando o campo (por exemplo `cartoes[1].cabecalho.ti
 > 🔴 **NÃO MEDIDO contra a Meta.** O corpo segue a documentação dela (um componente `carousel` com
 > `cards[].card_index` e blocos `header`/`button` por cartão); envio real ainda não foi feito. O
 > primeiro é a prova.
+
+### Carrossel interativo (`tipo: "carrossel"`) (T-259)
+
+O mesmo carrossel de cartões de mídia **sem template**: texto livre, então só sai **dentro da janela
+de 24 h** (sem aprovação, sem categoria). Fora da janela, use o carrossel de template acima.
+
+```json
+{
+  "instancia": "lojinha",
+  "para": "5511999990000",
+  "tipo": "carrossel",
+  "texto": "Nossas novidades",
+  "cartoes": [
+    {"cabecalho": {"tipo": "imagem", "media_id": "MEDIA-EXAMPLE-1"}, "texto": "Modelo azul",
+     "botoes": [{"id": "quero:1", "titulo": "Quero"}]},
+    {"cabecalho": {"tipo": "imagem", "media_id": "MEDIA-EXAMPLE-2"}, "texto": "Modelo vermelho",
+     "botoes": [{"id": "quero:2", "titulo": "Quero"}]}
+  ]
+}
+```
+
+`texto` (o corpo da mensagem) e `cartoes` (de 2 a 10 cartões, o mesmo campo do carrossel de template)
+são obrigatórios; alias em inglês `kind: "carousel"`. Cada cartão aceita `cabecalho` (**obrigatório**,
+`imagem` ou `video` por `media_id`), `texto` (opcional, o corpo do cartão) e **um** tipo de botão:
+
+- `botoes` (`[{"id","titulo"}]`, resposta rápida, o mesmo item de `tipo: "botoes"`; até 3 por cartão), ou
+- `botao_titulo` + `botao_url` (botão de URL, os mesmos nomes de `tipo: "cta_url"`).
+
+Chaves em inglês dentro do cartão: `header`, `text`, `buttons` (itens: `id`, `title`), `button_title`,
+`button_url`. O gateway recusa, com `400` nomeando o campo:
+
+- menos de **2** ou mais de **10** cartões, ou sem `texto`;
+- cartão sem `cabecalho`, ou com `cabecalho.tipo` diferente de `imagem` ou `video`;
+- cartão sem botão, ou com os dois tipos; cartões que não têm todos o mesmo tipo de cabeçalho, o mesmo
+  tipo de botão e o mesmo número de botões (regra da Meta);
+- `variaveis` ou `botoes_template` dentro do cartão (são do carrossel de template) e, num cartão de
+  **template**, `texto`, `botoes`, `botao_titulo` ou `botao_url`;
+- no topo, `cabecalho`, `cabecalho_texto`, `cabecalho_midia`, `rodape`, `botoes`, `botao_titulo`,
+  `botao_url` ou `botoes_template` (a Meta não suporta cabeçalho, rodapé nem componente principal no
+  carrossel).
+
+> 🔴 **NÃO MEDIDO contra a Meta.** O corpo está congelado a partir da página de carrossel interativo
+> de mídia da Meta (lida em 2026-10-22). Dois pontos dela foram tomados ao pé da letra e não
+> verificados: o `type` do cartão é `cta_url` até nos cartões de resposta rápida, e o cabeçalho vai por
+> `id` (o exemplo da página usa um `link` público). Envio real ainda não foi feito; o primeiro é a prova.
 
 ### `contatos` — e o campo que decide se o cartão SERVE (2026-08-20)
 
