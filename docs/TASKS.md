@@ -467,6 +467,71 @@ instancias foram rotacionadas. Duas licoes que custaram na hora e valem alem des
 
 > A fila do periodo privado esta em `iscarelli/zapgw-dev`, congelada. Tarefa nova nasce aqui.
 
+## [ ] T-258  Media header on interactive buttons and cta_url messages (header_media)
+Why:     consumidor quer foto + texto + botoes numa mensagem so', em texto livre (hoje sai em duas). Dono: "pode construir" (2026-10-22).
+Vikunja: 2226
+Files:   internal/outbound/message.go, internal/outbound/body.go, internal/outbound/input_aliases.go,
+         internal/outbound/*_test.go, docs/CONTRATO-CONSUMIDOR.md, docs/CONTRATO-CONSUMIDOR.pt-BR.md, docs/CHANGELOG.md
+Do:      1. Campo novo no Request: `HeaderMedia *TemplateHeader \`json:"cabecalho_midia,omitempty"\``
+            (REUSA o tipo TemplateHeader: tipo + media_id + nome_arquivo). Alias de entrada em
+            input_aliases.go: `header_media` -> `cabecalho_midia` no dicionario do nivel de cima, e o
+            sub-objeto traduzido com `templateHeaderAlias` (o mesmo de `cabecalho`), posicional como os outros.
+         2. Validacao: aceito SO' em `tipo` `botoes` e `cta_url`. Em qualquer outro tipo -> ErrFieldForbidden
+            nomeando o campo (mesmo padrao do bloco de `cabecalho_texto`, message.go ~994). Em `lista` tambem
+            recusado (a Meta so' aceita header de texto em lista — confirme na doc e cite a URL no comentario).
+            `tipo` aceito: `imagem`, `video`, `documento`; `texto` -> 400 dizendo para usar `cabecalho_texto`.
+            `cabecalho_midia` + `cabecalho_texto` juntos -> 400 (a Meta tem UM header). Reuse
+            `validateHeaderValue` (com path "cabecalho_midia") para trim, media_id obrigatorio e recusa de URL —
+            nao copie a logica. `nome_arquivo` so' em `documento`.
+         3. Corpo (body.go, ramos `botoes` e `cta_url`): `header: {"type":"image","image":{"id":<media_id>}}`
+            (`video` -> "video", `documento` -> "document" com `"filename"` quando houver). Chave ausente quando
+            o campo nao veio: o corpo SEM o campo tem de sair byte a byte igual ao de hoje (TestCtaURLBody e os
+            testes de `botoes` continuam passando sem alteracao).
+         4. Antes de escrever o corpo, abra a doc da Meta das mensagens interativas de botao e de cta_url
+            (developers.facebook.com, "Interactive reply buttons messages" e "Interactive CTA URL button
+            messages"), confira o formato do header de midia e cole o exemplo dela num teste de forma, no
+            padrao de `TestTemplateCarouselBodyMatchesMetaShape` (body_test.go:1197). Se a doc divergir deste
+            spec, a doc vence no formato do fio — e diga no relatorio.
+         5. Contrato EN e pt-BR: na secao "Header and footer in interactive messages" troque o aviso
+            "`cabecalho_texto` is TEXT only … does not assemble that today" pela documentacao do campo novo,
+            com exemplo e as recusas. Acrescente a chave no bloco de referencia do POST /v1/messages (~linha 1617).
+         6. Idempotencia: o campo entra no hash pela forma canonica, como os demais (nenhum caminho especial).
+Verify:  os quatro comandos do CLAUDE.md verdes; testes novos cobrindo: corpo com imagem/video/documento em
+         botoes e cta_url; corpo sem o campo inalterado; 400 em `texto`/`lista`/`midia`/template; 400 com
+         texto+midia juntos; 400 com URL no media_id; alias `header_media` + `kind`/`file_name` traduzidos.
+
+## [ ] T-259  Send interactive media carousel messages (free-form, no template)
+Why:     o mesmo convite com varias fotos dentro da janela de 24 h, sem template nem aprovacao. Dono: "o carrossel tb" (2026-10-22).
+Vikunja: 2227
+Files:   internal/outbound/message.go, internal/outbound/body.go, internal/outbound/input_aliases.go,
+         internal/outbound/*_test.go, docs/CONTRATO-CONSUMIDOR.md, docs/CONTRATO-CONSUMIDOR.pt-BR.md, docs/CHANGELOG.md
+After:   T-258 (mesmos arquivos)
+Do:      0. FONTE PRIMEIRO: abra developers.facebook.com/documentation/business-messaging/whatsapp/messages/interactive-media-carousel-messages/
+            e anote: formato do `interactive` (`type: "carousel"`), limites de cartoes, tipos de header, tipos de
+            botao por cartao (resposta rapida e/ou cta_url, e se podem misturar), limites de texto. Cole o
+            exemplo dela num teste de forma (padrao de `TestTemplateCarouselBodyMatchesMetaShape`). Se algo
+            abaixo divergir da pagina, a pagina vence no formato do fio e nos limites — diga no relatorio.
+         1. Tipo novo `tipo: "carrossel"` (alias de valor `carousel`, no mesmo dicionario dos outros valores
+            de `tipo`). O teste `TestValidateReportsUnknownTypeBeforeForbiddenHeader` (message_test.go:1182)
+            usa "carrossel" como tipo DESCONHECIDO: troque o exemplo por outro nome inexistente.
+         2. Campos: `texto` (corpo da mensagem, obrigatorio) e `cartoes` (o MESMO campo da T-257 — um nome
+            por coisa). TemplateCard ganha campos opcionais: `texto` (corpo do cartao), `botoes` ([]Button,
+            resposta rapida, mesmo tipo do `tipo: "botoes"`), `botao_titulo` + `botao_url` (cta_url, mesmos
+            nomes do `tipo: "cta_url"`). Aliases em cardAlias: `text`, `buttons`, `button_title`, `button_url`
+            — com os itens de `botoes` traduzidos pelo mesmo dicionario de botao do nivel de cima.
+         3. Validacao cruzada, sem campo sumindo calado: em `tipo: "template"` os campos novos do cartao sao
+            400; em `carrossel` `variaveis` e `botoes_template` do cartao sao 400. Em `carrossel`:
+            `cabecalho` do cartao obrigatorio, `imagem` ou `video` (reuse validateHeaderValue com path
+            "cartoes[i].cabecalho"); todos os cartoes com o mesmo tipo de botao e mesmo tipo de header se a
+            pagina exigir; cada cartao com resposta rapida OU cta_url conforme a pagina. Campos de topo que nao
+            tem lugar no carrossel (`cabecalho_texto`, `cabecalho_midia`, `rodape`, `botoes`, `botao_url`...)
+            -> 400 nomeando o campo. `cartoes` em tipos que nao sejam `template` nem `carrossel` continua 400.
+         4. Corpo em body.go no formato da pagina (passo 0), com `card_index` se ela pedir.
+         5. Contrato EN e pt-BR: secao nova "Interactive carousel (`kind: "carrossel"`)" ao lado da do
+            carrossel template, deixando claro: so' dentro da janela de 24 h; diferenca para o template.
+Verify:  os quatro comandos do CLAUDE.md verdes; teste de forma batendo com o exemplo da pagina da Meta;
+         testes das recusas cruzadas do passo 3; corpo de `tipo: "template"` com `cartoes` (T-257) inalterado.
+
 ## [ ] T-248  Seven response keys and literals still Portuguese in code, among English siblings
 After:   DECIDIDO em 2026-09-19 — opcao (1): renomear TUDO de uma vez, bump MINOR, aviso aos dois
          consumidores ANTES do deploy (o dono manda o texto; sem canal). Segurada por ORCAMENTO
