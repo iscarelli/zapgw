@@ -467,45 +467,11 @@ instancias foram rotacionadas. Duas licoes que custaram na hora e valem alem des
 
 > A fila do periodo privado esta em `iscarelli/zapgw-dev`, congelada. Tarefa nova nasce aqui.
 
-## [ ] T-258  Media header on interactive buttons and cta_url messages (header_media)
-Why:     consumidor quer foto + texto + botoes numa mensagem so', em texto livre (hoje sai em duas). Dono: "pode construir" (2026-10-22).
-Vikunja: 2226
-Files:   internal/outbound/message.go, internal/outbound/body.go, internal/outbound/input_aliases.go,
-         internal/outbound/*_test.go, docs/CONTRATO-CONSUMIDOR.md, docs/CONTRATO-CONSUMIDOR.pt-BR.md, docs/CHANGELOG.md
-Do:      1. Campo novo no Request: `HeaderMedia *TemplateHeader \`json:"cabecalho_midia,omitempty"\``
-            (REUSA o tipo TemplateHeader: tipo + media_id + nome_arquivo). Alias de entrada em
-            input_aliases.go: `header_media` -> `cabecalho_midia` no dicionario do nivel de cima, e o
-            sub-objeto traduzido com `templateHeaderAlias` (o mesmo de `cabecalho`), posicional como os outros.
-         2. Validacao: aceito SO' em `tipo` `botoes` e `cta_url`. Em qualquer outro tipo -> ErrFieldForbidden
-            nomeando o campo (mesmo padrao do bloco de `cabecalho_texto`, message.go ~994). Em `lista` tambem
-            recusado (a Meta so' aceita header de texto em lista — confirme na doc e cite a URL no comentario).
-            `tipo` aceito: `imagem`, `video`, `documento`; `texto` -> 400 dizendo para usar `cabecalho_texto`.
-            `cabecalho_midia` + `cabecalho_texto` juntos -> 400 (a Meta tem UM header). Reuse
-            `validateHeaderValue` (com path "cabecalho_midia") para trim, media_id obrigatorio e recusa de URL —
-            nao copie a logica. `nome_arquivo` so' em `documento`.
-         3. Corpo (body.go, ramos `botoes` e `cta_url`): `header: {"type":"image","image":{"id":<media_id>}}`
-            (`video` -> "video", `documento` -> "document" com `"filename"` quando houver). Chave ausente quando
-            o campo nao veio: o corpo SEM o campo tem de sair byte a byte igual ao de hoje (TestCtaURLBody e os
-            testes de `botoes` continuam passando sem alteracao).
-         4. Antes de escrever o corpo, abra a doc da Meta das mensagens interativas de botao e de cta_url
-            (developers.facebook.com, "Interactive reply buttons messages" e "Interactive CTA URL button
-            messages"), confira o formato do header de midia e cole o exemplo dela num teste de forma, no
-            padrao de `TestTemplateCarouselBodyMatchesMetaShape` (body_test.go:1197). Se a doc divergir deste
-            spec, a doc vence no formato do fio — e diga no relatorio.
-         5. Contrato EN e pt-BR: na secao "Header and footer in interactive messages" troque o aviso
-            "`cabecalho_texto` is TEXT only … does not assemble that today" pela documentacao do campo novo,
-            com exemplo e as recusas. Acrescente a chave no bloco de referencia do POST /v1/messages (~linha 1617).
-         6. Idempotencia: o campo entra no hash pela forma canonica, como os demais (nenhum caminho especial).
-Verify:  os quatro comandos do CLAUDE.md verdes; testes novos cobrindo: corpo com imagem/video/documento em
-         botoes e cta_url; corpo sem o campo inalterado; 400 em `texto`/`lista`/`midia`/template; 400 com
-         texto+midia juntos; 400 com URL no media_id; alias `header_media` + `kind`/`file_name` traduzidos.
-
 ## [ ] T-259  Send interactive media carousel messages (free-form, no template)
 Why:     o mesmo convite com varias fotos dentro da janela de 24 h, sem template nem aprovacao. Dono: "o carrossel tb" (2026-10-22).
 Vikunja: 2227
 Files:   internal/outbound/message.go, internal/outbound/body.go, internal/outbound/input_aliases.go,
          internal/outbound/*_test.go, docs/CONTRATO-CONSUMIDOR.md, docs/CONTRATO-CONSUMIDOR.pt-BR.md, docs/CHANGELOG.md
-After:   T-258 (mesmos arquivos)
 Do:      0. FONTE PRIMEIRO: abra developers.facebook.com/documentation/business-messaging/whatsapp/messages/interactive-media-carousel-messages/
             e anote: formato do `interactive` (`type: "carousel"`), limites de cartoes, tipos de header, tipos de
             botao por cartao (resposta rapida e/ou cta_url, e se podem misturar), limites de texto. Cole o

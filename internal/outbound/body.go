@@ -68,6 +68,9 @@ func MetaBody(p Request) map[string]any {
 		if p.HeaderText != "" {
 			interactive["header"] = map[string]any{"type": "text", "text": p.HeaderText}
 		}
+		if p.HeaderMedia != nil {
+			interactive["header"] = headerParameter(*p.HeaderMedia)
+		}
 		if p.Footer != "" {
 			interactive["footer"] = map[string]any{"text": p.Footer}
 		}
@@ -114,6 +117,9 @@ func MetaBody(p Request) map[string]any {
 		}
 		if p.HeaderText != "" {
 			interactive["header"] = map[string]any{"type": "text", "text": p.HeaderText}
+		}
+		if p.HeaderMedia != nil {
+			interactive["header"] = headerParameter(*p.HeaderMedia)
 		}
 		if p.Footer != "" {
 			interactive["footer"] = map[string]any{"text": p.Footer}

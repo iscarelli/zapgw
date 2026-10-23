@@ -1605,6 +1605,7 @@ diferente.
   "secoes": [{"titulo": "…", "itens": [{"id":"…","titulo":"…","descricao":"…"}]}], // lista, obrigatório — botao_titulo (reusado de cta_url) é o rótulo do botão que abre a lista; ver a seção própria para os tetos
   "fluxo": {"id": "…", "token": "…", "acao": "navigate", "tela": "…"}, // flow, obrigatório — id OU nome (nunca os dois), token obrigatório; botao_titulo (reusado, teto próprio) é o flow_cta; ver a seção própria
   "cabecalho_texto": "…", "rodape": "…",          // botoes, cta_url, lista — opcional
+  "cabecalho_midia": {"tipo": "imagem"|"video"|"documento", "media_id": "…", "nome_arquivo": "…"}, // botoes, cta_url — opcional, não junto com cabecalho_texto; nome_arquivo só em documento
 
   "media_id": "…",                                // midia, obrigatório (de POST /v1/media)
   "categoria": "imagem"|"video"|"audio"|"documento"|"sticker", // midia, obrigatório — PTT tambem e "audio"
@@ -1753,11 +1754,27 @@ um, como você espera. *(Fonte: documentação da Meta,
 em 2026-08-20, o maior rodapé em uso tem 33 caracteres e o maior cabeçalho 35 — 60 sobra com folga,
 mas isso é a medição de um catálogo, não uma garantia sobre o seu.)*
 
-> ℹ️ **`cabecalho_texto` é só TEXTO.** A Cloud API também aceita cabeçalho de **mídia** em mensagem
-> interativa (imagem, vídeo, documento); **este gateway não monta isso hoje**, e não há campo para
-> pedi-lo. Não é recusa de projeto — é ausência de caso de uso. Se você tem um, peça: o nome do campo
-> foi escolhido com o sufixo `_texto` justamente para caber um `cabecalho_midia` ao lado sem renomear
-> nada do que já existe.
+#### Cabeçalho de mídia: `cabecalho_midia` (`botoes` e `cta_url`)
+
+No lugar do cabeçalho de texto, a mensagem interativa pode levar **uma imagem, vídeo ou documento
+acima do texto** — foto, texto e botões numa mensagem só, dentro da janela de 24 h e sem aprovação.
+
+```jsonc
+{ "instancia": "lojinha", "para": "5511999990000", "tipo": "botoes",
+  "cabecalho_midia": {"tipo": "imagem", "media_id": "…"},   // vem de POST /v1/media
+  "texto": "Confirma o orçamento #4471?",
+  "botoes": [{"id": "SIM", "titulo": "Confirmar"}, {"id": "NAO", "titulo": "Cancelar"}] }
+```
+
+- Mesmo objeto do `cabecalho` de template: `tipo` é `imagem`, `video` ou `documento`; `media_id` é
+  obrigatório; `nome_arquivo` só em `documento`. Grafia em inglês: `header_media` com `kind`,
+  `media_id`, `file_name`.
+- Vale **só** em `tipo: "botoes"` e `tipo: "cta_url"`. Em `lista` (a Meta só aceita cabeçalho de
+  texto ali), `midia`, `template` e qualquer outro tipo é `400` nomeando o campo.
+- `tipo: "texto"` dentro dele é `400`: cabeçalho de texto é `cabecalho_texto`.
+- `cabecalho_midia` junto com `cabecalho_texto` é `400`: a Meta tem UM cabeçalho por mensagem.
+- URL no `media_id` é `400`: suba os bytes em `POST /v1/media` e mande o id que ele devolve.
+- Sem o campo, a mensagem sai byte a byte como saía antes.
 
 #### 🔴 Isto NÃO existe em template, e a diferença não é do gateway — é da Meta
 

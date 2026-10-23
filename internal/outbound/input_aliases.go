@@ -133,6 +133,7 @@ var requestAliasAtTopLevel = map[string]string{
 	"variables":        "variaveis",
 	"header":           "cabecalho",
 	"header_text":      "cabecalho_texto",
+	"header_media":     "cabecalho_midia",
 	"template_buttons": "botoes_template",
 	"buttons":          "botoes",
 	"button_title":     "botao_titulo",
@@ -335,6 +336,7 @@ func translateRequestBody(raw []byte) ([]byte, []string, error) {
 		dict map[string]string
 	}{
 		{"cabecalho", templateHeaderAlias},
+		{"cabecalho_midia", templateHeaderAlias},
 		{"reacao", reactionAlias},
 		{"localizacao", locationAlias},
 		{"fluxo", flowAlias},
