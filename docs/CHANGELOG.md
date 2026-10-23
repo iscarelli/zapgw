@@ -2,7 +2,7 @@
 
 One line per version shipped, in the same commit as the bump. The entry states the **effect**, not the diff.
 
-## Unreleased
+## v0.74.0 — 2026-10-23
 
 - **Location header in template send (`cabecalho.tipo: "localizacao"`)** (T-261) — a template
   approved with a `LOCATION` header can now be sent with the pin: `cabecalho: {"tipo": "localizacao",
