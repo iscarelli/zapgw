@@ -482,6 +482,40 @@ instancias foram rotacionadas. Duas licoes que custaram na hora e valem alem des
 
 > A fila do periodo privado esta em `iscarelli/zapgw-dev`, congelada. Tarefa nova nasce aqui.
 
+## [ ] T-261  Location header in template send (`cabecalho.tipo: "localizacao"`)
+Why:     um consumidor quer o pino do local no topo de um template aprovado com header LOCATION,
+         para chegar com a janela de 24 h fechada (pedido no canal, 2026-10-23 08:23).
+Files:   internal/outbound/message.go, internal/outbound/body.go, internal/outbound/input_aliases.go
+         (so' se a chave nova precisar de alias), seus `_test.go`, docs/CONTRATO-CONSUMIDOR.md e
+         docs/CONTRATO-CONSUMIDOR.pt-BR.md (secao de template / `cabecalho`), docs/CHANGELOG.md
+Do:      1. `TemplateHeader` (message.go:178) ganha `Location *LocationRequest \`json:"localizacao,omitempty"\``
+            — REUSE o `LocationRequest` existente (message.go:358), nao crie outro tipo.
+         2. `validateHeaderValue` (message.go:1159): ramo novo `c.Type == "localizacao"` ANTES do
+            ramo de midia. Exige `localizacao` presente (ErrFieldRequired `<path>.localizacao`) com
+            latitude E longitude nao-nil, faixas -90..90 / -180..180 — reuse a MESMA logica de
+            `validateLocation` (message.go:1569), extraindo-a para uma funcao que receba
+            `*LocationRequest` + path, sem duplicar. Proibe `texto`, `media_id`, `nome_arquivo` no
+            header de localizacao (ErrFieldForbidden), e proibe `localizacao` em header de
+            texto/midia (ErrFieldForbidden) — campo no tipo errado sumiria sem erro.
+            A mensagem de ErrUnknownHeaderType passa a listar `localizacao` tambem.
+         3. `headerParameter` (body.go:465): `tipo "localizacao"` vira
+            `{"type":"location","location":{"latitude":…,"longitude":…,"name":…,"address":…}}`,
+            `name`/`address` AUSENTES quando vazios (mesma regra do body.go:313-324).
+         4. Header de localizacao vale no `cabecalho` de topo do template. Em `cartoes[i].cabecalho`
+            (carrossel template) RECUSE com 400 — a Meta so' aceita imagem/video em cartao.
+         5. Criacao (`POST` de template) e catalogo NAO mudam: `componentes` ja trafega cru
+            (templates_handler.go:365, meta/templates.go:302). Escreva um teste que prove que um
+            `componentes` com `{"type":"HEADER","format":"LOCATION"}` chega intacto ao corpo da Graph.
+         6. Contrato EN + pt-BR: documentar `tipo: "localizacao"` no `cabecalho`, com exemplo tirado
+            do teste (nao digitado), e a nota de que a criacao ja aceita `format: "LOCATION"` cru.
+         Bump MINOR em `VERSION` NAO e' desta tarefa (o planner faz o release).
+Verify:  CGO_ENABLED=0 go build ./... && go test ./... && go vet ./... && gofmt -l cmd internal (vazio).
+         Testes novos, cada um tem de FALHAR com a mudanca correspondente revertida:
+         (a) corpo exato `{"type":"header","parameters":[{"type":"location","location":{…}}]}`;
+         (b) latitude 0 aceita e presente no corpo; (c) latitude ausente -> 400 nomeando o campo;
+         (d) `media_id` junto de `localizacao` -> 400; (e) `localizacao` em `cartoes[0].cabecalho` -> 400;
+         (f) componente HEADER/LOCATION passa cru na criacao.
+
 ## [ ] T-248  Seven response keys and literals still Portuguese in code, among English siblings
 After:   DECIDIDO em 2026-09-19 — opcao (1): renomear TUDO de uma vez, bump MINOR, aviso aos dois
          consumidores ANTES do deploy (o dono manda o texto; sem canal). Segurada por ORCAMENTO
