@@ -1620,6 +1620,7 @@ does not count as a different request.
   "secoes": [{"titulo": "…", "itens": [{"id":"…","titulo":"…","descricao":"…"}]}], // lista, required — botao_titulo (reused from cta_url) is the label of the button that opens the list; see its own section for the ceilings
   "fluxo": {"id": "…", "token": "…", "acao": "navigate", "tela": "…"}, // flow, required — id OR nome (never both), token required; botao_titulo (reused, own ceiling) is the flow_cta; see its own section
   "cabecalho_texto": "…", "rodape": "…",          // botoes, cta_url, lista — optional
+  "cabecalho_midia": {"tipo": "imagem"|"video"|"documento", "media_id": "…", "nome_arquivo": "…"}, // botoes, cta_url — optional, not with cabecalho_texto; nome_arquivo only in documento
 
   "media_id": "…",                                // midia, required (from POST /v1/media)
   "categoria": "imagem"|"video"|"audio"|"documento"|"sticker", // midia, required — PTT is also "audio"
@@ -1767,11 +1768,27 @@ emoji costs one, as you would expect. *(Source: Meta's documentation,
 measured on 2026-08-20, the longest footer in use has 33 characters and the longest header 35 — 60 is
 comfortably enough, but that is one catalogue's measurement, not a guarantee about yours.)*
 
-> ℹ️ **`cabecalho_texto` is TEXT only.** The Cloud API also accepts a **media** header in an
-> interactive message (image, video, document); **this gateway does not assemble that today**, and
-> there is no field to ask for it. It is not a project refusal — it is the absence of a use case. If
-> you have one, ask: the field name was chosen with the `_texto` suffix precisely so a
-> `cabecalho_midia` can sit beside it without renaming anything that already exists.
+#### Media header: `cabecalho_midia` (`botoes` and `cta_url`)
+
+Instead of a text header, an interactive message can carry **one image, video or document above the
+text** — photo, text and buttons in a single message, within the 24 h window, with no approval.
+
+```jsonc
+{ "instancia": "lojinha", "para": "5511999990000", "tipo": "botoes",
+  "cabecalho_midia": {"tipo": "imagem", "media_id": "…"},   // from POST /v1/media
+  "texto": "Confirma o orçamento #4471?",
+  "botoes": [{"id": "SIM", "titulo": "Confirmar"}, {"id": "NAO", "titulo": "Cancelar"}] }
+```
+
+- Same object as the template `cabecalho`: `tipo` is `imagem`, `video` or `documento`; `media_id`
+  is required; `nome_arquivo` only in `documento`. English spelling: `header_media` with `kind`,
+  `media_id`, `file_name`.
+- Valid **only** in `tipo: "botoes"` and `tipo: "cta_url"`. In `lista` (Meta accepts a text header
+  only there), `midia`, `template` and every other type it is a `400` naming the field.
+- `tipo: "texto"` inside it is a `400`: a text header is `cabecalho_texto`.
+- `cabecalho_midia` together with `cabecalho_texto` is a `400`: Meta has ONE header per message.
+- A URL in `media_id` is a `400`: upload the bytes to `POST /v1/media` and send the id it returns.
+- Without the field, the message is byte for byte what it was before.
 
 #### 🔴 This does NOT exist in a template, and the difference is not the gateway's — it is Meta's
 

@@ -648,6 +648,13 @@ type Request struct {
 	HeaderText string `json:"cabecalho_texto,omitempty"`
 	Footer     string `json:"rodape,omitempty"`
 
+	// botoes, cta_url -- MEDIA header of the same `interactive` object
+	// (T-258): one image, video or document above the text, by `media_id`
+	// like the template header, whose TemplateHeader type it reuses. Text
+	// headers stay in `cabecalho_texto`; Meta has ONE header, so the two
+	// together are refused. `omitempty` for the same hash reason as above.
+	HeaderMedia *TemplateHeader `json:"cabecalho_midia,omitempty"`
+
 	// midia
 	MediaID  string `json:"media_id,omitempty"`
 	Category string `json:"categoria,omitempty"`
@@ -835,6 +842,9 @@ func (p *Request) Validate() error {
 		if err := p.validateHeaderTextAndFooter(); err != nil {
 			return err
 		}
+		if err := p.validateHeaderMedia(); err != nil {
+			return err
+		}
 	case "cta_url":
 		if len(p.Buttons) > 0 {
 			return ErrMixedButtons
@@ -849,6 +859,9 @@ func (p *Request) Validate() error {
 			return fmt.Errorf("%w: botao_url", ErrFieldRequired)
 		}
 		if err := p.validateHeaderTextAndFooter(); err != nil {
+			return err
+		}
+		if err := p.validateHeaderMedia(); err != nil {
 			return err
 		}
 	case "lista":
@@ -1017,6 +1030,18 @@ func (p *Request) Validate() error {
 			return fmt.Errorf("%w: rodape em %s (so botoes, cta_url e lista tem footer "+
 				"de texto livre, e ele sumiria sem erro)", ErrFieldForbidden, p.Type)
 		}
+	}
+
+	// `cabecalho_midia` (T-258) only has a shape in the "botoes" and "cta_url"
+	// branches. In "lista" Meta accepts a TEXT header only (see
+	// validateHeaderMedia), so the field would vanish there without error.
+	if p.Type != "botoes" && p.Type != "cta_url" && p.HeaderMedia != nil {
+		if p.Type == "template" {
+			return fmt.Errorf("%w: cabecalho_midia em template (o header de template "+
+				"e `cabecalho`, com outra forma; use-o no lugar)", ErrFieldForbidden)
+		}
+		return fmt.Errorf("%w: cabecalho_midia em %s (so botoes e cta_url tem header "+
+			"de midia, e ele sumiria sem erro)", ErrFieldForbidden, p.Type)
 	}
 
 	// `botao_titulo` (the action button's label) only has a shape in
@@ -1619,6 +1644,31 @@ func (p *Request) validateHeaderTextAndFooter() error {
 		}
 	}
 	return nil
+}
+
+// validateHeaderMedia checks `cabecalho_midia` (T-258), valid only in
+// "botoes" and "cta_url" (the caller guards the other types). Source:
+// developers.facebook.com/docs/whatsapp/cloud-api/messages/
+// interactive-reply-buttons-messages and interactive-cta-url-messages, read
+// on 2026-10-22: the header is optional, one of text/image/video/document;
+// the list message takes a text header only.
+//
+// The trim, the media_id shape and the URL refusal are validateHeaderValue's
+// -- one implementation, not a copy. What this adds: only media types (a
+// text header is `cabecalho_texto`) and ONE header per message.
+func (p *Request) validateHeaderMedia() error {
+	if p.HeaderMedia == nil {
+		return nil
+	}
+	if strings.TrimSpace(p.HeaderMedia.Type) == "texto" {
+		return fmt.Errorf("%w: cabecalho_midia.tipo texto (o header de texto e "+
+			"`cabecalho_texto`)", ErrFieldForbidden)
+	}
+	if strings.TrimSpace(p.HeaderText) != "" {
+		return fmt.Errorf("%w: cabecalho_midia junto com cabecalho_texto (a mensagem "+
+			"tem UM header so)", ErrFieldForbidden)
+	}
+	return validateHeaderValue(p.HeaderMedia, "cabecalho_midia")
 }
 
 // validateButtonTitle checks `botao_titulo`, a CONSUMER field REUSED by

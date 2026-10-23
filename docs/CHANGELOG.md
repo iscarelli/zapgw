@@ -2,6 +2,14 @@
 
 One line per version shipped, in the same commit as the bump. The entry states the **effect**, not the diff.
 
+## Unreleased
+
+- **Media header on interactive buttons and cta_url messages (`cabecalho_midia`)** (T-258) —
+  `tipo: "botoes"` and `tipo: "cta_url"` accept one image, video or document header by `media_id`
+  (alias `header_media`), reusing the template header object; refused in every other type, together
+  with `cabecalho_texto`, as a text type and with a URL. Without the field the body is byte for byte
+  unchanged. NOT measured against Meta yet. _Completed 2026-10-22 21:54._
+
 ## v0.72.0 — 2026-10-22
 
 MINOR: `POST /v1/messages` sends media card carousel templates — new `cards` field (alias `cartoes`) on `kind: "template"`; templates without it are unchanged (T-257).
