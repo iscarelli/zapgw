@@ -1596,7 +1596,7 @@ diferente.
   "texto": "…",                                   // texto, botoes, cta_url, lista, pedir_localizacao, flow
   "template": "lembrete", "idioma": "pt_BR",      // template
   "variaveis": ["Maria", "19h"],                  // template, opcional (o corpo do template)
-  "cabecalho": {"tipo": "documento", "media_id": "…", "nome_arquivo": "recibo.pdf"}, // template, opcional
+  "cabecalho": {"tipo": "documento", "media_id": "…", "nome_arquivo": "recibo.pdf"}, // template, opcional; tipo também "localizacao" com "localizacao": {latitude, longitude, nome?, endereco?}
   "botoes_template": [{"indice": 0, "tipo": "url", "texto": "…"}, // template, opcional
                        {"indice": 1, "tipo": "resposta_rapida", "payload": "…"}],
   "cartoes": [{"cabecalho": {"tipo": "imagem", "media_id": "…"}, "variaveis": ["…"], "botoes_template": [/* como acima */]}], // template, opcional — carrossel de cartões de mídia, de 2 a 10 cartões; veja "Template de carrossel"; em `carrossel` cada cartão aceita também `texto` (obrigatório), `botoes` ou `botao_titulo`+`botao_url`, veja "Carrossel interativo"
@@ -1891,6 +1891,23 @@ protegido ninguém.
 `categoria`; `audio` e `sticker` não valem como header). Em `"texto"` mande `texto`; nos outros mande
 `media_id`. `nome_arquivo` só existe em `"documento"`. Campo no tipo errado é `400` — ele sumiria em
 silêncio, e você veria `200` com o header faltando no celular do cliente.
+
+**`cabecalho` com `tipo: "localizacao"` (um pino de local no topo do template)** — para um template
+aprovado com header `LOCATION`. Mande o pino em `localizacao`, o mesmo objeto do tipo de mensagem
+`localizacao`: `latitude` e `longitude` são obrigatórias (`0` é coordenada válida; as faixas são
+-90..90 e -180..180), `nome` e `endereco` são opcionais e saem do corpo quando vazios. `texto`,
+`media_id` e `nome_arquivo` junto dela são proibidos (`400`), e `localizacao` em header de outro
+`tipo` também é `400`. Vale só no `cabecalho` de topo: dentro de `cartoes[i].cabecalho` (carrossel
+template) é recusado com `400`, porque a Meta só aceita imagem ou vídeo no cartão, e também é recusado
+em `cabecalho_midia`. Exemplo (o que o teste `TestTemplateLocationHeaderBodyIsExact` confere no fio):
+
+```json
+"cabecalho": {"tipo": "localizacao", "localizacao": {
+  "latitude": -23.5505, "longitude": -46.6333, "nome": "Loja Centro", "endereco": "Rua Exemplo, 100"}}
+```
+
+A criação do template não muda: `POST /v1/templates` já repassa `componentes` à Meta sem tocar, então
+`{"type":"HEADER","format":"LOCATION"}` é aceito como está.
 
 > ⚠️ **O header de mídia é por `media_id`, nunca por URL.** Não há campo de URL, e um `media_id` com
 > forma de URL é recusado com `400`. URL crua faz a **Meta ir buscar** o arquivo, e quando ela não

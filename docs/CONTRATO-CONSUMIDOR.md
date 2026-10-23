@@ -1611,7 +1611,7 @@ does not count as a different request.
   "texto": "…",                                   // texto, botoes, cta_url, lista, pedir_localizacao, flow
   "template": "lembrete", "idioma": "pt_BR",      // template
   "variaveis": ["Maria", "19h"],                  // template, optional (the template's body)
-  "cabecalho": {"tipo": "documento", "media_id": "…", "nome_arquivo": "recibo.pdf"}, // template, optional
+  "cabecalho": {"tipo": "documento", "media_id": "…", "nome_arquivo": "recibo.pdf"}, // template, optional; tipo also "localizacao" with "localizacao": {latitude, longitude, nome?, endereco?}
   "botoes_template": [{"indice": 0, "tipo": "url", "texto": "…"}, // template, optional
                        {"indice": 1, "tipo": "resposta_rapida", "payload": "…"}],
   "cartoes": [{"cabecalho": {"tipo": "imagem", "media_id": "…"}, "variaveis": ["…"], "botoes_template": [/* as above */]}], // template, optional — media card carousel, 2 to 10 cards; see "Carousel template"; in `carrossel` each card also takes `texto` (required), `botoes` or `botao_titulo`+`botao_url`, see "Interactive carousel"
@@ -1909,6 +1909,24 @@ and the gateway would have protected nobody.
 others send `media_id`. `nome_arquivo` only exists in `"documento"`. A field on the wrong type is a
 `400` — it would disappear silently, and you would see `200` with the header missing on the customer's
 phone.
+
+**`cabecalho` with `tipo: "localizacao"` (a location pin at the top of the template)** — for a
+template approved with a `LOCATION` header. Send the pin in `localizacao`, the same object as the
+`localizacao` message type: `latitude` and `longitude` are required (`0` is a valid coordinate; the
+ranges are -90..90 and -180..180), `nome` and `endereco` are optional and leave the body when empty.
+`texto`, `media_id` and `nome_arquivo` are forbidden beside it (`400`), and `localizacao` in a header
+of any other `tipo` is a `400` too. It is valid only in the top-level `cabecalho`: inside
+`cartoes[i].cabecalho` (template carousel) it is refused with `400`, because Meta accepts only image
+or video in a card, and it is refused in `cabecalho_midia` as well. Example (the one the test
+`TestTemplateLocationHeaderBodyIsExact` asserts on the wire):
+
+```json
+"cabecalho": {"tipo": "localizacao", "localizacao": {
+  "latitude": -23.5505, "longitude": -46.6333, "nome": "Loja Centro", "endereco": "Rua Exemplo, 100"}}
+```
+
+Creating the template needs nothing new: `POST /v1/templates` already passes `componentes` through to
+Meta untouched, so `{"type":"HEADER","format":"LOCATION"}` is accepted as is.
 
 > ⚠️ **A media header is by `media_id`, never by URL.** There is no URL field, and a `media_id` shaped
 > like a URL is refused with `400`. A raw URL makes **Meta go and fetch** the file, and when it does
