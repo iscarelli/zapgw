@@ -1179,7 +1179,7 @@ func TestValidateRefusesHeaderOutsideTemplate(t *testing.T) {
 // make the person fix the wrong thing — the same reason ErrMixedButtons
 // comes before the required fields.
 func TestValidateReportsUnknownTypeBeforeForbiddenHeader(t *testing.T) {
-	p := Request{Instance: "l", To: "5511999990000", Type: "carrossel",
+	p := Request{Instance: "l", To: "5511999990000", Type: "galeria",
 		Header: &TemplateHeader{Type: "texto", Text: "x"}}
 	if err := p.Validate(); !errors.Is(err, ErrUnknownType) {
 		t.Fatalf("err = %v, want ErrUnknownType", err)

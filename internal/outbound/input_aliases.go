@@ -172,6 +172,11 @@ var cardAlias = map[string]string{
 	"header":           "cabecalho",
 	"variables":        "variaveis",
 	"template_buttons": "botoes_template",
+	// T-259: the free-form interactive carousel card.
+	"text":         "texto",
+	"buttons":      "botoes",
+	"button_title": "botao_titulo",
+	"button_url":   "botao_url",
 }
 
 // translateCardItem applies cardAlias to ONE item of `cartoes`, then the
@@ -211,6 +216,24 @@ func translateCardItem(raw json.RawMessage) (json.RawMessage, []string, error) {
 			}
 			if out, merr := json.Marshal(arr); merr == nil {
 				m["botoes_template"] = out
+			}
+		}
+	}
+	// `botoes` of a carousel card (T-259): the SAME item dictionary as the
+	// top-level `botoes`.
+	if sub, ok := m["botoes"]; ok {
+		var arr []json.RawMessage
+		if err := json.Unmarshal(sub, &arr); err == nil {
+			for i := range arr {
+				translated, old, err := translateButtonItem(arr[i])
+				if err != nil {
+					return nil, nil, err
+				}
+				arr[i] = translated
+				oldNames = append(oldNames, old...)
+			}
+			if out, merr := json.Marshal(arr); merr == nil {
+				m["botoes"] = out
 			}
 		}
 	}
@@ -509,6 +532,7 @@ var requestTypeValueAlias = map[string]string{
 	"location":         "localizacao",
 	"contacts":         "contatos",
 	"media":            "midia",
+	"carousel":         "carrossel",
 }
 
 // requestCategoryValueAlias: `Request.Category` ("categoria" at the top

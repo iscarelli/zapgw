@@ -467,37 +467,6 @@ instancias foram rotacionadas. Duas licoes que custaram na hora e valem alem des
 
 > A fila do periodo privado esta em `iscarelli/zapgw-dev`, congelada. Tarefa nova nasce aqui.
 
-## [ ] T-259  Send interactive media carousel messages (free-form, no template)
-Why:     o mesmo convite com varias fotos dentro da janela de 24 h, sem template nem aprovacao. Dono: "o carrossel tb" (2026-10-22).
-Vikunja: 2227
-Files:   internal/outbound/message.go, internal/outbound/body.go, internal/outbound/input_aliases.go,
-         internal/outbound/*_test.go, docs/CONTRATO-CONSUMIDOR.md, docs/CONTRATO-CONSUMIDOR.pt-BR.md, docs/CHANGELOG.md
-Do:      0. FONTE PRIMEIRO: abra developers.facebook.com/documentation/business-messaging/whatsapp/messages/interactive-media-carousel-messages/
-            e anote: formato do `interactive` (`type: "carousel"`), limites de cartoes, tipos de header, tipos de
-            botao por cartao (resposta rapida e/ou cta_url, e se podem misturar), limites de texto. Cole o
-            exemplo dela num teste de forma (padrao de `TestTemplateCarouselBodyMatchesMetaShape`). Se algo
-            abaixo divergir da pagina, a pagina vence no formato do fio e nos limites — diga no relatorio.
-         1. Tipo novo `tipo: "carrossel"` (alias de valor `carousel`, no mesmo dicionario dos outros valores
-            de `tipo`). O teste `TestValidateReportsUnknownTypeBeforeForbiddenHeader` (message_test.go:1182)
-            usa "carrossel" como tipo DESCONHECIDO: troque o exemplo por outro nome inexistente.
-         2. Campos: `texto` (corpo da mensagem, obrigatorio) e `cartoes` (o MESMO campo da T-257 — um nome
-            por coisa). TemplateCard ganha campos opcionais: `texto` (corpo do cartao), `botoes` ([]Button,
-            resposta rapida, mesmo tipo do `tipo: "botoes"`), `botao_titulo` + `botao_url` (cta_url, mesmos
-            nomes do `tipo: "cta_url"`). Aliases em cardAlias: `text`, `buttons`, `button_title`, `button_url`
-            — com os itens de `botoes` traduzidos pelo mesmo dicionario de botao do nivel de cima.
-         3. Validacao cruzada, sem campo sumindo calado: em `tipo: "template"` os campos novos do cartao sao
-            400; em `carrossel` `variaveis` e `botoes_template` do cartao sao 400. Em `carrossel`:
-            `cabecalho` do cartao obrigatorio, `imagem` ou `video` (reuse validateHeaderValue com path
-            "cartoes[i].cabecalho"); todos os cartoes com o mesmo tipo de botao e mesmo tipo de header se a
-            pagina exigir; cada cartao com resposta rapida OU cta_url conforme a pagina. Campos de topo que nao
-            tem lugar no carrossel (`cabecalho_texto`, `cabecalho_midia`, `rodape`, `botoes`, `botao_url`...)
-            -> 400 nomeando o campo. `cartoes` em tipos que nao sejam `template` nem `carrossel` continua 400.
-         4. Corpo em body.go no formato da pagina (passo 0), com `card_index` se ela pedir.
-         5. Contrato EN e pt-BR: secao nova "Interactive carousel (`kind: "carrossel"`)" ao lado da do
-            carrossel template, deixando claro: so' dentro da janela de 24 h; diferenca para o template.
-Verify:  os quatro comandos do CLAUDE.md verdes; teste de forma batendo com o exemplo da pagina da Meta;
-         testes das recusas cruzadas do passo 3; corpo de `tipo: "template"` com `cartoes` (T-257) inalterado.
-
 ## [ ] T-248  Seven response keys and literals still Portuguese in code, among English siblings
 After:   DECIDIDO em 2026-09-19 — opcao (1): renomear TUDO de uma vez, bump MINOR, aviso aos dois
          consumidores ANTES do deploy (o dono manda o texto; sem canal). Segurada por ORCAMENTO
