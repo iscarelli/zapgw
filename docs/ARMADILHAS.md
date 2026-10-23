@@ -2162,6 +2162,37 @@ trigger. *Recorded here so that nobody reads the pitfall as "this happens all th
 nobody reads it backwards: **a rare case the code does not handle is exactly what fails on the day it happens**, and
 here the cost is the consumer redoing work already done.*
 
+### 🔥 Interactive carousel card without body: Meta answers `sent` and never delivers (2026-10-22)
+
+Meta's interactive media carousel page says "Card body text is optional". **Measured, it is not:** a card
+without body text is accepted by the API (the send returns `sent`) and the message never reaches the phone.
+There is no `delivered` and no `failed`, and nothing shows in the gateway's journal, so every signal on our
+side says the send worked.
+
+**The measurement (2026-10-22, one variable changed at a time):**
+
+- 22:04 -0300: 7 quick-reply cards **without** `texto` -> only `sent`; no `delivered`, no `failed`.
+- 22:11: 2 cards **with** `texto` (one link, one quick reply) -> `delivered`.
+- 22:13: the **same** 7 `media_id` and buttons as the 22:04 send, only with `texto` on each card ->
+  `delivered` and `read`.
+
+The only difference between the failed and the working send is the card text.
+
+**The rule:** `validateCarousel` (`internal/outbound/message.go`) refuses a card whose `texto` is empty or
+blank with `ErrFieldRequired` naming `cartoes[i].texto`, before Meta sees it. Test:
+`TestCarouselCardRequiresText` (`internal/outbound/carousel_test.go`).
+
+**The cost:** an invitation that never arrived, found only because the owner looked at the device. *A
+documentation page that says "optional" is a claim, not a measurement; here the silent failure is the
+worst kind, because the provider's own acknowledgement is the thing that lies.*
+
+**Siblings, checked:**
+
+- The **template** carousel (`tipo: "template"` + `cartoes`) has no such field: the card body is fixed at
+  registration, so there is nothing to require and the rule does not apply there.
+- `botoes` and `cta_url` already require `texto` at the message level, so the hole was only in the cards
+  of the free-form carousel.
+
 ## Brazilian phone numbers
 
 **`==` between two "normalized" phone numbers does NOT prove they are the same person.** Meta does **not guarantee**

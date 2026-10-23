@@ -477,34 +477,6 @@ instancias foram rotacionadas. Duas licoes que custaram na hora e valem alem des
 
 > A fila do periodo privado esta em `iscarelli/zapgw-dev`, congelada. Tarefa nova nasce aqui.
 
-## [ ] T-260  Require card text in the interactive carousel (Meta silently drops cards without body)
-Why:     carrossel com cartao sem `texto` volta `sent` e NUNCA e' entregue, sem `failed` (medido pelo consumidor 2026-10-22). Dono: "pode seguir".
-Vikunja: 2228
-Files:   internal/outbound/message.go, internal/outbound/carousel_test.go, docs/CONTRATO-CONSUMIDOR.md,
-         docs/CONTRATO-CONSUMIDOR.pt-BR.md, docs/ARMADILHAS.md, docs/CHANGELOG.md
-Do:      1. Em `validateCarousel` (message.go:1338): cada cartao de `tipo: "carrossel"` exige `texto` nao
-            vazio depois de trim -> ErrFieldRequired com path `cartoes[i].texto`. Comentario no codigo com o
-            porque: a pagina da Meta diz "Card body text is optional", mas a medicao contradiz (abaixo).
-            NAO mexe no carrossel TEMPLATE (`tipo: "template"` + `cartoes`): la' o corpo e' fixo no cadastro.
-         2. Testes em carousel_test.go: cartao sem `texto` e com `texto` so' de espacos -> 400 nomeando
-            `cartoes[i].texto`; ajuste os testes/fixtures existentes de `carrossel` que montam cartao sem
-            `texto` (acrescente texto neles, nao relaxe a regra). Corpo do carrossel template inalterado.
-         3. Contrato EN e pt-BR, secao "Interactive carousel": `texto` do cartao passa a OBRIGATORIO, com o
-            motivo em uma frase (a Meta aceita sem corpo e nao entrega). Ajuste tambem a linha do bloco de
-            referencia (~1617) e a ~2170 ("`texto` (optional, the card body)").
-         4. docs/ARMADILHAS.md, secao "## Meta / WhatsApp Cloud API": entrada nova com 🔥, datada
-            2026-10-22: "Interactive carousel card without body: Meta answers `sent` and never delivers".
-            Fatos medidos (use exatamente estes): 22:04 -0300, 7 cartoes de resposta rapida SEM texto ->
-            so' `sent`, nenhum `delivered` nem `failed`, nada no journal do gateway; 22:11, 2 cartoes COM texto
-            (link e resposta rapida) -> `delivered`; 22:13, os MESMOS 7 media_id e botoes da msg das 22:04,
-            so' com texto no cartao -> `delivered` e `read`. Variavel unica: o texto do cartao. Custo: um
-            convite que nao chegou, descoberto so' porque o dono olhou o aparelho. Irmaos: diga que o
-            carrossel TEMPLATE nao tem esse campo (corpo fixo no cadastro) e que `botoes`/`cta_url` ja'
-            exigem `texto` no nivel da mensagem. Sem numero de telefone, sem nome de consumidor.
-Verify:  os quatro comandos do CLAUDE.md verdes; teste novo falha se o check do passo 1 for removido
-         (confira removendo e restaurando, e diga no relatorio); `grep -n "optional, the card body"
-         docs/CONTRATO-CONSUMIDOR*.md` vazio.
-
 ## [ ] T-248  Seven response keys and literals still Portuguese in code, among English siblings
 After:   DECIDIDO em 2026-09-19 — opcao (1): renomear TUDO de uma vez, bump MINOR, aviso aos dois
          consumidores ANTES do deploy (o dono manda o texto; sem canal). Segurada por ORCAMENTO
