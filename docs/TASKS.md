@@ -6,6 +6,14 @@
 > Escrito ao fim de 2026-08-30, o dia em que o repositorio virou publico. Bloco de retomada
 > mentindo e' pior que bloco nenhum: e' o primeiro texto que a proxima sessao le.
 
+### 📌 2026-10-22 22:03 — `v0.73.0` EM PRODUCAO (T-258 + T-259, medido: `HEALTH OK` + `VERSION MATCHES 0.73.0`).
+
+- `cabecalho_midia` (foto/video/documento no header de `botoes` e `cta_url`) e `tipo: "carrossel"`
+  (carrossel interativo em texto livre, so' na janela de 24 h). Pedido do mesmo consumidor; dono: "pode construir".
+- ⚠️ **Nada medido contra a Meta.** Tres duvidas que so' o envio real resolve: `id` (nao `link`) no
+  header do `cta_url` e do carrossel; `"type":"cta_url"` em cartao de resposta rapida (copiado
+  literal da pagina da Meta); `filename` no header de documento. Avisado no canal as 22:03.
+
 ### 📌 2026-10-22 — `v0.72.0` EM PRODUCAO (T-257, medido: `HEALTH OK` + `VERSION MATCHES 0.72.0`): envio de template carrossel (`cards`).
 
 - Pedido de um consumidor (convite com varias fotos). Dono: "pode fazer; a decisao de usar e' deles" —
