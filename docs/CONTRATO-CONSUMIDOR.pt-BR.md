@@ -1599,7 +1599,7 @@ diferente.
   "cabecalho": {"tipo": "documento", "media_id": "…", "nome_arquivo": "recibo.pdf"}, // template, opcional
   "botoes_template": [{"indice": 0, "tipo": "url", "texto": "…"}, // template, opcional
                        {"indice": 1, "tipo": "resposta_rapida", "payload": "…"}],
-  "cartoes": [{"cabecalho": {"tipo": "imagem", "media_id": "…"}, "variaveis": ["…"], "botoes_template": [/* como acima */]}], // template, opcional — carrossel de cartões de mídia, de 2 a 10 cartões; veja "Template de carrossel"; em `carrossel` cada cartão aceita também `texto`, `botoes` ou `botao_titulo`+`botao_url`, veja "Carrossel interativo"
+  "cartoes": [{"cabecalho": {"tipo": "imagem", "media_id": "…"}, "variaveis": ["…"], "botoes_template": [/* como acima */]}], // template, opcional — carrossel de cartões de mídia, de 2 a 10 cartões; veja "Template de carrossel"; em `carrossel` cada cartão aceita também `texto` (obrigatório), `botoes` ou `botao_titulo`+`botao_url`, veja "Carrossel interativo"
   "botoes": [{"id":"SIM","titulo":"Sim"}],        // botoes (mensagem interativa — NAO e template) — titulo: maximo 20 caracteres, lista: maximo 3 itens
   "botao_titulo": "Abrir", "botao_url": "https://…", // cta_url — botao_titulo: maximo 20 caracteres, botao_url obrigatório só em cta_url
   "secoes": [{"titulo": "…", "itens": [{"id":"…","titulo":"…","descricao":"…"}]}], // lista, obrigatório — botao_titulo (reusado de cta_url) é o rótulo do botão que abre a lista; ver a seção própria para os tetos
@@ -2154,7 +2154,8 @@ de 24 h** (sem aprovação, sem categoria). Fora da janela, use o carrossel de t
 
 `texto` (o corpo da mensagem) e `cartoes` (de 2 a 10 cartões, o mesmo campo do carrossel de template)
 são obrigatórios; alias em inglês `kind: "carousel"`. Cada cartão aceita `cabecalho` (**obrigatório**,
-`imagem` ou `video` por `media_id`), `texto` (opcional, o corpo do cartão) e **um** tipo de botão:
+`imagem` ou `video` por `media_id`), `texto` (**obrigatório**, o corpo do cartão: a Meta aceita o cartão
+sem ele, responde `sent` e nunca o entrega) e **um** tipo de botão:
 
 - `botoes` (`[{"id","titulo"}]`, resposta rápida, o mesmo item de `tipo: "botoes"`; até 3 por cartão), ou
 - `botao_titulo` + `botao_url` (botão de URL, os mesmos nomes de `tipo: "cta_url"`).
@@ -2164,6 +2165,7 @@ Chaves em inglês dentro do cartão: `header`, `text`, `buttons` (itens: `id`, `
 
 - menos de **2** ou mais de **10** cartões, ou sem `texto`;
 - cartão sem `cabecalho`, ou com `cabecalho.tipo` diferente de `imagem` ou `video`;
+- cartão com `texto` vazio ou só espaços (nomeado como `cartoes[i].texto`);
 - cartão sem botão, ou com os dois tipos; cartões que não têm todos o mesmo tipo de cabeçalho, o mesmo
   tipo de botão e o mesmo número de botões (regra da Meta);
 - `variaveis` ou `botoes_template` dentro do cartão (são do carrossel de template) e, num cartão de

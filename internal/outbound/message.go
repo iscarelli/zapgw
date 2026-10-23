@@ -1331,7 +1331,7 @@ func refuseCarouselCardFields(c *TemplateCard, path string) error {
 // (`tipo: "carrossel"`, T-259). Rules from Meta's page (read 2026-10-22,
 // developers.facebook.com/documentation/business-messaging/whatsapp/messages/
 // interactive-media-carousel-messages/): 2 to 10 cards; every card has an
-// image or video header; a card carries EITHER one URL button OR quick-reply
+// image or video header and a body text; a card carries EITHER one URL button OR quick-reply
 // buttons; the button kind and count are identical across all cards.
 // The top-level fields that have no place in a carousel are refused by the
 // generic guards after the switch, except `botao_url`, refused here.
@@ -1373,7 +1373,16 @@ func (p *Request) validateCarousel() error {
 				"tem template; use `botoes` ou botao_titulo+botao_url, e eles sumiriam sem erro)",
 				ErrFieldForbidden, path)
 		}
+		// Required although Meta's page says "Card body text is optional":
+		// measured 2026-10-22, a card without body is answered `sent` and is
+		// never delivered, with no `failed` (ARMADILHAS, "Interactive carousel
+		// card without body"). The template carousel is not touched: its body
+		// is fixed at registration.
 		c.Text = strings.TrimSpace(c.Text)
+		if c.Text == "" {
+			return fmt.Errorf("%w: %s.texto (a Meta aceita o cartao sem corpo e nunca o entrega)",
+				ErrFieldRequired, path)
+		}
 		c.ButtonTitle = strings.TrimSpace(c.ButtonTitle)
 		c.ButtonURL = strings.TrimSpace(c.ButtonURL)
 		hasURL := c.ButtonTitle != "" || c.ButtonURL != ""

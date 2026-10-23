@@ -3,6 +3,7 @@ package outbound
 import (
 	"encoding/json"
 	"errors"
+	"strings"
 	"testing"
 )
 
@@ -56,16 +57,34 @@ func TestInteractiveCarouselBodyMatchesMetaShape(t *testing.T) {
 	}
 
 	u := carouselURL(2)
-	u.Cards[0].Text = ""
 	if err := u.Validate(); err != nil {
 		t.Fatalf("Validate url: %v", err)
 	}
 	inter := MetaBody(u)["interactive"].(map[string]any)
 	cards, _ := json.Marshal(inter["action"].(map[string]any)["cards"].([]map[string]any)[0])
 	const wantURL = `{"action":{"name":"cta_url","parameters":{"display_text":"Abrir","url":"https://exemplo.com/g"}},` +
-		`"card_index":0,"header":{"image":{"id":"IMGA"},"type":"image"},"type":"cta_url"}`
+		`"body":{"text":"cartao"},"card_index":0,"header":{"image":{"id":"IMGA"},"type":"image"},"type":"cta_url"}`
 	if string(cards) != wantURL {
-		t.Errorf("cta_url card mismatch (body absent when empty):\ngot:  %s\nwant: %s", cards, wantURL)
+		t.Errorf("cta_url card mismatch:\ngot:  %s\nwant: %s", cards, wantURL)
+	}
+}
+
+// T-260: Meta answers `sent` and never delivers a card without body text, so
+// the gateway refuses it, naming the card. Blank counts as empty.
+func TestCarouselCardRequiresText(t *testing.T) {
+	for _, text := range []string{"", "   ", "\t\n"} {
+		for name, mk := range map[string]func(int) Request{"quick-reply": carouselQR, "url": carouselURL} {
+			p := mk(3)
+			p.Cards[1].Text = text
+			err := p.Validate()
+			if !errors.Is(err, ErrFieldRequired) {
+				t.Errorf("%s card with text %q: %v, want ErrFieldRequired", name, text, err)
+				continue
+			}
+			if !strings.Contains(err.Error(), "cartoes[1].texto") {
+				t.Errorf("%s card with text %q: %v, want it to name cartoes[1].texto", name, text, err)
+			}
+		}
 	}
 }
 

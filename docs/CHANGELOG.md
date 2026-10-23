@@ -2,6 +2,13 @@
 
 One line per version shipped, in the same commit as the bump. The entry states the **effect**, not the diff.
 
+## Unreleased
+
+- **Require card text in the interactive carousel (Meta silently drops cards without body)** (T-260) —
+  every card of `tipo: "carrossel"` now needs a non-blank `texto`, refused with a `400` naming
+  `cartoes[i].texto`. Measured 2026-10-22: Meta accepts a card without body, answers `sent` and never
+  delivers it. The template carousel is unchanged. _Completed 2026-10-22 22:19._
+
 ## v0.73.0 — 2026-10-22
 
 MINOR: `POST /v1/messages` gains a media header on `botoes`/`cta_url` (`cabecalho_midia`, T-258) and the free-form interactive carousel (`tipo: "carrossel"`, T-259); requests without them are unchanged.

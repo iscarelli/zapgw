@@ -1614,7 +1614,7 @@ does not count as a different request.
   "cabecalho": {"tipo": "documento", "media_id": "…", "nome_arquivo": "recibo.pdf"}, // template, optional
   "botoes_template": [{"indice": 0, "tipo": "url", "texto": "…"}, // template, optional
                        {"indice": 1, "tipo": "resposta_rapida", "payload": "…"}],
-  "cartoes": [{"cabecalho": {"tipo": "imagem", "media_id": "…"}, "variaveis": ["…"], "botoes_template": [/* as above */]}], // template, optional — media card carousel, 2 to 10 cards; see "Carousel template"; in `carrossel` each card also takes `texto`, `botoes` or `botao_titulo`+`botao_url`, see "Interactive carousel"
+  "cartoes": [{"cabecalho": {"tipo": "imagem", "media_id": "…"}, "variaveis": ["…"], "botoes_template": [/* as above */]}], // template, optional — media card carousel, 2 to 10 cards; see "Carousel template"; in `carrossel` each card also takes `texto` (required), `botoes` or `botao_titulo`+`botao_url`, see "Interactive carousel"
   "botoes": [{"id":"SIM","titulo":"Sim"}],        // botoes (interactive message — NOT a template) — titulo: max 20 characters, list: max 3 items
   "botao_titulo": "Abrir", "botao_url": "https://…", // cta_url — botao_titulo: max 20 characters, botao_url required only in cta_url
   "secoes": [{"titulo": "…", "itens": [{"id":"…","titulo":"…","descricao":"…"}]}], // lista, required — botao_titulo (reused from cta_url) is the label of the button that opens the list; see its own section for the ceilings
@@ -2167,7 +2167,8 @@ window** (no approval, no category). Use the template carousel above outside the
 
 `texto` (the message body) and `cartoes` (2 to 10 cards, the same field as in the template carousel)
 are required; English alias `kind: "carousel"`. Each card takes `cabecalho` (**required**, `imagem` or
-`video` by `media_id`), `texto` (optional, the card body) and **one** kind of button:
+`video` by `media_id`), `texto` (**required**, the card body: Meta accepts a card without one, answers
+`sent` and never delivers it) and **one** kind of button:
 
 - `botoes` (`[{"id","titulo"}]`, quick reply, same item as `kind: "botoes"`; up to 3 per card), or
 - `botao_titulo` + `botao_url` (a URL button, same names as `kind: "cta_url"`).
@@ -2177,6 +2178,7 @@ English keys inside a card: `header`, `text`, `buttons` (items: `id`, `title`), 
 
 - fewer than **2** or more than **10** cards, or no `texto`;
 - a card without `cabecalho`, or with a `cabecalho.tipo` other than `imagem` or `video`;
+- a card with an empty or blank `texto` (named as `cartoes[i].texto`);
 - a card with no button, or with both kinds; cards that do not all have the same header type, the same
   button kind and the same number of buttons (Meta's rule);
 - `variaveis` or `botoes_template` inside a card (they belong to the template carousel), and, in a
