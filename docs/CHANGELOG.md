@@ -2,6 +2,16 @@
 
 One line per version shipped, in the same commit as the bump. The entry states the **effect**, not the diff.
 
+## Unreleased
+
+- **Location header in template send (`cabecalho.tipo: "localizacao"`)** (T-261) — a template
+  approved with a `LOCATION` header can now be sent with the pin: `cabecalho: {"tipo": "localizacao",
+  "localizacao": {latitude, longitude, nome?, endereco?}}` goes out as a `location` header parameter.
+  Coordinates reuse the `localizacao` message validation (`0` accepted; now also range-checked, for
+  both), `texto`/`media_id`/`nome_arquivo` beside it and `localizacao` in any other header type are a
+  `400`, and it is refused in `cartoes[i].cabecalho` and in `cabecalho_midia`. Template creation is
+  unchanged (`componentes` already passes through raw). _Completed 2026-10-23 08:35._
+
 ## v0.73.1 — 2026-10-22
 
 PATCH: `tipo: "carrossel"` refuses a card without `texto` (`400`), because Meta silently never delivers it (T-260).

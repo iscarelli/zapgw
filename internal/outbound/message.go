@@ -60,6 +60,11 @@ var (
 	// gateway knows how to assemble.
 	ErrUnknownHeaderType = errors.New("outbound: tipo de cabecalho de template desconhecido")
 
+	// ErrInvalidCoordinate: a `localizacao` latitude/longitude outside
+	// -90..90 / -180..180 (T-261). Meta would refuse it; refusing here
+	// names the field.
+	ErrInvalidCoordinate = errors.New("outbound: coordenada fora da faixa valida")
+
 	// ErrInvalidMediaID: the value in place of a media_id does not have the
 	// shape of a media_id — typically a raw URL. See validateHeader.
 	ErrInvalidMediaID = errors.New("outbound: media_id com forma invalida")
@@ -176,7 +181,7 @@ type Button struct {
 // makes Meta go FETCH the file, and that is exactly the path that fails
 // silently when it doesn't fetch — the reason POST /v1/media exists.
 type TemplateHeader struct {
-	// Type: "texto" | "imagem" | "video" | "documento".
+	// Type: "texto" | "imagem" | "video" | "documento" | "localizacao".
 	Type string `json:"tipo"`
 	// Text: only in `tipo: "texto"`.
 	Text string `json:"texto,omitempty"`
@@ -184,6 +189,10 @@ type TemplateHeader struct {
 	MediaID string `json:"media_id,omitempty"`
 	// Filename: only in `tipo: "documento"`.
 	Filename string `json:"nome_arquivo,omitempty"`
+	// Location: only in `tipo: "localizacao"` (T-261). It REUSES
+	// LocationRequest (pointer coordinates, 0 is valid) instead of a second
+	// type that would diverge from it.
+	Location *LocationRequest `json:"localizacao,omitempty"`
 }
 
 // TemplateButtonUnion is the dynamic parameter of ONE template button: a
@@ -1167,6 +1176,26 @@ func validateHeaderValue(c *TemplateHeader, path string) error {
 	c.MediaID = strings.TrimSpace(c.MediaID)
 	c.Filename = strings.TrimSpace(c.Filename)
 
+	// `localizacao` is only meaningful in the ONE type that carries it:
+	// anywhere else the field would vanish from the body without an error.
+	if c.Location != nil && c.Type != "localizacao" {
+		return fmt.Errorf("%w: %s.localizacao em cabecalho de %s (so o cabecalho de "+
+			"localizacao a carrega, e ela sumiria sem erro)", ErrFieldForbidden, path, c.Type)
+	}
+
+	if c.Type == "localizacao" {
+		if c.Text != "" {
+			return fmt.Errorf("%w: %s.texto em cabecalho de localizacao", ErrFieldForbidden, path)
+		}
+		if c.MediaID != "" {
+			return fmt.Errorf("%w: %s.media_id em cabecalho de localizacao", ErrFieldForbidden, path)
+		}
+		if c.Filename != "" {
+			return fmt.Errorf("%w: %s.nome_arquivo em cabecalho de localizacao", ErrFieldForbidden, path)
+		}
+		return validateLocationValue(c.Location, path+".localizacao")
+	}
+
 	if c.Type == "texto" {
 		if c.MediaID != "" {
 			return fmt.Errorf("%w: %s.media_id em cabecalho de texto", ErrFieldForbidden, path)
@@ -1184,7 +1213,7 @@ func validateHeaderValue(c *TemplateHeader, path string) error {
 	// a second name list would diverge from it on the first change.
 	cat, known := meta.KnownCategory(c.Type)
 	if !known || !mediaHeaders[cat] {
-		return fmt.Errorf("%w: %q (use texto, imagem, video ou documento)",
+		return fmt.Errorf("%w: %q (use texto, imagem, video, documento ou localizacao)",
 			ErrUnknownHeaderType, c.Type)
 	}
 	if c.Text != "" {
@@ -1567,10 +1596,16 @@ func (p *Request) validateReaction() error {
 // validateLocation checks `localizacao`. See the comment on
 // LocationRequest for why Latitude/Longitude are pointers.
 func (p *Request) validateLocation() error {
-	if p.Location == nil {
-		return fmt.Errorf("%w: localizacao", ErrFieldRequired)
+	return validateLocationValue(p.Location, "localizacao")
+}
+
+// validateLocationValue is validateLocation's logic over ONE LocationRequest,
+// with `path` naming the field in the error text. Shared with the template
+// location header (T-261): one implementation, not a copy.
+func validateLocationValue(l *LocationRequest, path string) error {
+	if l == nil {
+		return fmt.Errorf("%w: %s", ErrFieldRequired, path)
 	}
-	l := p.Location
 	// Name/Address are optional free text; Latitude/Longitude are NOT
 	// trimmed because they aren't strings — they're pointers to a number,
 	// and their requiredness is the nil check below, not content.
@@ -1578,10 +1613,16 @@ func (p *Request) validateLocation() error {
 	l.Address = strings.TrimSpace(l.Address)
 
 	if l.Latitude == nil {
-		return fmt.Errorf("%w: localizacao.latitude", ErrFieldRequired)
+		return fmt.Errorf("%w: %s.latitude", ErrFieldRequired, path)
 	}
 	if l.Longitude == nil {
-		return fmt.Errorf("%w: localizacao.longitude", ErrFieldRequired)
+		return fmt.Errorf("%w: %s.longitude", ErrFieldRequired, path)
+	}
+	if *l.Latitude < -90 || *l.Latitude > 90 {
+		return fmt.Errorf("%w: %s.latitude (use -90 a 90)", ErrInvalidCoordinate, path)
+	}
+	if *l.Longitude < -180 || *l.Longitude > 180 {
+		return fmt.Errorf("%w: %s.longitude (use -180 a 180)", ErrInvalidCoordinate, path)
 	}
 	return nil
 }
@@ -1822,6 +1863,11 @@ func (p *Request) validateHeaderMedia() error {
 	if strings.TrimSpace(p.HeaderMedia.Type) == "texto" {
 		return fmt.Errorf("%w: cabecalho_midia.tipo texto (o header de texto e "+
 			"`cabecalho_texto`)", ErrFieldForbidden)
+	}
+	// The location header exists only in a template (T-261).
+	if strings.TrimSpace(p.HeaderMedia.Type) == "localizacao" {
+		return fmt.Errorf("%w: cabecalho_midia.tipo localizacao (so o cabecalho de "+
+			"template carrega localizacao)", ErrUnknownHeaderType)
 	}
 	if strings.TrimSpace(p.HeaderText) != "" {
 		return fmt.Errorf("%w: cabecalho_midia junto com cabecalho_texto (a mensagem "+

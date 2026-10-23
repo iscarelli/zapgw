@@ -466,6 +466,22 @@ func headerParameter(c TemplateHeader) map[string]any {
 	if c.Type == "texto" {
 		return map[string]any{"type": "text", "text": c.Text}
 	}
+	if c.Type == "localizacao" {
+		// Validate guaranteed Location and both coordinates are non-nil.
+		// name/address are ABSENT when empty (same rule as the location
+		// message body).
+		loc := map[string]any{
+			"latitude":  *c.Location.Latitude,
+			"longitude": *c.Location.Longitude,
+		}
+		if c.Location.Name != "" {
+			loc["name"] = c.Location.Name
+		}
+		if c.Location.Address != "" {
+			loc["address"] = c.Location.Address
+		}
+		return map[string]any{"type": "location", "location": loc}
+	}
 	// The field name is THE SAME as `type` — {"type":"document","document":{…}} —
 	// and the "documento" -> "document" translation lives in a single place
 	// (meta.GraphAPIType), also read by the validator.
