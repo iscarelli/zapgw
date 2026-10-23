@@ -6,6 +6,15 @@
 > Escrito ao fim de 2026-08-30, o dia em que o repositorio virou publico. Bloco de retomada
 > mentindo e' pior que bloco nenhum: e' o primeiro texto que a proxima sessao le.
 
+### 📌 2026-10-23 08:4x — `v0.74.0` EM PRODUCAO (T-261, medido: `HEALTH OK` + `VERSION MATCHES 0.74.0`).
+
+- `cabecalho.tipo: "localizacao"` no envio de template. Pedido do mesmo consumidor (canal, 08:23).
+- ⚠️ **Envio real contra a Meta NAO medido** — a prova e' o primeiro envio do consumidor com template
+  UTILITY aprovado com header LOCATION. Se UTILITY aceita esse header: nao se sabe.
+- Efeito colateral: `localizacao` livre agora recusa coordenada fora de -90..90 / -180..180.
+- 🙋 Pendente com o dono: medir dois links em `cta_url` (envio cru na Graph). Autorizado por ele, mas
+  o classificador do auto mode barrou o probe; ele decide se libera.
+
 ### 📌 2026-10-22 22:2x — `v0.73.1` EM PRODUCAO (T-260, medido: `HEALTH OK` + `VERSION MATCHES 0.73.1`).
 
 - Carrossel interativo com cartao SEM `texto`: a Meta responde `sent` e nunca entrega (medido pelo
