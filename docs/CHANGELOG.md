@@ -2,7 +2,9 @@
 
 One line per version shipped, in the same commit as the bump. The entry states the **effect**, not the diff.
 
-## Unreleased
+## v0.73.0 — 2026-10-22
+
+MINOR: `POST /v1/messages` gains a media header on `botoes`/`cta_url` (`cabecalho_midia`, T-258) and the free-form interactive carousel (`tipo: "carrossel"`, T-259); requests without them are unchanged.
 
 - **Send interactive media carousel messages (free-form, no template)** (T-259) — new
   `tipo: "carrossel"` (alias `carousel`) with `texto` and `cartoes` (2 to 10 cards); each card takes
