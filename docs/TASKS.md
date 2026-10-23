@@ -6,13 +6,18 @@
 > Escrito ao fim de 2026-08-30, o dia em que o repositorio virou publico. Bloco de retomada
 > mentindo e' pior que bloco nenhum: e' o primeiro texto que a proxima sessao le.
 
+### 📌 2026-10-22 22:2x — `v0.73.1` EM PRODUCAO (T-260, medido: `HEALTH OK` + `VERSION MATCHES 0.73.1`).
+
+- Carrossel interativo com cartao SEM `texto`: a Meta responde `sent` e nunca entrega (medido pelo
+  consumidor, 3 envios, variavel unica). Agora e' `400` em `cartoes[i].texto`; armadilha em `docs/ARMADILHAS.md`.
+
 ### 📌 2026-10-22 22:03 — `v0.73.0` EM PRODUCAO (T-258 + T-259, medido: `HEALTH OK` + `VERSION MATCHES 0.73.0`).
 
 - `cabecalho_midia` (foto/video/documento no header de `botoes` e `cta_url`) e `tipo: "carrossel"`
   (carrossel interativo em texto livre, so' na janela de 24 h). Pedido do mesmo consumidor; dono: "pode construir".
 - ✅ **Medido pelo consumidor as 22:04 (-0300), numero de teste:** `cabecalho_midia` imagem por `id`
   em `botoes` -> `sent` + `delivered`; `carrossel` com 7 cartoes de resposta rapida, header por `id`
-  e `"type":"cta_url"` no cartao -> `sent` (o `delivered` nao tinha chegado ate' 22:05).
+  e `"type":"cta_url"` no cartao -> so' `sent` (cartao sem texto; ver v0.73.1). Com texto: `delivered`.
 - ⚠️ **Ainda NAO medido:** `cta_url` com midia; `filename` no header de documento; como o carrossel
   de resposta rapida aparece no aparelho.
 
