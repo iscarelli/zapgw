@@ -33,6 +33,13 @@ checking:
   good? *[CONFERIR]*
 - the exact number and the window (rolling 24 h? per number? per WABA?). *[CONFERIR]*
 
+**Measured once, 2026-10-25 (one consumer, one `TIER_250` number):** the window behaved as **rolling
+24 h** — the refusals began ~10 minutes after the 250th distinct template recipient counted back 24 h,
+not per calendar day — and free-form replies inside open service windows **kept being delivered**
+after the ceiling. Meta reported the ceiling as `131048` ("Spam rate limit hit"), not as a limit
+code, with the number `GREEN`. One event: it narrows the two points above, it does not close them.
+Detail in `docs/CONTRATO-CONSUMIDOR.md`, next to the throttling note.
+
 ## Who fills in each field: you, or the consumer (T-079, 2026-07-28)
 
 **This document describes onboarding a number in the Meta account OF WHOEVER OPERATES THE GATEWAY.**

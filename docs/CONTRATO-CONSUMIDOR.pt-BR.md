@@ -2571,6 +2571,24 @@ duplicar; leia a próxima seção.
 > documentação oficial. Um código de throttling que a Meta inventar amanhã cai em `permanent` até
 > alguém acrescentar essa lista — não é garantia de cobertura total, é o que está verificado hoje.
 
+> **O `131048` ("Spam rate limit hit") pode significar que o número bateu no limite de mensagens — e aí
+> a espera é de HORAS, não de segundos (medido em 2026-10-25, um evento, um consumidor).** O texto da
+> Meta para o código fala em mensagens bloqueadas ou marcadas como spam. No único caso medido, o número
+> estava `GREEN`, nenhum evento `number_quality` tinha chegado em três dias, e o primeiro `131048` veio
+> ~10 minutos depois do **250º destinatário distinto de template numa janela de 24 h CORRIDAS**, num
+> número `TIER_250`. Respostas em texto livre dentro de janelas de atendimento abertas continuaram
+> sendo entregues depois disso. O que isso muda para você:
+>
+> - **Conte a sua cota em 24 h corridas, não por dia de calendário.** Aquele consumidor contava por dia
+>   local; à meia-noite o contador zerou com os envios da tarde anterior ainda dentro da janela da Meta.
+> - **Leia o limite em `number_at_meta.message_limit`** no `GET /v1/estado`, não de uma constante.
+> - **`retryable` continua certo, mas reenfileire para horas depois** — até o envio mais antigo da
+>   janela sair dela. Tentar de novo em segundos só soma recusas.
+> - Naquele caso o código chegou num **webhook de status** `failed`, depois de o envio ter sido aceito —
+>   não na resposta do `POST /v1/messages`. O webhook carrega o código da Meta, não uma classe do gateway.
+>
+> Se a Meta sempre reporta o limite como `131048`, ou só fez isso para aquele número, **não se sabe**.
+
 
 🔎 **E o `GET /v1/estado` publica o bloco `lideranca` (v0.49.0)**, com quatro campos: `armada` (há
 guarda configurada), `estado` (`observado` quando armada, `nao_se_aplica` quando não), `titular`

@@ -2584,6 +2584,23 @@ duplicate; read the next section.
 > in the official documentation. A throttling code Meta invents tomorrow falls into `permanent` until
 > somebody adds it to that list — it is not a guarantee of full coverage, it is what is verified today.
 
+> **`131048` ("Spam rate limit hit") can mean the number hit its messaging limit — and then the wait is
+> HOURS, not seconds (measured 2026-10-25, one event, one consumer).** Meta's text for the code talks
+> about messages blocked or flagged as spam. In the one case measured, the number was `GREEN`, no
+> `number_quality` event had arrived in three days, and the first `131048` came ~10 minutes after the
+> **250th distinct template recipient in a ROLLING 24 h window** on a `TIER_250` number. Free-form
+> replies inside open service windows kept being delivered after it. What this means for you:
+>
+> - **Count your quota in rolling 24 h, not per calendar day.** That consumer counted per local day;
+>   at midnight its counter reset while yesterday's afternoon sends were still inside Meta's window.
+> - **Read the limit from `number_at_meta.message_limit`** in `GET /v1/estado`, not from a constant.
+> - **`retryable` stays right, but re-queue for hours** — until the oldest send in the window ages
+>   out. Retrying in seconds only adds more refusals.
+> - In that case the code arrived in a `failed` **status webhook**, after the send had been accepted —
+>   not in the response of `POST /v1/messages`. The webhook carries Meta's code, not a gateway class.
+>
+> Whether Meta always reports the limit as `131048`, or only did so for that number, is **not known**.
+
 🔎 **And `GET /v1/estado` publishes the `lideranca` block (v0.49.0)**, with four fields: `armada`
 (there is a guard configured), `estado` (`observado` when armed, `nao_se_aplica` when not), `titular`
 (`true`/`false`, and **`null` when disarmed** — a single node won no election) and `motivo` (only when
