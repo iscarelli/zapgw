@@ -4996,6 +4996,13 @@ the window **there is nothing to do** but wait for the customer to write again. 
 because of the window, Meta answers with a `permanent` or `config` error — the gateway passes its
 message on as it came, without inventing a translation that was not checked at the source.
 
+**Measured by a consumer on 2026-10-26** — one text send to an IGSID whose last DM was ~73 days
+earlier: **HTTP `502`, `class: "config"`, `meta_code: 10`, `meta_subcode: 2534022`**, with Meta's
+`message` in the account's language. Match on **`meta_subcode` `2534022`**: `meta_code` `10` alone is
+Meta's generic permission code and also comes back for unrelated refusals (see `waba_funding`, above).
+⚠️ The `config` class here comes from the HTTP status Meta chose, not from a credential problem —
+resending will not help, and neither will touching the token.
+
 ### Prove the channel — `POST /v1/fumaca` / `zapgw smoke`
 
 It works as on WhatsApp — the instance is born **paused** and only an accepted test send activates it —

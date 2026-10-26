@@ -4939,6 +4939,13 @@ fora da janela **não há o que fazer** além de esperar o cliente escrever de n
 recusado por causa da janela, a Meta responde com um erro `permanent` ou `config` — o gateway
 repassa a mensagem dela tal como veio, sem inventar uma tradução que não foi conferida na fonte.
 
+**Medido por um consumidor em 2026-10-26** — um envio de texto para um IGSID cuja última DM tinha
+~73 dias: **HTTP `502`, `class: "config"`, `meta_code: 10`, `meta_subcode: 2534022`**, com o
+`message` da Meta no idioma da conta. Case por **`meta_subcode` `2534022`**: `meta_code` `10` sozinho
+é o código genérico de permissão da Meta e volta também em recusas sem relação (veja `waba_funding`,
+acima). ⚠️ A classe `config` aqui vem do status HTTP que a Meta escolheu, não de problema de
+credencial — reenviar não resolve, e mexer no token também não.
+
 ### Provar o canal — `POST /v1/fumaca` / `zapgw smoke`
 
 Funciona como no WhatsApp — a instância nasce **pausada** e só um envio de teste aceito a ativa —
