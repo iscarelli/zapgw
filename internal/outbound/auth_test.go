@@ -17,8 +17,8 @@ const testCipherKey = "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1
 // test checks against it. Numbers are DISTINCT on purpose — two slugs with
 // the same number would mask a probe answering for the wrong instance.
 var testDisplayNumbers = map[string]string{
-	"lojinha": "5532999990001",
-	"clinica": "5532999990002",
+	"lojinha": "+55 11 99999-0001",
+	"clinica": "+55 11 99999-0002",
 }
 
 // Returns the store AND the file path: Task 8 needs the path to activate the

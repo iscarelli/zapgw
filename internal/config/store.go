@@ -29,6 +29,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"regexp"
 	"strings"
 	"time"
 
@@ -83,6 +84,27 @@ var ErrUnknownInstanceType = errors.New("config: unknown instance type")
 // between TWO types instead of two fields of the same type.
 var ErrFieldDoesNotApplyToType = errors.New("config: field does not apply to this instance type")
 
+// ErrInvalidDisplayNumber: numero_exibido is not in the one accepted shape (see ValidateDisplayNumber).
+var ErrInvalidDisplayNumber = errors.New("config: invalid numero_exibido")
+
+var displayNumberShape = regexp.MustCompile(`^\+55 \d{2} (\d{4}|9\d{4})-\d{4}$`)
+
+// ValidateDisplayNumber is the SINGLE rule for numero_exibido (T-262), used by
+// the registration (RegisterMeta) and by the CLI creation (ValidateInstanceType).
+//
+// ONE SHAPE, Brazilian only: `+55 11 5555-5555` (landline) or
+// `+55 11 99999-0000` (mobile). Digits only, no `+`, no spaces, or a 5-digit
+// block not starting with 9 are REJECTED, never rewritten: guessing a fix
+// would hide the consumer's mistake. The value is not echoed back.
+func ValidateDisplayNumber(raw string) error {
+	if displayNumberShape.MatchString(raw) {
+		return nil
+	}
+	return fmt.Errorf("%w: numero_exibido must look like \"+55 11 5555-5555\" (landline) or \"+55 11 99999-0000\" (mobile): "+
+		"+55, a space, the 2-digit area code, a space, 4 digits (or 9 and 4 digits), a hyphen and 4 digits",
+		ErrInvalidDisplayNumber)
+}
+
 // ValidateInstanceType normalizes `tipo` (empty -> TypeWhatsApp, the same
 // reading every row prior to this task already has in the database) and
 // checks that the identification fields match the chosen type.
@@ -110,6 +132,13 @@ func ValidateInstanceType(typ, wabaID, phoneNumberID, displayNumber, igID string
 	case TypeWhatsApp:
 		if strings.TrimSpace(igID) != "" {
 			return typ, fmt.Errorf("%w: ig_id on a %s instance", ErrFieldDoesNotApplyToType, TypeWhatsApp)
+		}
+		// Optional at creation (the consumer registers it later), but never
+		// in another shape when present: same rule as RegisterMeta (T-262).
+		if displayNumber != "" {
+			if err := ValidateDisplayNumber(displayNumber); err != nil {
+				return typ, err
+			}
 		}
 	case TypeInstagram:
 		for _, c := range []struct{ name, value string }{
@@ -1018,8 +1047,8 @@ type MetaRegistration struct {
 	AppSecret string // encrypted: verifies the HMAC Meta signs
 	SendToken string // encrypted: talks to the Graph API
 
-	// CallbackURL EMPTY is a legitimate state (outbound-only instance), as
-	// at creation — see ValidateCallbackURL.
+	// CallbackURL is REQUIRED at registration (T-262): a `failed` status
+	// (e.g. 131026) only reaches the consumer through it.
 	CallbackURL string
 	// CABundle EMPTY is the normal case: uses the system's CA store. It
 	// exists for the consumer with their own CA, and does NOT switch off
@@ -1045,6 +1074,8 @@ func ValidateMetaRegistration(c MetaRegistration) error {
 	// Field and explanation go TOGETHER: each line says what breaks without
 	// it, because whoever reads this message has no channel to ask.
 	for _, field := range []struct{ name, value, why string }{
+		{"callback_url", c.CallbackURL,
+			"is where the gateway delivers messages AND failed statuses (e.g. 131026, a number without WhatsApp); without it a send that failed looks delivered"},
 		{"numero_exibido", c.DisplayNumber,
 			"is the number as it appears to the customer; without it the gateway cannot say which number this instance speaks for"},
 		{"app_secret", c.AppSecret,
@@ -1055,6 +1086,9 @@ func ValidateMetaRegistration(c MetaRegistration) error {
 		if strings.TrimSpace(field.value) == "" {
 			return fmt.Errorf("%w: %s is empty — %s", ErrIncompleteRegistration, field.name, field.why)
 		}
+	}
+	if err := ValidateDisplayNumber(strings.TrimSpace(c.DisplayNumber)); err != nil {
+		return err
 	}
 	if err := ValidateCallbackURL(c.CallbackURL); err != nil {
 		return err

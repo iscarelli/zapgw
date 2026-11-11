@@ -4,6 +4,12 @@ One line per version shipped, in the same commit as the bump. The entry states t
 
 ## Unreleased
 
+- **Registration requires callback_url and a formatted numero_exibido** (T-262) — **CONTRACT CHANGE.**
+  `POST /v1/cadastro` now refuses (`400`, naming the field) an empty or missing `callback_url` and a
+  `numero_exibido` that is not `+55 DD NNNN-NNNN` / `+55 DD 9NNNN-NNNN`; the same shape rule applies
+  to `zapgw provision instancia --numero-exibido` when given. A consumer whose re-registration script
+  sends digits only or no callback gets `400` on its next rotation. Rows already stored are not
+  re-validated. _Completed 2026-11-11 08:15._
 - **Smoke text reaches the phone with Portuguese accents** (T-263) — `SmokeText` now reads "fumaça", "você", "está", "Não é"; a new test pins the exact string (failed before the change). _Completed 2026-11-11 08:05._
 
 ## v0.74.0 — 2026-10-23

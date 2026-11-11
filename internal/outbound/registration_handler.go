@@ -355,6 +355,7 @@ func (h *RegistrationHandler) respondRegistrationError(w http.ResponseWriter, sl
 			"esta instancia nao existe mais no gateway; fale com quem te entregou o slug", 0)
 	case errors.Is(err, config.ErrIncompleteIdentification),
 		errors.Is(err, config.ErrIncompleteRegistration),
+		errors.Is(err, config.ErrInvalidDisplayNumber),
 		errors.Is(err, config.ErrInsecureCallback),
 		errors.Is(err, config.ErrInvalidCABundle):
 		// The store's message NAMES the field and never carries the value — that's

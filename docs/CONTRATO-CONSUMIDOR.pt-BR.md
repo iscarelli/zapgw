@@ -168,10 +168,10 @@ Content-Type: application/json
   "instancia":       "lojinha",          // o slug que você recebeu
   "waba_id":         "…",                // Business Settings → contas do WhatsApp
   "phone_number_id": "…",                // o id do NÚMERO na Graph API (não é o telefone)
-  "numero_exibido":  "5511999990000",    // o telefone como ele aparece para o cliente
+  "numero_exibido":  "+55 11 99999-0000", // o telefone como ele aparece para o cliente, NESTE formato
   "app_secret":      "…",                // App → Configurações → Básico → Chave Secreta
   "token_envio":     "…",                // token PERMANENTE de System User
-  "callback_url":    "https://…",        // para onde entregamos o que a Meta mandar
+  "callback_url":    "https://…",        // OBRIGATÓRIA: para onde entregamos o que a Meta mandar
   "bundle_ca":       ""                  // opcional: PEM da SUA CA, se você não usa CA pública
 }
 ```
@@ -181,13 +181,25 @@ como "não mexa". Isso é deliberado — um cadastro parcial exigiria que você 
 gravado, e é exatamente isso que o gateway nunca devolve. Recadastrar é o seu caminho de **rotação**:
 trocou o `app_secret` no painel da Meta, mande o conjunto de novo.
 
-Dois campos podem ir **vazios**, e vazio é estado legítimo:
+**`numero_exibido` tem exatamente um formato aceito, só números brasileiros:** `+55`, um espaço, o
+DDD de 2 dígitos, um espaço, e então `NNNN-NNNN` (fixo, ex.: `+55 11 5555-5555`) ou `9NNNN-NNNN`
+(celular, ex.: `+55 11 99999-0000`). Só dígitos, sem `+`, sem espaços, ou um bloco de 5 dígitos que
+não começa com `9` é recusado com `400` nomeando `numero_exibido` — o gateway nunca reescreve por
+você (`internal/config/store.go:99`, `ValidateDisplayNumber`).
 
-- `callback_url` vazia = **instância só de saída**: o gateway não entrega a ninguém o que a Meta
-  mandar. Não é erro, é uma escolha;
-- `bundle_ca` vazio = a entrega usa a store de CAs do sistema (o caso normal). Preencha só se o seu
-  endpoint usa **CA própria** — isso troca a âncora de confiança, e **não** desliga verificação
-  nenhuma. Não existe modo de não verificar certificado neste gateway, em caminho nenhum.
+**`callback_url` é obrigatória.** Vazia ou ausente é recusada com `400` nomeando `callback_url`
+(`internal/config/store.go:1077`). Por quê: um status `failed` — por exemplo `131026`, o número não
+tem WhatsApp — só chega até você pela callback. Sem ela, um envio que falhou parece entregue, e você
+acredita que avisou o cliente.
+
+Só o `bundle_ca` pode ir **vazio**: a entrega usa a store de CAs do sistema (o caso normal).
+Preencha só se o seu endpoint usa **CA própria** — isso troca a âncora de confiança, e **não**
+desliga verificação nenhuma. Não existe modo de não verificar certificado neste gateway, em caminho
+nenhum.
+
+**Mudança de contrato (2026-11-11):** um script de recadastro que manda só dígitos em
+`numero_exibido`, ou nenhuma `callback_url`, recebe `400` na próxima execução. Instâncias já
+gravadas não são revalidadas; a regra vale no próximo cadastro.
 
 A `callback_url` tem de ser `https://` pela razão da seção *A sua `callback_url` tem de ser
 `https://`*, mais abaixo.
@@ -1490,10 +1502,8 @@ cru** da mensagem — o que o cliente escreveu, o telefone dele, o nome dele. Em
 atravessa a rede legível para quem estiver no caminho, e o `X-Zapgw-Signature` não ajuda:
 **assinatura prova integridade, não confidencialidade.**
 
-Duas exceções, e só duas:
+Uma exceção, e só uma:
 
-- **`callback_url` vazia é válida** — é a instância só de saída, que envia e não recebe. Ausência de
-  entrega não é entrega em claro.
 - **`http://127.0.0.1` e `http://localhost`** (com qualquer porta e caminho), para desenvolvimento na
   própria máquina. A checagem é sobre o **host** que a URL resolve, então
   `http://127.0.0.1.exemplo.com` e `http://127.0.0.1@exemplo.com` são recusadas — elas começam com o
@@ -2694,10 +2704,10 @@ depende do que custa mais no seu negócio: **uma mensagem duplicada** ou **uma m
 Se optar por reenviar, faça com uma chave nova e **saiba que está aceitando o risco de duplicata** —
 não é o gateway destravando por você.
 
-> ⚠️ **O passo 1 exige `callback_url` cadastrada.** Numa instância **só de saída** (callback vazia)
-> não existe sinal nenhum a observar, e você cai direto no passo 2. Se essa ambiguidade for cara para
-> você, cadastre uma `callback_url` — mesmo que ela só grave os eventos de `status` e descarte o
-> resto: é o que transforma "não sei" em "sei".
+> ⚠️ **O passo 1 exige a `callback_url`, que o cadastro agora torna obrigatória.** Uma instância
+> cadastrada antes dessa regra ainda pode ter a callback vazia: não existe sinal nenhum a observar, e
+> você cai direto no passo 2. Recadastre com uma `callback_url` — mesmo que ela só grave os eventos de
+> `status` e descarte o resto: é o que transforma "não sei" em "sei".
 
 > ℹ️ **`GET /v1/estado` NÃO responde a esta pergunta, e vale dizer para você não perder tempo lá.**
 > O contador `enviadas` só sobe em envio bem-sucedido; um desfecho `unknown` conta em
@@ -2994,7 +3004,7 @@ Apto a enviar → `200`:
 
 ```jsonc
 { "ok": true,
-  "numero_exibido": "5511999990000",   // vem do cadastro do gateway, não da resposta da Meta
+  "numero_exibido": "+55 11 99999-0000",   // vem do cadastro do gateway, não da resposta da Meta
   "verificado_em": "2026-07-25T12:00:00Z" }
 ```
 

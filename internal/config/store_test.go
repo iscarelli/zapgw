@@ -43,7 +43,7 @@ func testInstance() Instance {
 		Slug:           "lojinha",
 		WabaID:         "WABA1",
 		PhoneNumberID:  "PNID1",
-		DisplayNumber:  "5532999990000",
+		DisplayNumber:  "+55 11 99999-0000",
 		AppSecret:      "app-secret-de-teste",
 		VerifyToken:    "verify-token-de-teste",
 		SendToken:      "token-envio-de-teste",
@@ -1085,9 +1085,9 @@ func TestListInstancesReturnsALLOfThemWithTheRightState(t *testing.T) {
 		waba   string
 		number string
 	}{
-		{"tenant-one", true, "PNID-LOJA", "WABA-LOJA", "5532999990001"},
-		{"clinica", false, "PNID-CLIN", "WABA-CLIN", "5532999990002"},
-		{"padaria", false, "PNID-PADA", "WABA-PADA", "5532999990003"},
+		{"tenant-one", true, "PNID-LOJA", "WABA-LOJA", "+55 11 99999-0001"},
+		{"clinica", false, "PNID-CLIN", "WABA-CLIN", "+55 11 99999-0002"},
+		{"padaria", false, "PNID-PADA", "WABA-PADA", "+55 11 99999-0003"},
 	}
 	for _, c := range cases {
 		i := testInstance()
