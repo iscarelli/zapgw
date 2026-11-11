@@ -283,8 +283,8 @@ func (h *ProfileHandler) respondProfileError(w http.ResponseWriter, slug string,
 		// NEEDS A HUMAN: the identifier that profileNode chose for this
 		// instance has an invalid shape — no read/write of this instance's
 		// profile works until an admin fixes the registration.
-		log.Printf("ALARME zapgw: identificador de perfil invalido para a instancia %q — "+
-			"corrija o cadastro; nenhuma leitura/escrita de perfil desta instancia funciona ate la", slug)
+		log.Printf("ALARME zapgw: invalid profile identifier for instance %q — "+
+			"fix the registration; no profile read/write on this instance works until then", slug)
 		respondError(w, http.StatusBadGateway, string(meta.ClassConfig),
 			"a configuracao desta instancia no gateway esta invalida; "+
 				"o pedido nao chegou a Meta e nao adianta repetir ate isso ser corrigido", 0)
@@ -295,7 +295,7 @@ func (h *ProfileHandler) respondProfileError(w http.ResponseWriter, slug string,
 		var me *meta.MetaError
 		if errors.As(err, &me) {
 			if me.Class == meta.ClassConfig {
-				log.Printf("ALARME zapgw: credencial da instancia %q recusada pela Meta ao falar do perfil", slug)
+				log.Printf("ALARME zapgw: Meta refused the credential of instance %q when handling the profile", slug)
 			}
 			// T-153: respondMetaError (handler.go) passes through Detail,
 			// Subcode, Explanation, and Trace — the same discipline as the

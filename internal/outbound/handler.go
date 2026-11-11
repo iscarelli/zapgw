@@ -599,8 +599,8 @@ func (h *Handler) send(w http.ResponseWriter, r *http.Request) {
 				// manual action the consumer stays stuck at 409 even though
 				// they have the right to resend. Release the key
 				// (consumidor, key) by hand or wait for the TTL purge.
-				log.Printf("ALARME zapgw: idempotencia nao liberada apos falha conhecida-negativa "+
-					"(consumidor=%q chave=%q) — libere a mao ou aguarde a purga por TTL: %v",
+				log.Printf("ALARME zapgw: idempotency not released after a known-negative failure "+
+					"(consumer=%q key=%q) — release it by hand or wait for the TTL purge: %v",
 					consumer.Name, key, errRelease)
 			}
 		} else {
@@ -610,8 +610,8 @@ func (h *Handler) send(w http.ResponseWriter, r *http.Request) {
 			// in that case, check whether the message went out (look for the
 			// recipient in Meta's manager) before releasing, otherwise you
 			// risk duplicating.
-			log.Printf("ALARME zapgw: chave de idempotencia RETIDA por desfecho desconhecido "+
-				"(a mensagem pode ter saido; consumidor=%q chave=%q): %v", consumer.Name, key, err)
+			log.Printf("ALARME zapgw: idempotency key HELD because the outcome is unknown "+
+				"(the message may have gone out; consumer=%q key=%q): %v", consumer.Name, key, err)
 		}
 		h.respondSendError(w, inst.Slug, err)
 		// T-035: count ONLY AFTER the response to the consumer has been written.
@@ -632,8 +632,8 @@ func (h *Handler) send(w http.ResponseWriter, r *http.Request) {
 		// get 409 instead of the id. NEEDS A HUMAN: record the wa_message_id
 		// below by hand (or warn the consumer out of band) before they try
 		// again thinking it never sent.
-		log.Printf("ALARME zapgw: mensagem %q enviada mas idempotencia nao confirmada "+
-			"(consumidor=%q chave=%q): %v", resp.ID, consumer.Name, key, err)
+		log.Printf("ALARME zapgw: message %q sent but idempotency not confirmed "+
+			"(consumer=%q key=%q): %v", resp.ID, consumer.Name, key, err)
 	}
 	h.respondOK(w, resp.ID, resp.MessageStatus)
 	// T-035: count ONLY AFTER the response has been written — same guarantee
@@ -672,8 +672,8 @@ func (h *Handler) respondOK(w http.ResponseWriter, id, status string) {
 	r := okResponse{WaMessageID: id}
 	if status != "" && status != "accepted" {
 		r.MessageStatus = status
-		log.Printf("ALARME zapgw: a Meta aceitou o envio (wa_message_id=%q) mas message_status = %q, "+
-			"nao \"accepted\" — o 200 nao garante que a mensagem chegue; ver docs/CONTRATO-CONSUMIDOR.md",
+		log.Printf("ALARME zapgw: Meta accepted the send (wa_message_id=%q) but message_status = %q, "+
+			"not \"accepted\" — the 200 does not guarantee the message arrives; see docs/CONTRATO-CONSUMIDOR.md",
 			id, status)
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -695,8 +695,8 @@ func (h *Handler) respondSendError(w http.ResponseWriter, instanceSlug string, e
 	// until an admin fixes the phone_number_id in the store — "needs a
 	// human", not "wait for the retry".
 	if errors.Is(err, meta.ErrInvalidPhoneNumberID) {
-		log.Printf("ALARME zapgw: phone_number_id invalido para a instancia %q — "+
-			"corrija o phone_number_id no store; nenhum envio desta instancia funciona ate la",
+		log.Printf("ALARME zapgw: invalid phone_number_id for instance %q — "+
+			"fix the phone_number_id in the store; no send on this instance works until then",
 			instanceSlug)
 		respondError(w, http.StatusBadGateway, string(meta.ClassConfig),
 			"a configuracao desta instancia no gateway esta invalida; "+
@@ -707,7 +707,7 @@ func (h *Handler) respondSendError(w http.ResponseWriter, instanceSlug string, e
 	var me *meta.MetaError
 	if errors.As(err, &me) {
 		if me.Class == meta.ClassConfig {
-			log.Printf("ALARME zapgw: credencial da instancia recusada pela Meta")
+			log.Printf("ALARME zapgw: Meta refused the instance credential")
 		}
 		// T-141/T-153: em.Detail, em.Subcode, em.Explanation and em.Trace go
 		// into the response body to the CONSUMER, as separate fields — NEVER

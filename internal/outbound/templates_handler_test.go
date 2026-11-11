@@ -1222,7 +1222,7 @@ func TestCreateTemplateAmbiguousLOGSTheRealErrorWithoutLeakingTheRequestBody(t *
 	}
 	// "Was it a timeout or transport?" has to be answerable from the log.
 	// Without the cause, the outcome remains structurally undiagnosable.
-	if !strings.Contains(record, "inalcancavel") && !strings.Contains(record, "prazo esgotado") {
+	if !strings.Contains(record, "unreachable") && !strings.Contains(record, "deadline exceeded") {
 		t.Errorf("the log does not carry the real cause of the failure; log = %q", record)
 	}
 

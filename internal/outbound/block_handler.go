@@ -107,8 +107,8 @@ var (
 	// never the value — same discipline as ErrReadNoInstance
 	// (reads_handler.go), so the refusal log (T-037) can pass through
 	// err.Error() without risk.
-	ErrBlockNoInstance = errors.New("campo `instancia` e obrigatorio")
-	ErrBlockNoPhones   = errors.New("campo `telefones` e obrigatorio e nao pode ser vazio")
+	ErrBlockNoInstance = errors.New("field `instancia` is required")
+	ErrBlockNoPhones   = errors.New("field `telefones` is required and cannot be empty")
 )
 
 // Validate trims and requires `instancia`, requires at least one
@@ -125,13 +125,13 @@ func (p *BlockRequest) Validate() error {
 		return ErrBlockNoPhones
 	}
 	if n := len(p.Phones); n > phonesPerBlockLimit {
-		return fmt.Errorf("%w: telefones (%d telefones, maximo %d por chamada)",
+		return fmt.Errorf("%w: telefones (%d phones, maximum %d per call)",
 			ErrFieldTooLong, n, phonesPerBlockLimit)
 	}
 	for i, t := range p.Phones {
 		c := meta.Canonicalize(t)
 		if c == "" {
-			return fmt.Errorf("%w: telefones[%d] (nao sobrou nenhum digito)", ErrFieldRequired, i)
+			return fmt.Errorf("%w: telefones[%d] (no digit left)", ErrFieldRequired, i)
 		}
 		p.Phones[i] = c
 	}
@@ -333,8 +333,8 @@ func respondBlockResult(w http.ResponseWriter, slug, operation string, result me
 // that of a number inside it — that becomes `falhas[]`, not an HTTP error).
 func (h *BlockHandler) respondBlockError(w http.ResponseWriter, instanceSlug string, err error) {
 	if errors.Is(err, meta.ErrInvalidPhoneNumberID) {
-		log.Printf("ALARME zapgw: phone_number_id invalido para a instancia %q — "+
-			"corrija o phone_number_id no store; nenhum bloqueio desta instancia funciona ate la",
+		log.Printf("ALARME zapgw: invalid phone_number_id for instance %q — "+
+			"fix the phone_number_id in the store; no block on this instance works until then",
 			instanceSlug)
 		respondError(w, http.StatusBadGateway, string(meta.ClassConfig),
 			"a configuracao desta instancia no gateway esta invalida; "+
@@ -345,7 +345,7 @@ func (h *BlockHandler) respondBlockError(w http.ResponseWriter, instanceSlug str
 	var me *meta.MetaError
 	if errors.As(err, &me) {
 		if me.Class == meta.ClassConfig {
-			log.Printf("ALARME zapgw: credencial da instancia %q recusada pela Meta ao falar com block_users", instanceSlug)
+			log.Printf("ALARME zapgw: Meta refused the credential of instance %q when calling block_users", instanceSlug)
 		}
 		respondErrorWithDetail(w, statusForClass(me.Class), string(me.Class), me.Message, me.MetaCode, me.Detail)
 		return

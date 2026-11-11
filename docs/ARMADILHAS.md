@@ -227,7 +227,7 @@ repeat"* — besides the class. **The assertion is about the text on purpose**: 
 HTTP code, that did the work in the real case (a bare `502` would have told nobody anything); (2) removing
 the `log.Printf` from the creation failure leaves two tests red, and the detail matters: the **outcome**
 lines still come out with slug, name and language, so what is lost is exactly the **cause**
-(`inalcancavel` / `prazo esgotado`) — that is, the mutation reproduces precisely the question that went
+(`unreachable` / `deadline exceeded`) — that is, the mutation reproduces precisely the question that went
 unanswered in production, *"foi timeout ou transporte?"*.
 
 **The EIGHTH way, and it is the cheapest of all: somebody OPERATING the system compared a number on the

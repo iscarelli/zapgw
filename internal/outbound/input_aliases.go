@@ -45,7 +45,7 @@ import (
 // not pick a winner for them — "the last one wins" is invisible today and
 // becomes a production defect discovered six months from now, when nobody
 // remembers which spelling was supposed to be authoritative.
-var ErrConflictingAlias = errors.New("outbound: mesma chave em portugues e em ingles no mesmo pedido")
+var ErrConflictingAlias = errors.New("outbound: the same key in Portuguese and in English in the same request")
 
 // translateAliasesInPlace renames, at ONE level of an already-decoded JSON
 // object, every English alias in `dict` (english -> portuguese) to its
@@ -65,7 +65,7 @@ func translateAliasesInPlace(m map[string]json.RawMessage, dict map[string]strin
 		_, hasPT := m[pt]
 		switch {
 		case hasEN && hasPT:
-			return nil, fmt.Errorf("%w: %q e %q", ErrConflictingAlias, pt, en)
+			return nil, fmt.Errorf("%w: %q and %q", ErrConflictingAlias, pt, en)
 		case hasEN:
 			m[pt] = enVal
 			delete(m, en)

@@ -114,7 +114,7 @@ type RegistrationRequest struct {
 
 // ErrRegistrationNoInstance names the FIELD, never the value — it propagates to the
 // refusal log (T-037), and this body carries two secrets.
-var ErrRegistrationNoInstance = errors.New("campo `instancia` e obrigatorio")
+var ErrRegistrationNoInstance = errors.New("field `instancia` is required")
 
 // FieldInRegistration is what the response says about an encrypted field: the name and WHETHER it
 // is registered. NEVER the value, not even truncated, not even hashed — see the header of

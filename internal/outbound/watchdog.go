@@ -310,9 +310,9 @@ func (v *Watchdog) checkOne(ctx context.Context, slug string) {
 	// it's worth it.
 	if err != nil && definitiveOutcome(err) {
 		if clean := v.client.CheckCredential(ctx, inst.PhoneNumberID, inst.SendToken); clean == nil {
-			log.Printf("ALARME zapgw: a Graph API recusou a leitura dos campos do numero da instancia %q "+
-				"(%v), mas ACEITOU a credencial — o gateway parou de saber qualidade e limite de mensagens; "+
-				"confira os nomes dos campos em internal/meta/number.go contra a doc da Meta", slug, err)
+			log.Printf("ALARME zapgw: the Graph API refused to read the number fields of instance %q "+
+				"(%v), but ACCEPTED the credential — the gateway stopped knowing quality and message limit; "+
+				"check the field names in internal/meta/number.go against Meta's docs", slug, err)
 			err = nil
 		}
 	}

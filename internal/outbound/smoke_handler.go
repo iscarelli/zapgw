@@ -98,8 +98,8 @@ type SmokeRequest struct {
 }
 
 var (
-	ErrSmokeRequestNoInstance    = errors.New("campo `instancia` e obrigatorio")
-	ErrSmokeRequestNoDestination = errors.New("campo `destino` e obrigatorio e nao tem default — o teste de fumaca manda uma mensagem DE VERDADE")
+	ErrSmokeRequestNoInstance    = errors.New("field `instancia` is required")
+	ErrSmokeRequestNoDestination = errors.New("field `destino` is required and has no default — the smoke test sends a REAL message")
 )
 
 func (p *SmokeRequest) validate() error {
@@ -259,7 +259,7 @@ func (h *SmokeHandler) respondSmokeError(w http.ResponseWriter, slug, consumer s
 		// NEEDS A HUMAN: the test message WAS DELIVERED but the instance
 		// stays PAUSED. Retrying would send ANOTHER real message — that's
 		// why this is NOT the "retryable" class.
-		log.Printf("ALARME zapgw: fumaca da instancia %q enviou a mensagem de teste mas falhou ao ativar: %v", slug, err)
+		log.Printf("ALARME zapgw: smoke test of instance %q sent the test message but failed to activate: %v", slug, err)
 		respondError(w, http.StatusBadGateway, "config",
 			"a mensagem de teste foi enviada e aceita pela Meta, mas o gateway falhou ao marcar a instancia como ativa;"+
 				" NAO rode o fumaca de novo (isso mandaria outra mensagem real) — avise quem opera o gateway", 0)
@@ -276,8 +276,8 @@ func (h *SmokeHandler) respondSmokeError(w http.ResponseWriter, slug, consumer s
 	}
 
 	if errors.Is(err, meta.ErrInvalidPhoneNumberID) {
-		log.Printf("ALARME zapgw: phone_number_id invalido para a instancia %q ao rodar o fumaca — "+
-			"corrija o phone_number_id no store; a instancia continua PAUSADA", slug)
+		log.Printf("ALARME zapgw: invalid phone_number_id for instance %q when running the smoke test — "+
+			"fix the phone_number_id in the store; the instance stays PAUSED", slug)
 		respondError(w, http.StatusBadGateway, string(meta.ClassConfig),
 			"a configuracao desta instancia no gateway esta invalida; a instancia continua PAUSADA", 0)
 		return
@@ -292,7 +292,7 @@ func (h *SmokeHandler) respondSmokeError(w http.ResponseWriter, slug, consumer s
 	var me *meta.MetaError
 	if errors.As(err, &me) {
 		if me.Class == meta.ClassConfig {
-			log.Printf("ALARME zapgw: credencial da instancia %q recusada pela Meta ao rodar o fumaca; continua PAUSADA", slug)
+			log.Printf("ALARME zapgw: Meta refused the credential of instance %q when running the smoke test; it stays PAUSED", slug)
 		}
 		respondError(w, statusForClass(me.Class), string(me.Class),
 			me.Message+"; a instancia continua PAUSADA", me.MetaCode)

@@ -343,10 +343,10 @@ func (s *ExternalProbe) ask(ctx context.Context) (string, error) {
 		Status *string `json:"status"`
 	}
 	if err := json.NewDecoder(io.LimitReader(resp.Body, externalProbeBodyCap)).Decode(&body); err != nil {
-		return "", fmt.Errorf("ler a sonda externa (%s, HTTP %d): %w", s.url, resp.StatusCode, err)
+		return "", fmt.Errorf("read the external probe (%s, HTTP %d): %w", s.url, resp.StatusCode, err)
 	}
 	if body.Status == nil || strings.TrimSpace(*body.Status) == "" {
-		return "", fmt.Errorf("a sonda externa (%s) respondeu HTTP %d sem o campo `status`", s.url, resp.StatusCode)
+		return "", fmt.Errorf("the external probe (%s) answered HTTP %d without the `status` field", s.url, resp.StatusCode)
 	}
 	return *body.Status, nil
 }

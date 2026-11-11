@@ -174,22 +174,22 @@ func NewLeadership(getenv func(string) string) (*Leadership, error) {
 
 	if raw == "" {
 		return nil, fmt.Errorf(
-			"zapgw: %s esta definida mas %s nao — a guarda de lideranca NAO tem default, de proposito.\n"+
-				"  O valor seguro depende do TTL da concessao no etcd, que este processo nao conhece.\n"+
-				"  Escolha V atendendo as DUAS: R < V  e  V + A < T\n"+
-				"    R = intervalo em que o supervisor renova o arquivo\n"+
-				"    A = tempo ate uma acao ficar VISIVEL ao sucessor (aqui, o atraso da replicacao)\n"+
-				"    T = TTL da concessao no etcd\n"+
-				"  Violar a segunda faz os dois nos se acharem titulares AO MESMO TEMPO — mensagem duplicada.",
+			"zapgw: %s is set but %s is not — the leadership guard has NO default, on purpose.\n"+
+				"  The safe value depends on the grant TTL in etcd, which this process does not know.\n"+
+				"  Choose V satisfying BOTH: R < V  and  V + A < T\n"+
+				"    R = interval at which the supervisor renews the file\n"+
+				"    A = time until an action becomes VISIBLE to the successor (here, the replication delay)\n"+
+				"    T = grant TTL in etcd\n"+
+				"  Violating the second makes both nodes believe they are the holder AT THE SAME TIME — duplicate message.",
 			VarLeadershipFileNew, VarLeadershipValidityNew)
 	}
 	d, err := time.ParseDuration(raw)
 	if err != nil {
-		return nil, fmt.Errorf("zapgw: %s = %q nao e uma duracao valida (ex.: %q)",
+		return nil, fmt.Errorf("zapgw: %s = %q is not a valid duration (e.g. %q)",
 			VarLeadershipValidityNew, raw, "8s")
 	}
 	if d <= 0 {
-		return nil, fmt.Errorf("zapgw: %s = %q tem de ser positivo — duracao zero ou negativa recusaria TODO envio",
+		return nil, fmt.Errorf("zapgw: %s = %q has to be positive — a zero or negative duration would refuse EVERY send",
 			VarLeadershipValidityNew, raw)
 	}
 	return &Leadership{file: file, validity: d}, nil

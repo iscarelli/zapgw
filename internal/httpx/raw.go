@@ -12,7 +12,7 @@ import (
 )
 
 // ErrBodyTooLarge: the body went past the configured ceiling.
-var ErrBodyTooLarge = errors.New("httpx: corpo acima do teto")
+var ErrBodyTooLarge = errors.New("httpx: body above the ceiling")
 
 // ReadRaw returns the exact bytes of the body, or ErrBodyTooLarge if it goes past
 // maxBytes.

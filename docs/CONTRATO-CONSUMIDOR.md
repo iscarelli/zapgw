@@ -1909,7 +1909,7 @@ All three are optional and independent. **If you send none of them, the request 
 the difference only appears on a real send.
 
 **You do NOT send a ready-made `components`.** Sending the Graph API's format is refused with `400`
-and the named error `components cru da Graph API nao e aceito`. The reason is the reason this gateway
+and the named error `raw Graph API components are not accepted`. The reason is the reason this gateway
 exists: the schema here makes what Meta rejects *inexpressible*, and a raw pass-through would hand
 that entire class of error back to your production — you would assemble it wrong, Meta would refuse,
 and the gateway would have protected nobody.
@@ -5711,7 +5711,7 @@ declaring victory. Recorded with its cost in the gateway's trap log.
 ### 2026-07-28 · The `botoes_url` field was REMOVED — use `botoes_template`
 
 **What changed:** `botoes_url`, the parameter field for a template's URL button, **no longer exists**.
-A request that still sends it receives a `400` with the named error `botoes_url foi removido; use
+A request that still sends it receives a `400` with the named error `botoes_url was removed; use
 botoes_template` and the translation inside the message itself. **The URL button went nowhere** — it is
 `{"tipo": "url"}` inside `botoes_template`, and the component that goes out to Meta is the same byte for
 byte (frozen in a test).

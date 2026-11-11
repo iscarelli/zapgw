@@ -286,7 +286,7 @@ func TestRenewerWhenTheWriteFailsKeepsTheOldTokenAndDoesNotMarkRenewed(t *testin
 	if !strings.Contains(logBuf.String(), "ALARME") {
 		t.Fatalf("log without ALARME:\n%s", logBuf.String())
 	}
-	if !strings.Contains(logBuf.String(), "GRAVACAO falhou") {
+	if !strings.Contains(logBuf.String(), "WRITING it failed") {
 		t.Errorf("log does not mention the write having failed:\n%s", logBuf.String())
 	}
 }
@@ -308,7 +308,7 @@ func TestRenewerWhenMetaRefusesAlarmsWithDaysLeftInTheText(t *testing.T) {
 	if !strings.Contains(logBuf.String(), "ALARME") {
 		t.Fatalf("log without ALARME:\n%s", logBuf.String())
 	}
-	if !strings.Contains(logBuf.String(), "29 dia") {
+	if !strings.Contains(logBuf.String(), "29 day(s)") {
 		t.Errorf("log does not cite the remaining days (29):\n%s", logBuf.String())
 	}
 	inst, err := store.FindInstance(slug)

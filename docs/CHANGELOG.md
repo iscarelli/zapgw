@@ -4,6 +4,21 @@ One line per version shipped, in the same commit as the bump. The entry states t
 
 ## Unreleased
 
+- **Error and log messages still in Portuguese go to English** (T-264) — **CONTRACT CHANGE (error
+  TEXT only).** The text of the `errors.New` / `fmt.Errorf` / `log.Printf` messages that were still in
+  Portuguese is now English: the `Err*` sentinels and `Request.Validate()` messages in
+  `internal/outbound/message.go` (the `message` of a `400`), the `field ... is required` errors of the
+  block/pause/reads/registration/smoke/templates handlers, the `ALARME zapgw: ...` log lines, the
+  smoke-test steps, the unmodeled/partial-parse sentinels in `internal/meta`, the transport-failure
+  causes in `internal/meta/client.go`, the connector/probe readers and the leadership-guard startup
+  errors. The error `class` and the HTTP status codes did NOT change, and neither did field names
+  quoted inside a message (`instancia`, `destino`, `cartoes[i].cabecalho`...), `SmokeText`, the wire
+  JSON values, the `ALARME` / `PRECISA DE GENTE` markers, or the text of `respondError` calls (a
+  later task). A consumer matching on the old text must match on the `class` instead. Quoted verbatim
+  in docs: `components cru da Graph API nao e aceito` and `botoes_url foi removido; use botoes_template`
+  in `docs/CONTRATO-CONSUMIDOR.md` (+ pt-BR) and the `inalcancavel` / `prazo esgotado` causes in
+  `docs/ARMADILHAS.md` — all updated. The coupling marker in `deploy/check-leadership.sh` moved with
+  its message (`is not a valid duration`). _Completed 2026-11-11 08:31._
 - **Registration requires callback_url and a formatted numero_exibido** (T-262) — **CONTRACT CHANGE.**
   `POST /v1/cadastro` now refuses (`400`, naming the field) an empty or missing `callback_url` and a
   `numero_exibido` that is not `+55 DD NNNN-NNNN` / `+55 DD 9NNNN-NNNN`; the same shape rule applies

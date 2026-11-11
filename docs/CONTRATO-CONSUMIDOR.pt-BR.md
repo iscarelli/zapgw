@@ -1892,7 +1892,7 @@ Os três são opcionais e independentes. **Se você não manda nenhum, o pedido 
 diferença só aparece no envio real.
 
 **Você NÃO manda `components` pronto.** Mandar o formato da Graph API é recusado com `400` e o erro
-nomeado `components cru da Graph API nao e aceito`. O motivo é a razão de este gateway existir: o
+nomeado `raw Graph API components are not accepted`. O motivo é a razão de este gateway existir: o
 esquema daqui torna *inexprimível* o que a Meta rejeita, e um repasse cru devolveria essa classe
 inteira de erro para a sua produção — você montaria errado, a Meta recusaria, e o gateway não teria
 protegido ninguém.
@@ -5647,7 +5647,7 @@ Registrado com o custo no registro de armadilhas do gateway.
 ### 2026-07-28 · O campo `botoes_url` foi REMOVIDO — use `botoes_template`
 
 **O que mudou:** `botoes_url`, o campo de parâmetro de botão de URL de template, **não existe mais**.
-Um pedido que ainda o mande recebe `400` com o erro nomeado `botoes_url foi removido; use
+Um pedido que ainda o mande recebe `400` com o erro nomeado `botoes_url was removed; use
 botoes_template` e a tradução dentro da própria mensagem. **O botão de URL não foi a lugar nenhum** —
 ele é `{"tipo": "url"}` dentro de `botoes_template`, e o componente que sai para a Meta é o mesmo
 byte a byte (congelado em teste).

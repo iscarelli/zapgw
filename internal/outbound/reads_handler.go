@@ -104,8 +104,8 @@ var (
 	// ErrReadNoInstance and ErrReadNoWamid name the FIELD, never the
 	// value: they propagate to the refusal log (T-037), and the `wamid` carries the
 	// recipient's phone number inside it (docs/ARMADILHAS.md).
-	ErrReadNoInstance = errors.New("campo `instancia` e obrigatorio")
-	ErrReadNoWamid    = errors.New("campo `wamid` e obrigatorio")
+	ErrReadNoInstance = errors.New("field `instancia` is required")
+	ErrReadNoWamid    = errors.New("field `wamid` is required")
 )
 
 // Validate trims both fields and requires both.
@@ -264,8 +264,8 @@ func (h *ReadsHandler) respondReadError(w http.ResponseWriter, instanceSlug stri
 		// ALARM for the same reason as the send: every instance with this defect
 		// becomes unable to talk to Meta until an admin corrects the
 		// phone_number_id in the store. "Needs a person", not "wait for the retry".
-		log.Printf("ALARME zapgw: phone_number_id invalido para a instancia %q — "+
-			"corrija o phone_number_id no store; nenhuma chamada a Meta desta instancia funciona ate la",
+		log.Printf("ALARME zapgw: invalid phone_number_id for instance %q — "+
+			"fix the phone_number_id in the store; no call to Meta on this instance works until then",
 			instanceSlug)
 		respondError(w, http.StatusBadGateway, string(meta.ClassConfig),
 			"a configuracao desta instancia no gateway esta invalida; "+
@@ -276,7 +276,7 @@ func (h *ReadsHandler) respondReadError(w http.ResponseWriter, instanceSlug stri
 	var me *meta.MetaError
 	if errors.As(err, &me) {
 		if me.Class == meta.ClassConfig {
-			log.Printf("ALARME zapgw: credencial da instancia %q recusada pela Meta ao marcar leitura", instanceSlug)
+			log.Printf("ALARME zapgw: Meta refused the credential of instance %q when marking as read", instanceSlug)
 		}
 		respondError(w, statusForClass(me.Class), string(me.Class), me.Message, me.MetaCode)
 		return

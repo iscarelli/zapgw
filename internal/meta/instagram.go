@@ -77,7 +77,7 @@ var ErrResponseWithoutMessageID = errors.New("meta: Instagram 2xx response witho
 // docs/TASKS.md, T-106, which MEASURED this in production: two "parse
 // failed" batches per response sent, triggering the failure monitor on
 // perfectly normal traffic).
-var ErrUnmodeledItems = errors.New("meta: item legitimo que esta fatia do instagram nao modela")
+var ErrUnmodeledItems = errors.New("meta: legitimate item that this Instagram slice does not model")
 
 // instagramEnvelopeMeta and instagramEntryMeta are the RAW format of the
 // top of an Instagram webhook. `Entry`/`Messaging` are json.RawMessage so
@@ -229,10 +229,10 @@ func ParseInstagramWebhook(payload []byte) ([]Event, error) {
 func instagramParseErrors(unreadable, unmodeled int) error {
 	var parts []error
 	if unreadable > 0 {
-		parts = append(parts, fmt.Errorf("%w: %d item(ns) ignorado(s)", ErrPartialParse, unreadable))
+		parts = append(parts, fmt.Errorf("%w: %d item(s) ignored", ErrPartialParse, unreadable))
 	}
 	if unmodeled > 0 {
-		parts = append(parts, fmt.Errorf("%w: %d item(ns)", ErrUnmodeledItems, unmodeled))
+		parts = append(parts, fmt.Errorf("%w: %d item(s)", ErrUnmodeledItems, unmodeled))
 	}
 	switch len(parts) {
 	case 0:
