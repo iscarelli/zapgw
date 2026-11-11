@@ -73,7 +73,7 @@ Every example in this file uses **the same fictitious markers**, and none of the
 |---|---|---|
 | instance slug | `lojinha` | the **fictitious** slug of the examples. Yours comes in the delivery package, and it is a different one |
 | phone (canonical form) | `5511999990000` | a **synthetic** number, with the 9th digit |
-| phone (as Meta sometimes sends it) | `551199990000` | the **same** number without the 9th digit — this is the pair the `de_cru`/`de_canonico` section explains |
+| phone (as Meta sometimes sends it) | `551199990000` | the **same** number without the 9th digit — this is the pair the `from_raw`/`from_canonical` section explains |
 | Meta ids | `PNID_TESTE`, `WABA_TESTE`, `wamid.TESTE001`… | test identifiers, never real ones |
 | base of the URLs **you** call | `https://zapgw.exemplo.com.br:8443` | **replace it with the registration URL you received** (item 2 of the package); the port is part of it |
 | URL **Meta** calls | `https://zapgw.exemplo.com.br/v1/inbound/lojinha` | this is item 3 of the package, and the only one published on the internet — port 443, no explicit port |
@@ -389,6 +389,14 @@ X-Zapgw-Correlation-Id: <id>            crosses both sides; quote it when report
 X-Hub-Signature-256:    sha256=<hex>    Meta's ORIGINAL signature, passed through
 ```
 
+> ℹ️ **The keys of the delivery envelope are in English: `instance`, `received_at`, `raw`, `events` and
+> `parse_error`** (`internal/inbound/deliver.go:45-49`), and so are the keys of the events inside
+> `events` (`sub_kind`, `from_raw`, `text`, `reply_to`, ... — `internal/meta/types.go`). **Until
+> 2026-11-11 this document showed the old Portuguese spellings** (`instancia`, `recebido_em`, `cru`,
+> `eventos`, ...) in its examples and tables, and the gateway does not send them: a consumer that coded
+> against those names rejected every delivery. The few output keys that are still Portuguese are the
+> table right below; the whole old -> new map is `docs/MIGRACAO-CONTRATO-EN.md`.
+
 ### Keys that are STILL Portuguese in the output (measured on v0.68.1)
 
 **This table is the list — do not invent the English spelling.** Every key below leaves this
@@ -412,7 +420,7 @@ in `docs/MIGRACAO-CONTRATO-EN.md`.
 | `ja_estava_ativa`, `ativa_desde` | `POST /v1/fumaca` — siblings `instance`/`state`/`paused`/`wa_message_id` are English | `internal/outbound/smoke_handler.go:128` / `:136` | pending owner decision — same shape as T-248, not yet added to its list |
 | `operacao` | `POST` / `DELETE /v1/bloqueios` — siblings `instance`/`processed`/`failures` are English | `internal/outbound/block_handler.go:166` | pending owner decision — same shape as T-248, not yet added to its list |
 | `tipo`, `severidade`, `descricao`, `id_da_entidade` | webhook event envelope, `account_alert` block — sibling `state` (inside the same block) is English | `internal/meta/types.go:396` / `:397` / `:406` / `:392` | pending owner decision — **checked against §10 of the migration doc: these are OUR OWN translation of Meta's `alert_type`/`alert_severity`/`alert_description`/`entity_id`, not Meta's own field name kept verbatim, so they do NOT qualify as "Meta's vocabulary, kept on purpose"** |
-| `status_do_recurso` | webhook event envelope — **NOT inside `account_alert`**: it is `AppealStatus` on the `template_categoria` (`template_category`) block | `internal/meta/types.go:318` | pending owner decision — same shape as T-248, not yet added to its list |
+| `status_do_recurso` | webhook event envelope — **NOT inside `account_alert`**: it is `AppealStatus` on the `template_category` block | `internal/meta/types.go:318` | pending owner decision — same shape as T-248, not yet added to its list |
 | counter names, e.g. `cobranca_cobravel`, `alarme_perda_definitiva` (+16 more) | `GET /v1/estado`, the `counters` dictionary's own KEYS (not a field inside a block) | `internal/config/counter.go:31-232` (the closed vocabulary) | counter name, deliberate history — the full list of 18 and the one already-decided pair (`nome_antigo_usado` -> `old_name_used`) are in `docs/MIGRACAO-CONTRATO-EN.md` §8.11 |
 
 > `destino` (`POST /v1/fumaca`'s request body, `internal/outbound/smoke_handler.go:97`) was checked
@@ -421,27 +429,27 @@ in `docs/MIGRACAO-CONTRATO-EN.md`.
 
 ```jsonc
 {
-  "instancia": "lojinha",
-  "recebido_em": "2026-07-23T14:05:00Z",
-  "cru": "<the EXACT bytes Meta sent, in base64>",
-  "eventos": [
+  "instance": "lojinha",
+  "received_at": "2026-07-23T14:05:00Z",
+  "raw": "<the EXACT bytes Meta sent, in base64>",
+  "events": [
     { "kind": "message",
       "id": "msg:wamid.ABC",
       "phone_number_id": "…", "waba_id": "…",
       "wa_message_id": "wamid.ABC",
-      "sub_tipo": "text",
-      "de_cru": "551199990000",
-      "de_canonico": "5511999990000",
-      "nome_contato": "…",
-      "texto": "…",
-      "responder_a": "wamid…",
-      "encaminhada": true, "encaminhada_muitas_vezes": true,
-      "botao_payload": "…", "botao_texto": "…",
-      "reacao": { "emoji": "👍", "alvo": "wamid…" },
-      "midia_id": "…", "midia_mime_payload": "audio/ogg; codecs=opus",
-      "voz": true,
-      "legenda": "…", "nome_arquivo": "…",
-      "localizacao": { "latitude": 37.44, "longitude": -122.16, "nome": "…", "endereco": "…" },
+      "sub_kind": "text",
+      "from_raw": "551199990000",
+      "from_canonical": "5511999990000",
+      "contact_name": "…",
+      "text": "…",
+      "reply_to": "wamid…",
+      "forwarded": true, "frequently_forwarded": true,
+      "button_payload": "…", "button_text": "…",
+      "reaction": { "emoji": "👍", "target": "wamid…" },
+      "media_id": "…", "media_mime_payload": "audio/ogg; codecs=opus",
+      "voice": true,
+      "caption": "…", "file_name": "…",
+      "location": { "latitude": 37.44, "longitude": -122.16, "name": "…", "address": "…" },
       "timestamp": 1769000000 }
   ],
   "parse_error": ""
@@ -450,11 +458,11 @@ in `docs/MIGRACAO-CONTRATO-EN.md`.
 
 > **Two fields in this example have already lied, and both break code, not just reading.**
 > `parse_error` is the **empty** string when there was no error, never `null` and never absent — it is
-> **not** omitted, and **that never changed**. And `eventos`, when the gateway enriched nothing, is
+> **not** omitted, and **that never changed**. And `events`, when the gateway enriched nothing, is
 > today **`[]`** — an empty array, never `null`.
 >
-> ⚠️ **Until 2026-07-28 the wire sent `"eventos": null` in this case** — since the gateway's very
-> first day (2026-07-23). If you wrote `envelope.get("eventos") or []` (or `?? []`) because of that
+> ⚠️ **Until 2026-07-28 the wire sent `"events": null` in this case** — since the gateway's very
+> first day (2026-07-23). If you wrote `envelope.get("events") or []` (or `?? []`) because of that
 > warning, **keep it**: the defense is still correct and still necessary, because `[]` is also falsy
 > in Python and iterates zero times in any language. See *ACCOUNT webhook*, further below, and the
 > 2026-07-28 entry in *Breaking changes*.
@@ -465,13 +473,13 @@ be trading one inaccuracy for another:
 
 | Level | **ALWAYS** present, even when empty | Everything else |
 |---|---|---|
-| envelope | `instancia`, `recebido_em`, `cru`, `eventos`, `parse_error` | — |
-| an item of `eventos` | `kind` and `id` | omitted when there is no value |
-| inside the nested blocks | `reacao.alvo`; `localizacao.latitude` and `.longitude`; `error.code` and `.message`; `cobranca.categoria`; `template.estado`; `template_categoria.categoria_nova` | omitted when there is no value |
+| envelope | `instance`, `received_at`, `raw`, `events`, `parse_error` | — |
+| an item of `events` | `kind` and `id` | omitted when there is no value |
+| inside the nested blocks | `reaction.target`; `location.latitude` and `.longitude`; `error.code` and `.message`; `pricing.category`; `template.state`; `template_category.new_category` | omitted when there is no value |
 
 Outside those rows, **every field is omitted when empty**: a plain text message does not get
-`reacao`, `voz`, `legenda`, `nome_arquivo`, `localizacao`, `responder_a`,
-`encaminhada`/`encaminhada_muitas_vezes` (since 2026-07-28), nor `error` (since 2026-07-26). That is
+`reaction`, `voice`, `caption`, `file_name`, `location`, `reply_to`,
+`forwarded`/`frequently_forwarded` (since 2026-07-28), nor `error` (since 2026-07-26). That is
 what the "the envelope only grows" guarantee (below) demands, and there is a regression test pinned
 to the current fields.
 
@@ -482,11 +490,11 @@ to the current fields.
 > without it (see the 2026-07-28 entries in *Breaking changes*). The table says what the gateway
 > guarantees **when it produces the field**, not that the field exists in every scenario.
 
-### `responder_a` — which message this one answers
+### `reply_to` — which message this one answers
 
-`responder_a` carries the `wamid` of the **quoted** message, when the sender replied by holding down
-another message's bubble (Meta sends this in `messages[].context.id`, in **any** `sub_tipo`, not
-only in `text`). **SAME NAME as the equivalent field when sending** (`responder_a` in
+`reply_to` carries the `wamid` of the **quoted** message, when the sender replied by holding down
+another message's bubble (Meta sends this in `messages[].context.id`, in **any** `sub_kind`, not
+only in `text`). **SAME NAME as the equivalent field when sending** (`reply_to` in
 `POST /v1/messages`, see further below) — the referent is identical in both directions: the `wamid`
 of the quoted message. Sending and receiving with different names for the same thing would be the
 start of two vocabularies.
@@ -495,36 +503,36 @@ start of two vocabularies.
 gateway does not pass that field through.** This is not an oversight: a field that looks like "from
 whom" and is "to whom" is an invitation to a bug, and nobody has asked for that value to date. If
 someday somebody needs it, it comes in with a name that says what it is — never by reusing
-`responder_a` for two meanings.
+`reply_to` for two meanings.
 
 Absent when the message answers nothing — the key disappears from the JSON, never
-`"responder_a": ""`.
+`"reply_to": ""`.
 
 > ⚠️ **Absent does NOT mean "it isn't a reply". It means "Meta did not send a link".**
 > Observed on 2026-07-26 (two real payloads from the same conversation, 3 minutes apart): someone who
-> replies by **holding the bubble** generates `context` and you receive `responder_a`; someone who
+> replies by **holding the bubble** generates `context` and you receive `reply_to`; someone who
 > replies by **typing into the phone's notification** — an *inline* reply — generates a payload with
-> **no `context` at all**, and therefore no `responder_a`, even though it is a genuine reply to the
+> **no `context` at all**, and therefore no `reply_to`, even though it is a genuine reply to the
 > person who wrote.
 >
 > This is not the gateway omitting it nor your side losing it: **Meta does not send the link in that
 > case.** And replying from the notification is the fastest way on a phone, so the absence is
 > probably the majority of the traffic, not the exception.
 >
-> **Practical consequence:** do not treat a missing `responder_a` as an anomaly, do not alarm because
+> **Practical consequence:** do not treat a missing `reply_to` as an anomaly, do not alarm because
 > of it, and do not build anything that depends on every reply carrying the link. If someday somebody
-> opens an investigation into "`responder_a` missing on a real payload", the answer is this line.
+> opens an investigation into "`reply_to` missing on a real payload", the answer is this line.
 >
 > **Since 2026-07-28 there is a third reason for the absence, and it is ours, not Meta's:** if the
 > `context` block arrives with a **type** the gateway cannot read, it discards the whole block and
-> delivers the message without `responder_a`, `encaminhada` and `encaminhada_muitas_vezes` — instead
+> delivers the message without `reply_to`, `forwarded` and `frequently_forwarded` — instead
 > of losing the message, which is what happened before. See *Breaking changes*, at the end of this
 > file. For you the effect is indistinguishable from the other two cases, and the guidance above does
 > not change.
 
 **Executed example** (the gateway's parser over a **real capture** payload, 2026-07-26: someone
 replied quoting an earlier message; `context.from` and `context.id` came out different from each
-other in the real payload, confirming that it is the `id` that becomes `responder_a`, not the
+other in the real payload, confirming that it is the `id` that becomes `reply_to`, not the
 `from`):
 
 ```json
@@ -535,35 +543,35 @@ other in the real payload, confirming that it is the `id` that becomes `responde
   "waba_id": "WABA_TESTE",
   "timestamp": 1769000013,
   "wa_message_id": "wamid.TESTE015",
-  "sub_tipo": "text",
-  "de_cru": "551199990000",
-  "de_canonico": "5511999990000",
-  "nome_contato": "Fulana de Teste",
-  "texto": "Recebido",
-  "responder_a": "wamid.TESTE001"
+  "sub_kind": "text",
+  "from_raw": "551199990000",
+  "from_canonical": "5511999990000",
+  "contact_name": "Fulana de Teste",
+  "text": "Recebido",
+  "reply_to": "wamid.TESTE001"
 }
 ```
 
-### `encaminhada` and `encaminhada_muitas_vezes` — the message was not written now, for you
+### `forwarded` and `frequently_forwarded` — the message was not written now, for you
 
 Both come from `messages[].context` at Meta (`forwarded` and `frequently_forwarded`) and arrive in
-**any** `sub_tipo`, not only in `text`.
+**any** `sub_kind`, not only in `text`.
 
-- **`encaminhada`** — the person passed a message along instead of writing it. A weak, common signal:
+- **`forwarded`** — the person passed a message along instead of writing it. A weak, common signal:
   a customer forwarding a reference photo, a price list, a screenshot of a conversation. It is
   **context**, not an alarm.
-- **`encaminhada_muitas_vezes`** — this is WhatsApp's **chain-message** signal (the "forwarded many
+- **`frequently_forwarded`** — this is WhatsApp's **chain-message** signal (the "forwarded many
   times" mark the app shows). **This is the one that changes an automated decision.** If your side
   answers on its own — appointment detection, auto-reply, relay — a chain message is today treated as
   if the customer had written it. This field is what lets you **not** fire a business flow on top of
   it.
 
-**They are plain booleans, and absence means `false` — unlike `voz`.** The distinction exists and is
-deliberate, so it is worth writing down what it is: in `voz`, "Meta said it is not a voice note" and
+**They are plain booleans, and absence means `false` — unlike `voice`.** The distinction exists and is
+deliberate, so it is worth writing down what it is: in `voice`, "Meta said it is not a voice note" and
 "Meta said nothing" lead you to do **different** things when re-sending the audio, and that is why
 absent ≠ `false` there. Here there is no third action: "it was not forwarded" and "Meta did not say
 it was" lead to the same place — treating the message as written by the person. That is why **the key
-only appears when it is `true`**; you will never receive `"encaminhada": false`, and you should not
+only appears when it is `true`**; you will never receive `"forwarded": false`, and you should not
 treat the absence as unknown.
 
 > ⚠️ **There is no real capture of these fields as of 2026-07-28.** None of the payloads the consumers
@@ -575,7 +583,7 @@ treat the absence as unknown.
 > **Practical consequence, and it is the reason this warning exists:** treat the **presence** of the
 > fields as good information, and the **absence** as "we did not receive the signal" — not as proof
 > that the message is original. **The proof that counts for you is your own**: if you observe a
-> genuinely forwarded message arriving with `encaminhada: true`, it is confirmed in your traffic, and
+> genuinely forwarded message arriving with `forwarded: true`, it is confirmed in your traffic, and
 > that is what decides what your code may assume. Until you observe it, do not build anything that
 > depends on the presence.
 
@@ -583,7 +591,7 @@ treat the absence as unknown.
 it, and the envelope only grows — adding later is free, removing later is a break.
 
 **Forwarding is not quoting.** A forwarded message that answers nothing arrives with a `context`
-**without `id`**, that is, with `encaminhada` and **without** `responder_a`. The two cases are
+**without `id`**, that is, with `forwarded` and **without** `reply_to`. The two cases are
 independent and can appear together.
 
 **Executed example** (the gateway's parser over a **synthetic** payload — see the warning above):
@@ -596,49 +604,49 @@ independent and can appear together.
   "waba_id": "WABA_TESTE",
   "timestamp": 1769000021,
   "wa_message_id": "wamid.TESTE018",
-  "sub_tipo": "text",
-  "de_cru": "551199990000",
-  "de_canonico": "5511999990000",
-  "nome_contato": "Fulana de Teste",
-  "texto": "Tabela de precos 2026",
-  "encaminhada": true
+  "sub_kind": "text",
+  "from_raw": "551199990000",
+  "from_canonical": "5511999990000",
+  "contact_name": "Fulana de Teste",
+  "text": "Tabela de precos 2026",
+  "forwarded": true
 }
 ```
 
-Note that `encaminhada_muitas_vezes` **does not appear**: in this payload it is `false`, and `false`
+Note that `frequently_forwarded` **does not appear**: in this payload it is `false`, and `false`
 disappears from the envelope.
 
-### `reacao`, `voz`, `legenda`/`nome_arquivo`, `localizacao`, `error` — what each one means
+### `reaction`, `voice`, `caption`/`file_name`, `location`, `error` — what each one means
 
-These fields exist so that you **do not have to re-parse the `cru`** for reaction, location, caption,
+These fields exist so that you **do not have to re-parse the `raw`** for reaction, location, caption,
 file name, voice note and — since 2026-07-26 — the reason Meta could not represent a message. Before
-them, the `sub_tipo` arrived labelled (`"reaction"`, `"location"`, `"unsupported"`) but without the
+them, the `sub_kind` arrived labelled (`"reaction"`, `"location"`, `"unsupported"`) but without the
 event's CONTENT, and the only way to recover the data was to reimplement Meta's parser yourself.
 
-- **`reacao` (`sub_tipo: "reaction"`)** — `emoji` and `alvo` (the `wamid` of the message reacted to).
+- **`reaction` (`sub_kind: "reaction"`)** — `emoji` and `target` (the `wamid` of the message reacted to).
   **A missing `emoji` is a removal, not an error**: when someone takes back a reaction they had
   placed, Meta itself sends the event without the `emoji` key — that is how it distinguishes "I
   reacted" from "I removed the reaction". The gateway passes that absence through exactly as it came;
-  `alvo`, by contrast, is always mandatory: a reaction event without it is counted as a parse error
-  (`parse_error`) and does not become a `reacao`.
-- **`voz` (`sub_tipo: "audio"`)** — `true`/`false`/**absent**, in that order of meaning. It is the
+  `target`, by contrast, is always mandatory: a reaction event without it is counted as a parse error
+  (`parse_error`) and does not become a `reaction`.
+- **`voice` (`sub_kind: "audio"`)** — `true`/`false`/**absent**, in that order of meaning. It is the
   playable voice note (obligation 5 of the contract, further below) versus an ordinary audio
   attachment. **Absent is not `false`**: Meta sometimes does not send the `voice` field in the
-  payload, and treating that as `false` by default would invent data you do not have. If `voz` does
+  payload, and treating that as `false` by default would invent data you do not have. If `voice` does
   not appear, the gateway does not know.
-- **`legenda` and `nome_arquivo` (media with `caption`/`filename` in Meta's payload)** — the caption
+- **`caption` and `file_name` (media with `caption`/`filename` in Meta's payload)** — the caption
   exists for image, video and document; the file name only for document. Both refer to the same
-  media as the `midia_id` in the same event.
-- **`localizacao` (`sub_tipo: "location"`)** — `latitude`, `longitude` (always present, even when
+  media as the `media_id` in the same event.
+- **`location` (`sub_kind: "location"`)** — `latitude`, `longitude` (always present, even when
   `0` — the crossing of the Greenwich meridian with the equator is a valid coordinate) and, when the
-  sender sent them, `nome` and `endereco`.
-- **`error` (`sub_tipo: "unsupported"`, 2026-07-26)** — the **SAME field and SAME shape** as the `error`
+  sender sent them, `name` and `address`.
+- **`error` (`sub_kind: "unsupported"`, 2026-07-26)** — the **SAME field and SAME shape** as the `error`
   of the `status` event (described just below: `code`, `message`, `details`), but with a
   **different MEANING**, and the difference matters: in the status event, `error` means "the delivery
   failed"; here it means **"Meta received something the Cloud API cannot represent"** — Meta did not
   fail to deliver anything, it delivered and could not decode the content (the observed case is code
   `131051`, `"Message type unknown"`). Without this field, an `unsupported` message arrived with a
-  `sub_tipo` and an `id`, and **nothing else** — indistinguishable from "empty message" for anyone
+  `sub_kind` and an `id`, and **nothing else** — indistinguishable from "empty message" for anyone
   who only looks at the envelope. Absent when Meta did not send `errors[]` in the message — omitted,
   never `{"code": 0, "message": ""}` (same rule as on the status side, see below).
 
@@ -657,15 +665,15 @@ preserves the pair):
   "waba_id": "WABA_TESTE",
   "timestamp": 1769000005,
   "wa_message_id": "wamid.TESTE006",
-  "sub_tipo": "reaction",
-  "de_cru": "5511999990000",
-  "de_canonico": "5511999990000",
-  "reacao": { "emoji": "❤️", "alvo": "wamid.TESTE001" }
+  "sub_kind": "reaction",
+  "from_raw": "5511999990000",
+  "from_canonical": "5511999990000",
+  "reaction": { "emoji": "❤️", "target": "wamid.TESTE001" }
 }
 ```
 
 Reaction **removed** (**real capture**, 2026-07-26: the same reaction as the example above, undone
-20 seconds later, same target) — note the absence of the `emoji` key inside `reacao`, not an empty
+20 seconds later, same target) — note the absence of the `emoji` key inside `reaction`, not an empty
 string:
 
 ```json
@@ -676,17 +684,17 @@ string:
   "waba_id": "WABA_TESTE",
   "timestamp": 1769000006,
   "wa_message_id": "wamid.TESTE007",
-  "sub_tipo": "reaction",
-  "de_cru": "5511999990000",
-  "de_canonico": "5511999990000",
-  "reacao": { "alvo": "wamid.TESTE001" }
+  "sub_kind": "reaction",
+  "from_raw": "5511999990000",
+  "from_canonical": "5511999990000",
+  "reaction": { "target": "wamid.TESTE001" }
 }
 ```
 
 Location (**real capture**, 2026-07-26; coordinates rounded on purpose in the capture, so as not to
-expose the real location). This is the **bare pin** — no `nome`/`endereco` — which is the case
+expose the real location). This is the **bare pin** — no `name`/`address` — which is the case
 observed as common; Meta also accepts a business pin with both fields filled in (see the note above
-about `nome`/`endereco` being optional), but that is not what most users send:
+about `name`/`address` being optional), but that is not what most users send:
 
 ```json
 {
@@ -696,10 +704,10 @@ about `nome`/`endereco` being optional), but that is not what most users send:
   "waba_id": "WABA_TESTE",
   "timestamp": 1769000007,
   "wa_message_id": "wamid.TESTE008",
-  "sub_tipo": "location",
-  "de_cru": "5511999990000",
-  "de_canonico": "5511999990000",
-  "localizacao": {
+  "sub_kind": "location",
+  "from_raw": "5511999990000",
+  "from_canonical": "5511999990000",
+  "location": {
     "latitude": -21.229,
     "longitude": -43.7892
   }
@@ -716,17 +724,17 @@ Document with caption and file name:
   "waba_id": "WABA_TESTE",
   "timestamp": 1769000008,
   "wa_message_id": "wamid.TESTE009",
-  "sub_tipo": "document",
-  "de_cru": "5511999990000",
-  "de_canonico": "5511999990000",
-  "midia_id": "MEDIA_TESTE2",
-  "midia_mime_payload": "application/pdf",
-  "legenda": "meu recibo",
-  "nome_arquivo": "recibo-teste.pdf"
+  "sub_kind": "document",
+  "from_raw": "5511999990000",
+  "from_canonical": "5511999990000",
+  "media_id": "MEDIA_TESTE2",
+  "media_mime_payload": "application/pdf",
+  "caption": "meu recibo",
+  "file_name": "recibo-teste.pdf"
 }
 ```
 
-Voice note — `voz: true` (the same payload as the two-mimes trap cited in obligation 5):
+Voice note — `voice: true` (the same payload as the two-mimes trap cited in obligation 5):
 
 ```json
 {
@@ -736,16 +744,16 @@ Voice note — `voz: true` (the same payload as the two-mimes trap cited in obli
   "waba_id": "WABA_TESTE",
   "timestamp": 1769000003,
   "wa_message_id": "wamid.TESTE004",
-  "sub_tipo": "audio",
-  "de_cru": "5511999990000",
-  "de_canonico": "5511999990000",
-  "midia_id": "MEDIA_TESTE",
-  "midia_mime_payload": "audio/ogg; codecs=opus",
-  "voz": true
+  "sub_kind": "audio",
+  "from_raw": "5511999990000",
+  "from_canonical": "5511999990000",
+  "media_id": "MEDIA_TESTE",
+  "media_mime_payload": "audio/ogg; codecs=opus",
+  "voice": true
 }
 ```
 
-`sub_tipo: "unsupported"` with the reason (2026-07-26) — Meta received something the Cloud API
+`sub_kind: "unsupported"` with the reason (2026-07-26) — Meta received something the Cloud API
 cannot represent (the example below is synthetic, with the values from Meta's official example:
 developers.facebook.com/documentation/business-messaging/whatsapp/webhooks/reference/messages/unsupported/,
 read on 2026-07-26; there is no real-capture corpus for this case yet):
@@ -758,9 +766,9 @@ read on 2026-07-26; there is no real-capture corpus for this case yet):
   "waba_id": "WABA_TESTE",
   "timestamp": 1769000014,
   "wa_message_id": "wamid.TESTE016",
-  "sub_tipo": "unsupported",
-  "de_cru": "5511999990000",
-  "de_canonico": "5511999990000",
+  "sub_kind": "unsupported",
+  "from_raw": "5511999990000",
+  "from_canonical": "5511999990000",
   "error": {
     "code": 131051,
     "message": "Message type unknown",
@@ -779,26 +787,26 @@ Plain text message, for comparison — **none of the five new fields appears** (
   "waba_id": "WABA_TESTE",
   "timestamp": 1769000000,
   "wa_message_id": "wamid.TESTE001",
-  "sub_tipo": "text",
-  "de_cru": "551199990000",
-  "de_canonico": "5511999990000",
-  "nome_contato": "Fulana de Teste",
-  "texto": "mensagem de teste"
+  "sub_kind": "text",
+  "from_raw": "551199990000",
+  "from_canonical": "5511999990000",
+  "contact_name": "Fulana de Teste",
+  "text": "mensagem de teste"
 }
 ```
 
 ### `status` (`kind: "status"`) — what each field means
 
 The status event confirms the fate of a message **you** sent: `sent` → `delivered` → `read`, or
-`failed`. It has no `sub_tipo`; the fields that matter are these:
+`failed`. It has no `sub_kind`; the fields that matter are these:
 
 | Field | What it is |
 |---|---|
 | `status` | `sent`, `delivered`, `read` or `failed` — the vocabulary is Meta's, passed through untranslated |
 | `wa_message_id` | the id of the message you sent (the same one that came back in the `POST /v1/messages` response) |
-| `para_cru` / `para_canonico` | the recipient, in both forms — same reason as the message's `de_cru`/`de_canonico`: Meta does not guarantee the same spelling you registered |
+| `to_raw` / `to_canonical` | the recipient, in both forms — same reason as the message's `from_raw`/`from_canonical`: Meta does not guarantee the same spelling you registered |
 | `error` | **only on `failed`, and only when Meta sent the reason** — see below |
-| `cobranca` | **when Meta sent `pricing`** — under which category it charged for this delivery, see below |
+| `pricing` | **when Meta sent `pricing`** — under which category it charged for this delivery, see below |
 
 > 🔴 **DO NOT ORDER A MESSAGE'S HISTORY BY `timestamp` — the `sent` and the `delivered` of the SAME
 > message arrive with the SAME timestamp from Meta.** This is not a hypothesis: it was **measured in
@@ -811,7 +819,7 @@ The status event confirms the fate of a message **you** sent: `sent` → `delive
 > half the time, with no error anywhere.
 >
 > **What separates the two is ARRIVAL ORDER** — the instant the `POST` hit your endpoint, which is
-> your data and not ours. Record it (obligation 1 already requires recording the `cru` with the
+> your data and not ours. Record it (obligation 1 already requires recording the `raw` with the
 > moment of receipt) and order by that, with Meta's `timestamp` as a tiebreaker or as displayed
 > information, never as a sort key.
 >
@@ -827,11 +835,11 @@ recorded in the database because nobody saw it) has nothing to show.
 
 > ⚠️ **`error` is the SAME field, with the SAME shape, in TWO different events — and the meaning is
 > NOT the same.** Since 2026-07-26, `error` also appears on the **message** event
-> (`sub_tipo: "unsupported"` — see the section above). Here (status) it means "the delivery failed";
+> (`sub_kind: "unsupported"` — see the section above). Here (status) it means "the delivery failed";
 > there (message) it means "Meta received something and could not represent it" — the message was
 > delivered, it did not fail. Everything this block describes about `code`/`message`/`details`,
 > about the `errors[]` list and about "absence is absence, never zero" applies identically to both;
-> **only what `error` is SAYING about the event changes**, and it is the event's `kind`/`sub_tipo`
+> **only what `error` is SAYING about the event changes**, and it is the event's `kind`/`sub_kind`
 > that says which of the two it is.
 
 Format confirmed at
@@ -866,7 +874,7 @@ the gateway could not interpret — does not get an `error`: the field is **omit
 `{"code": 0, "message": ""}`. Code `0` is not a real Meta code; if the gateway invented it, you
 would have no way to distinguish "no reason reported" from "a genuine error with code zero".
 
-### `cobranca` — under which category Meta charged (2026-07-26)
+### `pricing` — under which category Meta charged (2026-07-26)
 
 **This is not accounting curiosity — it is the only way to know, on the FIRST message, that Meta
 reclassified a template.** Editing a template can make Meta reclassify `UTILITY` → `MARKETING`, which
@@ -877,32 +885,32 @@ change, not at the end of the month.
 
 Requested by a consumer (2026-07-26), who checked before asking: `pricing` did not exist in this
 gateway's contract or code, but it **does arrive** — it is in 145 of the 148 statuses they have
-recorded. The gateway translates it to `cobranca`, in our vocabulary — Meta's format dies at the
+recorded. The gateway translates it to `pricing`, in our vocabulary — Meta's format dies at the
 gateway, as in all the rest of the envelope, so that no consumer needs to know Meta's format in order
 to know how much of their traffic is charged.
 
-| Field of `cobranca` | What it is |
+| Field of `pricing` | What it is |
 |---|---|
-| `categoria` | Meta's `pricing.category`, passed through untranslated: `utility`, `marketing`, `authentication`, `service`, among others Meta defines |
+| `category` | Meta's `pricing.category`, passed through untranslated: `utility`, `marketing`, `authentication`, `service`, among others Meta defines |
 | `cobravel` | Meta's `pricing.billable` — `true`/`false`/**absent** (see the note below) |
 
-**Only `categoria` and `cobravel` are modelled.** `pricing_model` and `type` — the other two fields
+**Only `category` and `cobravel` are modelled.** `pricing_model` and `type` — the other two fields
 Meta sends inside `pricing` — stay out until someone says what they would do with them: the envelope
 only grows, so adding later is free, removing later is a contract break.
 
 > ⚠️ **An absent `cobravel` and `cobravel: false` are NOT the same information — and here the
-> difference is about MONEY.** Same rule as `voz` (see above), with a bigger consequence: "Meta said
+> difference is about MONEY.** Same rule as `voice` (see above), with a bigger consequence: "Meta said
 > it does not charge" (`false`) and "Meta said nothing" (absent, the key disappears from the JSON)
 > are different things, and inventing `false` by default would hide exactly the case where nobody
 > knows whether it was charged.
 
-**The whole `cobranca` is absent when Meta did not send `pricing` in the status** — the field
-disappears from the JSON, never `{"categoria": "", "cobravel": false}`. Do not invent a value.
+**The whole `pricing` is absent when Meta did not send `pricing` in the status** — the field
+disappears from the JSON, never `{"category": "", "cobravel": false}`. Do not invent a value.
 
 **And the absence has an address: it is on `sent`.** A consumer's measurement over 225 raw Meta
 payloads (2026-07-28): of the **53 `sent`**, **49 came with `pricing` and 4 without** (~7.5%); of the
-**49 `delivered`**, **49 came with it** (100%). A `sent` without `cobranca` **is neither a failure nor
-a truncated payload — it is a normal case**, and code that treats `cobranca` as guaranteed on `sent`
+**49 `delivered`**, **49 came with it** (100%). A `sent` without `pricing` **is neither a failure nor
+a truncated payload — it is a normal case**, and code that treats `pricing` as guaranteed on `sent`
 breaks about one in thirteen times. **Both forms are frozen side by side**, both backed by real
 traffic, and both appear as examples just below.
 
@@ -919,10 +927,10 @@ a fixture):
   "timestamp": 1769000015,
   "wa_message_id": "wamid.TESTE017",
   "status": "read",
-  "para_cru": "551199990000",
-  "para_canonico": "5511999990000",
-  "cobranca": {
-    "categoria": "utility",
+  "to_raw": "551199990000",
+  "to_canonical": "5511999990000",
+  "pricing": {
+    "category": "utility",
     "cobravel": true
   }
 }
@@ -930,7 +938,7 @@ a fixture):
 
 **Executed examples** (the gateway's parser over the corpus payloads):
 
-Send accepted **without** `cobranca` (**real capture**, 2026-07-28: this is one of the 4 `sent` out
+Send accepted **without** `pricing` (**real capture**, 2026-07-28: this is one of the 4 `sent` out
 of 53 that came without `pricing`):
 
 ```json
@@ -942,12 +950,12 @@ of 53 that came without `pricing`):
   "timestamp": 1785073298,
   "wa_message_id": "wamid.TESTE041",
   "status": "sent",
-  "para_cru": "551199990000",
-  "para_canonico": "5511999990000"
+  "to_raw": "551199990000",
+  "to_canonical": "5511999990000"
 }
 ```
 
-Send accepted **with** `cobranca` (**real capture**, 2026-07-28):
+Send accepted **with** `pricing` (**real capture**, 2026-07-28):
 
 ```json
 {
@@ -958,10 +966,10 @@ Send accepted **with** `cobranca` (**real capture**, 2026-07-28):
   "timestamp": 1785072102,
   "wa_message_id": "wamid.TESTE042",
   "status": "sent",
-  "para_cru": "551199990000",
-  "para_canonico": "5511999990000",
-  "cobranca": {
-    "categoria": "service",
+  "to_raw": "551199990000",
+  "to_canonical": "5511999990000",
+  "pricing": {
+    "category": "service",
     "cobravel": false
   }
 }
@@ -980,10 +988,10 @@ event `id` — this is exactly the case of the 🔴 warning at the start of this
   "timestamp": 1785072102,
   "wa_message_id": "wamid.TESTE042",
   "status": "delivered",
-  "para_cru": "551199990000",
-  "para_canonico": "5511999990000",
-  "cobranca": {
-    "categoria": "service",
+  "to_raw": "551199990000",
+  "to_canonical": "5511999990000",
+  "pricing": {
+    "category": "service",
     "cobravel": false
   }
 }
@@ -1001,8 +1009,8 @@ motivated this whole section of the contract; before, it was derived from the do
   "timestamp": 1769000009,
   "wa_message_id": "wamid.TESTE010",
   "status": "failed",
-  "para_cru": "551199990000",
-  "para_canonico": "5511999990000",
+  "to_raw": "551199990000",
+  "to_canonical": "5511999990000",
   "error": {
     "code": 131026,
     "message": "Message undeliverable",
@@ -1014,31 +1022,31 @@ motivated this whole section of the contract; before, it was derived from the do
 ### `template_status` (`kind: "template_status"`) — Meta approved, rejected or paused a template (2026-07-26)
 
 This event **is not about a message** and has no recipient: it is Meta warning that the state of a
-**template** in your account has changed. It arrives in the same `POST` as always, inside `eventos`.
+**template** in your account has changed. It arrives in the same `POST` as always, inside `events`.
 
-**Why it matters more than it looks: the `categoria` comes in the event.** The `UTILITY` →
+**Why it matters more than it looks: the `category` comes in the event.** The `UTILITY` →
 `MARKETING` reclassification — which changes **price and sending rules** — appears here **before any
-message is sent**. It is an earlier signal than the status's `cobranca` (above), which only arrives
+message is sent**. It is an earlier signal than the status's `pricing` (above), which only arrives
 after a delivery. The two complement each other: this one warns that it **changed**, that one
 confirms **what was charged**.
 
 | Field | What it is |
 |---|---|
-| `template.nome` / `template.idioma` | the pair that identifies the template **when sending** (`template` and `idioma` of `POST /v1/messages`) — it is how you link this notice to what you send |
-| `template.categoria` | `UTILITY`, `MARKETING`, `AUTHENTICATION` — the vocabulary is Meta's, passed through **untranslated** |
-| `template.estado` | `APPROVED`, `REJECTED`, `PENDING`, `PAUSED`, `DISABLED`… — also Meta's, untranslated |
-| `template.motivo` | Meta's `reason`, **as it came** — including the string `"NONE"`, see below |
+| `template.name` / `template.language` | the pair that identifies the template **when sending** (`template` and `language` of `POST /v1/messages`) — it is how you link this notice to what you send |
+| `template.category` | `UTILITY`, `MARKETING`, `AUTHENTICATION` — the vocabulary is Meta's, passed through **untranslated** |
+| `template.state` | `APPROVED`, `REJECTED`, `PENDING`, `PAUSED`, `DISABLED`… — also Meta's, untranslated |
+| `template.reason` | Meta's `reason`, **as it came** — including the string `"NONE"`, see below |
 | `waba_id` | the **only** routing key of this event (see the next section) |
 | `timestamp` | the batch's timestamp (Meta's `entry.time`) — this webhook **has no timestamp of its own** |
 
-> ⚠️ **`"NONE"` is the NORMAL value of `motivo`, not an error nor an "empty".** Meta sends the literal
+> ⚠️ **`"NONE"` is the NORMAL value of `reason`, not an error nor an "empty".** Meta sends the literal
 > string `"NONE"` when there is no reason — not absent, not `null`. The gateway passes it through as
 > it came, and **does not translate `"NONE"` into empty**: "Meta said NONE" and "Meta did not send the
 > field" are different facts, and the second may appear in a type of event we have not seen yet. If
-> `motivo` disappears from the JSON, it is because Meta really did not send the field.
+> `reason` disappears from the JSON, it is because Meta really did not send the field.
 >
 > **The same field, with the same doctrine, is also in the catalogue** — `GET /v1/templates` (section
-> "Read the template catalogue", further below) returns `templates[].motivo` for when you read the
+> "Read the template catalogue", further below) returns `templates[].reason` for when you read the
 > catalogue for another reason, or missed this webhook. The difference is timing: this one warns **on
 > its own**, as soon as Meta decides; the catalogue's requires you to **ask**.
 
@@ -1069,27 +1077,27 @@ level is the corpus's standard envelope):
   "waba_id": "WABA_TESTE",
   "timestamp": 1769000020,
   "template": {
-    "nome": "aguardando_peca_v2",
-    "idioma": "pt_BR",
-    "categoria": "UTILITY",
-    "estado": "APPROVED",
-    "motivo": "NONE"
+    "name": "aguardando_peca_v2",
+    "language": "pt_BR",
+    "category": "UTILITY",
+    "state": "APPROVED",
+    "reason": "NONE"
   }
 }
 ```
 
 > 🔴 **This event is NOT the category reclassification notice, and for three days it was treated as if
-> it were (2026-07-28).** It carries `template.categoria` because the category is an **attribute** of
+> it were (2026-07-28).** It carries `template.category` because the category is an **attribute** of
 > the new state — that is, you learn about the reclassification **if, and only if,** Meta re-approves
 > the template in the same movement. When it reclassifies an **already approved** template without
 > touching the state, this event **does not arrive**, and the failure mode is the worst possible:
-> silence, with the discovery arriving on the invoice. The dedicated event is `template_categoria`,
+> silence, with the discovery arriving on the invoice. The dedicated event is `template_category`,
 > just below.
 
 **The other account webhooks:** see the section *ACCOUNT webhook*, further below, for the complete
-list of what is modelled and what arrives with `eventos: []` on purpose.
+list of what is modelled and what arrives with `events: []` on purpose.
 
-### `template_categoria` (`kind: "template_category"`) — Meta RECLASSIFIED a template's category (2026-07-28)
+### `template_category` (`kind: "template_category"`) — Meta RECLASSIFIED a template's category (2026-07-28)
 
 **This is the event that warns that the category changed.** It comes from Meta's
 `template_category_update` webhook, and it exists alongside the `template_status` above — the two
@@ -1102,10 +1110,10 @@ below the table. What it gives that `template_status` does not:
 
 | Field | What it is |
 |---|---|
-| `template_categoria.categoria_anterior` / `categoria_nova` | the **direction**. `UTILITY → MARKETING` raises the price; `MARKETING → UTILITY` lowers it. `template_status` only says "today it is MARKETING", and without state stored on your side the two cases are indistinguishable |
-| `template_categoria.status_do_recurso` | Meta's `category_appeal_status` — `"ELIGIBLE"` would mean it **can be appealed**. ⚠️ **Never observed in real traffic** — see below |
-| `template_categoria.categoria_correta` | the `correct_category`: which category Meta considers correct for this template. ⚠️ **Never observed in real traffic** — see below |
-| `template_categoria.nome` / `idioma` | the pair that identifies the template **when sending** (`template` and `idioma` of `POST /v1/messages`) |
+| `template_category.previous_category` / `new_category` | the **direction**. `UTILITY → MARKETING` raises the price; `MARKETING → UTILITY` lowers it. `template_status` only says "today it is MARKETING", and without state stored on your side the two cases are indistinguishable |
+| `template_category.status_do_recurso` | Meta's `category_appeal_status` — `"ELIGIBLE"` would mean it **can be appealed**. ⚠️ **Never observed in real traffic** — see below |
+| `template_category.correct_category` | the `correct_category`: which category Meta considers correct for this template. ⚠️ **Never observed in real traffic** — see below |
+| `template_category.name` / `language` | the pair that identifies the template **when sending** (`template` and `language` of `POST /v1/messages`) |
 | `waba_id` | the **only** routing key (account webhook — there is no `phone_number_id`) |
 | `timestamp` | the batch's timestamp (`entry.time`) — this webhook **has no timestamp of its own** |
 
@@ -1129,23 +1137,23 @@ below the table. What it gives that `template_status` does not:
 > is not the same thing as "requesting a category review". **What is asserted is the paragraph above,
 > and only it.**
 >
-> ➡️ **Practical consequence:** treat `status_do_recurso` and `categoria_correta` as **absent by
+> ➡️ **Practical consequence:** treat `status_do_recurso` and `correct_category` as **absent by
 > default**. Anyone wanting to know whether a downgrade can be appealed finds out through Meta's
 > panel, not through this event. **If they show up in your account, send the capture through the
 > channel** — it becomes a fixture the same day and this block changes.
 
-> ⚠️ **`categoria_nova` is the only field in this block WITHOUT `omitempty`: it always comes.** A
+> ⚠️ **`new_category` is the only field in this block WITHOUT `omitempty`: it always comes.** A
 > `template_category_update` without `new_category` (or without `message_template_id`) **does not
 > become an event** — the dedup key would collide with any other empty change in the same batch. You
-> still receive the `cru`, and the envelope's `parse_error` reports it. The other fields may be
+> still receive the `raw`, and the envelope's `parse_error` reports it. The other fields may be
 > missing individually: a field Meta sends in a format we do not yet know how to read costs **that
 > field**, never the event.
 
 > ⚠️ **`status_do_recurso` is TEXT, and does not become a boolean.** `"ELIGIBLE"` arrives as
 > `"ELIGIBLE"`. *"Can it be appealed?"* looks like a yes/no question, and Meta answers with a
 > vocabulary nobody here has enumerated — translating it into `true`/`false` would force the gateway
-> to decide today what to do with a value that only appears tomorrow. Same rule as `template.estado`,
-> `template.categoria` and `cobranca.categoria`: **Meta's format dies at the gateway; its vocabulary
+> to decide today what to do with a value that only appears tomorrow. Same rule as `template.state`,
+> `template.category` and `pricing.category`: **Meta's format dies at the gateway; its vocabulary
 > of values does not.**
 
 **Example** (the gateway's parser over the sample Meta publishes as this webhook's example):
@@ -1156,12 +1164,12 @@ below the table. What it gives that `template_status` does not:
   "id": "template_categoria:12345678:MARKETING:UTILITY:1769000070",
   "waba_id": "WABA_TESTE",
   "timestamp": 1769000070,
-  "template_categoria": {
-    "nome": "my_message_template",
-    "idioma": "en-US",
-    "categoria_anterior": "MARKETING",
-    "categoria_nova": "UTILITY",
-    "categoria_correta": "MARKETING",
+  "template_category": {
+    "name": "my_message_template",
+    "language": "en-US",
+    "previous_category": "MARKETING",
+    "new_category": "UTILITY",
+    "correct_category": "MARKETING",
     "status_do_recurso": "ELIGIBLE"
   }
 }
@@ -1202,7 +1210,7 @@ below the table. What it gives that `template_status` does not:
 
 > 📊 **And it is not a hypothesis: 16 downgrades in 25 days, with the template spending from 15 hours
 > to three weeks in the wrong category.** Measurement by consumer `consumer-b` in their own account,
-> reported on 2026-08-28: **35** `template_categoria` events between **30/07 and 23/08/2026**, counted
+> reported on 2026-08-28: **35** `template_category` events between **30/07 and 23/08/2026**, counted
 > one by one over the `value` objects inside `entry[].changes[]` (without truncating the output, and
 > separating by `message_template_id` — counting by name would mix versions and give the wrong
 > conclusion). Of those, **16 changes to `MARKETING`** and 19 to `UTILITY`; no other category.
@@ -1238,7 +1246,7 @@ below the table. What it gives that `template_status` does not:
 > appeal, a window of another order of magnitude — say so: this block changes, and whoever measured
 > first explicitly asked to know.
 
-### `qualidade_do_numero` (`kind: "number_quality"`) — the number's daily QUOTA and quality (2026-07-28)
+### `number_quality` (`kind: "number_quality"`) — the number's daily QUOTA and quality (2026-07-28)
 
 Comes from the `phone_number_quality_update` webhook. **This is the only channel through which a
 quota downgrade arrives before it hurts.** Without it, the first news that the ceiling dropped is
@@ -1248,10 +1256,10 @@ refused.
 
 | Field | What it is |
 |---|---|
-| `qualidade_do_numero.numero_exibido` | the `display_phone_number` — which number the notice is about. It is a **label**, not a `phone_number_id`: this webhook has no `metadata` at all |
-| `qualidade_do_numero.estado` | Meta's `event`: `ONBOARDING`, `FLAGGED`, `UNFLAGGED`… — untranslated |
-| `qualidade_do_numero.limite_anterior` / `limite_atual` | `old_limit` → `current_limit`. These two give the **direction**: `TIER_1K → TIER_50` is a downgrade, `TIER_NOT_SET → TIER_250` is the account being born. `limite_atual` alone does not distinguish the two |
-| `qualidade_do_numero.limite_diario_maximo` | the `max_daily_conversations_per_business` |
+| `number_quality.display_number` | the `display_phone_number` — which number the notice is about. It is a **label**, not a `phone_number_id`: this webhook has no `metadata` at all |
+| `number_quality.state` | Meta's `event`: `ONBOARDING`, `FLAGGED`, `UNFLAGGED`… — untranslated |
+| `number_quality.previous_limit` / `current_limit` | `old_limit` → `current_limit`. These two give the **direction**: `TIER_1K → TIER_50` is a downgrade, `TIER_NOT_SET → TIER_250` is the account being born. `current_limit` alone does not distinguish the two |
+| `number_quality.max_daily_limit` | the `max_daily_conversations_per_business` |
 | `waba_id` | the **only** routing key |
 | `timestamp` | `entry.time` — this webhook has no timestamp of its own |
 
@@ -1263,17 +1271,17 @@ refused.
 
 > ⚠️ **This event has no Meta id**, so the key is assembled from what it carries — number, state and
 > the limit transition, plus the `entry.time`. A payload in which **none of that** is readable does
-> not become an event (the `cru` arrives all the same, and `parse_error` reports it); any surviving
+> not become an event (the `raw` arrives all the same, and `parse_error` reports it); any surviving
 > piece is already enough for the event to come out.
 
-> **Since 2026-07-28 this event also FEEDS `GET /v1/estado`.** The `limite_atual` (`current_limit`) is
+> **Since 2026-07-28 this event also FEEDS `GET /v1/state`.** The `current_limit` (`current_limit`) is
 > stored in the `number_at_meta.message_limit` block, with `source: "webhook"`. If you already
 > react to this event, you need change nothing — the state simply becomes a second place, **queryable
-> at any time**, where the same number appears. `limite_anterior` and `limite_diario_maximo` are
+> at any time**, where the same number appears. `previous_limit` and `max_daily_limit` are
 > **not** stored there: the state answers *"which tier is the number in NOW"*, and the direction of
 > the change already travels whole here.
 
-### `alerta_de_conta` (`kind: "account_alert"`) — Meta warning about a problem, with SEVERITY (2026-07-28)
+### `account_alert` (`kind: "account_alert"`) — Meta warning about a problem, with SEVERITY (2026-07-28)
 
 Comes from the `account_alerts` webhook. **The field that justifies the type existing is
 `severidade`:** Meta's example carries `INFORMATIONAL`, and the existence of a level called
@@ -1282,11 +1290,11 @@ modelling, a serious alert and a routine notice arrived identical: a raw line no
 
 | Field | What it is |
 |---|---|
-| `alerta_de_conta.severidade` | the `alert_severity` — **the field that decides** |
-| `alerta_de_conta.tipo` | the `alert_type` (e.g.: `OBA_APPROVED`) — what happened |
-| `alerta_de_conta.estado` | the `alert_status` (e.g.: `NONE`) |
-| `alerta_de_conta.tipo_da_entidade` / `id_da_entidade` | `entity_type` / `entity_id` — what the alert is about. The `id` is **text**, and Meta sends it as a number |
-| `alerta_de_conta.descricao` | the `alert_description`, free text in English |
+| `account_alert.severidade` | the `alert_severity` — **the field that decides** |
+| `account_alert.tipo` | the `alert_type` (e.g.: `OBA_APPROVED`) — what happened |
+| `account_alert.state` | the `alert_status` (e.g.: `NONE`) |
+| `account_alert.entity_kind` / `id_da_entidade` | `entity_type` / `entity_id` — what the alert is about. The `id` is **text**, and Meta sends it as a number |
+| `account_alert.descricao` | the `alert_description`, free text in English |
 | `waba_id` · `timestamp` | as in the other account webhooks |
 
 > 🔴 **The gateway does NOT rank severities, and the absence is deliberate.** There is no
@@ -1297,16 +1305,16 @@ modelling, a serious alert and a routine notice arrived identical: a raw line no
 > ⚠️ **Do not write a rule on top of `descricao`.** It is the only field of this event that is not
 > closed vocabulary: it is an English sentence written by Meta. Matching a third party's free text is
 > the fastest way to build an alarm that dies the day they rewrite the sentence. Use `severidade`,
-> `tipo` and `estado`.
+> `tipo` and `state`.
 
-> ⚠️ **This event's key includes `severidade` and `estado`, not just the `tipo`.** The **same**
+> ⚠️ **This event's key includes `severidade` and `state`, not just the `tipo`.** The **same**
 > `alert_type` can come back with a different severity (a problem that **escalates**) or with a
 > different `alert_status` (a problem that is **resolved**). With a key carrying only the type, the
 > escalation notice would be deduplicated against the original alert — and it is the only one of the
 > two that requires action.
 
 > 🔴 **The fixtures for these two events are DERIVED FROM THE DOCUMENTATION** (in this gateway's
-> corpus, files with `_derivado_da_doc` in the name), for the same reason as `template_categoria`:
+> corpus, files with `_derivado_da_doc` in the name), for the same reason as `template_category`:
 > they are samples from the panel's *Test* button, and there is no real capture — an account webhook
 > is rare by nature. Testing your mapping only against them proves that you agree with Meta's
 > **documentation**, not with what it **sends**.
@@ -1328,25 +1336,25 @@ failure:
 | `template_category_update` | ✅ `kind: "template_category"` | see the event's section |
 | `phone_number_quality_update` | ✅ `kind: "number_quality"` | see the event's section |
 | `account_alerts` | ✅ `kind: "account_alert"` | see the event's section |
-| `message_template_quality_update` | ❌ **on purpose** | `cru` + `"eventos": []` |
-| `message_template_components_update` | ❌ **on purpose** | `cru` + `"eventos": []` |
-| `account_update` | ❌ **on purpose** | `cru` + `"eventos": []` |
-| `account_review_update` | ❌ **on purpose** | `cru` + `"eventos": []` |
-| `security` | ❌ **on purpose** | `cru` + `"eventos": []` |
-| `phone_number_name_update` | ❌ **on purpose** | `cru` + `"eventos": []` |
-| `calls` | ❌ **not yet** — see below | `cru` + `"eventos": []` |
-| any `field` Meta invents tomorrow | ❌ | `cru` + `"eventos": []` |
+| `message_template_quality_update` | ❌ **on purpose** | `raw` + `"events": []` |
+| `message_template_components_update` | ❌ **on purpose** | `raw` + `"events": []` |
+| `account_update` | ❌ **on purpose** | `raw` + `"events": []` |
+| `account_review_update` | ❌ **on purpose** | `raw` + `"events": []` |
+| `security` | ❌ **on purpose** | `raw` + `"events": []` |
+| `phone_number_name_update` | ❌ **on purpose** | `raw` + `"events": []` |
+| `calls` | ❌ **not yet** — see below | `raw` + `"events": []` |
+| any `field` Meta invents tomorrow | ❌ | `raw` + `"events": []` |
 
 **"On purpose" means exactly this: nobody asked.** The envelope only **grows** — adding a field later
 is free, removing later is a contract break — so a new `kind` with no interested consumer would be
 dead vocabulary the gateway owes forever.
 
-🔴 **If any of these is useful to you, you do NOT go without it: the `cru` arrives whole.** The
+🔴 **If any of these is useful to you, you do NOT go without it: the `raw` arrives whole.** The
 webhook is delivered normally, with Meta's exact bytes in base64 — just without enrichment. Parse the
-`cru` on your side and you have the same data; the modelled `kind` is convenience, not access.
+`raw` on your side and you have the same data; the modelled `kind` is convenience, not access.
 **Deduplicate that batch by the rule in the section *And when the batch has no event at all*** (hash
-of the `cru`), which is the right key precisely for this case. If one of these is ever modelled, it
-is born with its own `kind`, and that is **additive**: your parsing of the `cru` keeps working.
+of the `raw`), which is the right key precisely for this case. If one of these is ever modelled, it
+is born with its own `kind`, and that is **additive**: your parsing of the `raw` keeps working.
 
 And it is not a gap out of forgetfulness or laziness about parsing: each one's `value` has different
 keys, and interpreting them with another's parser would produce an **invented** event, which is worse
@@ -1354,8 +1362,8 @@ than none.
 
 > ⚠️ **`calls` is the only one on the list that is different, and it is worth knowing why.** It is
 > **not** an account webhook: it has `metadata.phone_number_id`, so it goes through guard **5a**, and
-> on a real call the id **matches** — that is, it **is delivered to you**, with `"eventos": []`, and
-> its `cru` carries **personal data** (`contacts[].profile.name`, `wa_id`) on a line nobody reads.
+> on a real call the id **matches** — that is, it **is delivered to you**, with `"events": []`, and
+> its `raw` carries **personal data** (`contacts[].profile.name`, `wa_id`) on a line nobody reads.
 > That enters your retention accounting **today**, even without an event. Modelling it depends on a
 > business decision that is not technical (does the number accept calls, and is there somebody to
 > answer?), and that is why it is out of this round.
@@ -1363,19 +1371,19 @@ than none.
 > 🔴 **The `template_category_update` row arrived late, and the delay has a name.** From 2026-07-26 to
 > 2026-07-28 the gateway read the category from the **neighbour**
 > (`message_template_status_update`) and called that a reclassification notice. If you built a cost
-> alarm on top of `template.categoria`, it still holds — but it **only fires when Meta re-approves the
-> template at the same time**. The complete signal is `template_categoria`.
+> alarm on top of `template.category`, it still holds — but it **only fires when Meta re-approves the
+> template at the same time**. The complete signal is `template_category`.
 
 > 🔴 **An unmodelled account webhook reaches you WITH NO EVENT AT ALL, and that is NORMAL — never a
 > parse failure (2026-07-28).** The parser did not fail: it simply found no `messages` and no
-> `statuses` to enrich. Store the `cru` (obligation 1) and answer `200`. **Do not alarm, do not treat
+> `statuses` to enrich. Store the `raw` (obligation 1) and answer `200`. **Do not alarm, do not treat
 > it as an error, do not return `5xx`** — a `5xx` here would make Meta resend the same payload for
 > 36 h for a batch that had nothing to process.
 >
 > ✅ **The field comes as `[]` — an empty array, never `null`.** The body is literally:
 >
 > ```json
-> {"instancia":"…","recebido_em":"…","cru":"…","eventos":[],"parse_error":""}
+> {"instance":"…","received_at":"…","raw":"…","events":[],"parse_error":""}
 > ```
 >
 > Normalization happens in one place only, when the envelope is assembled, and it is locked by a test
@@ -1385,18 +1393,18 @@ than none.
 > ⚠️ **FROM 2026-07-23 TO 2026-07-28 THIS FIELD WAS `null` ON THE WIRE, and the defense you wrote
 > because of it still holds.** The parser produced a **nil** list when there was no event at all, the
 > envelope passed it through without normalizing, and serializing a nil list in Go produces `null`.
-> Anyone following this contract to the letter wrote `for ev in envelope["eventos"]` and got
-> `TypeError: 'NoneType' object is not iterable` in Python; an `if eventos == []` **never** matched.
+> Anyone following this contract to the letter wrote `for ev in envelope["events"]` and got
+> `TypeError: 'NoneType' object is not iterable` in Python; an `if events == []` **never** matched.
 >
-> **Do not undo that defense.** `for ev in (envelope.get("eventos") or [])` works the same with `[]`,
+> **Do not undo that defense.** `for ev in (envelope.get("events") or [])` works the same with `[]`,
 > is still the recommended form, and is what protects you from any future in which the field goes
 > missing again. The direction of the change was chosen precisely for that: whoever tolerated `null`
 > keeps working, and whoever broke started working.
 >
-> ⚠️ **If you are writing the defense today, write `or []`, NEVER `get("eventos", [])`** — and the
+> ⚠️ **If you are writing the defense today, write `or []`, NEVER `get("events", [])`** — and the
 > difference is not style. In Python the `get` default only applies when the **key does not exist**;
 > it always exists here, so a `null` (from the history, from an old envelope you kept, or from any
-> other source) sails past the default and you get `None` back. `envelope.get("eventos", [])` **looks
+> other source) sails past the default and you get `None` back. `envelope.get("events", [])` **looks
 > like** the clean version of the line above and is the "simplification" any reviewer would suggest.
 > *Raised by a consumer on 2026-07-28, after checking their own code: it did not break, but by
 > accident, and the trap they named is this one — it is not just the `for` blowing up, it is the
@@ -1407,16 +1415,16 @@ than none.
 > **`parse_error` is neither `null` nor absent: it is the empty string (`""`)** when there was no
 > error, and **that never changed and never will**. The field is not omitted and therefore comes
 > **always**. Test by content (`if parse_error:`), never by the presence of the key. *Why it was not
-> part of the `eventos` fix: its empty value is already **falsy** in every language, and nobody
+> part of the `events` fix: its empty value is already **falsy** in every language, and nobody
 > iterates over an error string. `""` breaks nothing; `null` in a field that is ITERATED does. That is
 > the rule.*
 >
 > **How to tell the two cases apart, which is the only thing you need to know here:**
 >
-> | What arrived | `eventos` | `parse_error` | What it means |
+> | What arrived | `events` | `parse_error` | What it means |
 > |---|---|---|---|
-> | unmodelled account webhook | `[]` | `""` | normal — store the `cru` and move on |
-> | payload the gateway could not interpret | `[]` (or partial) | **error text** | the `cru` is there and it is the source: store it, and treat the batch by the `cru` dedup key |
+> | unmodelled account webhook | `[]` | `""` | normal — store the `raw` and move on |
+> | payload the gateway could not interpret | `[]` (or partial) | **error text** | the `raw` is there and it is the source: store it, and treat the batch by the `raw` dedup key |
 >
 > 🔴 **Why this warning exists, and why it probably applies to YOU too:** when saving a new Callback
 > URL, Meta's panel subscribes the App to a **default set of fields all at once** — ten, in the
@@ -1436,7 +1444,7 @@ fields above do **not** — they always arrive at the App's main URL at Meta, ne
 — and the key it uses to decide is the `waba_id` (`entry[].id` in Meta's payload, confirmed as
 *"WhatsApp Business Account ID"* on the official pages cited above and at
 developers.facebook.com/documentation/business-messaging/whatsapp/webhooks/reference/messages/status/,
-same date). If the webhook's `waba_id` matches your instance's, you receive the `cru` normally,
+same date). If the webhook's `waba_id` matches your instance's, you receive the `raw` normally,
 through the same `POST` to your `callback_url`. **If it does not match, you receive nothing** — the
 gateway discards it and answers `200` to Meta, without trying to guess which other instance that
 belonged to.
@@ -1444,7 +1452,7 @@ belonged to.
 > ⚠️ **Until 2026-07-26, an account webhook arriving at the main URL was delivered to the consumer
 > configured there even if it belonged to another WABA — and it was not just wrong routing.** The
 > tenant isolation guard only compared `phone_number_id`, and an account webhook has no such field. If
-> you had an `if` checking `envelope["instancia"]` against the configured slug (recommended behaviour,
+> you had an `if` checking `envelope["instance"]` against the configured slug (recommended behaviour,
 > see *The wrong instance*, further below), it **passed** — because the gateway itself puts the path's
 > slug into the envelope — and another tenant's account webhook could end up stored in your database
 > as if it were yours. That is closed now: an account webhook only reaches you if the `waba_id` really
@@ -1658,7 +1666,7 @@ does not count as a different request.
 >
 > **The symptom, if you get it wrong, does not point at the mistake.** On sending it is
 > `404 unknown instance` or `403 instance not authorized for this consumer` — that one is
-> still readable. On **delivery** it is worse: a consumer who checks `envelope["instancia"]` against
+> still readable. On **delivery** it is worse: a consumer who checks `envelope["instance"]` against
 > the configured value (recommended behaviour, see *The wrong instance*) answers `503` to every
 > delivery, Meta re-queues for 36 h, and the stubborn `503` **looks like a signature problem**. Three
 > examples in this very document used to carry, in `instancia`, the name of a **consumer** instead of
@@ -1683,12 +1691,12 @@ id, without sending again — but only within the idempotency record's retention
 > **The three practical consequences for you:**
 >
 > 1. **A `wamid` does not become a fixture.** If you record a test case from real traffic, masking
->    `recipient_id` and `de_cru` **is not enough** — the phone number is still whole inside the `wamid`
+>    `recipient_id` and `from_raw` **is not enough** — the phone number is still whole inside the `wamid`
 >    in the same file, and the result *looks* masked. For a fixture, generate a synthetic `wamid`.
 > 2. **Your phone-number sweep needs to DECODE.** A `grep` for the number does not find what is in
 >    base64. Ours decodes every `wamid.<payload>` in the tree before comparing, precisely for this
 >    reason.
-> 3. **The same applies to the envelope's `cru` on the inbound side** (the receiving section): it is
+> 3. **The same applies to the envelope's `raw` on the inbound side** (the receiving section): it is
 >    the exact body Meta sent, so it has phone numbers in text **and** inside any `wamid` it carries.
 >
 > ⚠️ **This is not theory.** On 2026-08-30 a consumer masked the phone number in a request body and
@@ -2003,7 +2011,7 @@ changes with it.
 >
 > **The proof is yours, and it fits in five minutes:** send a template with `resposta_rapida` to a
 > number of your own, **click the button on the device** and look at the inbound event. If
-> `botao_payload` comes with your payload, it is proven for your case; if it comes with the button's
+> `button_payload` comes with your payload, it is proven for your case; if it comes with the button's
 > **text**, the path does not do what you need and you found that out before a customer did. Run that
 > test **before** wiring up any flow that matches by payload — this document cannot confirm on your
 > behalf what nobody has observed yet.
@@ -2239,15 +2247,18 @@ already** on WhatsApp, reading your message. Whoever fills in only `phone` think
 and sent an invitation.
 
 > ℹ️ **The `wa_id` is the number in Meta's canonical format, without `+`, without spaces and without
-> punctuation** — `5532999990000`. It is the same value that reaches you in the `de` of a received
+> punctuation** — `5532999990000`. It is the same value that reaches you in the `from_raw`/`from_canonical` of a received
 > message. The `phone` beside it can be written however you like (it is what the customer sees on the
 > card); the `wa_id` is what Meta uses to find the account.
 
 ### Reaction and location
 
-The vocabulary of these two fields is **the same as on the inbound side** (`reacao {emoji, alvo}`,
-`localizacao {latitude, longitude, nome, endereco}` — see *What you receive*, above): sending and
-receiving with different names for the same thing would be the start of two vocabularies.
+The vocabulary of these two fields is **the same as on the inbound side** (the webhook sends
+`reaction {emoji, target}` and `location {latitude, longitude, name, address}` — see *What you
+receive*, above): sending and receiving with different names for the same thing would be the start of
+two vocabularies. The examples below write the request with the Portuguese spelling (`reacao`/`alvo`,
+`localizacao`/`nome`/`endereco`); the English spelling of each is accepted on input as well
+(`internal/outbound/input_aliases.go:145-146`, `:272`, `:280-281`).
 
 **`tipo: "reacao"`** — applies an emoji to a message you received earlier.
 
@@ -2272,7 +2283,7 @@ the two cases mean different things:
 ```
 
 > ⚠️ **Why an empty `emoji` removes but an absent `emoji` does not — the asymmetry with RECEIVING is
-> deliberate, not a bug.** When RECEIVING (see *`reacao`, `voz`, ...* above) it is Meta itself that
+> deliberate, not a bug.** When RECEIVING (see *`reaction`, `voice`, ...* above) it is Meta itself that
 > assembles the event, and it *omits* the `emoji` key to say "the user removed it". When SENDING, the
 > one assembling the request is **a program of yours**, and "I forgot to send the field" is the most
 > common programming error there is — an absent key is indistinguishable from carelessness. An empty
@@ -2316,7 +2327,7 @@ The whole shape is just this — `texto` is the only field, and it becomes `body
 no header and no footer**: `cabecalho_texto` and `rodape` are a `400` here, the same forbidden-field
 rule as the other types that do not use them — the Cloud API documents neither of them for this
 object. When the customer replies by tapping the button, the shared location reaches you through the
-**same route as always**: the `localizacao` event in the webhook (see *What you receive*, above) — it
+**same route as always**: the `location` event in the webhook (see *What you receive*, above) — it
 is what closes the loop and what makes it worth asking through this type instead of through free text.
 
 **`tipo: "flow"`** — opens a WhatsApp Flow (a native form inside WhatsApp) for the recipient to fill
@@ -2386,8 +2397,8 @@ bisection measurement, like `cta_url`'s above, corrects this number if it is wro
 > accepts it; accepting now and being wrong would be a **contract break** later.
 
 > ℹ️ **The Flow's answer arrives through the webhook as an `interactive` of subtype `nfm_reply`, and
-> this gateway does NOT enrich it yet.** It arrives with a raw `sub_tipo` (`"interactive"`), without
-> `botao_payload`/`botao_texto` filled in — the same treatment any `interactive` subtype the parser
+> this gateway does NOT enrich it yet.** It arrives with a raw `sub_kind` (`"interactive"`), without
+> `button_payload`/`button_text` filled in — the same treatment any `interactive` subtype the parser
 > does not model yet receives today (see *What you receive*, above). There is no enrichment at all: if
 > you need the answer's content before the gateway starts modelling it, read the webhook's raw body.
 
@@ -2612,8 +2623,8 @@ duplicate; read the next section.
 > Whether Meta always reports the limit as `131048`, or only did so for that number, is **not known**.
 
 🔎 **And `GET /v1/estado` publishes the `lideranca` block (v0.49.0)**, with four fields: `armada`
-(there is a guard configured), `estado` (`observado` when armed, `nao_se_aplica` when not), `titular`
-(`true`/`false`, and **`null` when disarmed** — a single node won no election) and `motivo` (only when
+(there is a guard configured), `state` (`observado` when armed, `nao_se_aplica` when not), `titular`
+(`true`/`false`, and **`null` when disarmed** — a single node won no election) and `reason` (only when
 `titular: false`). ⚠️ **This block is worth less to you than the first version of this section
 claimed, and the correction is ours:** traffic arrives through a VIP, and whoever answers on the VIP is
 **by construction** the node holding the leadership. So in practice you will almost always see
@@ -2703,7 +2714,7 @@ on anyone**:
 sends a `status` event with `status: "sent"` to your `callback_url`, typically within seconds. Look,
 in your base of received events, for a `status` with:
 
-- `para_canonico` equal to that send's destination, **and**
+- `to_canonical` equal to that send's destination, **and**
 - `timestamp` (or your own moment of receipt) inside the window of the send that came back
   `unknown`.
 
@@ -2872,7 +2883,7 @@ of fear of damage that does not exist.
 
 Two new keys in the vocabulary: **`leituras_marcadas`** and **`falhas_de_leitura`** (a failure to
 *mark* a read, never "a failure to read something"). They arrive on their own in your reading of
-`contadores`, by the promise in the section *A promise of ours about the vocabulary*.
+`counters`, by the promise in the section *A promise of ours about the vocabulary*.
 
 🔴 **They do NOT go into `enviadas`, and that is a guarantee, not an implementation detail.** Marking
 as read produces no conversation and Meta does not charge for it. If that count fell into `enviadas`,
@@ -3024,7 +3035,7 @@ Fit to send → `200`:
 
 ```jsonc
 { "ok": true,
-  "numero_exibido": "+55 11 99999-0000",   // comes from the gateway's registration, not from Meta's response
+  "display_number": "+55 11 99999-0000",   // comes from the gateway's registration, not from Meta's response
   "verificado_em": "2026-07-25T12:00:00Z" }
 ```
 
@@ -3299,7 +3310,7 @@ here is the value the suite injects; in production it is the **same** value as `
 series were shortened with `…` **only in the paste**, to fit — the response always carries the whole
 window, and every day with every key.
 
-*(Recaptured on 2026-07-29, first when the `stamps_since` and `last_7_days_series[].dia_utc` fields went
+*(Recaptured on 2026-07-29, first when the `stamps_since` and `last_7_days_series[].day_utc` fields went
 in, again when the `leituras_marcadas` and `falhas_de_leitura` keys went in, and again when
 `daily_series` went in — the VALUES come from the handler, never typed.
 **One exception, written so nobody confuses it with the rest:** the seven `cobranca_*` keys **were not
@@ -3350,18 +3361,18 @@ original scenario predates both. The values (`"whatsapp"` and `"not_applicable"`
     "recusadas_pelo_consumidor": { "hoje": 0, "last_7_days": 0,  "last_at": null }
   },
   "last_7_days_series": [
-    { "dia": "2026-07-23", "dia_utc": "2026-07-23", "counters": { "alarme_perda_definitiva": 0, /* the 7 cobranca_* keys come here, all 0 in this capture — omitted only in this paste */ "conta_descartada": 0, "entregues": 0, "enviadas": 0, "falhas_de_envio": 0, "falhas_de_leitura": 0, "leituras_marcadas": 0, "numero_descartado": 0, "recebidas": 0, "recusadas_pelo_consumidor": 0 } },
+    { "day": "2026-07-23", "day_utc": "2026-07-23", "counters": { "alarme_perda_definitiva": 0, /* the 7 cobranca_* keys come here, all 0 in this capture — omitted only in this paste */ "conta_descartada": 0, "entregues": 0, "enviadas": 0, "falhas_de_envio": 0, "falhas_de_leitura": 0, "leituras_marcadas": 0, "numero_descartado": 0, "recebidas": 0, "recusadas_pelo_consumidor": 0 } },
     // … 2026-07-24 to 2026-07-27, all zeroed in this capture …
-    { "dia": "2026-07-28", "dia_utc": "2026-07-28", "counters": { "alarme_perda_definitiva": 0, /* the 7 cobranca_* keys come here, all 0 in this capture — omitted only in this paste */ "conta_descartada": 0, "entregues": 9, "enviadas": 0, "falhas_de_envio": 0, "falhas_de_leitura": 0, "leituras_marcadas": 0, "numero_descartado": 0, "recebidas": 9, "recusadas_pelo_consumidor": 0 } },
-    { "dia": "2026-07-29", "dia_utc": "2026-07-29", "counters": { "alarme_perda_definitiva": 0, /* the 7 cobranca_* keys come here, all 0 in this capture — omitted only in this paste */ "conta_descartada": 0, "entregues": 4, "enviadas": 2, "falhas_de_envio": 1, "falhas_de_leitura": 0, "leituras_marcadas": 3, "numero_descartado": 0, "recebidas": 4, "recusadas_pelo_consumidor": 0 } }
+    { "day": "2026-07-28", "day_utc": "2026-07-28", "counters": { "alarme_perda_definitiva": 0, /* the 7 cobranca_* keys come here, all 0 in this capture — omitted only in this paste */ "conta_descartada": 0, "entregues": 9, "enviadas": 0, "falhas_de_envio": 0, "falhas_de_leitura": 0, "leituras_marcadas": 0, "numero_descartado": 0, "recebidas": 9, "recusadas_pelo_consumidor": 0 } },
+    { "day": "2026-07-29", "day_utc": "2026-07-29", "counters": { "alarme_perda_definitiva": 0, /* the 7 cobranca_* keys come here, all 0 in this capture — omitted only in this paste */ "conta_descartada": 0, "entregues": 4, "enviadas": 2, "falhas_de_envio": 1, "falhas_de_leitura": 0, "leituras_marcadas": 3, "numero_descartado": 0, "recebidas": 4, "recusadas_pelo_consumidor": 0 } }
   ],
   // Without `?serie_dias=`, this is the SAME 7-day window as above, day for day.
   // With `?serie_dias=30`, it has 30 entries and `last_7_days_series` still has 7.
   "daily_series": [
-    { "dia": "2026-07-23", "dia_utc": "2026-07-23", "counters": { "alarme_perda_definitiva": 0, /* the 7 cobranca_* keys come here, all 0 in this capture — omitted only in this paste */ "conta_descartada": 0, "entregues": 0, "enviadas": 0, "falhas_de_envio": 0, "falhas_de_leitura": 0, "leituras_marcadas": 0, "numero_descartado": 0, "recebidas": 0, "recusadas_pelo_consumidor": 0 } },
+    { "day": "2026-07-23", "day_utc": "2026-07-23", "counters": { "alarme_perda_definitiva": 0, /* the 7 cobranca_* keys come here, all 0 in this capture — omitted only in this paste */ "conta_descartada": 0, "entregues": 0, "enviadas": 0, "falhas_de_envio": 0, "falhas_de_leitura": 0, "leituras_marcadas": 0, "numero_descartado": 0, "recebidas": 0, "recusadas_pelo_consumidor": 0 } },
     // … 2026-07-24 to 2026-07-27, all zeroed in this capture …
-    { "dia": "2026-07-28", "dia_utc": "2026-07-28", "counters": { "alarme_perda_definitiva": 0, /* the 7 cobranca_* keys come here, all 0 in this capture — omitted only in this paste */ "conta_descartada": 0, "entregues": 9, "enviadas": 0, "falhas_de_envio": 0, "falhas_de_leitura": 0, "leituras_marcadas": 0, "numero_descartado": 0, "recebidas": 9, "recusadas_pelo_consumidor": 0 } },
-    { "dia": "2026-07-29", "dia_utc": "2026-07-29", "counters": { "alarme_perda_definitiva": 0, /* the 7 cobranca_* keys come here, all 0 in this capture — omitted only in this paste */ "conta_descartada": 0, "entregues": 4, "enviadas": 2, "falhas_de_envio": 1, "falhas_de_leitura": 0, "leituras_marcadas": 3, "numero_descartado": 0, "recebidas": 4, "recusadas_pelo_consumidor": 0 } }
+    { "day": "2026-07-28", "day_utc": "2026-07-28", "counters": { "alarme_perda_definitiva": 0, /* the 7 cobranca_* keys come here, all 0 in this capture — omitted only in this paste */ "conta_descartada": 0, "entregues": 9, "enviadas": 0, "falhas_de_envio": 0, "falhas_de_leitura": 0, "leituras_marcadas": 0, "numero_descartado": 0, "recebidas": 9, "recusadas_pelo_consumidor": 0 } },
+    { "day": "2026-07-29", "day_utc": "2026-07-29", "counters": { "alarme_perda_definitiva": 0, /* the 7 cobranca_* keys come here, all 0 in this capture — omitted only in this paste */ "conta_descartada": 0, "entregues": 4, "enviadas": 2, "falhas_de_envio": 1, "falhas_de_leitura": 0, "leituras_marcadas": 3, "numero_descartado": 0, "recebidas": 4, "recusadas_pelo_consumidor": 0 } }
   ],
   "meta_token": {
     "verdict": "ok",
@@ -3524,8 +3535,8 @@ without traffic comes present and zeroed — never absent: a variable-length ser
 chart change shape according to traffic, and a zeroed day would disappear instead of appearing as
 zero.
 
-**Each entry carries TWO keys with the SAME value: `dia_utc` (the right name) and `dia` (obsolete).**
-Use `dia_utc`. The date is in **UTC**, the same time zone in which the counters are recorded. That is
+**Each entry carries TWO keys with the SAME value: `day_utc` (the right name) and `day` (obsolete).**
+Use `day_utc`. The date is in **UTC**, the same time zone in which the counters are recorded. That is
 why the sum of the seven days matches `last_7_days` exactly; if you convert to the local time zone
 before summing, it stops matching — and that is not the gateway's fault.
 
@@ -3534,7 +3545,7 @@ before summing, it stops matching — and that is not the gateway's fault.
 > can wait.*
 >
 > **Why not, and the reason is technical, not one of priority:** the day is decided on **WRITE**, not
-> on read. The counter aggregates in `INSERT INTO contador (slug, dia, …)` with the date already in
+> on read. The counter aggregates in `INSERT INTO contador (slug, day, …)` with the date already in
 > UTC (`internal/config/counter.go`, the `dayOf` function). **Once aggregated, the information about
 > which LOCAL day each event fell on no longer exists** — only the instant of the bucket's last event
 > survives. No read parameter recovers that: a `?tz=` would return a **wrong** number with the face of
@@ -3542,7 +3553,7 @@ before summing, it stops matching — and that is not the gateway's fault.
 >
 > **The practical consequence you need to know, measured by a consumer on 2026-07-28:** the day here
 > turns over at **21:00 Brasília time**, in the middle of the operating night. A dashboard showing
-> "received today" by reading `dia_utc` shows `0` at 21:01 even with activity. **If your "today" has to
+> "received today" by reading `day_utc` shows `0` at 21:01 even with activity. **If your "today" has to
 > be the local one, the arithmetic is yours and the source is yours** — the gateway answers in UTC,
 > accurately, and does not pretend otherwise.
 >
@@ -3559,12 +3570,12 @@ before summing, it stops matching — and that is not the gateway's fault.
 > the easiest point to get wrong"*, the guard stayed in the warning, and the column's `default=` stored
 > the wrong thing anyway — it cost an undelivered quote and two burned resends.
 
-**`dia` is OBSOLETE and still works, byte for byte.** Renaming would be a contract break, and the
+**`day` is OBSOLETE and still works, byte for byte.** Renaming would be a contract break, and the
 window to grow without breaking was that one — the route was **one day old** when this went in.
 
 **Marked obsolete on 2026-07-28, therefore removable from 2027-01-28** (by the *Deprecation policy*,
 at the end of this document). Until then it comes out in the response, with the same value as
-`dia_utc`. **Migrate to `dia_utc` without hurry and without waiting for any notice**: the date is
+`day_utc`. **Migrate to `day_utc` without hurry and without waiting for any notice**: the date is
 written, and it is the notice.
 
 > ⚠️ **The symptom this produces on the screen of someone reading in UTC−3**, raised by a consumer on
@@ -3586,7 +3597,7 @@ and the rule *nobody talks to Meta directly* closed that path: this window is th
 is **debt the rule created**, not convenience.
 
 - `daily_series` has **exactly** `serie_dias` entries, from the oldest day to the newest, with the same
-  shape as `last_7_days_series` (`dia_utc`, obsolete `dia`, and **all** the keys on **every** day, including
+  shape as `last_7_days_series` (`day_utc`, obsolete `day`, and **all** the keys on **every** day, including
   days without traffic);
 - **without the parameter, it is 7 days** — the same content as `last_7_days_series`, day for day. The
   default did not grow so as not to inflate thirteenfold the response of someone who never asked for
@@ -3637,10 +3648,10 @@ other, day for day and number for number (there is a test guarding this).
 **Migrate to `daily_series`** (with or without the parameter: without it, it is the same 7 days). The
 name `last_7_days_series` carries a number, and so it could never grow — a field with that name and 30
 entries would lie about itself inside the `console.log` of whoever is debugging at two in the morning,
-which is exactly the argument that produced `dia_utc`.
+which is exactly the argument that produced `day_utc`.
 
 **Marked obsolete on 2026-07-29, therefore removable from 2027-01-29** (by the *Deprecation policy*,
-at the end of this document) — the same shape as `dia`/`dia_utc`. Until then it comes out in the
+at the end of this document) — the same shape as `day`/`day_utc`. Until then it comes out in the
 response, with the same shape as always.
 
 ### A promise of ours about the vocabulary, and what it demands of you
@@ -3663,7 +3674,7 @@ it is written here as a commitment, and why removal has a minimum notice period 
 
 **A consumer's request on 2026-07-28.** Their Consumption dashboard multiplies volume by price, with
 the volume **estimated on their side**. Meta sends, in each status webhook, under which category it
-charged that delivery — the same `cobranca` that already travels in the envelope. These seven keys are
+charged that delivery — the same `pricing` that already travels in the envelope. These seven keys are
 that data counted, and it is the house rule applied to money: **a number the gateway promises has to
 come from the gateway.**
 
@@ -3714,8 +3725,8 @@ key from the received value would let **Meta** choose the keys of your screen an
 yet classified** — add it to the total when projecting cost, and do not discard it for not knowing the
 category. If it rises consistently, the missing data is the **literal value** Meta sent; the gateway
 records it in its own log, and on your side the available reading is that of the `status` event
-itself, whose `cobranca.categoria` field arrives **raw** in the envelope. That is: **the new category
-is in your `cru` before it is in any counter of ours** — if you need it today, it is there.
+itself, whose `pricing.category` field arrives **raw** in the envelope. That is: **the new category
+is in your `raw` before it is in any counter of ours** — if you need it today, it is there.
 
 #### `cobranca_cobravel` counts only the `true`
 
@@ -3900,7 +3911,7 @@ word. Translating would require a table of ours, and it would be wrong the day M
 value — wrong in the worst way: returning a plausible number for something nobody checked. **If you
 need a number, do the conversion on your side, and treat an unknown value as unknown.**
 
-It is the same rule as the `qualidade_do_numero` event, and by construction: both carry the same
+It is the same rule as the `number_quality` event, and by construction: both carry the same
 literal.
 
 #### The TWO sources, and who wins when they disagree
@@ -4226,22 +4237,22 @@ catalogue describes the tenant's business (campaign names, collection wording), 
 holds here for the same reason as for sending.
 
 ```jsonc
-{ "instancia": "lojinha",
+{ "instance": "lojinha",
   "total": 84,
   "templates": [
     { "id": "1234567890",
-      "nome": "lembrete_consulta",
+      "name": "lembrete_consulta",
       "status": "APPROVED",
-      "categoria": "UTILITY",
-      "idioma": "pt_BR",
-      "componentes": [ /* exactly as Meta returns them, without rewriting */ ] },
+      "category": "UTILITY",
+      "language": "pt_BR",
+      "components": [ /* exactly as Meta returns them, without rewriting */ ] },
     { "id": "1234567891",
-      "nome": "acessar_galeria",
+      "name": "acessar_galeria",
       "status": "REJECTED",
-      "categoria": "UTILITY",
-      "idioma": "pt_BR",
-      "motivo": "INCORRECT_CATEGORY",
-      "componentes": [ /* … */ ] }
+      "category": "UTILITY",
+      "language": "pt_BR",
+      "reason": "INCORRECT_CATEGORY",
+      "components": [ /* … */ ] }
   ] }
 ```
 
@@ -4249,18 +4260,18 @@ holds here for the same reason as for sending.
 > 2026-07-28 and **can be missing**: the gateway does not require the field, because it was not
 > verified at Meta's source that every page of the catalogue carries it, and bringing down the whole
 > catalogue read because of it would be trading a useful catalogue for none. When it is missing, the
-> key simply does not come. **Keep identifying a template by the pair `nome` + `idioma`** — that is
-> what goes in the send, and that is what Meta treats as unique within the account.
+> key simply does not come. **Keep identifying a template by the pair `name` + `language`** — that is
+> what goes in the send (`nome` + `idioma` there, or the English spelling), and that is what Meta treats as unique within the account.
 
-> **`motivo` is Meta's `rejected_reason`, raw — it came in on 2026-08-04 (T-116) to answer "why was it
+> **`reason` is Meta's `rejected_reason`, raw — it came in on 2026-08-04 (T-116) to answer "why was it
 > rejected?" without requiring a manual read of the WhatsApp Manager.** The real cost that motivated
 > the task: `consumer-b` had `acessar_galeria` rejected, formed a blind hypothesis, created
 > `acessar_galeria_v2`, rejected again — two attempts, zero new information, and each attempt **burns
 > a template name forever** (Meta does not release a rejected template's name for immediate reuse).
 >
-> - **`"NONE"` is a normal value, not an absence** — the same doctrine as the `template.motivo` of the
+> - **`"NONE"` is a normal value, not an absence** — the same doctrine as the `template.reason` of the
 >   `template_status` webhook (section above): Meta sends the literal string `"NONE"` when there is no
->   reason, and the gateway does not translate it into empty. If the `motivo` key disappears from the
+>   reason, and the gateway does not translate it into empty. If the `reason` key disappears from the
 >   JSON, it is because Meta really did not send `rejected_reason` on that item — "said NONE" and "did
 >   not send the field" are different facts.
 > - **The prose text from the WhatsApp Manager does NOT come, and will not come while Meta does not
@@ -4269,7 +4280,7 @@ holds here for the same reason as for sending.
 >   webhooks) — the explanatory paragraph that appears in the panel has no documented field in the
 >   Graph API, and the gateway does not synthesize text from the enum: that would be a false doc in
 >   the shape of a field.
-> - **The same reason already arrives through the `template_status` webhook** (`template.motivo`,
+> - **The same reason already arrives through the `template_status` webhook** (`template.reason`,
 >   section above) **at the instant Meta decides** — without you having to ask. This field here is for
 >   when you read the catalogue for another reason (or missed the webhook); the webhook is the path
 >   that warns on its own.
@@ -4377,8 +4388,8 @@ Success → **`201`**:
 ```jsonc
 { "id": "1234567890",
   "status": "PENDING",
-  "categoria": "UTILITY",
-  "categoria_pedida": "UTILITY",
+  "category": "UTILITY",
+  "requested_category": "UTILITY",
   "aviso": "a newly created template can NOT be used right away: it is born PENDING and only counts once Meta approves it. …" }
 ```
 
@@ -4387,8 +4398,8 @@ Meta approves it — that is why the `aviso` comes with every successful creatio
 right after creating gets an error from Meta and cannot explain it, because the creation answered
 success. Check the status in `GET /v1/templates` before sending.
 
-`categoria_pedida` is the **echo of what you asked for**, always present (it is a required field of
-the request). `categoria` is what **Meta stored** — and the two can be different.
+`requested_category` is the **echo of what you asked for**, always present (it is a required field of
+the request). `category` is what **Meta stored** — and the two can be different.
 
 > 🔴 **Meta can STORE a category different from the one you ASKED FOR, with no error and no warning of
 > its own.** A field report from `consumer-b` (2026-07-30): they submitted `instagram_continuar` as
@@ -4396,7 +4407,7 @@ the request). `categoria` is what **Meta stored** — and the two can be differe
 > The category decides **billing** (`MARKETING` and `UTILITY` have different prices) and whether the
 > message needs opt-in — a silent swap is money and compliance, not aesthetics.
 >
-> When `categoria` (what Meta stored) is **different** from `categoria_pedida` (what you sent, a
+> When `category` (what Meta stored) is **different** from `requested_category` (what you sent, a
 > comparison that ignores case and whitespace), the `aviso` gains a second passage spelling out both
 > categories: that the swap is **NOT an error** — Meta can recategorize a template at creation itself —
 > and that the gateway **does NOT undo** the swap. This holds on both success paths: the normal
@@ -4414,7 +4425,7 @@ you:
 
 | What the gateway found on the reread | What you receive | What to do |
 |---|---|---|
-| **found the template** | **`201`**, just like a normal success, with `id`, `status` and `categoria` coming from the catalogue. The `aviso` says the creation ended without an answer and that the reread **confirmed** the template exists | nothing. **It was created.** Only the response was lost |
+| **found the template** | **`201`**, just like a normal success, with `id`, `status` and `category` coming from the catalogue. The `aviso` says the creation ended without an answer and that the reread **confirmed** the template exists | nothing. **It was created.** Only the response was lost |
 | **did not find it** | **`502`**, class `unknown`, and the message contains the word **INCONCLUSIVE** | **do not recreate blindly.** Query `GET /v1/templates` in a few minutes and decide with the result |
 | **the reread also failed** | **`502`**, class `unknown`, saying the reread did not work either | wait and query `GET /v1/templates` |
 
@@ -4499,10 +4510,10 @@ Both parameters are mandatory. There is no body.
 
 A cleanup of dozens of templates **will** be interrupted and resumed. If "I deleted it just now" and
 "it was already gone" come back identical, you cannot report what you did — and the outcome that ruins
-the report is not the error, it is the "I don't know". That is why there are three, and the `desfecho`
+the report is not the error, it is the "I don't know". That is why there are three, and the `outcome`
 field separates them:
 
-| `desfecho` | HTTP | what happened |
+| `outcome` | HTTP | what happened |
 |---|---|---|
 | `apagado` | `200` | the template existed and Meta accepted the deletion |
 | `ja_nao_existia` | `200` | the name **was not** in the catalogue. **Nothing was asked of Meta** — it is what makes resuming genuinely idempotent |
@@ -4512,11 +4523,11 @@ field separates them:
 
 ```json
 {
-  "instancia": "seu-slug",
-  "nome": "galeria_atualizada_v6",
-  "desfecho": "apagado",
+  "instance": "seu-slug",
+  "name": "galeria_atualizada_v6",
+  "outcome": "apagado",
   "entradas": [
-    {"id": "1563912508540305", "idioma": "pt_BR", "categoria": "UTILITY", "status": "APPROVED"}
+    {"id": "1563912508540305", "language": "pt_BR", "category": "UTILITY", "status": "APPROVED"}
   ],
   "aviso": "the deletion removes the template in ALL languages, and Meta does NOT accept creating a template with the SAME name for 30 days. ..."
 }
@@ -4596,10 +4607,10 @@ are worth the price in an operation with no undo.
 
 - **Delete ONE first, check the live response, and only then the rest.** Until the first real call,
   your code has only been exercised against the **stub** you wrote yourself — and a stub proves no
-  field name. That is how they confirmed that `desfecho`, `entradas[].idioma` and `aviso` arrive with
+  field name. That is how they confirmed that `outcome`, `entradas[].language` and `aviso` arrive with
   the names their command reads. *Choose a harmless template for that first one: the one they used had
   zero messages in its whole life and was six versions behind.*
-- **The list comes from a file, and the `desfecho` is what checks your editing.** Their second batch
+- **The list comes from a file, and the `outcome` is what checks your editing.** Their second batch
   started from a list **edited by hand** (removing the name already deleted). If the edit had come out
   wrong, what would have said so was a `ja_nao_existia` — not a silent `200`. That is what the two
   successes have different names for.
@@ -4695,7 +4706,7 @@ Content-Type:            application/octet-stream always — read the two above
 ```
 
 `mime_do_payload` is optional and comes **from you**, not from a record of ours: the gateway does not
-store messages, so whoever has that value is whoever received the event (`midia_mime_payload`). If you
+store messages, so whoever has that value is whoever received the event (`media_mime_payload`). If you
 do not send it, the header comes **absent** — the gateway does not copy the other one into its place,
 because that would be inventing data with the face of truth. A `mime_do_payload` that is not a valid
 mime is refused with `400`.
@@ -4711,7 +4722,7 @@ twice (describe the media, then fetch the bytes), and either of the two can fail
 
 | Status | Class | When |
 |---|---|---|
-| `400` | `permanent` | a `mime_do_payload` that is not a valid mime (send the `midia_mime_payload` **exactly** as it came in the event); **or** the media's `{id}` has an invalid shape and the request never left the gateway; **or** Meta refused the id — media that does not exist, that is not from your account, or that has already expired |
+| `400` | `permanent` | a `mime_do_payload` that is not a valid mime (send the `media_mime_payload` **exactly** as it came in the event); **or** the media's `{id}` has an invalid shape and the request never left the gateway; **or** Meta refused the id — media that does not exist, that is not from your account, or that has already expired |
 | `401` | `config` | your `Authorization` is missing or invalid |
 | `403` | `config` | the requested instance is not yours |
 | `404` | `config` | the **instance** does not exist. Note: a non-existent media id does **not** land here, it lands in the `400` above, because the one refusing it is Meta |
@@ -4852,7 +4863,7 @@ with `400` on an Instagram instance*, further below.
 
 ```jsonc
 // response 200
-{ "instancia": "lojinha",
+{ "instance": "lojinha",
   "about": "Loja de roupas femininas",
   "vertical": "RETAIL" }
 ```
@@ -4870,7 +4881,7 @@ difference. `websites` is a list (up to 2 addresses, according to Meta); the res
   "about": "Nova descricao curta" }
 
 // response 200
-{ "instancia": "lojinha",
+{ "instance": "lojinha",
   "gravado": { "about": "Nova descricao curta" } }
 ```
 
@@ -4951,7 +4962,7 @@ exist on Instagram. In their place:
 | `waba_id` + `phone_number_id` | **IG ID** (`ig_id`) | identifies the ACCOUNT — who received the webhook, who sends the message |
 | a phone number | **IGSID** (Instagram-scoped ID) | identifies WHOM YOU ARE TALKING TO — it is never a phone number, never try to format it as one |
 
-The `IGSID` is the value you receive in `eventos[].de_canonico` (and in `eventos[].de_cru` — the two
+The `IGSID` is the value you receive in `events[].from_canonical` (and in `events[].from_raw` — the two
 come **identical**: an IGSID does not go through the Brazilian phone normalization WhatsApp uses,
 because it is not a phone number) and it is the same value you send back in `para`, when sending.
 
@@ -4965,10 +4976,10 @@ to learn a new vocabulary. The difference is what comes filled in:
   "kind": "message",
   "id": "msg:IGMID...",
   "wa_message_id": "IGMID...",
-  "sub_tipo": "text",
-  "de_cru": "179...IGSID",
-  "de_canonico": "179...IGSID",
-  "texto": "oi, vocês entregam hoje?"
+  "sub_kind": "text",
+  "from_raw": "179...IGSID",
+  "from_canonical": "179...IGSID",
+  "text": "oi, vocês entregam hoje?"
 }
 ```
 
@@ -4977,20 +4988,20 @@ inherited from WhatsApp on purpose: both are "the identifier Meta gave this mess
 need one field name per product to recognize that.
 
 This slice **only models text messages**. A message with an attachment (image, audio, story reply,
-reaction) arrives in the `cru`, but **does not become an event in `eventos`** — the envelope's
+reaction) arrives in the `raw`, but **does not become an event in `events`** — the envelope's
 `parse_error` reports that something was left out. If you need those types, ask — the envelope only
 grows.
 
 🔴 **The message YOU send also comes back through the webhook — as an ECHO — and it NEVER becomes an
-event in `eventos` (T-105).** Meta resends, in the same `messaging[]`, a notification of every message
+event in `events` (T-105).** Meta resends, in the same `messaging[]`, a notification of every message
 your own business sends (`message.is_echo: true`,
 [developers.facebook.com/docs/messenger-platform/instagram/features/webhook/](https://developers.facebook.com/docs/messenger-platform/instagram/features/webhook/)),
 with the sender being **your own `ig_id`**, not a customer's IGSID. The gateway filters that item: it
-**does not become a `kind:"message"`**, but it stays present in the `cru` (base64), whole, like all
+**does not become a `kind:"message"`**, but it stays present in the `raw` (base64), whole, like all
 the rest of the batch. This exists because, without the filter, an automated system that answers every
 received message ends up answering **its own reply** — Meta refuses that send (it does not deliver a
 business's message to itself), and each of your replies becomes a send attempt doomed to fail. You **do
-not need to filter that on your side**: if a batch carried only echoes, `eventos` arrives empty (`[]`),
+not need to filter that on your side**: if a batch carried only echoes, `events` arrives empty (`[]`),
 never with the echo disguised as a customer message.
 
 ### Sending a message
@@ -5105,12 +5116,12 @@ today) — it does not block your use of the API, but do not assert that Meta wi
 
 zapgw **does not keep message state**. These five things it cannot do for you.
 
-### 1. Store the `cru` BEFORE looking at the `eventos`, and answer afterwards
+### 1. Store the `raw` BEFORE looking at the `events`, and answer afterwards
 
-`cru` is the exact bytes Meta sent. `eventos` is **enrichment** — it can come empty, or partial, with
+`raw` is the exact bytes Meta sent. `events` is **enrichment** — it can come empty, or partial, with
 `parse_error` filled in.
 
-If you process `eventos` before storing, and the processing fails, you lose a message you already had
+If you process `events` before storing, and the processing fails, you lose a message you already had
 in hand. It is the defect that has cost most on this network.
 
 ### 2. Deduplicate **PER EVENT**, by the `id` field inside the body
@@ -5138,7 +5149,7 @@ states **repeat** — the same template can be `APPROVED` several times over its
 back to pending, approved again). Without the time, the second approval would have the id of the first
 and your dedup would discard it. See the event's section, further above.
 
-**`template_categoria`'s carries the time for the same reason and the TRANSITION for one more:** a
+**`template_category`'s carries the time for the same reason and the TRANSITION for one more:** a
 template can **go and come back** between categories. `UTILITY → MARKETING` and `MARKETING → UTILITY`
 are opposite facts (one raises the price, the other lowers it) and without the direction in the key
 they would be the same `id`; and the **third** transition (`UTILITY → MARKETING` again) has the same
@@ -5147,10 +5158,10 @@ the appeal window.
 
 **The last two follow the same logic, and exist because those webhooks HAVE NO ID.** There is no
 `{wamid}` and no `{message_template_id}` to anchor the key, so it is assembled from whatever
-distinguishes one event from its neighbour: in `qualidade_do_numero`, the number + the `event` + the
-limit transition; in `alerta_de_conta`, the entity + the type + the severity + the state. **A payload
+distinguishes one event from its neighbour: in `number_quality`, the number + the `event` + the
+limit transition; in `account_alert`, the entity + the type + the severity + the state. **A payload
 in which NONE of that is readable does not become an event** — the key would collide with any other
-equally empty one in the same batch, and your dedup would erase both. The `cru` arrives all the same,
+equally empty one in the same batch, and your dedup would erase both. The `raw` arrives all the same,
 and `parse_error` reports it.
 
 **Treat the `id` as opaque. Do not parse it.** The format above is informative; the guarantee is that
@@ -5195,13 +5206,13 @@ dedup.
 > (same message, same recipient) that would absorb Meta's 9 s burst — **but not the +5 min redelivery
 > nor the +1 h35 one**, which is precisely when the event comes back.
 
-#### And when the batch has no event at all (`"eventos": []`)? — the key is a DIFFERENT one (2026-07-28)
+#### And when the batch has no event at all (`"events": []`)? — the key is a DIFFERENT one (2026-07-28)
 
-Obligation 1 requires storing the `cru` **always**, including when the batch arrives with no event at
-all — `"eventos": []` on the wire since 2026-07-28 (it was `null` before; see *ACCOUNT webhook*, which
+Obligation 1 requires storing the `raw` **always**, including when the batch arrives with no event at
+all — `"events": []` on the wire since 2026-07-28 (it was `null` before; see *ACCOUNT webhook*, which
 also carries the safe way to iterate). It happens with an unmodelled account webhook, with
 `parse_error` filled in, and with any batch the gateway delivered without managing to enrich. Except
-that then there is no `eventos[].id`, and the paragraph above does not say which key to store it by.
+that then there is no `events[].id`, and the paragraph above does not say which key to store it by.
 **This section exists because the intuitive answer is wrong**, and the wrong guidance was actually
 given in writing, in the channel, by whoever maintains this gateway — the consumer did not follow it,
 went to the code and knocked it down.
@@ -5212,15 +5223,15 @@ produces the bug:**
 | Question | About which bytes | Why |
 |---|---|---|
 | **Verifying the signature** | the bytes **of the POST body, exact, as they arrived on the wire** | it is over them that the HMAC was computed — see obligation 3, just below. **Nothing here changes that.** |
-| **Deduplicating a batch with no usable event** | the **`cru`**, decoded from inside the envelope | the envelope's body **changes between redeliveries of the same event**; the `cru` does not |
+| **Deduplicating a batch with no usable event** | the **`raw`**, decoded from inside the envelope | the envelope's body **changes between redeliveries of the same event**; the `raw` does not |
 
 **Never hash the envelope's body to deduplicate.** The envelope is **reassembled on each delivery**:
-`recebido_em` comes from a clock read made during **that** delivery, and the JSON is serialized right
+`received_at` comes from a clock read made during **that** delivery, and the JSON is serialized right
 after. Two deliveries of the **same** Meta event therefore produce **different** bodies — a different
 hash, a different `UNIQUE`, a **duplicated row**: exactly what dedup exists to prevent. This is neither
 intermittent nor rare; it fails **by construction**, on every redelivery.
 
-**Do this:** decode the `cru` field's base64 and use the hash of those bytes as the unique key
+**Do this:** decode the `raw` field's base64 and use the hash of those bytes as the unique key
 (`sha256` will do). Pick one form — decoded bytes or the base64 string as it came — and **do not
 change it later**, or the same delivery gets two keys. Treat the uniqueness violation as success, by
 the same rule as the block above.
@@ -5230,10 +5241,10 @@ the same rule as the block above.
 > header simply **does not come** — and that is precisely why this case needs a key of its own. (Even
 > when it does come, do not deduplicate by it: see the warning at the start of this obligation.)
 
-**The premise that remains, said out loud instead of hidden:** hashing the `cru` assumes Meta
+**The premise that remains, said out loud instead of hidden:** hashing the `raw` assumes Meta
 **redelivers the same bytes**. That is **not a guarantee published by them** — this project forbids
 asserting as fact what was not checked at the source, and this was not. It is the best option
-available, and it is **strictly better** than the envelope: the `cru` only fails if Meta changes the
+available, and it is **strictly better** than the envelope: the `raw` only fails if Meta changes the
 bytes between redeliveries (not observed); the envelope fails **always**. If a redelivery with
 different bytes ever shows up, the symptom is a duplicated raw row in your database — cheap, and the
 opposite of what happens today with the envelope, which is already a guaranteed duplicate.
@@ -5313,7 +5324,7 @@ without invalidating it, and without your delivery secret cannot re-sign it.
 > The reference implementation, if you want to check yours against it, is `SignDelivery` / the vector
 > above itself.
 
-**End-to-end proof, optional:** `X-Hub-Signature-256` carries Meta's original signature over the `cru`
+**End-to-end proof, optional:** `X-Hub-Signature-256` carries Meta's original signature over the `raw`
 (after decoding the base64). If you have the `app_secret`, you can recompute it and prove the origin
 without depending on the gateway. The gateway has already verified it — this pass-through exists for
 anyone who wants the guarantee without an intermediary.
@@ -5342,7 +5353,7 @@ two different mimes:
 
 | Where | Example |
 |---|---|
-| in the message's event (`midia_mime_payload`) | `audio/ogg; codecs=opus` |
+| in the message's event (`media_mime_payload`) | `audio/ogg; codecs=opus` |
 | in `GET /{media_id}` (`X-Zapgw-Mime-Do-Get`) | `audio/ogg` |
 
 It is the `; codecs=opus` that makes WhatsApp render a **playable voice note**. Re-sending with the
@@ -5353,7 +5364,7 @@ going to tell you it was supposed to be playable audio. **Cost paid in productio
 
 That is why the gateway returns **both, named, normalizing neither and choosing neither**: normalizing
 would destroy exactly what needs to be preserved, and choosing would take from you the one decision
-only you can make. Keep the `midia_mime_payload` that came in the event; when uploading back, declare
+only you can make. Keep the `media_mime_payload` that came in the event; when uploading back, declare
 it **whole** in the `Content-Type` of the `arquivo` part.
 
 ---
@@ -5406,7 +5417,7 @@ hinder the attacker and **burns** the legitimate one.
 > **The wrong instance is the family's most serious case.** If another tenant's `callback_url` points
 > at you by mistake, answering `4xx` destroys **a third party's data** for good, and answering `2xx`
 > tells Meta that a message that is not yours is settled — its owner never receives it. Check the
-> envelope's `instancia` field against the instance you expect, and answer `5xx` if it diverges.
+> envelope's `instance` field against the instance you expect, and answer `5xx` if it diverges.
 
 **Answering 2xx without having stored it is definitive loss.** There is no second chance, no
 reprocessing, and the gateway keeps no copy.
@@ -5447,7 +5458,7 @@ answer".
   up to **50 pages of 100** (~5000 templates); the real WABA checked on 2026-07-25 has 39. If that
   limit is ever reached, you receive a `502` and **no list** — never a short list with a `200`. A
   silent short list is the defect that took the old gateway out of production.
-- **`midia_mime_payload` comes raw, with its parameter.** It is the `; codecs=opus` that makes WhatsApp
+- **`media_mime_payload` comes raw, with its parameter.** It is the `; codecs=opus` that makes WhatsApp
   render a voice note; the mime from `GET /{media_id}` is different and poorer. Do not normalize it —
   and see obligation 5, which is where that difference charges.
 - **The mime list and the upload ceilings are the GATEWAY's, not Meta's.** A file refused with `415` or
@@ -5457,7 +5468,7 @@ answer".
 - **Your instance's `timeout_ms` is not exposed on any route.** Default 5000 ms. The practical rule is
   in *What you receive when you are provisioned*: give your HTTP client a deadline comfortably above
   it.
-- **`de_cru` is what Meta sent; `de_canonico` went through the ninth-digit canonization.** Always
+- **`from_raw` is what Meta sent; `from_canonical` went through the ninth-digit canonization.** Always
   compare by the canonical one — Meta does not guarantee the same spelling you registered.
 - **The gateway retains your counterparties' phone numbers for up to 30 days, in the clear (owner's
   decision, 2026-07-30).** It is the internal transit log (`zapgw transit` / `zapgw log`, with no HTTP
@@ -5496,8 +5507,8 @@ which is the fate of every field whose removal never has a date.
 
 | Field | Where | Marked obsolete on | Removable from | Successor |
 |---|---|---|---|---|
-| `dia` | each entry of `serie_7_dias` and `serie_diaria` | 2026-07-28 | **2027-01-28** | `dia_utc` |
-| `serie_7_dias` | top level of `GET /v1/estado` | 2026-07-29 | **2027-01-29** | `serie_diaria` |
+| `day` | each entry of `last_7_days_series` and `daily_series` | 2026-07-28 | **2027-01-28** | `day_utc` |
+| `last_7_days_series` | top level of `GET /v1/estado` | 2026-07-29 | **2027-01-29** | `daily_series` |
 
 ⚠️ **"Removable from" is not "will be removed on that date".** It is the **floor**: before it the
 removal does not happen, after it it can happen at any moment and is announced only here. Migrate
@@ -5518,6 +5529,15 @@ demands nothing of you.
 ## Breaking changes
 
 **This section is the mechanism promised in place of versioning the format.**
+
+> ℹ️ **The entries below are dated history and quote the key names as this document spelled them on
+> each date.** Many were Portuguese then; the wire sends English today. The ones that appear here, old
+> -> new: `eventos` -> `events`, `cru` -> `raw`, `instancia` -> `instance`, `recebido_em` ->
+> `received_at`, `sub_tipo` -> `sub_kind`, `texto` -> `text`, `responder_a` -> `reply_to`, `voz` ->
+> `voice`, `encaminhada` -> `forwarded`, `encaminhada_muitas_vezes` -> `frequently_forwarded`,
+> `midia_id` -> `media_id`, `botao_payload` -> `button_payload`, `reacao` -> `reaction`, `nome_contato`
+> -> `contact_name`, `para_canonico` -> `to_canonical`, `nome`/`motivo` (template event) ->
+> `name`/`reason`. The full table is `docs/MIGRACAO-CONTRATO-EN.md`.
 
 The normal guarantee is that **the envelope only grows**: a field never disappears, is never reused
 with another meaning, and every new field is omitted when empty. That is what makes a version number

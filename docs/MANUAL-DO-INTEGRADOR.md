@@ -214,7 +214,7 @@ Three things that decide whether this works the first time:
 - **The `callback_url` is required; an empty or missing one is refused with `400`**
   (`internal/config/store.go:1077`). A `failed` status — e.g. `131026`, a number without WhatsApp —
   only reaches you through the callback; without it a send that failed looks delivered. The `200`
-  confirms it: `cifrados: [{campo: "callback_url", cadastrado: true}]`.
+  confirms it: `encrypted: [{campo: "callback_url", cadastrado: true}]`.
 - **`numero_exibido` has one accepted shape, Brazilian numbers only:** `+55 11 5555-5555` (landline)
   or `+55 11 99999-0000` (mobile). Digits only, no `+`, no spaces, or a 5-digit block not starting
   with `9` is refused with `400` (`internal/config/store.go:99`) — it is never rewritten for you.
@@ -272,7 +272,7 @@ Two details that catch people doing this for the first time:
   the **signature**, not them (contract, "O que separa você do outro inquilino").*
 
 A subscribed field the gateway does not model **is not an error**: it arrives, passes the guards and
-is delivered to you with no event at all (`"eventos": []`), becoming a raw row in your database.
+is delivered to you with no event at all (`"events": []`), becoming a raw row in your database.
 
 ---
 
@@ -337,7 +337,7 @@ From here on the contract is the document. What exists:
 cinco obrigações do consumidor"*, and ignoring any of them produces a defect that only shows up in
 production:
 
-1. **Store the `cru` BEFORE looking at the `eventos`**, and answer afterwards.
+1. **Store the `raw` BEFORE looking at the `events`**, and answer afterwards.
 2. **Deduplicate per EVENT**, by the `id` field inside the body — and **atomically**.
 3. **Verify the `X-Zapgw-Signature` and the timestamp** of every delivery. The `segredo_entrega` is
    what separates a delivery of ours from a forged one.
@@ -355,14 +355,14 @@ environment variable becomes a permanently lost message.
 | Symptom | The first place to look |
 |---|---|
 | Meta refuses the webhook verification | is the `verify_token` you typed exactly item 4 of the bundle? |
-| nothing arrives at your endpoint | is the instance **active**? (`GET /v1/estado`, field `pausada`). A paused instance answers `503` and Meta holds the resend for 36 h |
-| it reaches the gateway but not you | is the `callback_url` registered? (the `200` from registration, `cifrados`). Is its certificate valid? (`GET /v1/estado`, `certificado_do_callback`) |
-| sending fails with a credential error | `GET /v1/estado`, `token_meta` — it says whether the token is still valid, stamped with when it was checked |
+| nothing arrives at your endpoint | is the instance **active**? (`GET /v1/estado`, field `paused`). A paused instance answers `503` and Meta holds the resend for 36 h |
+| it reaches the gateway but not you | is the `callback_url` registered? (the `200` from registration, `encrypted`). Is its certificate valid? (`GET /v1/estado`, `callback_certificate`) |
+| sending fails with a credential error | `GET /v1/estado`, `meta_token` — it says whether the token is still valid, stamped with when it was checked |
 | registration answers `409` | the 24 h window closed. Only whoever handed you the slug can reopen it |
 | the smoke test answers `502` | Meta refused. The message says why; if it is a credential, fix it **before** the window closes |
-| sending stopped going out, with no obvious error | `GET /v1/estado`, `numero_na_meta` — your number's quality and daily quota come from there |
+| sending stopped going out, with no obvious error | `GET /v1/estado`, `number_at_meta` — your number's quality and daily quota come from there |
 
-**Before raising an alarm over silence, look at `pausada`.** It is the most common mistake: a paused
+**Before raising an alarm over silence, look at `paused`.** It is the most common mistake: a paused
 instance has no defect at all — it is waiting for a smoke test.
 
 ---
