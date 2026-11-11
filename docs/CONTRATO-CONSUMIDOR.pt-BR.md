@@ -72,7 +72,7 @@ Todo exemplo deste arquivo usa **os mesmos marcadores fictícios**, e nenhum del
 |---|---|---|
 | slug de instância | `lojinha` | o slug **fictício** dos exemplos. O seu vem no pacote de entrega, e é outro |
 | telefone (forma canônica) | `5511999990000` | número **sintético**, com o 9º dígito |
-| telefone (como a Meta às vezes manda) | `551199990000` | o **mesmo** número sem o 9º dígito — é o par que a seção `de_cru`/`de_canonico` explica |
+| telefone (como a Meta às vezes manda) | `551199990000` | o **mesmo** número sem o 9º dígito — é o par que a seção `from_raw`/`from_canonical` explica |
 | ids da Meta | `PNID_TESTE`, `WABA_TESTE`, `wamid.TESTE001`… | identificadores de teste, nunca reais |
 | base das URLs que **você** chama | `https://zapgw.exemplo.com.br:8443` | **substitua pela URL de cadastro que você recebeu** (item 2 do pacote); a porta faz parte dela |
 | URL que **a Meta** chama | `https://zapgw.exemplo.com.br/v1/inbound/lojinha` | é o item 3 do pacote, e é a única publicada na internet — porta 443, sem porta explícita |
@@ -381,6 +381,14 @@ X-Zapgw-Correlation-Id: <id>            atravessa os dois lados; cite-o ao relat
 X-Hub-Signature-256:    sha256=<hex>    a assinatura ORIGINAL da Meta, repassada
 ```
 
+> ℹ️ **As chaves do envelope de entrega estão em inglês: `instance`, `received_at`, `raw`, `events` e
+> `parse_error`** (`internal/inbound/deliver.go:45-49`), e as dos eventos dentro de `events` também
+> (`sub_kind`, `from_raw`, `text`, `reply_to`, ... — `internal/meta/types.go`). **Até 2026-11-11
+> este documento mostrava as grafias antigas em português** (`instancia`, `recebido_em`, `cru`,
+> `eventos`, ...) nos exemplos e tabelas, e o gateway não as envia: o consumidor que programou contra
+> esses nomes rejeitou toda entrega. As poucas chaves de saída que ainda estão em português são a
+> tabela logo abaixo; o mapa completo antigo -> novo é o `docs/MIGRACAO-CONTRATO-EN.md`.
+
 ### Chaves que AINDA estão em português na saída (medido na v0.68.1)
 
 **Esta tabela é a lista — não invente a grafia em inglês.** Toda chave abaixo sai deste gateway em
@@ -403,7 +411,7 @@ será anunciada com bump MINOR e uma tabela velho -> novo, aqui e em `docs/MIGRA
 | `ja_estava_ativa`, `ativa_desde` | `POST /v1/fumaca` — irmãos `instance`/`state`/`paused`/`wa_message_id` já em inglês | `internal/outbound/smoke_handler.go:128` / `:136` | decisão do dono pendente — mesma forma do T-248, ainda não somada à sua lista |
 | `operacao` | `POST` / `DELETE /v1/bloqueios` — irmãos `instance`/`processed`/`failures` já em inglês | `internal/outbound/block_handler.go:166` | decisão do dono pendente — mesma forma do T-248, ainda não somada à sua lista |
 | `tipo`, `severidade`, `descricao`, `id_da_entidade` | envelope de evento do webhook, bloco `account_alert` — o irmão `state` (dentro do mesmo bloco) já está em inglês | `internal/meta/types.go:396` / `:397` / `:406` / `:392` | decisão do dono pendente — **conferido contra a §10 da doc de migração: são a NOSSA PRÓPRIA tradução de `alert_type`/`alert_severity`/`alert_description`/`entity_id` da Meta, não o nome do campo da Meta mantido ao pé da letra, então NÃO se qualificam como "vocabulário da Meta, mantido de propósito"** |
-| `status_do_recurso` | envelope de evento do webhook — **NÃO dentro de `account_alert`**: é o `AppealStatus` do bloco `template_categoria` (`template_category`) | `internal/meta/types.go:318` | decisão do dono pendente — mesma forma do T-248, ainda não somada à sua lista |
+| `status_do_recurso` | envelope de evento do webhook — **NÃO dentro de `account_alert`**: é o `AppealStatus` do bloco `template_category` | `internal/meta/types.go:318` | decisão do dono pendente — mesma forma do T-248, ainda não somada à sua lista |
 | nomes de contador, ex. `cobranca_cobravel`, `alarme_perda_definitiva` (+16 outros) | `GET /v1/estado`, as próprias CHAVES do dicionário `counters` (não um campo dentro de um bloco) | `internal/config/counter.go:31-232` (o vocabulário fechado) | nome de contador, história deliberada — a lista completa dos 18 e o único par já decidido (`nome_antigo_usado` -> `old_name_used`) estão em `docs/MIGRACAO-CONTRATO-EN.md` §8.11 |
 
 > `destino` (corpo do pedido de `POST /v1/fumaca`, `internal/outbound/smoke_handler.go:97`) foi
@@ -412,27 +420,27 @@ será anunciada com bump MINOR e uma tabela velho -> novo, aqui e em `docs/MIGRA
 
 ```jsonc
 {
-  "instancia": "lojinha",
-  "recebido_em": "2026-07-23T14:05:00Z",
-  "cru": "<os bytes EXATOS que a Meta enviou, em base64>",
-  "eventos": [
+  "instance": "lojinha",
+  "received_at": "2026-07-23T14:05:00Z",
+  "raw": "<os bytes EXATOS que a Meta enviou, em base64>",
+  "events": [
     { "kind": "message",
       "id": "msg:wamid.ABC",
       "phone_number_id": "…", "waba_id": "…",
       "wa_message_id": "wamid.ABC",
-      "sub_tipo": "text",
-      "de_cru": "551199990000",
-      "de_canonico": "5511999990000",
-      "nome_contato": "…",
-      "texto": "…",
-      "responder_a": "wamid…",
-      "encaminhada": true, "encaminhada_muitas_vezes": true,
-      "botao_payload": "…", "botao_texto": "…",
-      "reacao": { "emoji": "👍", "alvo": "wamid…" },
-      "midia_id": "…", "midia_mime_payload": "audio/ogg; codecs=opus",
-      "voz": true,
-      "legenda": "…", "nome_arquivo": "…",
-      "localizacao": { "latitude": 37.44, "longitude": -122.16, "nome": "…", "endereco": "…" },
+      "sub_kind": "text",
+      "from_raw": "551199990000",
+      "from_canonical": "5511999990000",
+      "contact_name": "…",
+      "text": "…",
+      "reply_to": "wamid…",
+      "forwarded": true, "frequently_forwarded": true,
+      "button_payload": "…", "button_text": "…",
+      "reaction": { "emoji": "👍", "target": "wamid…" },
+      "media_id": "…", "media_mime_payload": "audio/ogg; codecs=opus",
+      "voice": true,
+      "caption": "…", "file_name": "…",
+      "location": { "latitude": 37.44, "longitude": -122.16, "name": "…", "address": "…" },
       "timestamp": 1769000000 }
   ],
   "parse_error": ""
@@ -441,12 +449,12 @@ será anunciada com bump MINOR e uma tabela velho -> novo, aqui e em `docs/MIGRA
 
 > **Dois campos deste exemplo já mentiram, e os dois quebram código, não só leitura.**
 > `parse_error` é a string **vazia** quando não houve erro, nunca `null` e nunca ausente — ele **não**
-> é omitido, e **isso nunca mudou**. E `eventos`, quando o gateway não enriqueceu nada, é hoje **`[]`**
+> é omitido, e **isso nunca mudou**. E `events`, quando o gateway não enriqueceu nada, é hoje **`[]`**
 > — array vazio, nunca `null`: a normalização é feita num lugar só, na montagem do envelope, e travada
 > por um teste que afirma sobre os **bytes do fio**, não sobre a estrutura em memória.
 >
-> ⚠️ **Até 2026-07-28 o fio mandava `"eventos": null` neste caso** — desde o primeiro dia do gateway
-> (2026-07-23). Se você escreveu `envelope.get("eventos") or []` (ou `?? []`) por causa daquele
+> ⚠️ **Até 2026-07-28 o fio mandava `"events": null` neste caso** — desde o primeiro dia do gateway
+> (2026-07-23). Se você escreveu `envelope.get("events") or []` (ou `?? []`) por causa daquele
 > aviso, **mantenha**: a defesa continua correta e continua necessária, porque `[]` também é falso em
 > Python e itera zero vezes em qualquer linguagem. Veja *Webhook de CONTA*, mais abaixo, e a entrada
 > de 2026-07-28 em *Mudanças que quebram*.
@@ -457,13 +465,13 @@ por outra:
 
 | Nível | Vêm **SEMPRE**, mesmo vazios | Todo o resto |
 |---|---|---|
-| envelope | `instancia`, `recebido_em`, `cru`, `eventos`, `parse_error` | — |
-| um item de `eventos` | `kind` e `id` | omitido quando não há valor |
-| dentro dos blocos aninhados | `reacao.alvo`; `localizacao.latitude` e `.longitude`; `error.code` e `.message`; `cobranca.categoria`; `template.estado`; `template_categoria.categoria_nova` | omitido quando não há valor |
+| envelope | `instance`, `received_at`, `raw`, `events`, `parse_error` | — |
+| um item de `events` | `kind` e `id` | omitido quando não há valor |
+| dentro dos blocos aninhados | `reaction.target`; `location.latitude` e `.longitude`; `error.code` e `.message`; `pricing.category`; `template.state`; `template_category.new_category` | omitido quando não há valor |
 
 Fora dessas linhas, **todo campo é omitido quando vazio**: uma mensagem de texto simples não ganha
-`reacao`, `voz`, `legenda`, `nome_arquivo`, `localizacao`, `responder_a`,
-`encaminhada`/`encaminhada_muitas_vezes` (desde 2026-07-28) nem `error` (desde 2026-07-26). É o que a
+`reaction`, `voice`, `caption`, `file_name`, `location`, `reply_to`,
+`forwarded`/`frequently_forwarded` (desde 2026-07-28) nem `error` (desde 2026-07-26). É o que a
 garantia "o envelope só cresce" (abaixo) exige, e há teste de não-regressão preso nos campos atuais.
 
 > ⚠️ **Os campos da primeira coluna vêm sempre porque a ausência deles seria ambígua ou fatal** —
@@ -473,45 +481,45 @@ garantia "o envelope só cresce" (abaixo) exige, e há teste de não-regressão 
 > 2026-07-28 em *Mudanças que quebram*). A tabela diz o que o gateway garante **quando produz o
 > campo**, não que o campo exista em todo cenário.
 
-### `responder_a` — a que mensagem esta responde
+### `reply_to` — a que mensagem esta responde
 
-`responder_a` traz o `wamid` da mensagem **citada**, quando o remetente respondeu segurando a bolha
-de outra mensagem (a Meta manda isso em `messages[].context.id`, em **qualquer** `sub_tipo`, não só
-em `text`). **MESMO NOME do campo equivalente no envio** (`responder_a` no `POST /v1/messages`, veja
+`reply_to` traz o `wamid` da mensagem **citada**, quando o remetente respondeu segurando a bolha
+de outra mensagem (a Meta manda isso em `messages[].context.id`, em **qualquer** `sub_kind`, não só
+em `text`). **MESMO NOME do campo equivalente no envio** (`reply_to` no `POST /v1/messages`, veja
 mais abaixo) — o referente é idêntico nos dois sentidos: o `wamid` da mensagem citada. Enviar e
 receber com nomes diferentes para a mesma coisa seria o começo de dois vocabulários.
 
 **A Meta também manda `context.from` (o número do NEGÓCIO que enviou a mensagem original), e o
 gateway não repassa esse campo.** Não é descuido: um campo que parece "de quem" e é "para quem" é
 convite a bug, e ninguém pediu esse valor até hoje. Se um dia alguém precisar dele, entra com um
-nome que diga o que é — nunca reaproveitando `responder_a` para dois sentidos.
+nome que diga o que é — nunca reaproveitando `reply_to` para dois sentidos.
 
-Ausente quando a mensagem não é resposta a nada — a chave some do JSON, nunca `"responder_a": ""`.
+Ausente quando a mensagem não é resposta a nada — a chave some do JSON, nunca `"reply_to": ""`.
 
 > ⚠️ **Ausente NÃO significa "não é resposta". Significa "a Meta não mandou vínculo".**
 > Observado em 2026-07-26 (dois payloads reais da mesma conversa com 3 minutos de diferença):
-> quem responde **segurando a bolha** gera `context` e você recebe `responder_a`; quem responde
+> quem responde **segurando a bolha** gera `context` e você recebe `reply_to`; quem responde
 > **digitando na notificação do celular** — resposta *inline* — gera um payload **sem `context`
-> nenhum**, e portanto sem `responder_a`, ainda que seja uma resposta de verdade para a pessoa que
+> nenhum**, e portanto sem `reply_to`, ainda que seja uma resposta de verdade para a pessoa que
 > escreveu.
 >
 > Isso não é o gateway omitindo nem o seu lado perdendo: **a Meta não manda o vínculo nesse caso.**
 > E responder pela notificação é o jeito mais rápido no celular, então a ausência provavelmente é a
 > maioria do tráfego, não a exceção.
 >
-> **Consequência prática:** não trate `responder_a` ausente como anomalia, não alarme por causa
+> **Consequência prática:** não trate `reply_to` ausente como anomalia, não alarme por causa
 > disso, e não construa nada que dependa de toda resposta trazer o vínculo. Se um dia alguém abrir
-> uma investigação por "`responder_a` faltando num payload real", a resposta é esta linha.
+> uma investigação por "`reply_to` faltando num payload real", a resposta é esta linha.
 >
 > **Desde 2026-07-28 há uma terceira razão para a ausência, e ela é nossa, não da Meta:** se o bloco
 > `context` chegar com um **tipo** que o gateway não consegue ler, ele descarta o bloco inteiro e
-> entrega a mensagem sem `responder_a`, `encaminhada` e `encaminhada_muitas_vezes` — em vez de
+> entrega a mensagem sem `reply_to`, `forwarded` e `frequently_forwarded` — em vez de
 > perder a mensagem, que era o que acontecia antes. Veja *Mudanças que quebram*, no fim deste
 > arquivo. Para você o efeito é indistinguível dos outros dois casos, e a orientação acima não muda.
 
 **Exemplo executado** (o parser do gateway sobre um payload de **captura real**, 2026-07-26: alguém
 respondeu citando uma mensagem anterior; `context.from` e `context.id` vieram diferentes um do
-outro no payload real, confirmando que é o `id` que vira `responder_a`, não o `from`):
+outro no payload real, confirmando que é o `id` que vira `reply_to`, não o `from`):
 
 ```json
 {
@@ -521,35 +529,35 @@ outro no payload real, confirmando que é o `id` que vira `responder_a`, não o 
   "waba_id": "WABA_TESTE",
   "timestamp": 1769000013,
   "wa_message_id": "wamid.TESTE015",
-  "sub_tipo": "text",
-  "de_cru": "551199990000",
-  "de_canonico": "5511999990000",
-  "nome_contato": "Fulana de Teste",
-  "texto": "Recebido",
-  "responder_a": "wamid.TESTE001"
+  "sub_kind": "text",
+  "from_raw": "551199990000",
+  "from_canonical": "5511999990000",
+  "contact_name": "Fulana de Teste",
+  "text": "Recebido",
+  "reply_to": "wamid.TESTE001"
 }
 ```
 
-### `encaminhada` e `encaminhada_muitas_vezes` — a mensagem não foi escrita agora, para você
+### `forwarded` e `frequently_forwarded` — a mensagem não foi escrita agora, para você
 
 Os dois vêm de `messages[].context` na Meta (`forwarded` e `frequently_forwarded`) e chegam em
-**qualquer** `sub_tipo`, não só em `text`.
+**qualquer** `sub_kind`, não só em `text`.
 
-- **`encaminhada`** — a pessoa repassou uma mensagem em vez de escrevê-la. Sinal fraco e comum:
+- **`forwarded`** — a pessoa repassou uma mensagem em vez de escrevê-la. Sinal fraco e comum:
   cliente encaminhando foto de referência, tabela de preço, print de conversa. É **contexto**, não
   alarme.
-- **`encaminhada_muitas_vezes`** — é o sinal de **corrente** do WhatsApp (a marca "encaminhada muitas
+- **`frequently_forwarded`** — é o sinal de **corrente** do WhatsApp (a marca "encaminhada muitas
   vezes" que o app mostra). **É este que muda decisão automática.** Se o seu lado responde sozinho —
   detecção de agendamento, resposta automática, relay —, uma corrente hoje é tratada como se a
   cliente tivesse escrito aquilo. Este campo é o que permite **não** disparar fluxo de negócio em
   cima dela.
 
-**São booleanos simples, e a ausência é `false` — ao contrário de `voz`.** A distinção existe e é
-deliberada, então vale escrever qual é: em `voz`, "a Meta disse que não é nota de voz" e "a Meta não
+**São booleanos simples, e a ausência é `false` — ao contrário de `voice`.** A distinção existe e é
+deliberada, então vale escrever qual é: em `voice`, "a Meta disse que não é nota de voz" e "a Meta não
 disse nada" levam você a fazer coisas **diferentes** ao reenviar o áudio, e por isso ausente ≠
 `false` lá. Aqui não há terceira ação: "não foi encaminhada" e "a Meta não disse que foi" levam ao
 mesmo lugar — tratar a mensagem como escrita pela pessoa. Por isso **a chave só aparece quando é
-`true`**; você nunca vai receber `"encaminhada": false`, e não deve tratar a ausência como
+`true`**; você nunca vai receber `"forwarded": false`, e não deve tratar a ausência como
 desconhecido.
 
 > ⚠️ **Não há captura real destes campos até 2026-07-28.** Nenhum dos payloads que os consumidores
@@ -562,14 +570,14 @@ desconhecido.
 > **Consequência prática, e é a razão de este aviso existir:** trate a **presença** dos campos como
 > informação boa, e a **ausência** como "não recebemos o sinal" — não como prova de que a mensagem é
 > original. **A prova que vale para você é a sua**: se você observar uma mensagem encaminhada de
-> verdade chegando com `encaminhada: true`, está confirmado no seu tráfego, e é isso que decide o que
+> verdade chegando com `forwarded: true`, está confirmado no seu tráfego, e é isso que decide o que
 > o seu código pode assumir. Enquanto não observar, não construa nada que dependa da presença.
 
 **`referred_product`, o terceiro campo de `context`, continua fora do envelope.** Ninguém pediu, e o
 envelope só cresce — acrescentar depois é de graça, tirar depois é quebra.
 
 **Encaminhar não é citar.** Uma mensagem encaminhada que não responde a nada chega com `context`
-**sem `id`**, ou seja, com `encaminhada` e **sem** `responder_a`. Os dois casos são independentes e
+**sem `id`**, ou seja, com `forwarded` e **sem** `reply_to`. Os dois casos são independentes e
 podem aparecer juntos.
 
 **Exemplo executado** (o parser do gateway sobre um payload **sintético** — ver o aviso acima):
@@ -582,48 +590,48 @@ podem aparecer juntos.
   "waba_id": "WABA_TESTE",
   "timestamp": 1769000021,
   "wa_message_id": "wamid.TESTE018",
-  "sub_tipo": "text",
-  "de_cru": "551199990000",
-  "de_canonico": "5511999990000",
-  "nome_contato": "Fulana de Teste",
-  "texto": "Tabela de precos 2026",
-  "encaminhada": true
+  "sub_kind": "text",
+  "from_raw": "551199990000",
+  "from_canonical": "5511999990000",
+  "contact_name": "Fulana de Teste",
+  "text": "Tabela de precos 2026",
+  "forwarded": true
 }
 ```
 
-Note que `encaminhada_muitas_vezes` **não aparece**: neste payload ela é `false`, e `false` some do
+Note que `frequently_forwarded` **não aparece**: neste payload ela é `false`, e `false` some do
 envelope.
 
-### `reacao`, `voz`, `legenda`/`nome_arquivo`, `localizacao`, `error` — o que cada um significa
+### `reaction`, `voice`, `caption`/`file_name`, `location`, `error` — o que cada um significa
 
-Estes campos existem para que você **não precise reparsear o `cru`** para reação, localização,
+Estes campos existem para que você **não precise reparsear o `raw`** para reação, localização,
 legenda, nome de arquivo, nota de voz e — desde 2026-07-26 — o motivo de a Meta não saber representar
-uma mensagem. Antes deles, o `sub_tipo` chegava rotulado (`"reaction"`, `"location"`,
+uma mensagem. Antes deles, o `sub_kind` chegava rotulado (`"reaction"`, `"location"`,
 `"unsupported"`) mas sem o CONTEÚDO do evento, e a única forma de recuperar o dado era reimplementar
 o parser da Meta por conta própria.
 
-- **`reacao` (`sub_tipo: "reaction"`)** — `emoji` e `alvo` (o `wamid` da mensagem reagida).
+- **`reaction` (`sub_kind: "reaction"`)** — `emoji` e `target` (o `wamid` da mensagem reagida).
   **`emoji` ausente é remoção, não erro**: quando alguém tira a reação que tinha posto, a própria
   Meta manda o evento sem a chave `emoji` — é assim que ela distingue "reagi" de "tirei a reação".
-  O gateway repassa essa ausência tal como veio; `alvo`, ao contrário, é sempre obrigatório: um
-  evento de reação sem ele é contado como erro de parse (`parse_error`) e não vira `reacao`.
-- **`voz` (`sub_tipo: "audio"`)** — `true`/`false`/**ausente**, nesta ordem de significado. É a nota
+  O gateway repassa essa ausência tal como veio; `target`, ao contrário, é sempre obrigatório: um
+  evento de reação sem ele é contado como erro de parse (`parse_error`) e não vira `reaction`.
+- **`voice` (`sub_kind: "audio"`)** — `true`/`false`/**ausente**, nesta ordem de significado. É a nota
   de voz tocável (obrigação 5 do contrato, mais abaixo) versus anexo de áudio comum. **Ausente não é
   `false`**: a Meta às vezes não manda o campo `voice` no payload, e tratar isso como `false` por
-  default inventaria um dado que você não tem. Se `voz` não aparecer, o gateway não sabe.
-- **`legenda` e `nome_arquivo` (mídia com `caption`/`filename` no payload da Meta)** — a legenda
+  default inventaria um dado que você não tem. Se `voice` não aparecer, o gateway não sabe.
+- **`caption` e `file_name` (mídia com `caption`/`filename` no payload da Meta)** — a legenda
   existe em imagem, vídeo e documento; o nome de arquivo só em documento. Os dois se referem à
-  mesma mídia do `midia_id` no mesmo evento.
-- **`localizacao` (`sub_tipo: "location"`)** — `latitude`, `longitude` (sempre presentes, mesmo
+  mesma mídia do `media_id` no mesmo evento.
+- **`location` (`sub_kind: "location"`)** — `latitude`, `longitude` (sempre presentes, mesmo
   quando `0` — o cruzamento do meridiano de Greenwich com o equador é uma coordenada válida) e,
-  quando o remetente os mandou, `nome` e `endereco`.
-- **`error` (`sub_tipo: "unsupported"`, 2026-07-26)** — **MESMO campo e MESMA forma** do
+  quando o remetente os mandou, `name` e `address`.
+- **`error` (`sub_kind: "unsupported"`, 2026-07-26)** — **MESMO campo e MESMA forma** do
   `error` do evento de `status` (descrito logo abaixo: `code`, `message`, `details`), mas com
   **SIGNIFICADO diferente**, e a diferença importa: no evento de status, `error` quer dizer "a
   entrega falhou"; aqui quer dizer **"a Meta recebeu algo e a Cloud API não sabe representar"** — a
   Meta não falhou em entregar nada, ela entregou e não soube decodificar o conteúdo (o caso
   observado é o código `131051`, `"Message type unknown"`). Sem este campo, uma mensagem
-  `unsupported` chegava com `sub_tipo` e um `id`, e **nada mais** — indistinguível de "mensagem
+  `unsupported` chegava com `sub_kind` e um `id`, e **nada mais** — indistinguível de "mensagem
   vazia" para quem só olha o envelope. Ausente quando a Meta não mandou `errors[]` na mensagem —
   omitido, nunca `{"code": 0, "message": ""}` (mesma regra do lado do status, ver abaixo).
 
@@ -642,16 +650,16 @@ um codepoint só não prova que o parser preserva o par):
   "waba_id": "WABA_TESTE",
   "timestamp": 1769000005,
   "wa_message_id": "wamid.TESTE006",
-  "sub_tipo": "reaction",
-  "de_cru": "5511999990000",
-  "de_canonico": "5511999990000",
-  "reacao": { "emoji": "❤️", "alvo": "wamid.TESTE001" }
+  "sub_kind": "reaction",
+  "from_raw": "5511999990000",
+  "from_canonical": "5511999990000",
+  "reaction": { "emoji": "❤️", "target": "wamid.TESTE001" }
 }
 ```
 
 Reação **removida** (**captura real**,
 2026-07-26: mesma reação do exemplo acima, desfeita 20 segundos depois, mesmo alvo) — note a
-ausência da chave `emoji` dentro de `reacao`, não uma string vazia:
+ausência da chave `emoji` dentro de `reaction`, não uma string vazia:
 
 ```json
 {
@@ -661,17 +669,17 @@ ausência da chave `emoji` dentro de `reacao`, não uma string vazia:
   "waba_id": "WABA_TESTE",
   "timestamp": 1769000006,
   "wa_message_id": "wamid.TESTE007",
-  "sub_tipo": "reaction",
-  "de_cru": "5511999990000",
-  "de_canonico": "5511999990000",
-  "reacao": { "alvo": "wamid.TESTE001" }
+  "sub_kind": "reaction",
+  "from_raw": "5511999990000",
+  "from_canonical": "5511999990000",
+  "reaction": { "target": "wamid.TESTE001" }
 }
 ```
 
 Localização (**captura real**, 2026-07-26;
 coordenadas arredondadas de propósito na captura, para não expor a localização real). Este é o
-**pin solto** — sem `nome`/`endereço` — que é o caso observado como comum; a Meta também aceita um
-pin de estabelecimento com os dois campos preenchidos (ver a nota acima sobre `nome`/`endereco`
+**pin solto** — sem `name`/`endereço` — que é o caso observado como comum; a Meta também aceita um
+pin de estabelecimento com os dois campos preenchidos (ver a nota acima sobre `name`/`address`
 serem opcionais), mas isso não é o que a maioria dos usuários manda:
 
 ```json
@@ -682,10 +690,10 @@ serem opcionais), mas isso não é o que a maioria dos usuários manda:
   "waba_id": "WABA_TESTE",
   "timestamp": 1769000007,
   "wa_message_id": "wamid.TESTE008",
-  "sub_tipo": "location",
-  "de_cru": "5511999990000",
-  "de_canonico": "5511999990000",
-  "localizacao": {
+  "sub_kind": "location",
+  "from_raw": "5511999990000",
+  "from_canonical": "5511999990000",
+  "location": {
     "latitude": -21.229,
     "longitude": -43.7892
   }
@@ -702,17 +710,17 @@ Documento com legenda e nome de arquivo:
   "waba_id": "WABA_TESTE",
   "timestamp": 1769000008,
   "wa_message_id": "wamid.TESTE009",
-  "sub_tipo": "document",
-  "de_cru": "5511999990000",
-  "de_canonico": "5511999990000",
-  "midia_id": "MEDIA_TESTE2",
-  "midia_mime_payload": "application/pdf",
-  "legenda": "meu recibo",
-  "nome_arquivo": "recibo-teste.pdf"
+  "sub_kind": "document",
+  "from_raw": "5511999990000",
+  "from_canonical": "5511999990000",
+  "media_id": "MEDIA_TESTE2",
+  "media_mime_payload": "application/pdf",
+  "caption": "meu recibo",
+  "file_name": "recibo-teste.pdf"
 }
 ```
 
-Nota de voz — `voz: true` (o mesmo payload da armadilha
+Nota de voz — `voice: true` (o mesmo payload da armadilha
 dos dois mimes citada na obrigação 5):
 
 ```json
@@ -723,16 +731,16 @@ dos dois mimes citada na obrigação 5):
   "waba_id": "WABA_TESTE",
   "timestamp": 1769000003,
   "wa_message_id": "wamid.TESTE004",
-  "sub_tipo": "audio",
-  "de_cru": "5511999990000",
-  "de_canonico": "5511999990000",
-  "midia_id": "MEDIA_TESTE",
-  "midia_mime_payload": "audio/ogg; codecs=opus",
-  "voz": true
+  "sub_kind": "audio",
+  "from_raw": "5511999990000",
+  "from_canonical": "5511999990000",
+  "media_id": "MEDIA_TESTE",
+  "media_mime_payload": "audio/ogg; codecs=opus",
+  "voice": true
 }
 ```
 
-`sub_tipo: "unsupported"` com o motivo (2026-07-26) — a Meta recebeu algo que a Cloud API
+`sub_kind: "unsupported"` com o motivo (2026-07-26) — a Meta recebeu algo que a Cloud API
 não sabe representar (o exemplo abaixo é sintético, com os valores do exemplo oficial da Meta:
 developers.facebook.com/documentation/business-messaging/whatsapp/webhooks/reference/messages/unsupported/,
 lido em 2026-07-26; não há corpus de captura real para este caso ainda):
@@ -745,9 +753,9 @@ lido em 2026-07-26; não há corpus de captura real para este caso ainda):
   "waba_id": "WABA_TESTE",
   "timestamp": 1769000014,
   "wa_message_id": "wamid.TESTE016",
-  "sub_tipo": "unsupported",
-  "de_cru": "5511999990000",
-  "de_canonico": "5511999990000",
+  "sub_kind": "unsupported",
+  "from_raw": "5511999990000",
+  "from_canonical": "5511999990000",
   "error": {
     "code": 131051,
     "message": "Message type unknown",
@@ -767,26 +775,26 @@ Mensagem de texto simples, para comparação — **nenhum dos cinco campos novos
   "waba_id": "WABA_TESTE",
   "timestamp": 1769000000,
   "wa_message_id": "wamid.TESTE001",
-  "sub_tipo": "text",
-  "de_cru": "551199990000",
-  "de_canonico": "5511999990000",
-  "nome_contato": "Fulana de Teste",
-  "texto": "mensagem de teste"
+  "sub_kind": "text",
+  "from_raw": "551199990000",
+  "from_canonical": "5511999990000",
+  "contact_name": "Fulana de Teste",
+  "text": "mensagem de teste"
 }
 ```
 
 ### `status` (`kind: "status"`) — o que cada campo significa
 
 O evento de status confirma o destino de uma mensagem que **você** mandou: `sent` → `delivered` →
-`read`, ou `failed`. Ele não tem `sub_tipo`; os campos que importam são estes:
+`read`, ou `failed`. Ele não tem `sub_kind`; os campos que importam são estes:
 
 | Campo | O que é |
 |---|---|
 | `status` | `sent`, `delivered`, `read` ou `failed` — o vocabulário é da Meta, repassado sem tradução |
 | `wa_message_id` | o id da mensagem que você mandou (o mesmo que veio na resposta do `POST /v1/messages`) |
-| `para_cru` / `para_canonico` | o destinatário, nas duas formas — mesma razão do `de_cru`/`de_canonico` da mensagem: a Meta não garante a mesma grafia que você cadastrou |
+| `to_raw` / `to_canonical` | o destinatário, nas duas formas — mesma razão do `from_raw`/`from_canonical` da mensagem: a Meta não garante a mesma grafia que você cadastrou |
 | `error` | **só em `failed`, e só quando a Meta mandou o motivo** — ver abaixo |
-| `cobranca` | **quando a Meta mandou `pricing`** — sob qual categoria ela cobrou esta entrega, ver abaixo |
+| `pricing` | **quando a Meta mandou `pricing`** — sob qual categoria ela cobrou esta entrega, ver abaixo |
 
 > 🔴 **NÃO ORDENE O HISTÓRICO DE UMA MENSAGEM PELO `timestamp` — o `sent` e o `delivered` da MESMA
 > mensagem chegam com o MESMO carimbo da Meta.** Não é hipótese: foi **medido em tráfego real** pelo
@@ -800,7 +808,7 @@ O evento de status confirma o destino de uma mensagem que **você** mandou: `sen
 > `sent` metade das vezes, sem nenhum erro em lugar nenhum.
 >
 > **O que separa os dois é a ORDEM DE CHEGADA** — o instante em que o `POST` bateu no seu endpoint,
-> que é dado seu e não nosso. Grave-o (a obrigação 1 já manda gravar o `cru` com o momento do
+> que é dado seu e não nosso. Grave-o (a obrigação 1 já manda gravar o `raw` com o momento do
 > recebimento) e ordene por ele, com o `timestamp` da Meta como desempate ou como informação
 > exibida, nunca como chave de ordenação.
 >
@@ -816,11 +824,11 @@ porque ninguém a viu) não tem o que mostrar.
 
 > ⚠️ **`error` é o MESMO campo, com a MESMA forma, em DOIS eventos diferentes — e o significado NÃO
 > é o mesmo.** Desde 2026-07-26, `error` também aparece no evento de **mensagem**
-> (`sub_tipo: "unsupported"` — ver a seção acima). Aqui (status) ele quer dizer "a entrega falhou";
+> (`sub_kind: "unsupported"` — ver a seção acima). Aqui (status) ele quer dizer "a entrega falhou";
 > lá (mensagem) quer dizer "a Meta recebeu algo e não soube representar" — a mensagem foi entregue,
 > não falhou. Tudo o que este bloco descreve sobre `code`/`message`/`details`, sobre a lista
 > `errors[]` e sobre "ausência é ausência, nunca zero" vale identicamente para os dois; **só o que
-> `error` está DIZENDO sobre o evento muda**, e é o `kind`/`sub_tipo` do evento que diz qual dos dois
+> `error` está DIZENDO sobre o evento muda**, e é o `kind`/`sub_kind` do evento que diz qual dos dois
 > é.
 
 Formato confirmado em
@@ -855,7 +863,7 @@ que o gateway não conseguiu interpretar — não ganha `error`: o campo fica **
 `{"code": 0, "message": ""}`. Código `0` não é um código real da Meta; se o gateway o inventasse,
 você não teria como distinguir "sem motivo relatado" de "erro genuíno de código zero".
 
-### `cobranca` — sob qual categoria a Meta cobrou (2026-07-26)
+### `pricing` — sob qual categoria a Meta cobrou (2026-07-26)
 
 **Não é curiosidade contábil — é o único jeito de saber, na PRIMEIRA mensagem, que a Meta
 reclassificou um template.** Editar um template pode fazer a Meta reclassificar `UTILITY` →
@@ -866,31 +874,31 @@ no fim do mês.
 
 Pedido por um consumidor (2026-07-26), que conferiu antes de pedir: `pricing` não existia no contrato
 nem no código deste gateway, mas **chega** — está em 145 dos 148 status que eles têm gravados. O
-gateway o traduz para `cobranca`, no nosso vocabulário — o formato da Meta morre no gateway,
+gateway o traduz para `pricing`, no nosso vocabulário — o formato da Meta morre no gateway,
 como em todo o resto do envelope, para que nenhum consumidor precise conhecer o formato dela para
 saber quanto do seu tráfego é cobrado.
 
-| Campo de `cobranca` | O que é |
+| Campo de `pricing` | O que é |
 |---|---|
-| `categoria` | o `pricing.category` da Meta, repassado sem tradução: `utility`, `marketing`, `authentication`, `service`, entre outros que a Meta define |
+| `category` | o `pricing.category` da Meta, repassado sem tradução: `utility`, `marketing`, `authentication`, `service`, entre outros que a Meta define |
 | `cobravel` | o `pricing.billable` da Meta — `true`/`false`/**ausente** (ver a nota abaixo) |
 
-**Só `categoria` e `cobravel` são modelados.** `pricing_model` e `type` — os outros dois campos que
+**Só `category` e `cobravel` são modelados.** `pricing_model` e `type` — os outros dois campos que
 a Meta manda dentro de `pricing` — ficam de fora até alguém dizer o que faria com eles: o envelope
 só cresce, então acrescentar depois é de graça, tirar depois é quebra de contrato.
 
 > ⚠️ **`cobravel` ausente e `cobravel: false` NÃO são a mesma informação — a diferença aqui é de
-> DINHEIRO.** Mesma regra do `voz` (ver acima), com consequência maior: "a Meta disse que não
+> DINHEIRO.** Mesma regra do `voice` (ver acima), com consequência maior: "a Meta disse que não
 > cobra" (`false`) e "a Meta não disse nada" (ausente, a chave some do JSON) são coisas diferentes,
 > e inventar `false` por default esconderia justamente o caso em que ninguém sabe se cobrou.
 
-**`cobranca` inteiro fica ausente quando a Meta não mandou `pricing` no status** — o campo some do
-JSON, nunca `{"categoria": "", "cobravel": false}`. Não invente um valor.
+**`pricing` inteiro fica ausente quando a Meta não mandou `pricing` no status** — o campo some do
+JSON, nunca `{"category": "", "cobravel": false}`. Não invente um valor.
 
 **E a ausência tem endereço: é no `sent`.** Medição de um consumidor sobre 225 payloads crus da Meta
 (2026-07-28): dos **53 `sent`**, **49 vieram com `pricing` e 4 sem** (~7,5%); dos **49
-`delivered`**, **49 vieram com** (100%). Um `sent` sem `cobranca` **não é falha nem payload
-truncado — é caso normal**, e código que trate `cobranca` como garantida no `sent` quebra em cerca
+`delivered`**, **49 vieram com** (100%). Um `sent` sem `pricing` **não é falha nem payload
+truncado — é caso normal**, e código que trate `pricing` como garantida no `sent` quebra em cerca
 de um a cada treze. **As duas formas estão congeladas lado a lado**, as duas com lastro de tráfego
 real, e as duas aparecem como exemplo logo abaixo.
 
@@ -907,10 +915,10 @@ ele precisou de um envelope ao redor para virar fixture):
   "timestamp": 1769000015,
   "wa_message_id": "wamid.TESTE017",
   "status": "read",
-  "para_cru": "551199990000",
-  "para_canonico": "5511999990000",
-  "cobranca": {
-    "categoria": "utility",
+  "to_raw": "551199990000",
+  "to_canonical": "5511999990000",
+  "pricing": {
+    "category": "utility",
     "cobravel": true
   }
 }
@@ -918,7 +926,7 @@ ele precisou de um envelope ao redor para virar fixture):
 
 **Exemplos executados** (o parser do gateway sobre os payloads do corpus):
 
-Envio aceito **sem** `cobranca` (**captura real**,
+Envio aceito **sem** `pricing` (**captura real**,
 2026-07-28: é um dos 4 `sent` em 53 que vieram sem `pricing`):
 
 ```json
@@ -930,12 +938,12 @@ Envio aceito **sem** `cobranca` (**captura real**,
   "timestamp": 1785073298,
   "wa_message_id": "wamid.TESTE041",
   "status": "sent",
-  "para_cru": "551199990000",
-  "para_canonico": "5511999990000"
+  "to_raw": "551199990000",
+  "to_canonical": "5511999990000"
 }
 ```
 
-Envio aceito **com** `cobranca` (**captura real**,
+Envio aceito **com** `pricing` (**captura real**,
 2026-07-28):
 
 ```json
@@ -947,10 +955,10 @@ Envio aceito **com** `cobranca` (**captura real**,
   "timestamp": 1785072102,
   "wa_message_id": "wamid.TESTE042",
   "status": "sent",
-  "para_cru": "551199990000",
-  "para_canonico": "5511999990000",
-  "cobranca": {
-    "categoria": "service",
+  "to_raw": "551199990000",
+  "to_canonical": "5511999990000",
+  "pricing": {
+    "category": "service",
     "cobravel": false
   }
 }
@@ -970,10 +978,10 @@ igual, no `timestamp` **igual**, e no `id` do evento **diferente** — é exatam
   "timestamp": 1785072102,
   "wa_message_id": "wamid.TESTE042",
   "status": "delivered",
-  "para_cru": "551199990000",
-  "para_canonico": "5511999990000",
-  "cobranca": {
-    "categoria": "service",
+  "to_raw": "551199990000",
+  "to_canonical": "5511999990000",
+  "pricing": {
+    "category": "service",
     "cobravel": false
   }
 }
@@ -992,8 +1000,8 @@ era derivado do exemplo genérico da doc):
   "timestamp": 1769000009,
   "wa_message_id": "wamid.TESTE010",
   "status": "failed",
-  "para_cru": "551199990000",
-  "para_canonico": "5511999990000",
+  "to_raw": "551199990000",
+  "to_canonical": "5511999990000",
   "error": {
     "code": 131026,
     "message": "Message undeliverable",
@@ -1002,33 +1010,33 @@ era derivado do exemplo genérico da doc):
 }
 ```
 
-### `template_status` (`tipo: "template_status"`) — a Meta aprovou, rejeitou ou pausou um template (2026-07-26)
+### `template_status` (`kind: "template_status"`) — a Meta aprovou, rejeitou ou pausou um template (2026-07-26)
 
 Este evento **não é sobre uma mensagem** e não tem destinatário: é a Meta avisando que o estado de um
-**template** da sua conta mudou. Ele chega no mesmo `POST` de sempre, dentro de `eventos`.
+**template** da sua conta mudou. Ele chega no mesmo `POST` de sempre, dentro de `events`.
 
-**Por que ele importa mais do que parece: a `categoria` vem no evento.** A reclassificação `UTILITY`
+**Por que ele importa mais do que parece: a `category` vem no evento.** A reclassificação `UTILITY`
 → `MARKETING` — que muda **preço e regras de envio** — aparece aqui **antes de qualquer mensagem ser
-enviada**. É sinal mais precoce que o `cobranca` do status (acima), que só chega depois de uma
+enviada**. É sinal mais precoce que o `pricing` do status (acima), que só chega depois de uma
 entrega. Os dois se complementam: este avisa que **mudou**, aquele confirma **o que foi cobrado**.
 
 | Campo | O que é |
 |---|---|
-| `template.nome` / `template.idioma` | o par que identifica o template **no envio** (`template` e `idioma` do `POST /v1/messages`) — é por ele que você liga este aviso ao que você manda |
-| `template.categoria` | `UTILITY`, `MARKETING`, `AUTHENTICATION` — o vocabulário é da Meta, repassado **sem tradução** |
-| `template.estado` | `APPROVED`, `REJECTED`, `PENDING`, `PAUSED`, `DISABLED`… — também da Meta, sem tradução |
-| `template.motivo` | o `reason` da Meta, **como veio** — inclusive a string `"NONE"`, ver abaixo |
+| `template.name` / `template.language` | o par que identifica o template **no envio** (`template` e `language` do `POST /v1/messages`) — é por ele que você liga este aviso ao que você manda |
+| `template.category` | `UTILITY`, `MARKETING`, `AUTHENTICATION` — o vocabulário é da Meta, repassado **sem tradução** |
+| `template.state` | `APPROVED`, `REJECTED`, `PENDING`, `PAUSED`, `DISABLED`… — também da Meta, sem tradução |
+| `template.reason` | o `reason` da Meta, **como veio** — inclusive a string `"NONE"`, ver abaixo |
 | `waba_id` | a **única** chave de roteamento deste evento (ver a seção seguinte) |
 | `timestamp` | o carimbo do lote (`entry.time` da Meta) — este webhook **não tem carimbo próprio** |
 
-> ⚠️ **`"NONE"` é o valor NORMAL de `motivo`, não um erro nem um "vazio".** A Meta manda a string
+> ⚠️ **`"NONE"` é o valor NORMAL de `reason`, não um erro nem um "vazio".** A Meta manda a string
 > literal `"NONE"` quando não há motivo — não ausente, não `null`. O gateway repassa como veio, e
 > **não traduz `"NONE"` para vazio**: "a Meta disse NONE" e "a Meta não mandou o campo" são fatos
-> diferentes, e o segundo pode aparecer num tipo de evento que ainda não vimos. Se `motivo` sumir do
+> diferentes, e o segundo pode aparecer num tipo de evento que ainda não vimos. Se `reason` sumir do
 > JSON, é porque a Meta realmente não mandou o campo.
 >
 > **O mesmo campo, com a mesma doutrina, também está no catálogo** — `GET /v1/templates` (seção
-> "Ler o catálogo de templates", mais abaixo) devolve `templates[].motivo` para quando você lê o
+> "Ler o catálogo de templates", mais abaixo) devolve `templates[].reason` para quando você lê o
 > catálogo por outro motivo, ou perdeu este webhook. A diferença é o momento: este avisa **sozinho**,
 > assim que a Meta decide; o do catálogo exige você **perguntar**.
 
@@ -1058,26 +1066,26 @@ entrega. Os dois se complementam: este avisa que **mudou**, aquele confirma **o 
   "waba_id": "WABA_TESTE",
   "timestamp": 1769000020,
   "template": {
-    "nome": "aguardando_peca_v2",
-    "idioma": "pt_BR",
-    "categoria": "UTILITY",
-    "estado": "APPROVED",
-    "motivo": "NONE"
+    "name": "aguardando_peca_v2",
+    "language": "pt_BR",
+    "category": "UTILITY",
+    "state": "APPROVED",
+    "reason": "NONE"
   }
 }
 ```
 
 > 🔴 **Este evento NÃO é o aviso de reclassificação de categoria, e por três dias ele foi tratado
-> como se fosse (2026-07-28).** Ele traz `template.categoria` porque a categoria é um
+> como se fosse (2026-07-28).** Ele traz `template.category` porque a categoria é um
 > **atributo** do estado novo — ou seja, você fica sabendo da reclassificação **se, e somente se**, a
 > Meta reaprovar o template no mesmo movimento. Quando ela reclassifica um template **já aprovado**,
 > sem mexer no estado, este evento **não chega**, e o modo de falha é o pior possível: silêncio, com
-> a descoberta chegando na fatura. O evento dedicado é o `template_categoria`, logo abaixo.
+> a descoberta chegando na fatura. O evento dedicado é o `template_category`, logo abaixo.
 
 **Os demais webhooks de conta:** ver a seção *Webhook de CONTA*, mais abaixo, para a lista completa
-do que é modelado e do que chega com `eventos: []` de propósito.
+do que é modelado e do que chega com `events: []` de propósito.
 
-### `template_categoria` (`kind: "template_category"`) — a Meta RECLASSIFICOU a categoria de um template (2026-07-28)
+### `template_category` (`kind: "template_category"`) — a Meta RECLASSIFICOU a categoria de um template (2026-07-28)
 
 **Este é o evento que avisa que a categoria mudou.** Ele vem do webhook `template_category_update`
 da Meta, e existe ao lado do `template_status` acima — os dois falam do mesmo template e **não** são
@@ -1090,10 +1098,10 @@ abaixo da tabela. O que ele dá e o `template_status` não dá:
 
 | Campo | O que é |
 |---|---|
-| `template_categoria.categoria_anterior` / `categoria_nova` | a **direção**. `UTILITY → MARKETING` encarece; `MARKETING → UTILITY` barateia. O `template_status` diz só "hoje é MARKETING", e sem estado guardado do seu lado os dois casos ficam indistinguíveis |
-| `template_categoria.status_do_recurso` | o `category_appeal_status` da Meta — `"ELIGIBLE"` significaria que **dá para contestar**. ⚠️ **Nunca observado em tráfego real** — ver abaixo |
-| `template_categoria.categoria_correta` | o `correct_category`: qual categoria a Meta considera correta para este template. ⚠️ **Nunca observado em tráfego real** — ver abaixo |
-| `template_categoria.nome` / `idioma` | o par que identifica o template **no envio** (`template` e `idioma` do `POST /v1/messages`) |
+| `template_category.previous_category` / `new_category` | a **direção**. `UTILITY → MARKETING` encarece; `MARKETING → UTILITY` barateia. O `template_status` diz só "hoje é MARKETING", e sem estado guardado do seu lado os dois casos ficam indistinguíveis |
+| `template_category.status_do_recurso` | o `category_appeal_status` da Meta — `"ELIGIBLE"` significaria que **dá para contestar**. ⚠️ **Nunca observado em tráfego real** — ver abaixo |
+| `template_category.correct_category` | o `correct_category`: qual categoria a Meta considera correta para este template. ⚠️ **Nunca observado em tráfego real** — ver abaixo |
+| `template_category.name` / `language` | o par que identifica o template **no envio** (`template` e `language` do `POST /v1/messages`) |
 | `waba_id` | a **única** chave de roteamento (webhook de conta — não há `phone_number_id`) |
 | `timestamp` | o carimbo do lote (`entry.time`) — este webhook **não tem carimbo próprio** |
 
@@ -1116,22 +1124,22 @@ abaixo da tabela. O que ele dá e o `template_status` não dá:
 > de um caminho que ninguém percorreu — um recurso formal aberto pelo painel, por exemplo, não é a
 > mesma coisa que "pedir revisão de categoria". **O que se afirma é o parágrafo acima, e só ele.**
 >
-> ➡️ **Consequência prática:** trate `status_do_recurso` e `categoria_correta` como **ausentes por
+> ➡️ **Consequência prática:** trate `status_do_recurso` e `correct_category` como **ausentes por
 > padrão**. Quem quiser saber se um rebaixamento é contestável descobre pelo painel da Meta, não por
 > este evento. **Se eles aparecerem na sua conta, mande a captura pelo canal** — ela vira fixture no
 > mesmo dia e este bloco muda.
 
-> ⚠️ **`categoria_nova` é o único campo deste bloco SEM `omitempty`: ele vem sempre.** Um
+> ⚠️ **`new_category` é o único campo deste bloco SEM `omitempty`: ele vem sempre.** Um
 > `template_category_update` sem `new_category` (ou sem `message_template_id`) **não vira evento** —
 > a chave de dedup colidiria com qualquer outro change vazio do mesmo lote. Você continua recebendo o
-> `cru`, e o `parse_error` do envelope acusa. Os demais campos podem faltar individualmente: um campo
+> `raw`, e o `parse_error` do envelope acusa. Os demais campos podem faltar individualmente: um campo
 > que a Meta mande num formato que ainda não sabemos ler custa **aquele campo**, nunca o evento.
 
 > ⚠️ **`status_do_recurso` é TEXTO, e não vira booleano.** `"ELIGIBLE"` chega como `"ELIGIBLE"`.
 > *"Dá para recorrer?"* parece uma pergunta de sim/não, e a Meta responde com um vocabulário que
 > ninguém aqui enumerou — traduzir para `true`/`false` obrigaria o gateway a decidir hoje o que fazer
-> com um valor que só aparece amanhã. Mesma regra de `template.estado`, `template.categoria` e
-> `cobranca.categoria`: **o formato da Meta morre no gateway; o vocabulário de valores dela, não.**
+> com um valor que só aparece amanhã. Mesma regra de `template.state`, `template.category` e
+> `pricing.category`: **o formato da Meta morre no gateway; o vocabulário de valores dela, não.**
 
 **Exemplo** (o parser do gateway sobre o sample que a Meta publica como exemplo deste webhook):
 
@@ -1141,12 +1149,12 @@ abaixo da tabela. O que ele dá e o `template_status` não dá:
   "id": "template_categoria:12345678:MARKETING:UTILITY:1769000070",
   "waba_id": "WABA_TESTE",
   "timestamp": 1769000070,
-  "template_categoria": {
-    "nome": "my_message_template",
-    "idioma": "en-US",
-    "categoria_anterior": "MARKETING",
-    "categoria_nova": "UTILITY",
-    "categoria_correta": "MARKETING",
+  "template_category": {
+    "name": "my_message_template",
+    "language": "en-US",
+    "previous_category": "MARKETING",
+    "new_category": "UTILITY",
+    "correct_category": "MARKETING",
     "status_do_recurso": "ELIGIBLE"
   }
 }
@@ -1185,7 +1193,7 @@ abaixo da tabela. O que ele dá e o `template_status` não dá:
 
 > 📊 **E NÃO é hipótese: 16 rebaixamentos em 25 dias, com o template ficando de 15 horas a três
 > semanas na categoria errada.** Medição do consumidor `consumer-b` na conta dele, relatada em
-> 2026-08-28: **35 eventos** `template_categoria` entre **30/07 e 23/08/2026**, contados um a um
+> 2026-08-28: **35 eventos** `template_category` entre **30/07 e 23/08/2026**, contados um a um
 > pelos objetos `value` dentro de `entry[].changes[]` (sem truncar a saída, e separando por
 > `message_template_id` — contar por nome misturaria versões e daria a conclusão errada). Deles,
 > **16 mudanças para `MARKETING`** e 19 para `UTILITY`; nenhuma outra categoria.
@@ -1226,7 +1234,7 @@ abaixo da tabela. O que ele dá e o `template_status` não dá:
 > pelo canal continua valendo:** três eventos de uma conta congelam a forma, não a variação. A
 > segunda conta é que derruba ou confirma o que está escrito aqui.
 
-### `qualidade_do_numero` (`kind: "number_quality"`) — a COTA diária e a qualidade do número (2026-07-28)
+### `number_quality` (`kind: "number_quality"`) — a COTA diária e a qualidade do número (2026-07-28)
 
 Vem do webhook `phone_number_quality_update`. **Este é o único canal pelo qual um rebaixamento de
 cota chega antes de doer.** Sem ele, a primeira notícia de que o teto caiu é o envio começando a
@@ -1235,10 +1243,10 @@ token e a rede) e que só aparece depois de as mensagens já terem sido recusada
 
 | Campo | O que é |
 |---|---|
-| `qualidade_do_numero.numero_exibido` | o `display_phone_number` — de qual número é o aviso. É **rótulo**, não `phone_number_id`: este webhook não tem `metadata` nenhum |
-| `qualidade_do_numero.estado` | o `event` da Meta: `ONBOARDING`, `FLAGGED`, `UNFLAGGED`… — sem tradução |
-| `qualidade_do_numero.limite_anterior` / `limite_atual` | `old_limit` → `current_limit`. São os dois que dão a **direção**: `TIER_1K → TIER_50` é rebaixamento, `TIER_NOT_SET → TIER_250` é a conta nascendo. O `limite_atual` sozinho não distingue os dois |
-| `qualidade_do_numero.limite_diario_maximo` | o `max_daily_conversations_per_business` |
+| `number_quality.display_number` | o `display_phone_number` — de qual número é o aviso. É **rótulo**, não `phone_number_id`: este webhook não tem `metadata` nenhum |
+| `number_quality.state` | o `event` da Meta: `ONBOARDING`, `FLAGGED`, `UNFLAGGED`… — sem tradução |
+| `number_quality.previous_limit` / `current_limit` | `old_limit` → `current_limit`. São os dois que dão a **direção**: `TIER_1K → TIER_50` é rebaixamento, `TIER_NOT_SET → TIER_250` é a conta nascendo. O `current_limit` sozinho não distingue os dois |
+| `number_quality.max_daily_limit` | o `max_daily_conversations_per_business` |
 | `waba_id` | a **única** chave de roteamento |
 | `timestamp` | `entry.time` — este webhook não tem carimbo próprio |
 
@@ -1250,17 +1258,17 @@ token e a rede) e que só aparece depois de as mensagens já terem sido recusada
 
 > ⚠️ **Este evento não tem id da Meta**, então a chave é montada com o que ele traz — número, estado
 > e a transição de limite, mais o `entry.time`. Um payload em que **nada disso** seja legível não
-> vira evento (o `cru` chega assim mesmo, e o `parse_error` acusa); qualquer peça que sobreviva já
+> vira evento (o `raw` chega assim mesmo, e o `parse_error` acusa); qualquer peça que sobreviva já
 > basta para o evento sair.
 
-> **Desde 2026-07-28 este evento também ALIMENTA o `GET /v1/estado`.** O `limite_atual`
+> **Desde 2026-07-28 este evento também ALIMENTA o `GET /v1/state`.** O `current_limit`
 > (`current_limit`) é gravado no bloco `number_at_meta.message_limit`, com `source: "webhook"`.
 > Se você já reage a este evento, não precisa mudar nada — o estado passa a ser só um segundo lugar,
-> **consultável a qualquer momento**, onde o mesmo número aparece. `limite_anterior` e
-> `limite_diario_maximo` **não** são gravados lá: o estado responde *"em que tier o número está
+> **consultável a qualquer momento**, onde o mesmo número aparece. `previous_limit` e
+> `max_daily_limit` **não** são gravados lá: o estado responde *"em que tier o número está
 > AGORA"*, e a direção da mudança já viaja inteira aqui.
 
-### `alerta_de_conta` (`kind: "account_alert"`) — a Meta avisando de um problema, com SEVERIDADE (2026-07-28)
+### `account_alert` (`kind: "account_alert"`) — a Meta avisando de um problema, com SEVERIDADE (2026-07-28)
 
 Vem do webhook `account_alerts`. **O campo que justifica o tipo existir é `severidade`:** o exemplo
 da Meta traz `INFORMATIONAL`, e a existência de um nível chamado "informativo" implica que há níveis
@@ -1269,11 +1277,11 @@ chegavam idênticos: linha crua que ninguém lê.
 
 | Campo | O que é |
 |---|---|
-| `alerta_de_conta.severidade` | o `alert_severity` — **o campo que decide** |
-| `alerta_de_conta.tipo` | o `alert_type` (ex.: `OBA_APPROVED`) — o que aconteceu |
-| `alerta_de_conta.estado` | o `alert_status` (ex.: `NONE`) |
-| `alerta_de_conta.tipo_da_entidade` / `id_da_entidade` | `entity_type` / `entity_id` — sobre o quê é o alerta. O `id` é **texto**, e a Meta o manda como número |
-| `alerta_de_conta.descricao` | o `alert_description`, texto livre em inglês |
+| `account_alert.severidade` | o `alert_severity` — **o campo que decide** |
+| `account_alert.tipo` | o `alert_type` (ex.: `OBA_APPROVED`) — o que aconteceu |
+| `account_alert.state` | o `alert_status` (ex.: `NONE`) |
+| `account_alert.entity_kind` / `id_da_entidade` | `entity_type` / `entity_id` — sobre o quê é o alerta. O `id` é **texto**, e a Meta o manda como número |
+| `account_alert.descricao` | o `alert_description`, texto livre em inglês |
 | `waba_id` · `timestamp` | como nos demais webhooks de conta |
 
 > 🔴 **O gateway NÃO ordena severidades, e a ausência é deliberada.** Não existe aqui nenhum
@@ -1284,16 +1292,16 @@ chegavam idênticos: linha crua que ninguém lê.
 > ⚠️ **Não escreva regra em cima de `descricao`.** É o único campo deste evento que não é vocabulário
 > fechado: é frase em inglês escrita pela Meta. Casar texto livre de terceiro é a forma mais rápida
 > de construir um alarme que morre no dia em que eles reescrevem a frase. Use `severidade`, `tipo` e
-> `estado`.
+> `state`.
 
-> ⚠️ **A chave deste evento inclui `severidade` e `estado`, e não só o `tipo`.** O **mesmo**
+> ⚠️ **A chave deste evento inclui `severidade` e `state`, e não só o `tipo`.** O **mesmo**
 > `alert_type` pode voltar com severidade diferente (um problema que **escala**) ou com
 > `alert_status` diferente (um problema que é **resolvido**). Com uma chave que só levasse o tipo, o
 > aviso de escalada seria deduplicado contra o alerta original — e ele é o único dos dois que exige
 > ação.
 
 > 🔴 **Os fixtures destes dois eventos são DERIVADOS DA DOCUMENTAÇÃO** (no corpus deste gateway,
-> arquivos com `_derivado_da_doc` no nome), pelo mesmo motivo do `template_categoria`: são samples do
+> arquivos com `_derivado_da_doc` no nome), pelo mesmo motivo do `template_category`: são samples do
 > botão *Test* do painel, e não há captura real — webhook de conta é raro por natureza. Testar o seu
 > mapeamento só contra eles prova que você concorda com a **documentação** da Meta, não com o que ela
 > **manda**.
@@ -1314,32 +1322,32 @@ completa, e ela existe para você não tratar "evento que não vira nada" como f
 | `template_category_update` | ✅ `kind: "template_category"` | ver a seção do evento |
 | `phone_number_quality_update` | ✅ `kind: "number_quality"` | ver a seção do evento |
 | `account_alerts` | ✅ `kind: "account_alert"` | ver a seção do evento |
-| `message_template_quality_update` | ❌ **de propósito** | `cru` + `"eventos": []` |
-| `message_template_components_update` | ❌ **de propósito** | `cru` + `"eventos": []` |
-| `account_update` | ❌ **de propósito** | `cru` + `"eventos": []` |
-| `account_review_update` | ❌ **de propósito** | `cru` + `"eventos": []` |
-| `security` | ❌ **de propósito** | `cru` + `"eventos": []` |
-| `phone_number_name_update` | ❌ **de propósito** | `cru` + `"eventos": []` |
-| `calls` | ❌ **ainda não** — ver abaixo | `cru` + `"eventos": []` |
-| qualquer `field` que a Meta invente amanhã | ❌ | `cru` + `"eventos": []` |
+| `message_template_quality_update` | ❌ **de propósito** | `raw` + `"events": []` |
+| `message_template_components_update` | ❌ **de propósito** | `raw` + `"events": []` |
+| `account_update` | ❌ **de propósito** | `raw` + `"events": []` |
+| `account_review_update` | ❌ **de propósito** | `raw` + `"events": []` |
+| `security` | ❌ **de propósito** | `raw` + `"events": []` |
+| `phone_number_name_update` | ❌ **de propósito** | `raw` + `"events": []` |
+| `calls` | ❌ **ainda não** — ver abaixo | `raw` + `"events": []` |
+| qualquer `field` que a Meta invente amanhã | ❌ | `raw` + `"events": []` |
 
 **"De propósito" quer dizer exatamente isto: ninguém pediu.** O envelope só **cresce** —
 acrescentar um campo depois é de graça, tirar depois é quebra de contrato —, então um `kind` novo
 sem consumidor interessado seria vocabulário morto que o gateway passa a dever para sempre.
 
-🔴 **Se algum destes te serve, você NÃO fica sem ele: o `cru` chega inteiro.** O webhook é entregue
-normalmente, com os bytes exatos da Meta em base64 — só sem enriquecimento. Parseie o `cru` do seu
+🔴 **Se algum destes te serve, você NÃO fica sem ele: o `raw` chega inteiro.** O webhook é entregue
+normalmente, com os bytes exatos da Meta em base64 — só sem enriquecimento. Parseie o `raw` do seu
 lado e você tem o mesmo dado; o `kind` modelado é conveniência, não acesso. **Deduplique esse lote
-pela regra da seção *E quando o lote não tem evento nenhum*** (hash do `cru`), que é a chave certa
+pela regra da seção *E quando o lote não tem evento nenhum*** (hash do `raw`), que é a chave certa
 justamente para este caso. Se um dia algum destes for modelado, ele nasce com `kind` próprio, e isso
-é **aditivo**: o seu parse do `cru` continua funcionando.
+é **aditivo**: o seu parse do `raw` continua funcionando.
 
 E não é lacuna por esquecimento nem preguiça de parse: o `value` de cada um tem chaves diferentes, e
 interpretá-los com o parser de outro produziria um evento **inventado**, que é pior que nenhum.
 
 > ⚠️ **`calls` é o único da lista que é diferente, e vale você saber por quê.** Ele **não** é webhook
 > de conta: tem `metadata.phone_number_id`, então passa pela guarda **5a** e numa ligação real o id
-> **bate** — ou seja, ele **é entregue a você**, com `"eventos": []`, e o `cru` dele carrega
+> **bate** — ou seja, ele **é entregue a você**, com `"events": []`, e o `raw` dele carrega
 > **dado pessoal** (`contacts[].profile.name`, `wa_id`) numa linha que ninguém lê. Isso entra na sua
 > conta de retenção **hoje**, mesmo sem evento. Modelá-lo depende de uma decisão de negócio que não
 > é técnica (o número aceita ligação, e existe alguém para atender?), e por isso ele está fora desta
@@ -1348,19 +1356,19 @@ interpretá-los com o parser de outro produziria um evento **inventado**, que é
 > 🔴 **A linha do `template_category_update` chegou tarde, e o atraso tem nome.** De 2026-07-26
 > a 2026-07-28 o gateway lia a categoria do **vizinho** (`message_template_status_update`)
 > e chamava isso de aviso de reclassificação. Se você construiu alarme de custo em cima de
-> `template.categoria`, ele continua valendo — mas ele **só dispara quando a Meta reaprova o template
-> junto**. O sinal completo é o `template_categoria`.
+> `template.category`, ele continua valendo — mas ele **só dispara quando a Meta reaprova o template
+> junto**. O sinal completo é o `template_category`.
 
 > 🔴 **Um webhook de conta não modelado chega até você SEM evento nenhum, e isso é NORMAL — nunca
 > falha de parse (2026-07-28).** O parser não falhou: ele simplesmente não achou `messages`
-> nem `statuses` para enriquecer. Grave o `cru` (obrigação 1) e responda `200`. **Não alarme, não
+> nem `statuses` para enriquecer. Grave o `raw` (obrigação 1) e responda `200`. **Não alarme, não
 > trate como erro, não devolva `5xx`** — um `5xx` aqui faria a Meta reenviar o mesmo payload por 36 h
 > para um lote que não tinha nada a processar.
 >
 > ✅ **O campo vem como `[]` — array vazio, nunca `null`.** O corpo é literalmente:
 >
 > ```json
-> {"instancia":"…","recebido_em":"…","cru":"…","eventos":[],"parse_error":""}
+> {"instance":"…","received_at":"…","raw":"…","events":[],"parse_error":""}
 > ```
 >
 > A normalização é feita num lugar só, na montagem do envelope, e é travada por um teste que afirma
@@ -1371,19 +1379,19 @@ interpretá-los com o parser de outro produziria um evento **inventado**, que é
 > por causa disso continua valendo.** O parser produzia uma lista **nula** quando não havia evento
 > nenhum, o envelope a repassava sem normalizar, e serializar uma lista nula em Go produz `null`.
 > Quem seguia este contrato ao pé da letra
-> escrevia `for ev in envelope["eventos"]` e levava `TypeError: 'NoneType' object is not iterable`
-> em Python; um `if eventos == []` **nunca** casava.
+> escrevia `for ev in envelope["events"]` e levava `TypeError: 'NoneType' object is not iterable`
+> em Python; um `if events == []` **nunca** casava.
 >
-> **Não desfaça essa defesa.** `for ev in (envelope.get("eventos") or [])` funciona igual com `[]`,
+> **Não desfaça essa defesa.** `for ev in (envelope.get("events") or [])` funciona igual com `[]`,
 > continua sendo a forma recomendada, e é o que protege você de qualquer futuro em que o campo volte
 > a faltar. A direção da mudança foi escolhida justamente por isso: quem tolerava `null` continua
 > funcionando, e quem quebrava passou a funcionar.
 >
-> ⚠️ **Se for escrever a defesa hoje, escreva `or []`, NUNCA `get("eventos", [])`** — e a diferença
+> ⚠️ **Se for escrever a defesa hoje, escreva `or []`, NUNCA `get("events", [])`** — e a diferença
 > não é estilo. Em Python o default do `get` só vale quando a **chave não existe**; ela sempre
 > existe aqui, então um `null` (do histórico, de um envelope antigo que você tenha guardado, ou de
 > qualquer outra fonte) passa reto pelo default e você recebe `None` de volta.
-> `envelope.get("eventos", [])` **parece** a versão limpa da linha acima e é a "simplificação" que
+> `envelope.get("events", [])` **parece** a versão limpa da linha acima e é a "simplificação" que
 > qualquer revisor sugeriria. *Levantado por um consumidor em 2026-07-28, depois de conferir o
 > próprio código: ele não quebrou, mas por acidente, e a armadilha que ele nomeou é esta — não é só
 > o `for` estourando, é o **conserto natural** que traz o bug de volta.* O equivalente em JS (`??`,
@@ -1393,16 +1401,16 @@ interpretá-los com o parser de outro produziria um evento **inventado**, que é
 > **`parse_error` não é `null` nem ausente: ele é a string vazia (`""`)** quando não houve erro, e
 > **isso nunca mudou nem vai mudar**. O campo não é omitido
 > e por isso vem **sempre**. Teste por conteúdo (`if parse_error:`), nunca por presença da chave.
-> *Por que ele não entrou no conserto de `eventos`: o vazio dele já é **falso** em
+> *Por que ele não entrou no conserto de `events`: o vazio dele já é **falso** em
 > toda linguagem, e ninguém itera sobre uma string de erro. `""` não quebra nada; `null` num campo
 > que se ITERA, sim. Essa é a regra.*
 >
 > **Como distinguir os dois casos, que é a única coisa que você precisa saber aqui:**
 >
-> | O que chegou | `eventos` | `parse_error` | O que significa |
+> | O que chegou | `events` | `parse_error` | O que significa |
 > |---|---|---|---|
-> | webhook de conta não modelado | `[]` | `""` | normal — grave o `cru` e siga |
-> | payload que o gateway não conseguiu interpretar | `[]` (ou parcial) | **texto do erro** | o `cru` está aí e é a fonte: grave-o, e trate o lote pela chave de dedup do `cru` |
+> | webhook de conta não modelado | `[]` | `""` | normal — grave o `raw` e siga |
+> | payload que o gateway não conseguiu interpretar | `[]` (ou parcial) | **texto do erro** | o `raw` está aí e é a fonte: grave-o, e trate o lote pela chave de dedup do `raw` |
 >
 > 🔴 **Por que este aviso existe, e por que ele provavelmente vale para VOCÊ também:** ao salvar uma
 > Callback URL nova, o painel da Meta inscreve o App num **conjunto padrão de campos de uma vez** —
@@ -1422,14 +1430,14 @@ instância.
 — e a chave que ele usa para decidir é o `waba_id` (`entry[].id` no payload da Meta, confirmado como
 *"WhatsApp Business Account ID"* nas páginas oficiais citadas acima e em
 developers.facebook.com/documentation/business-messaging/whatsapp/webhooks/reference/messages/status/,
-mesma data). Se o `waba_id` do webhook bater com o da sua instância, você recebe o `cru` normalmente,
+mesma data). Se o `waba_id` do webhook bater com o da sua instância, você recebe o `raw` normalmente,
 pelo mesmo `POST` na sua `callback_url`. **Se não bater, você não recebe nada** — o gateway descarta e
 responde `200` à Meta, sem tentar adivinhar para qual outra instância aquilo pertence.
 
 > ⚠️ **Até 2026-07-26, um webhook de conta que chegasse na URL principal era entregue ao consumidor
 > configurado nela mesmo que pertencesse a outra WABA — e não era só roteamento errado.** A guarda de
 > isolamento entre inquilinos só comparava `phone_number_id`, e webhook de conta não tem esse campo. Se
-> você tinha um `if` que confere `envelope["instancia"]` contra o slug configurado (comportamento
+> você tinha um `if` que confere `envelope["instance"]` contra o slug configurado (comportamento
 > recomendado, ver *A instância errada*, mais abaixo), ele **passava** — porque é o próprio gateway quem
 > põe o slug do caminho no envelope — e um webhook de conta de outro inquilino podia acabar gravado no
 > seu banco como se fosse seu. Isso está fechado agora: um webhook de conta só chega a você se a `waba_id`
@@ -1643,7 +1651,7 @@ diferente.
 >
 > **O sintoma, se você errar, não aponta para o erro.** No envio é `404 unknown instance` ou
 > `403 instance not authorized for this consumer` — esse ainda é legível. Na **entrega** é pior:
-> um consumidor que confira `envelope["instancia"]` contra o valor configurado (comportamento
+> um consumidor que confira `envelope["instance"]` contra o valor configurado (comportamento
 > recomendado, ver *A instância errada*) responde `503` a toda entrega, a Meta reenfileira por 36 h,
 > e o `503` teimoso **parece problema de assinatura**. Três exemplos deste próprio documento já
 > traziam, em `instancia`, o nome de um **consumidor** em vez do slug — corrigidos em 2026-07-26,
@@ -1668,12 +1676,12 @@ sem enviar de novo — mas só dentro da janela de retenção do registro de ide
 > **As três consequências práticas para você:**
 >
 > 1. **`wamid` não vira fixture.** Se você grava um caso de teste a partir de tráfego real, mascarar
->    `recipient_id` e `de_cru` **não basta** — o telefone continua inteiro dentro do `wamid` do mesmo
+>    `recipient_id` e `from_raw` **não basta** — o telefone continua inteiro dentro do `wamid` do mesmo
 >    arquivo, e o resultado *parece* mascarado. Para fixture, gere um `wamid` sintético.
 > 2. **Sua varredura por telefone precisa DECODIFICAR.** Um `grep` pelo número não encontra o que está
 >    em base64. A nossa decodifica todo `wamid.<payload>` da árvore antes de comparar, justamente por
 >    isso.
-> 3. **O mesmo vale para o `cru` do envelope de entrada** (a seção de recebimento): ele é o corpo
+> 3. **O mesmo vale para o `raw` do envelope de entrada** (a seção de recebimento): ele é o corpo
 >    exato que a Meta mandou, então tem telefone em texto **e** dentro dos `wamid` que vierem nele.
 >
 > ⚠️ **Isto não é teoria.** Em 2026-08-30 um consumidor mascarou o telefone no corpo de um pedido e
@@ -1982,7 +1990,7 @@ depois de `tipo` muda com ele.
 > tem quick reply **estático** (sem parâmetro, logo sem componente emitido).
 >
 > **A prova é sua, e ela cabe em cinco minutos:** mande um template com `resposta_rapida` para um
-> número seu, **clique no botão no aparelho** e olhe o evento de entrada. Se `botao_payload` vier com
+> número seu, **clique no botão no aparelho** e olhe o evento de entrada. Se `button_payload` vier com
 > o seu payload, está provado para o seu caso; se vier o **texto** do botão, o caminho não faz o que
 > você precisa e você descobriu isso antes de um cliente descobrir. Faça esse teste **antes** de ligar
 > qualquer fluxo que case por payload — este documento não pode confirmar por você o que ninguém
@@ -2225,15 +2233,18 @@ WhatsApp, lendo a sua mensagem. Quem só preenche `phone` acha que mandou um con
 convite.
 
 > ℹ️ **O `wa_id` é o número no formato canônico da Meta, sem `+`, sem espaço e sem pontuação** —
-> `5532999990000`. Ele é o mesmo valor que chega para você no `de` de uma mensagem recebida. O `phone`
+> `5532999990000`. Ele é o mesmo valor que chega para você no `from_raw`/`from_canonical` de uma mensagem recebida. O `phone`
 > ao lado pode ser escrito como você quiser (é o que o cliente vê no cartão); o `wa_id` é o que a
 > Meta usa para achar a conta.
 
 ### Reação e localização
 
-O vocabulário destes dois campos é **o mesmo do lado de entrada** (`reacao {emoji, alvo}`,
-`localizacao {latitude, longitude, nome, endereco}` — ver *O que você recebe*, acima): enviar e
-receber com nomes diferentes para a mesma coisa seria o começo de dois vocabulários.
+O vocabulário destes dois campos é **o mesmo do lado de entrada** (o webhook manda
+`reaction {emoji, target}` e `location {latitude, longitude, name, address}` — ver *O que você
+recebe*, acima): enviar e receber com nomes diferentes para a mesma coisa seria o começo de dois
+vocabulários. Os exemplos abaixo escrevem o pedido com a grafia em português (`reacao`/`alvo`,
+`localizacao`/`nome`/`endereco`); a grafia em inglês de cada um também é aceita na entrada
+(`internal/outbound/input_aliases.go:145-146`, `:272`, `:280-281`).
 
 **`tipo: "reacao"`** — aplica um emoji a uma mensagem que você recebeu antes.
 
@@ -2258,7 +2269,7 @@ dois casos significam coisas diferentes:
 ```
 
 > ⚠️ **Por que `emoji` vazio remove mas `emoji` ausente não — a assimetria com o RECEBIMENTO é
-> deliberada, não um bug.** No RECEBIMENTO (ver *`reacao`, `voz`, ...* acima) é a própria Meta que
+> deliberada, não um bug.** No RECEBIMENTO (ver *`reaction`, `voice`, ...* acima) é a própria Meta que
 > monta o evento, e ela *omite* a chave `emoji` para dizer "o usuário removeu". No ENVIO quem monta
 > o pedido é um **programa seu**, e "esqueci de mandar o campo" é o erro de programação mais comum
 > que existe — chave ausente é indistinguível de descuido. String vazia é diferente: é uma escolha
@@ -2302,7 +2313,7 @@ A forma inteira é só isto — `texto` é o único campo, e vira `body.text`. *
 cabeçalho nem rodapé**: `cabecalho_texto` e `rodape` são `400` aqui, mesma regra de campo proibido
 dos outros tipos que não os usam — a Cloud API não documenta nenhum dos dois para este objeto.
 Quando o cliente responde tocando no botão, a localização compartilhada chega para você pela
-**mesma rota de sempre**: o evento `localizacao` no webhook (ver *O que você recebe*, acima) — é o
+**mesma rota de sempre**: o evento `location` no webhook (ver *O que você recebe*, acima) — é o
 que fecha o ciclo e o que faz valer a pena pedir por este tipo em vez de por texto livre.
 
 **`tipo: "flow"`** — abre um WhatsApp Flow (um formulário nativo dentro do WhatsApp) para o
@@ -2373,8 +2384,8 @@ corrige este número se ele estiver errado.
 > Meta aceita; aceitar agora e estar errado seria **quebra de contrato** depois.
 
 > ℹ️ **A resposta do Flow chega pelo webhook como `interactive` do subtipo `nfm_reply`, e este
-> gateway AINDA NÃO a enriquece.** Ela chega com `sub_tipo` cru (`"interactive"`), sem
-> `botao_payload`/`botao_texto` preenchidos — o mesmo tratamento que qualquer subtipo de
+> gateway AINDA NÃO a enriquece.** Ela chega com `sub_kind` cru (`"interactive"`), sem
+> `button_payload`/`button_text` preenchidos — o mesmo tratamento que qualquer subtipo de
 > `interactive` que o parser ainda não modela recebe hoje (ver *O que você recebe*, acima). Não há
 > enriquecimento nenhum: se você precisa do conteúdo da resposta antes de o gateway passar a
 > modelá-la, leia o corpo cru do webhook.
@@ -2601,8 +2612,8 @@ duplicar; leia a próxima seção.
 
 
 🔎 **E o `GET /v1/estado` publica o bloco `lideranca` (v0.49.0)**, com quatro campos: `armada` (há
-guarda configurada), `estado` (`observado` quando armada, `nao_se_aplica` quando não), `titular`
-(`true`/`false`, e **`null` quando desarmada** — um nó único não venceu eleição nenhuma) e `motivo`
+guarda configurada), `state` (`observado` quando armada, `nao_se_aplica` quando não), `titular`
+(`true`/`false`, e **`null` quando desarmada** — um nó único não venceu eleição nenhuma) e `reason`
 (só quando `titular: false`). ⚠️ **Este bloco vale menos para você do que
 a primeira versão desta seção afirmava, e a correção é nossa:** o tráfego chega por um VIP, e quem
 atende pelo VIP é **por construção** o nó que detém a liderança. Então, na prática, você quase sempre
@@ -2691,7 +2702,7 @@ contrato, então aqui está a saída, passo a passo, **sem depender de ninguém*
 manda um evento `status` com `status: "sent"` para a sua `callback_url`, tipicamente em segundos.
 Procure, na sua base de eventos recebidos, um `status` com:
 
-- `para_canonico` igual ao destino daquele envio, **e**
+- `to_canonical` igual ao destino daquele envio, **e**
 - `timestamp` (ou o seu instante de recebimento) dentro da janela do envio que ficou `unknown`.
 
 **Achou → a mensagem SAIU.** Grave o `wa_message_id` daquele evento como o id do seu envio (é o mesmo
@@ -2857,7 +2868,7 @@ dano que não existe.
 
 Duas chaves novas no vocabulário: **`leituras_marcadas`** e **`falhas_de_leitura`** (falha ao
 *marcar* leitura, nunca "falha ao ler alguma coisa"). Elas chegam sozinhas na sua leitura de
-`contadores`, pela promessa da seção *Uma promessa nossa sobre o vocabulário*.
+`counters`, pela promessa da seção *Uma promessa nossa sobre o vocabulário*.
 
 🔴 **Elas NÃO entram em `enviadas`, e isso é garantia, não detalhe de implementação.** Marcar como
 lida não produz conversa e a Meta não cobra por ela. Se essa contagem caísse em `enviadas`, a sua
@@ -3004,7 +3015,7 @@ Apto a enviar → `200`:
 
 ```jsonc
 { "ok": true,
-  "numero_exibido": "+55 11 99999-0000",   // vem do cadastro do gateway, não da resposta da Meta
+  "display_number": "+55 11 99999-0000",   // vem do cadastro do gateway, não da resposta da Meta
   "verificado_em": "2026-07-25T12:00:00Z" }
 ```
 
@@ -3278,7 +3289,7 @@ o valor que a suíte injeta; em produção é o **mesmo** valor do `GET /v1/heal
 encurtadas com `…` **só na colagem**, para caber — a resposta traz sempre a janela inteira, e todos os
 dias com todas as chaves.
 
-*(Recapturado em 2026-07-29, primeiro quando os campos `stamps_since` e `last_7_days_series[].dia_utc`
+*(Recapturado em 2026-07-29, primeiro quando os campos `stamps_since` e `last_7_days_series[].day_utc`
 entraram, de novo quando entraram as chaves `leituras_marcadas` e `falhas_de_leitura`, e de novo
 quando `daily_series` entrou — os VALORES saem do handler, nunca digitados.
 **Uma exceção, escrita para ninguém confundir com o resto:** as sete chaves `cobranca_*`
@@ -3329,18 +3340,18 @@ prova contra o handler de verdade.)*
     "recusadas_pelo_consumidor": { "hoje": 0, "last_7_days": 0,  "last_at": null }
   },
   "last_7_days_series": [
-    { "dia": "2026-07-23", "dia_utc": "2026-07-23", "counters": { "alarme_perda_definitiva": 0, /* as 7 chaves cobranca_* vêm aqui, todas 0 nesta captura — omitidas só nesta colagem */ "conta_descartada": 0, "entregues": 0, "enviadas": 0, "falhas_de_envio": 0, "falhas_de_leitura": 0, "leituras_marcadas": 0, "numero_descartado": 0, "recebidas": 0, "recusadas_pelo_consumidor": 0 } },
+    { "day": "2026-07-23", "day_utc": "2026-07-23", "counters": { "alarme_perda_definitiva": 0, /* as 7 chaves cobranca_* vêm aqui, todas 0 nesta captura — omitidas só nesta colagem */ "conta_descartada": 0, "entregues": 0, "enviadas": 0, "falhas_de_envio": 0, "falhas_de_leitura": 0, "leituras_marcadas": 0, "numero_descartado": 0, "recebidas": 0, "recusadas_pelo_consumidor": 0 } },
     // … 2026-07-24 a 2026-07-27, todos zerados nesta captura …
-    { "dia": "2026-07-28", "dia_utc": "2026-07-28", "counters": { "alarme_perda_definitiva": 0, /* as 7 chaves cobranca_* vêm aqui, todas 0 nesta captura — omitidas só nesta colagem */ "conta_descartada": 0, "entregues": 9, "enviadas": 0, "falhas_de_envio": 0, "falhas_de_leitura": 0, "leituras_marcadas": 0, "numero_descartado": 0, "recebidas": 9, "recusadas_pelo_consumidor": 0 } },
-    { "dia": "2026-07-29", "dia_utc": "2026-07-29", "counters": { "alarme_perda_definitiva": 0, /* as 7 chaves cobranca_* vêm aqui, todas 0 nesta captura — omitidas só nesta colagem */ "conta_descartada": 0, "entregues": 4, "enviadas": 2, "falhas_de_envio": 1, "falhas_de_leitura": 0, "leituras_marcadas": 3, "numero_descartado": 0, "recebidas": 4, "recusadas_pelo_consumidor": 0 } }
+    { "day": "2026-07-28", "day_utc": "2026-07-28", "counters": { "alarme_perda_definitiva": 0, /* as 7 chaves cobranca_* vêm aqui, todas 0 nesta captura — omitidas só nesta colagem */ "conta_descartada": 0, "entregues": 9, "enviadas": 0, "falhas_de_envio": 0, "falhas_de_leitura": 0, "leituras_marcadas": 0, "numero_descartado": 0, "recebidas": 9, "recusadas_pelo_consumidor": 0 } },
+    { "day": "2026-07-29", "day_utc": "2026-07-29", "counters": { "alarme_perda_definitiva": 0, /* as 7 chaves cobranca_* vêm aqui, todas 0 nesta captura — omitidas só nesta colagem */ "conta_descartada": 0, "entregues": 4, "enviadas": 2, "falhas_de_envio": 1, "falhas_de_leitura": 0, "leituras_marcadas": 3, "numero_descartado": 0, "recebidas": 4, "recusadas_pelo_consumidor": 0 } }
   ],
   // Sem `?serie_dias=`, esta é a MESMA janela de 7 dias acima, dia a dia igual.
   // Com `?serie_dias=30`, ela tem 30 entradas e `last_7_days_series` continua com 7.
   "daily_series": [
-    { "dia": "2026-07-23", "dia_utc": "2026-07-23", "counters": { "alarme_perda_definitiva": 0, /* as 7 chaves cobranca_* vêm aqui, todas 0 nesta captura — omitidas só nesta colagem */ "conta_descartada": 0, "entregues": 0, "enviadas": 0, "falhas_de_envio": 0, "falhas_de_leitura": 0, "leituras_marcadas": 0, "numero_descartado": 0, "recebidas": 0, "recusadas_pelo_consumidor": 0 } },
+    { "day": "2026-07-23", "day_utc": "2026-07-23", "counters": { "alarme_perda_definitiva": 0, /* as 7 chaves cobranca_* vêm aqui, todas 0 nesta captura — omitidas só nesta colagem */ "conta_descartada": 0, "entregues": 0, "enviadas": 0, "falhas_de_envio": 0, "falhas_de_leitura": 0, "leituras_marcadas": 0, "numero_descartado": 0, "recebidas": 0, "recusadas_pelo_consumidor": 0 } },
     // … 2026-07-24 a 2026-07-27, todos zerados nesta captura …
-    { "dia": "2026-07-28", "dia_utc": "2026-07-28", "counters": { "alarme_perda_definitiva": 0, /* as 7 chaves cobranca_* vêm aqui, todas 0 nesta captura — omitidas só nesta colagem */ "conta_descartada": 0, "entregues": 9, "enviadas": 0, "falhas_de_envio": 0, "falhas_de_leitura": 0, "leituras_marcadas": 0, "numero_descartado": 0, "recebidas": 9, "recusadas_pelo_consumidor": 0 } },
-    { "dia": "2026-07-29", "dia_utc": "2026-07-29", "counters": { "alarme_perda_definitiva": 0, /* as 7 chaves cobranca_* vêm aqui, todas 0 nesta captura — omitidas só nesta colagem */ "conta_descartada": 0, "entregues": 4, "enviadas": 2, "falhas_de_envio": 1, "falhas_de_leitura": 0, "leituras_marcadas": 3, "numero_descartado": 0, "recebidas": 4, "recusadas_pelo_consumidor": 0 } }
+    { "day": "2026-07-28", "day_utc": "2026-07-28", "counters": { "alarme_perda_definitiva": 0, /* as 7 chaves cobranca_* vêm aqui, todas 0 nesta captura — omitidas só nesta colagem */ "conta_descartada": 0, "entregues": 9, "enviadas": 0, "falhas_de_envio": 0, "falhas_de_leitura": 0, "leituras_marcadas": 0, "numero_descartado": 0, "recebidas": 9, "recusadas_pelo_consumidor": 0 } },
+    { "day": "2026-07-29", "day_utc": "2026-07-29", "counters": { "alarme_perda_definitiva": 0, /* as 7 chaves cobranca_* vêm aqui, todas 0 nesta captura — omitidas só nesta colagem */ "conta_descartada": 0, "entregues": 4, "enviadas": 2, "falhas_de_envio": 1, "falhas_de_leitura": 0, "leituras_marcadas": 3, "numero_descartado": 0, "recebidas": 4, "recusadas_pelo_consumidor": 0 } }
   ],
   "meta_token": {
     "verdict": "ok",
@@ -3499,8 +3510,8 @@ vocabulário. Dia sem tráfego vem presente e zerado — nunca ausente: uma sér
 faria o seu gráfico mudar de forma conforme o tráfego, e um dia zerado sumiria em vez de aparecer
 como zero.
 
-**Cada entrada traz DUAS chaves com o MESMO valor: `dia_utc` (o nome certo) e `dia` (obsoleto).**
-Use `dia_utc`. A data é em **UTC**, o mesmo fuso em que os contadores são gravados. É por isso que a
+**Cada entrada traz DUAS chaves com o MESMO valor: `day_utc` (o nome certo) e `day` (obsoleto).**
+Use `day_utc`. A data é em **UTC**, o mesmo fuso em que os contadores são gravados. É por isso que a
 soma dos sete dias bate exatamente com `last_7_days`; se você converter para o fuso local antes de
 somar, ela deixa de bater — e a culpa não é do gateway.
 
@@ -3509,7 +3520,7 @@ somar, ela deixa de bater — e a culpa não é do gateway.
 > esperar.*
 >
 > **Por que não, e o motivo é técnico, não de prioridade:** o dia é decidido na **ESCRITA**, não na
-> leitura. O contador agrega em `INSERT INTO contador (slug, dia, …)` com a data já em UTC
+> leitura. O contador agrega em `INSERT INTO contador (slug, day, …)` com a data já em UTC
 > (`internal/config/counter.go`, a função `dayOf`). **Depois de agregado, a informação de em que dia
 > LOCAL cada evento caiu não existe mais** — só sobrevive o instante do último evento do balde.
 > Nenhum parâmetro de leitura recupera isso: um `?tz=` devolveria número **errado** com cara de
@@ -3517,7 +3528,7 @@ somar, ela deixa de bater — e a culpa não é do gateway.
 >
 > **A consequência prática que você precisa saber, medida por um consumidor em 2026-07-28:** o dia
 > daqui vira às **21h de Brasília**, no meio da noite de operação. Um painel que mostre "recebidas
-> hoje" lendo `dia_utc` mostra `0` às 21h01 mesmo com movimento. **Se o seu "hoje" precisa ser o
+> hoje" lendo `day_utc` mostra `0` às 21h01 mesmo com movimento. **Se o seu "hoje" precisa ser o
 > local, a conta é sua e a fonte é sua** — o gateway responde por UTC, com precisão, e não finge
 > outra coisa.
 >
@@ -3534,12 +3545,12 @@ somar, ela deixa de bater — e a culpa não é do gateway.
 > mais fácil de errar"*, a guarda ficou no aviso, e o `default=` da coluna gravou errado assim mesmo
 > — custou orçamento não entregue e dois reenvios queimados.
 
-**`dia` é OBSOLETO e continua funcionando, byte a byte.** Renomear seria quebra de contrato, e a
+**`day` é OBSOLETO e continua funcionando, byte a byte.** Renomear seria quebra de contrato, e a
 janela para crescer sem quebrar era aquela — a rota tinha **um dia de vida** quando isto entrou.
 
 **Marcado obsoleto em 2026-07-28, portanto removível a partir de 2027-01-28** (pela *Política de
 depreciação*, no fim deste documento). Até lá ele sai na resposta, com o mesmo valor de
-`dia_utc`. **Migre para `dia_utc` sem pressa e sem esperar aviso nenhum**: a data está escrita, e ela é o aviso.
+`day_utc`. **Migre para `day_utc` sem pressa e sem esperar aviso nenhum**: a data está escrita, e ela é o aviso.
 
 > ⚠️ **O sintoma que isso produz na tela de quem lê em UTC−3**, levantado por um consumidor em
 > 2026-07-28 ao montar o painel dele: **tudo o que sai depois das 21h locais cai no dia SEGUINTE da
@@ -3558,7 +3569,7 @@ fala direto com a Meta* fechou aquele caminho: esta janela é a substituta, e é
 criou**, não conveniência.
 
 - `daily_series` tem **exatamente** `serie_dias` entradas, do dia mais velho para o mais novo, com a
-  mesma forma de `last_7_days_series` (`dia_utc`, `dia` obsoleto, e **todas** as chaves em **todo** dia,
+  mesma forma de `last_7_days_series` (`day_utc`, `day` obsoleto, e **todas** as chaves em **todo** dia,
   inclusive nos dias sem tráfego);
 - **sem o parâmetro, são 7 dias** — o mesmo conteúdo de `last_7_days_series`, dia a dia. O default não
   cresceu para não inflar em treze vezes a resposta de quem nunca pediu nada;
@@ -3607,10 +3618,10 @@ continua com 7 — e as duas saem da **mesma leitura do banco**, então o sufixo
 **Migre para `daily_series`** (com ou sem o parâmetro: sem ele são os mesmos 7 dias). O nome
 `last_7_days_series` carrega um número, e por isso ele nunca poderia crescer — um campo com esse nome e 30
 entradas mentiria sobre si mesmo dentro do `console.log` de quem estiver depurando às duas da manhã,
-que é exatamente o argumento que produziu o `dia_utc`.
+que é exatamente o argumento que produziu o `day_utc`.
 
 **Marcada obsoleta em 2026-07-29, portanto removível a partir de 2027-01-29** (pela *Política de
-depreciação*, no fim deste documento) — a mesma forma do `dia`/`dia_utc`. Até lá ela sai na
+depreciação*, no fim deste documento) — a mesma forma do `day`/`day_utc`. Até lá ela sai na
 resposta, com a mesma forma de sempre.
 
 ### Uma promessa nossa sobre o vocabulário, e o que ela exige de você
@@ -3633,7 +3644,7 @@ escrita aqui como compromisso, e por isso a remoção tem prazo mínimo em vez d
 
 **Pedido de um consumidor em 2026-07-28.** O painel de Consumo dele multiplica volume por tarifa, com
 o volume **estimado do lado dele**. A Meta manda, em cada webhook de status, sob qual categoria ela
-cobrou aquela entrega — o mesmo `cobranca` que já viaja no envelope. Estas sete chaves são esse dado
+cobrou aquela entrega — o mesmo `pricing` que já viaja no envelope. Estas sete chaves são esse dado
 contado, e é a regra da casa aplicada a dinheiro: **número que o gateway promete tem de vir do
 gateway.**
 
@@ -3683,7 +3694,7 @@ partir do valor recebido deixaria a **Meta** escolher as chaves da sua tela e da
 classificado** — some-o ao total ao projetar custo, e não o descarte por não saber a categoria. Se ele
 subir de forma consistente, o dado que falta é o **valor literal** que a Meta mandou; o gateway o
 grava no log dele, e do seu lado a leitura possível é a do próprio evento `status`, cujo campo
-`cobranca.categoria` chega **cru** no envelope. Ou seja: **a categoria nova está no seu `cru` antes de
+`pricing.category` chega **cru** no envelope. Ou seja: **a categoria nova está no seu `raw` antes de
 estar em qualquer contador nosso** — se você precisa dela hoje, ela está lá.
 
 #### `cobranca_cobravel` conta só o `true`
@@ -3864,7 +3875,7 @@ Traduzir exigiria uma tabela nossa, e ela erraria no dia em que a Meta inventass
 errando do jeito pior: devolvendo um número plausível para algo que ninguém conferiu. **Se você
 precisa de um número, faça a conversão do seu lado, e trate valor desconhecido como desconhecido.**
 
-É a mesma regra do evento `qualidade_do_numero`, e por construção: os dois carregam o mesmo literal.
+É a mesma regra do evento `number_quality`, e por construção: os dois carregam o mesmo literal.
 
 #### As DUAS fontes, e quem vence quando elas discordam
 
@@ -4180,22 +4191,22 @@ catálogo descreve o negócio do inquilino (nomes de campanha, texto de cobranç
 vale aqui pelo mesmo motivo do envio.
 
 ```jsonc
-{ "instancia": "lojinha",
+{ "instance": "lojinha",
   "total": 84,
   "templates": [
     { "id": "1234567890",
-      "nome": "lembrete_consulta",
+      "name": "lembrete_consulta",
       "status": "APPROVED",
-      "categoria": "UTILITY",
-      "idioma": "pt_BR",
-      "componentes": [ /* exatamente como a Meta os devolve, sem reescrita */ ] },
+      "category": "UTILITY",
+      "language": "pt_BR",
+      "components": [ /* exatamente como a Meta os devolve, sem reescrita */ ] },
     { "id": "1234567891",
-      "nome": "acessar_galeria",
+      "name": "acessar_galeria",
       "status": "REJECTED",
-      "categoria": "UTILITY",
-      "idioma": "pt_BR",
-      "motivo": "INCORRECT_CATEGORY",
-      "componentes": [ /* … */ ] }
+      "category": "UTILITY",
+      "language": "pt_BR",
+      "reason": "INCORRECT_CATEGORY",
+      "components": [ /* … */ ] }
   ] }
 ```
 
@@ -4203,18 +4214,18 @@ vale aqui pelo mesmo motivo do envio.
 > 2026-07-28 e **pode faltar**: o gateway não exige o campo, porque não foi verificado na fonte da Meta
 > que toda página do catálogo o carrega, e derrubar a leitura inteira do catálogo por causa dele
 > seria trocar um catálogo útil por nenhum. Quando falta, a chave simplesmente não vem. **Continue
-> identificando template pelo par `nome` + `idioma`** — é ele que vai no envio, e é ele que a Meta
+> identificando template pelo par `name` + `language`** — é ele que vai no envio (lá `nome` + `idioma`, ou a grafia em inglês), e é ele que a Meta
 > trata como único dentro da conta.
 
-> **`motivo` é o `rejected_reason` da Meta, cru — entrou em 2026-08-04 (T-116) para responder "por
+> **`reason` é o `rejected_reason` da Meta, cru — entrou em 2026-08-04 (T-116) para responder "por
 > que foi recusado?" sem exigir leitura manual do WhatsApp Manager.** Custo real que motivou a tarefa:
 > o `consumer-b` recusou `acessar_galeria`, formulou hipótese às cegas, criou `acessar_galeria_v2`,
 > recusado de novo — duas tentativas, zero informação nova, e cada tentativa **queima um nome de
 > template para sempre** (a Meta não libera o nome de um template rejeitado para reuso imediato).
 >
-> - **`"NONE"` é valor normal, não ausência** — mesma doutrina do `template.motivo` do webhook
+> - **`"NONE"` é valor normal, não ausência** — mesma doutrina do `template.reason` do webhook
 >   `template_status` (seção acima, ~linha 974): a Meta manda a string literal `"NONE"` quando não há
->   motivo, e o gateway não traduz para vazio. Se a chave `motivo` sumir do JSON, é porque a Meta
+>   motivo, e o gateway não traduz para vazio. Se a chave `reason` sumir do JSON, é porque a Meta
 >   realmente não mandou `rejected_reason` naquele item — "disse NONE" e "não mandou o campo" são
 >   fatos diferentes.
 > - **O texto em prosa do WhatsApp Manager NÃO vem, e não vai vir enquanto a Meta não expuser campo
@@ -4222,7 +4233,7 @@ vale aqui pelo mesmo motivo do envio.
 >   `PROMOTIONAL`, `SCAM`, `TAG_CONTENT_MISMATCH`, `INCORRECT_CATEGORY` observado nos webhooks) — o
 >   parágrafo explicativo que aparece no painel não tem campo documentado na Graph API, e o gateway
 >   não sintetiza texto a partir do enum: seria doc falsa em forma de campo.
-> - **O mesmo motivo já chega pelo webhook `template_status`** (`template.motivo`, seção acima,
+> - **O mesmo motivo já chega pelo webhook `template_status`** (`template.reason`, seção acima,
 >   ~linha 974) **no instante em que a Meta decide** — sem você precisar perguntar. Este campo aqui é
 >   para quando você lê o catálogo por outro motivo (ou perdeu o webhook); o webhook é o caminho que
 >   avisa sozinho.
@@ -4329,8 +4340,8 @@ Sucesso → **`201`**:
 ```jsonc
 { "id": "1234567890",
   "status": "PENDING",
-  "categoria": "UTILITY",
-  "categoria_pedida": "UTILITY",
+  "category": "UTILITY",
+  "requested_category": "UTILITY",
   "aviso": "a newly created template can NOT be used right away: it is born PENDING and only counts once Meta approves it. …" }
 ```
 
@@ -4339,8 +4350,8 @@ o aprova — por isso o `aviso` vem em toda criação bem-sucedida. Quem tenta e
 criar leva erro da Meta e não consegue explicá-lo, porque a criação respondeu sucesso. Confira o
 status no `GET /v1/templates` antes de enviar.
 
-`categoria_pedida` é o **eco do que você pediu**, sempre presente (é campo obrigatório do pedido).
-`categoria` é o que **a Meta gravou** — e os dois podem ser diferentes.
+`requested_category` é o **eco do que você pediu**, sempre presente (é campo obrigatório do pedido).
+`category` é o que **a Meta gravou** — e os dois podem ser diferentes.
 
 > 🔴 **A Meta pode GRAVAR uma categoria diferente da que você PEDIU, sem erro e sem aviso próprio
 > dela.** Relato de campo do `consumer-b` (2026-07-30): submeteram `instagram_continuar` como
@@ -4348,7 +4359,7 @@ status no `GET /v1/templates` antes de enviar.
 > **cobrança** (`MARKETING` e `UTILITY` têm preços diferentes) e se a mensagem precisa de opt-in — uma
 > troca silenciosa é dinheiro e conformidade, não estética.
 >
-> Quando `categoria` (o que a Meta gravou) é **diferente** de `categoria_pedida` (o que você mandou,
+> Quando `category` (o que a Meta gravou) é **diferente** de `requested_category` (o que você mandou,
 > comparação que ignora caixa e espaço), o `aviso` ganha um segundo trecho contando as duas categorias
 > com todas as letras: que a troca **NÃO é erro** — a Meta pode recategorizar um template na própria
 > criação — e que o gateway **NÃO desfaz** a troca. Isso vale nos dois caminhos de sucesso: a criação
@@ -4365,7 +4376,7 @@ respostas possíveis, e cada uma quer uma reação diferente da sua:
 
 | O que o gateway achou na releitura | O que você recebe | O que fazer |
 |---|---|---|
-| **achou o template** | **`201`**, igual ao sucesso normal, com `id`, `status` e `categoria` vindos do catálogo. O `aviso` diz que a criação terminou sem resposta e que a releitura **confirmou** que o template existe | nada. **Ele foi criado.** Só a resposta se perdeu |
+| **achou o template** | **`201`**, igual ao sucesso normal, com `id`, `status` e `category` vindos do catálogo. O `aviso` diz que a criação terminou sem resposta e que a releitura **confirmou** que o template existe | nada. **Ele foi criado.** Só a resposta se perdeu |
 | **não achou** | **`502`**, class `unknown`, e a mensagem contém a palavra **INCONCLUSIVE** | **não recrie às cegas.** Consulte `GET /v1/templates` daqui a alguns minutos e decida com o resultado |
 | **a releitura também falhou** | **`502`**, class `unknown`, dizendo que a releitura também não funcionou | espere e consulte `GET /v1/templates` |
 
@@ -4450,9 +4461,9 @@ Os dois parâmetros são obrigatórios. Não há corpo.
 
 Uma limpeza de dezenas de templates **vai** ser interrompida e retomada. Se "apaguei agora" e "já não
 estava lá" voltarem iguais, você não consegue relatar o que fez — e o desfecho que estraga o relatório
-não é o erro, é o "não sei". Por isso são três, e o campo `desfecho` os separa:
+não é o erro, é o "não sei". Por isso são três, e o campo `outcome` os separa:
 
-| `desfecho` | HTTP | o que aconteceu |
+| `outcome` | HTTP | o que aconteceu |
 |---|---|---|
 | `apagado` | `200` | o template existia e a Meta aceitou a exclusão |
 | `ja_nao_existia` | `200` | o nome **não estava** no catálogo. **Nada foi pedido à Meta** — é o que torna a retomada idempotente de verdade |
@@ -4462,11 +4473,11 @@ não é o erro, é o "não sei". Por isso são três, e o campo `desfecho` os se
 
 ```json
 {
-  "instancia": "seu-slug",
-  "nome": "galeria_atualizada_v6",
-  "desfecho": "apagado",
+  "instance": "seu-slug",
+  "name": "galeria_atualizada_v6",
+  "outcome": "apagado",
   "entradas": [
-    {"id": "1563912508540305", "idioma": "pt_BR", "categoria": "UTILITY", "status": "APPROVED"}
+    {"id": "1563912508540305", "language": "pt_BR", "category": "UTILITY", "status": "APPROVED"}
   ],
   "aviso": "the deletion removes the template in ALL languages, and Meta does NOT accept creating a template with the SAME name for 30 days. ..."
 }
@@ -4544,10 +4555,10 @@ numa operação sem desfazer.
 
 - **Apague UM primeiro, confira a resposta viva, e só então o resto.** Até a primeira chamada real, o
   seu código só foi exercido contra o **dublê** que você mesmo escreveu — e dublê não prova nome de
-  campo. Foi assim que ele confirmou que `desfecho`, `entradas[].idioma` e `aviso` chegam com os
+  campo. Foi assim que ele confirmou que `outcome`, `entradas[].language` e `aviso` chegam com os
   nomes que o comando dele lê. *Escolha para essa primeira um template inofensivo: o que ele usou
   tinha zero mensagens na vida e estava seis versões atrás.*
-- **A lista sai de arquivo, e o `desfecho` é quem confere a sua edição.** A segunda leva dele começou
+- **A lista sai de arquivo, e o `outcome` é quem confere a sua edição.** A segunda leva dele começou
   de uma lista **editada à mão** (tirando o nome já apagado). Se a edição tivesse saído errada, quem
   diria era um `ja_nao_existia` — não um `200` silencioso. É para isso que os dois sucessos têm nomes
   diferentes.
@@ -4642,7 +4653,7 @@ Content-Type:            application/octet-stream sempre — leia os dois acima
 ```
 
 O `mime_do_payload` é opcional e vem **de você**, não de um registro nosso: o gateway não guarda
-mensagem, então quem tem esse valor é quem recebeu o evento (`midia_mime_payload`). Se você não
+mensagem, então quem tem esse valor é quem recebeu o evento (`media_mime_payload`). Se você não
 mandar, o cabeçalho vem **ausente** — o gateway não copia o outro para o lugar dele, porque isso
 seria inventar dado com cara de verdade. Um `mime_do_payload` que não seja um mime válido é recusado
 com `400`.
@@ -4658,7 +4669,7 @@ duas vezes (descrever a mídia, depois buscar os bytes), e qualquer uma das duas
 
 | Status | Classe | Quando |
 |---|---|---|
-| `400` | `permanent` | `mime_do_payload` que não é um mime válido (mande o `midia_mime_payload` **exatamente** como veio no evento); **ou** o `{id}` da mídia tem forma inválida e o pedido nem saiu do gateway; **ou** a Meta recusou o id — mídia que não existe, que não é da sua conta, ou que já expirou |
+| `400` | `permanent` | `mime_do_payload` que não é um mime válido (mande o `media_mime_payload` **exatamente** como veio no evento); **ou** o `{id}` da mídia tem forma inválida e o pedido nem saiu do gateway; **ou** a Meta recusou o id — mídia que não existe, que não é da sua conta, ou que já expirou |
 | `401` | `config` | seu `Authorization` está ausente ou é inválido |
 | `403` | `config` | a instância pedida não é sua |
 | `404` | `config` | a **instância** não existe. Repare: id de mídia inexistente **não** cai aqui, cai no `400` acima, porque quem o recusa é a Meta |
@@ -4798,7 +4809,7 @@ de Instagram*, mais abaixo.
 
 ```jsonc
 // resposta 200
-{ "instancia": "lojinha",
+{ "instance": "lojinha",
   "about": "Loja de roupas femininas",
   "vertical": "RETAIL" }
 ```
@@ -4816,7 +4827,7 @@ de Instagram*, mais abaixo.
   "about": "Nova descricao curta" }
 
 // resposta 200
-{ "instancia": "lojinha",
+{ "instance": "lojinha",
   "gravado": { "about": "Nova descricao curta" } }
 ```
 
@@ -4895,7 +4906,7 @@ existem no Instagram. No lugar deles:
 | `waba_id` + `phone_number_id` | **IG ID** (`ig_id`) | identifica a CONTA — quem recebeu o webhook, quem envia a mensagem |
 | um telefone | **IGSID** (Instagram-scoped ID) | identifica QUEM VOCÊ CONVERSA — nunca é um telefone, nunca tente formatá-lo como um |
 
-O `IGSID` é o valor que você recebe em `eventos[].de_canonico` (e em `eventos[].de_cru` — os dois
+O `IGSID` é o valor que você recebe em `events[].from_canonical` (e em `events[].from_raw` — os dois
 vêm **idênticos**: um IGSID não passa pela normalização de telefone brasileiro que o WhatsApp usa,
 porque ele não é um telefone) e é o mesmo valor que você manda de volta em `para`, ao enviar.
 
@@ -4909,10 +4920,10 @@ precisa aprender um vocabulário novo. A diferença é o que vem preenchido:
   "kind": "message",
   "id": "msg:IGMID...",
   "wa_message_id": "IGMID...",
-  "sub_tipo": "text",
-  "de_cru": "179...IGSID",
-  "de_canonico": "179...IGSID",
-  "texto": "oi, vocês entregam hoje?"
+  "sub_kind": "text",
+  "from_raw": "179...IGSID",
+  "from_canonical": "179...IGSID",
+  "text": "oi, vocês entregam hoje?"
 }
 ```
 
@@ -4921,20 +4932,20 @@ herdado do WhatsApp de propósito: os dois são "o identificador que a Meta deu 
 você não precisa de um nome de campo por produto para reconhecer isso.
 
 Esta fatia **só modela mensagem de texto**. Uma mensagem com anexo (imagem, áudio, resposta a
-story, reação) chega no `cru`, mas **não vira um evento em `eventos`** — o `parse_error` do
+story, reação) chega no `raw`, mas **não vira um evento em `events`** — o `parse_error` do
 envelope acusa que algo ficou de fora. Se você precisar desses tipos, peça — o envelope só cresce.
 
 🔴 **A mensagem que VOCÊ envia também chega de volta pelo webhook — como ECO — e ela NUNCA vira
-evento em `eventos` (T-105).** A Meta reenvia, no mesmo `messaging[]`, uma notificação de toda
+evento em `events` (T-105).** A Meta reenvia, no mesmo `messaging[]`, uma notificação de toda
 mensagem que o seu próprio negócio manda (`message.is_echo: true`,
 [developers.facebook.com/docs/messenger-platform/instagram/features/webhook/](https://developers.facebook.com/docs/messenger-platform/instagram/features/webhook/)),
 com o remetente sendo **o seu próprio `ig_id`**, não um IGSID de cliente. O gateway filtra esse
-item: ele **não vira `kind:"message"`**, mas continua presente no `cru` (base64), inteiro, como
+item: ele **não vira `kind:"message"`**, mas continua presente no `raw` (base64), inteiro, como
 todo o resto do lote. Isso existe porque, sem o filtro, um sistema automático que responde a toda
 mensagem recebida acaba respondendo **à própria resposta que ele mesmo mandou** — a Meta recusa
 esse envio (ela não entrega mensagem de um negócio para ele mesmo), e cada resposta sua vira uma
 tentativa de envio fadada a falhar. Você **não precisa filtrar isso do seu lado**: se um lote trouxe
-só ecos, `eventos` chega vazio (`[]`), nunca com o eco disfarçado de mensagem de cliente.
+só ecos, `events` chega vazio (`[]`), nunca com o eco disfarçado de mensagem de cliente.
 
 ### Enviar uma mensagem
 
@@ -4979,7 +4990,7 @@ teste, não existe para Instagram.** No WhatsApp esse passo é um `GET` que conf
 gastar o envio de teste; para Instagram não há, **medida**, uma chamada equivalente nesse host que
 faça a mesma pergunta sem efeito colateral — inventar uma seria arriscar uma resposta que engana.
 Isso significa que, numa instância Instagram, um token revogado só é acusado **no próprio envio de
-teste** (o mesmo `erro.class = "config"` que você já esperava, só um passo mais tarde) — nunca muda
+teste** (o mesmo `error.class = "config"` que você já esperava, só um passo mais tarde) — nunca muda
 o que a resposta final diz, só quando a Meta é consultada.
 
 ### O que NÃO existe, e não é lacuna a perguntar sobre
@@ -5046,12 +5057,12 @@ API por você, mas não afirme que a Meta nunca vai pedir isso.
 
 O zapgw **não guarda estado de mensagem**. Estas cinco coisas ele não pode fazer por você.
 
-### 1. Grave o `cru` ANTES de olhar os `eventos`, e responda depois
+### 1. Grave o `raw` ANTES de olhar os `events`, e responda depois
 
-`cru` são os bytes exatos que a Meta enviou. `eventos` é **enriquecimento** — pode vir vazio, ou
+`raw` são os bytes exatos que a Meta enviou. `events` é **enriquecimento** — pode vir vazio, ou
 parcial, com `parse_error` preenchido.
 
-Se você processar `eventos` antes de gravar, e o processamento falhar, você perde uma mensagem que já
+Se você processar `events` antes de gravar, e o processamento falhar, você perde uma mensagem que já
 tinha em mãos. É o defeito que mais custou nesta rede.
 
 ### 2. Deduplique **POR EVENTO**, pelo campo `id` de dentro do corpo
@@ -5079,7 +5090,7 @@ A chave do status é composta **de propósito**: `sent`, `delivered` e `read` ch
 editado, volta a pendente, aprovado de novo). Sem o tempo, a segunda aprovação teria o id da
 primeira e o seu dedup a descartaria. Ver a seção do evento, mais acima.
 
-**A do `template_categoria` leva o tempo pelo mesmo motivo e a TRANSIÇÃO por um a mais:** um template
+**A do `template_category` leva o tempo pelo mesmo motivo e a TRANSIÇÃO por um a mais:** um template
 pode **ir e voltar** de categoria. `UTILITY → MARKETING` e `MARKETING → UTILITY` são fatos opostos
 (um encarece, o outro barateia) e sem a direção na chave seriam o mesmo `id`; e a **terceira**
 transição (`UTILITY → MARKETING` de novo) é a mesma direção da primeira, então só o tempo a separa —
@@ -5087,10 +5098,10 @@ e é justamente ela que reabre a janela de recurso.
 
 **As duas últimas seguem a mesma lógica, e existem porque esses webhooks NÃO TÊM ID.** Não há um
 `{wamid}` nem um `{message_template_id}` para ancorar a chave, então ela é montada com o que
-distingue um evento do vizinho: no `qualidade_do_numero`, o número + o `event` + a transição de
-limite; no `alerta_de_conta`, a entidade + o tipo + a severidade + o estado. **Um payload em que
+distingue um evento do vizinho: no `number_quality`, o número + o `event` + a transição de
+limite; no `account_alert`, a entidade + o tipo + a severidade + o estado. **Um payload em que
 NADA disso seja legível não vira evento** — a chave colidiria com qualquer outro igualmente vazio do
-mesmo lote, e o seu dedup apagaria os dois. O `cru` chega assim mesmo, e o `parse_error` acusa.
+mesmo lote, e o seu dedup apagaria os dois. O `raw` chega assim mesmo, e o `parse_error` acusa.
 
 **Trate o `id` como opaco. Não faça parse dele.** O formato acima é informativo; a garantia é que o
 mesmo evento produz sempre o mesmo `id`, e eventos diferentes produzem `id`s diferentes.
@@ -5135,12 +5146,12 @@ dedup.
 > (mesma mensagem, mesmo destinatário) que absorveria a rajada de 9 s da Meta — **mas não a
 > reentrega de +5 min nem a de +1 h35**, que é justamente quando o evento volta.
 
-#### E quando o lote não tem evento nenhum (`"eventos": []`)? — a chave é OUTRA (2026-07-28)
+#### E quando o lote não tem evento nenhum (`"events": []`)? — a chave é OUTRA (2026-07-28)
 
-A obrigação 1 manda gravar o `cru` **sempre**, inclusive quando o lote chega sem evento nenhum —
-`"eventos": []` no fio desde 2026-07-28 (era `null` antes; veja *Webhook de CONTA*, que também traz a
+A obrigação 1 manda gravar o `raw` **sempre**, inclusive quando o lote chega sem evento nenhum —
+`"events": []` no fio desde 2026-07-28 (era `null` antes; veja *Webhook de CONTA*, que também traz a
 forma segura de iterar). Acontece com webhook de conta não modelado, com `parse_error` preenchido, e com qualquer lote
-que o gateway entregou sem conseguir enriquecer. Só que aí não existe `eventos[].id`, e o parágrafo
+que o gateway entregou sem conseguir enriquecer. Só que aí não existe `events[].id`, e o parágrafo
 acima não diz com que chave gravar. **Esta seção existe
 porque a resposta intuitiva está errada**, e a orientação errada chegou a ser dada por escrito, no
 canal, por quem mantém este gateway — o consumidor não a seguiu, foi ao código e a derrubou.
@@ -5150,16 +5161,16 @@ canal, por quem mantém este gateway — o consumidor não a seguiu, foi ao cód
 | Pergunta | Sobre quais bytes | Por quê |
 |---|---|---|
 | **Verificar a assinatura** | os bytes **do corpo do POST, exatos, como chegaram no fio** | é sobre eles que o HMAC foi calculado — veja a obrigação 3, logo abaixo. **Nada aqui muda isso.** |
-| **Deduplicar um lote sem evento utilizável** | o **`cru`**, decodificado de dentro do envelope | o corpo do envelope **muda entre reentregas do mesmo evento**; o `cru` não |
+| **Deduplicar um lote sem evento utilizável** | o **`raw`**, decodificado de dentro do envelope | o corpo do envelope **muda entre reentregas do mesmo evento**; o `raw` não |
 
 **Nunca hasheie o corpo do envelope para deduplicar.** O envelope é **remontado a cada entrega**:
-`recebido_em` vem de uma leitura do relógio feita **naquela** entrega, e o JSON é serializado logo em
+`received_at` vem de uma leitura do relógio feita **naquela** entrega, e o JSON é serializado logo em
 seguida. Duas entregas do
 **mesmo** evento da Meta produzem, portanto, corpos **diferentes** — hash diferente, `UNIQUE`
 diferente, **linha duplicada**: exatamente o que o dedup existe para impedir. Isso não é intermitente
 nem raro; falha **por construção**, em toda reentrega.
 
-**Faça assim:** decodifique o base64 do campo `cru` e use o hash desses bytes como chave única
+**Faça assim:** decodifique o base64 do campo `raw` e use o hash desses bytes como chave única
 (`sha256` serve). Escolha uma forma — bytes decodificados ou a string base64 como veio — e **não
 mude depois**, senão a mesma entrega ganha duas chaves. Trate a violação de unicidade como sucesso,
 pela mesma regra do bloco acima.
@@ -5170,10 +5181,10 @@ pela mesma regra do bloco acima.
 > caso precisa de chave própria. (Mesmo quando ele vem, não deduplique por ele: veja o aviso no
 > começo desta obrigação.)
 
-**A premissa que sobra, dita em voz alta em vez de escondida:** hashear o `cru` assume que a Meta
+**A premissa que sobra, dita em voz alta em vez de escondida:** hashear o `raw` assume que a Meta
 **reentrega os mesmos bytes**. Isso **não é garantia publicada por ela** — este projeto proíbe
 afirmar como fato o que não foi conferido na fonte, e esta não foi. É a melhor opção disponível, e é
-**estritamente melhor** que o envelope: o `cru` falha só se a Meta mudar os bytes entre reentregas
+**estritamente melhor** que o envelope: o `raw` falha só se a Meta mudar os bytes entre reentregas
 (não observado); o envelope falha **sempre**. Se um dia aparecer reentrega com bytes diferentes, o
 sintoma é uma linha crua duplicada no seu banco — barato, e o oposto do que acontece hoje com o
 envelope, que já é duplicata garantida.
@@ -5253,7 +5264,7 @@ timestamp novo sem invalidá-la, e sem o seu segredo de entrega não consegue re
 > o próprio vetor acima.
 
 **Prova ponta a ponta, opcional:** `X-Hub-Signature-256` traz a assinatura original da Meta sobre o
-`cru` (após decodificar o base64). Se você tiver o `app_secret`, pode refazê-la e provar a origem sem
+`raw` (após decodificar o base64). Se você tiver o `app_secret`, pode refazê-la e provar a origem sem
 depender do gateway. O gateway já a verificou — este repasse existe para quem quiser a garantia sem
 intermediário.
 
@@ -5281,7 +5292,7 @@ mimes diferentes:
 
 | Onde | Exemplo |
 |---|---|
-| no evento da mensagem (`midia_mime_payload`) | `audio/ogg; codecs=opus` |
+| no evento da mensagem (`media_mime_payload`) | `audio/ogg; codecs=opus` |
 | no `GET /{media_id}` (`X-Zapgw-Mime-Do-Get`) | `audio/ogg` |
 
 É o `; codecs=opus` que faz o WhatsApp renderizar **nota de voz tocável**. Reenviar com o outro
@@ -5291,7 +5302,7 @@ para ser um áudio tocável. **Custo pago em produção nesta rede em 2026-07-20
 
 Por isso o gateway devolve **os dois, nomeados, sem normalizar nenhum e sem escolher nenhum**:
 normalizar destruiria exatamente o que precisa ser preservado, e escolher tomaria de você a única
-decisão que só você pode tomar. Guarde o `midia_mime_payload` que veio no evento; ao subir de volta,
+decisão que só você pode tomar. Guarde o `media_mime_payload` que veio no evento; ao subir de volta,
 declare-o **inteiro** no `Content-Type` da parte `arquivo`.
 
 ---
@@ -5344,7 +5355,7 @@ o atacante e **queima** a legítima.
 > **Instância errada é o caso mais grave da família.** Se a `callback_url` de outro inquilino
 > apontar para você por engano, responder `4xx` destrói **dado de terceiro** em definitivo, e
 > responder `2xx` diz à Meta que uma mensagem que não é sua está resolvida — o dono dela nunca a
-> recebe. Confira o campo `instancia` do envelope contra a instância que você espera, e responda
+> recebe. Confira o campo `instance` do envelope contra a instância que você espera, e responda
 > `5xx` se divergir.
 
 **Responder 2xx sem ter gravado é perda definitiva.** Não há segunda chance, não há reprocessamento,
@@ -5387,7 +5398,7 @@ respondeu".
   conferida em 2026-07-25 tem 39. Se algum dia esse limite for atingido, você recebe `502` e
   **nenhuma lista** — nunca uma lista curta com `200`. Uma lista curta silenciosa é o defeito que
   tirou o gateway antigo de produção.
-- **`midia_mime_payload` vem cru, com parâmetro.** É o `; codecs=opus` que faz o WhatsApp renderizar
+- **`media_mime_payload` vem cru, com parâmetro.** É o `; codecs=opus` que faz o WhatsApp renderizar
   nota de voz; o mime do `GET /{media_id}` é diferente e mais pobre. Não normalize — e veja a
   obrigação 5, que é onde essa diferença cobra.
 - **A lista de mimes e os tetos de upload são do GATEWAY, não da Meta.** Um arquivo recusado com
@@ -5397,7 +5408,7 @@ respondeu".
 - **O `timeout_ms` da sua instância não é exposto em rota nenhuma.** Default 5000 ms. A regra prática
   está em *O que você recebe ao ser provisionado*: dê ao seu cliente HTTP um prazo com folga acima
   dele.
-- **`de_cru` é o que a Meta mandou; `de_canonico` passou pela canonização do 9º dígito.** Compare
+- **`from_raw` é o que a Meta mandou; `from_canonical` passou pela canonização do 9º dígito.** Compare
   sempre pelo canônico — a Meta não garante a mesma grafia que você cadastrou.
 - **O gateway retém o telefone das suas contrapartes por até 30 dias, em claro (decisão do dono,
   2026-07-30).** É o log de trânsito interno (`zapgw transit` / `zapgw log`, sem rota HTTP — você
@@ -5436,8 +5447,8 @@ que é o destino de todo campo cuja remoção nunca tem data.
 
 | Campo | Onde | Marcado obsoleto em | Removível a partir de | Sucessor |
 |---|---|---|---|---|
-| `dia` | cada entrada de `serie_7_dias` e `serie_diaria` | 2026-07-28 | **2027-01-28** | `dia_utc` |
-| `serie_7_dias` | topo de `GET /v1/estado` | 2026-07-29 | **2027-01-29** | `serie_diaria` |
+| `day` | cada entrada de `last_7_days_series` e `daily_series` | 2026-07-28 | **2027-01-28** | `day_utc` |
+| `last_7_days_series` | topo de `GET /v1/estado` | 2026-07-29 | **2027-01-29** | `daily_series` |
 
 ⚠️ **"Removível a partir de" não é "será removido nessa data".** É o **piso**: antes dela a remoção
 não acontece, depois dela ela pode acontecer a qualquer momento e só é anunciada aqui. Migre antes do
@@ -5458,6 +5469,15 @@ nada de você.
 ## Mudanças que quebram
 
 **Esta seção é o mecanismo prometido no lugar de versionar o formato.**
+
+> ℹ️ **As entradas abaixo são história datada e citam os nomes de chave como este documento os
+> escrevia em cada data.** Muitos eram em português; o fio manda inglês hoje. Os que aparecem aqui,
+> antigo -> novo: `eventos` -> `events`, `cru` -> `raw`, `instancia` -> `instance`, `recebido_em` ->
+> `received_at`, `sub_tipo` -> `sub_kind`, `texto` -> `text`, `responder_a` -> `reply_to`, `voz` ->
+> `voice`, `encaminhada` -> `forwarded`, `encaminhada_muitas_vezes` -> `frequently_forwarded`,
+> `midia_id` -> `media_id`, `botao_payload` -> `button_payload`, `reacao` -> `reaction`, `nome_contato`
+> -> `contact_name`, `para_canonico` -> `to_canonical`, `nome`/`motivo` (evento de template) ->
+> `name`/`reason`. A tabela completa é o `docs/MIGRACAO-CONTRATO-EN.md`.
 
 A garantia normal é que **o envelope só cresce**: campo nunca some, nunca é reaproveitado com outro
 significado, e todo campo novo é omitido quando vazio. É isso que dispensa um número de versão — e é

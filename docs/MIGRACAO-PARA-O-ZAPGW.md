@@ -246,7 +246,7 @@ silently.
   silently and whose first news is usually the customer not receiving anything.
 - **`GET /v1/templates`** returns the **whole** catalog, untruncated.
 - **`POST /v1/media`** removes the need to host a public URL for Meta to fetch.
-- **`cobranca` in the status event** says under which category Meta charged — the `UTILITY` →
+- **`pricing` in the status event** says under which category Meta charged — the `UTILITY` →
   `MARKETING` reclassification shows up in the first message, not in the invoice.
 - **The media's two mime types arrive separately.** Whoever re-sends audio needs the
   `mime_do_payload` — with the other one, WhatsApp delivers an **attachment** instead of a voice note,

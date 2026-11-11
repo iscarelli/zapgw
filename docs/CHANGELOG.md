@@ -4,6 +4,7 @@ One line per version shipped, in the same commit as the bump. The entry states t
 
 ## Unreleased
 
+- **Consumer docs show the old Portuguese OUTPUT keys; the wire is English** (T-266) — docs-only, no wire change. The six consumer docs now show the keys the code emits today (checked against the `json` tags in `internal/inbound/deliver.go`, `internal/meta/types.go` and `internal/outbound/*.go`): envelope `instance`/`received_at`/`raw`/`events`, event keys (`sub_kind`, `from_raw`, `from_canonical`, `to_raw`, `to_canonical`, `text`, `reply_to`, `reaction`/`target`, `location`/`name`/`address`, `voice`, `forwarded`, `pricing`/`category`, `template.name`/`language`/`state`/`reason`, `number_quality`, ...) and response keys (`GET /v1/templates`, `POST /v1/templates`, `DELETE /v1/templates`, `GET /v1/perfil`, `POST /v1/perfil`, `GET /v1/instances/{slug}/health`). A note at the top of "What you receive" (EN and pt-BR) says the envelope keys are English and that docs before 2026-11-11 showed the old ones; "Breaking changes" carries an old -> new note for its dated entries. INPUT keys, enum values, the frozen signature test vector and the event `id` prefixes (still `template_categoria:` etc. in `internal/meta/parse.go`) were left alone. _Completed 2026-11-11 19:20._
 - **API error responses still in Portuguese go to English** (T-265) — **CONTRACT CHANGE (error
   `message` TEXT only; `class` and status codes did NOT change).** Every Portuguese `message` the
   API answers with is now English: the `respondError` / `respondErrorWithDetail` /

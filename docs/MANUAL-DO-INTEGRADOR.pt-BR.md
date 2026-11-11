@@ -210,7 +210,7 @@ Três coisas que decidem se isso dá certo na primeira vez:
 - **A `callback_url` é obrigatória; vazia ou ausente é recusada com `400`**
   (`internal/config/store.go:1077`). Um status `failed` — por exemplo `131026`, número sem WhatsApp —
   só chega até você pela callback; sem ela, um envio que falhou parece entregue. O `200` confirma:
-  `cifrados: [{campo: "callback_url", cadastrado: true}]`.
+  `encrypted: [{campo: "callback_url", cadastrado: true}]`.
 - **`numero_exibido` tem um formato aceito, só números brasileiros:** `+55 11 5555-5555` (fixo) ou
   `+55 11 99999-0000` (celular). Só dígitos, sem `+`, sem espaços, ou bloco de 5 dígitos que não
   começa com `9` é recusado com `400` (`internal/config/store.go:99`) — nunca é reescrito por você.
@@ -268,7 +268,7 @@ Dois detalhes que pegam quem faz isso pela primeira vez:
   (contrato, "O que separa você do outro inquilino").*
 
 Campo inscrito que o gateway não modela **não é erro**: ele chega, passa as guardas e é entregue a
-você sem evento nenhum (`"eventos": []`), virando linha crua no seu banco.
+você sem evento nenhum (`"events": []`), virando linha crua no seu banco.
 
 ---
 
@@ -330,7 +330,7 @@ Daqui em diante o contrato é o documento. O que existe:
 **E cinco obrigações que são suas, não nossas.** Elas estão detalhadas no contrato, em *"As cinco
 obrigações do consumidor"*, e ignorar qualquer uma delas produz defeito que só aparece em produção:
 
-1. **Grave o `cru` ANTES de olhar os `eventos`**, e responda depois.
+1. **Grave o `raw` ANTES de olhar os `events`**, e responda depois.
 2. **Deduplique por EVENTO**, pelo campo `id` de dentro do corpo — e de forma **atômica**.
 3. **Verifique a assinatura `X-Zapgw-Signature` e o timestamp** de cada entrega. O
    `segredo_entrega` é o que separa uma entrega nossa de uma forjada.
@@ -348,14 +348,14 @@ faltando vira mensagem perdida em definitivo.
 | Sintoma | O primeiro lugar para olhar |
 |---|---|
 | a Meta recusa a verificação do webhook | o `verify_token` que você digitou é exatamente o item 4 do pacote? |
-| nada chega ao seu endpoint | a instância está **ativa**? (`GET /v1/estado`, campo `pausada`). Instância pausada responde `503` e a Meta segura o reenvio por 36 h |
-| chega ao gateway mas não a você | a `callback_url` está cadastrada? (o `200` do cadastro, `cifrados`). O certificado dela é válido? (`GET /v1/estado`, `certificado_do_callback`) |
-| o envio falha com erro de credencial | `GET /v1/estado`, `token_meta` — ele diz se o token ainda vale, com carimbo de quando foi conferido |
+| nada chega ao seu endpoint | a instância está **ativa**? (`GET /v1/estado`, campo `paused`). Instância pausada responde `503` e a Meta segura o reenvio por 36 h |
+| chega ao gateway mas não a você | a `callback_url` está cadastrada? (o `200` do cadastro, `encrypted`). O certificado dela é válido? (`GET /v1/estado`, `callback_certificate`) |
+| o envio falha com erro de credencial | `GET /v1/estado`, `meta_token` — ele diz se o token ainda vale, com carimbo de quando foi conferido |
 | o cadastro responde `409` | a janela de 24 h fechou. Só quem te entregou o slug reabre |
 | o fumaça responde `502` | a Meta recusou. A mensagem diz por quê; se for credencial, corrija **antes** de a janela fechar |
-| o envio parou de sair, sem erro óbvio | `GET /v1/estado`, `numero_na_meta` — a qualidade e a cota diária do seu número vêm de lá |
+| o envio parou de sair, sem erro óbvio | `GET /v1/estado`, `number_at_meta` — a qualidade e a cota diária do seu número vêm de lá |
 
-**Antes de alarmar por silêncio, olhe `pausada`.** É o engano mais comum: uma instância pausada não
+**Antes de alarmar por silêncio, olhe `paused`.** É o engano mais comum: uma instância pausada não
 tem defeito nenhum — ela está esperando um fumaça.
 
 ---

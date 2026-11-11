@@ -241,7 +241,7 @@ e em silêncio.
   cuja primeira notícia costuma ser o cliente não receber.
 - **`GET /v1/templates`** devolve o catálogo **inteiro**, sem truncar.
 - **`POST /v1/media`** dispensa hospedar URL pública para a Meta buscar.
-- **`cobranca` no evento de status** diz sob qual categoria a Meta cobrou — a reclassificação
+- **`pricing` no evento de status** diz sob qual categoria a Meta cobrou — a reclassificação
   `UTILITY` → `MARKETING` aparece na primeira mensagem, não na fatura.
 - **Os dois mimes da mídia chegam separados.** Quem reenvia áudio precisa do `mime_do_payload` — com
   o outro, o WhatsApp entrega **anexo** em vez de nota de voz, sem erro nenhum. Custou caro nesta
