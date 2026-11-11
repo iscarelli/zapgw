@@ -544,3 +544,33 @@ Do:      🔴 Boa parte das ocorrencias e' LEGITIMA e tem de ficar: e' o NOME PO
          Confira que o cabecalho `Código:` de cada doc ainda aponta para arquivo que existe.
 Verify:  liste no relatorio, por arquivo, quantas ocorrencias voce traduziu e quantas deixou em (b)
          ou (c). `go test ./internal/config/ -run TestDoc` verde (os ponteiros dos docs).
+
+## [ ] T-266  Consumer docs show the old Portuguese OUTPUT keys; the wire is English
+Why:     medido em 2026-11-11 por um consumidor: o codigo dele seguiu o MANUAL (`"eventos": []`,
+         `instancia`) e TODA entrega deu 503, porque o fio manda `instance`/`events`
+         (`internal/inbound/deliver.go:45-49`). O status tambem: o contrato diz `para_cru`/
+         `para_canonico`, o fio manda `to_raw`/`to_canonical` (`internal/meta/types.go:584-586`).
+         Doc falso no documento que o consumidor le para integrar — pior que doc nenhum.
+Files:   docs/CONTRATO-CONSUMIDOR.md, docs/CONTRATO-CONSUMIDOR.pt-BR.md, docs/MANUAL-DO-INTEGRADOR.md,
+         docs/MANUAL-DO-INTEGRADOR.pt-BR.md, docs/MIGRACAO-PARA-O-ZAPGW.md,
+         docs/MIGRACAO-PARA-O-ZAPGW.pt-BR.md, docs/CHANGELOG.md
+Do:      1. Source of truth is the CODE, never another doc: the `json:"…"` tags of the structs the
+            gateway SERIALIZES (delivery envelope `internal/inbound/deliver.go`, events
+            `internal/meta/types.go`, and every response struct in `internal/outbound/*.go`).
+            `docs/MIGRACAO-CONTRATO-EN.md` (SAIDA-EVENTO / SAIDA-RESPOSTA rows) is a map to find
+            candidates, not proof: confirm each key in the code before changing a doc.
+         2. In the six docs, every JSON example, field table and inline mention of an OUTPUT key
+            (what the gateway sends to the callback or returns in a response) uses the key the code
+            emits today. INPUT keys (request bodies, e.g. `instancia` in `POST /v1/cadastro`) are NOT
+            touched — the gateway still accepts them. Enum VALUES are T-248's: leave them.
+         3. Add near the top of "What you receive" (EN and pt-BR) one short note: the delivery
+            envelope keys are English (`instance`, `received_at`, `raw`, `events`, `parse_error`),
+            with `deliver.go:45-49`, and that docs before 2026-11-11 showed the old Portuguese keys.
+         4. Historical narrative explicitly dated (e.g. "Until 2026-07-28 the wire sent…") stays,
+            but say in it which key name the wire uses today.
+         5. Changelog under `## Unreleased`: docs-only, no wire change.
+Verify:  For each SAIDA row of docs/MIGRACAO-CONTRATO-EN.md whose new key you confirmed in code, run
+         `grep -n '"<old_key>"' <the six docs>` and list in the report every remaining hit with why
+         it stays (input key, dated history). `"eventos"`, `"para_cru"`, `"para_canonico"`,
+         `"de_cru"`, `"de_canonico"` must have zero hits outside dated history.
+         `go test ./internal/config/` green (doc pointer and personal-data gates).
