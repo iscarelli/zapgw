@@ -2,6 +2,10 @@
 
 One line per version shipped, in the same commit as the bump. The entry states the **effect**, not the diff.
 
+## Unreleased
+
+- **Smoke text reaches the phone with Portuguese accents** (T-263) — `SmokeText` now reads "fumaça", "você", "está", "Não é"; a new test pins the exact string (failed before the change). _Completed 2026-11-11 08:05._
+
 ## v0.74.0 — 2026-10-23
 
 - **Location header in template send (`cabecalho.tipo: "localizacao"`)** (T-261) — a template

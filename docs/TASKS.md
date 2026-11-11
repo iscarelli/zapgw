@@ -579,16 +579,3 @@ Do:      🔴 Boa parte das ocorrencias e' LEGITIMA e tem de ficar: e' o NOME PO
          Confira que o cabecalho `Código:` de cada doc ainda aponta para arquivo que existe.
 Verify:  liste no relatorio, por arquivo, quantas ocorrencias voce traduziu e quantas deixou em (b)
          ou (c). `go test ./internal/config/ -run TestDoc` verde (os ponteiros dos docs).
-
-
-## [ ] T-263  Smoke text reaches the phone with Portuguese accents
-Why:     dono, 2026-11-11: o texto da fumaca chega no celular sem acento ("fumaca", "voce", "esta",
-         "Nao e"). E texto que uma pessoa le; a falta de acento e defeito, nao estilo.
-Files:   internal/outbound/smoke.go, internal/outbound/smoke_test.go (or the existing test file of
-         that package that fits), docs/CHANGELOG.md
-Do:      Change ONLY the constant `SmokeText` (`internal/outbound/smoke.go:57-58`) to exactly:
-         "zapgw: teste de fumaça do canal. Se você recebeu esta mensagem, o envio está funcionando. Não é preciso responder."
-         Keep the file UTF-8. Do not touch the `Err*` messages (logs/API errors, other scope).
-         Add a test that pins `SmokeText` to that exact string (it must fail before the change).
-Verify:  CGO_ENABLED=0 go build ./... && go test ./... && go vet ./... && test -z "$(gofmt -l cmd internal)"
-         `grep -n 'fumaça do canal' internal/outbound/smoke.go` prints the line.

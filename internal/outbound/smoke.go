@@ -54,8 +54,8 @@ import (
 // SmokeText is what shows up on the receiver's phone. It identifies
 // itself in its own words: whoever receives this is a real person, and an
 // anonymous "test" message scares people or turns into a spam report.
-const SmokeText = "zapgw: teste de fumaca do canal. " +
-	"Se voce recebeu esta mensagem, o envio esta funcionando. Nao e preciso responder."
+const SmokeText = "zapgw: teste de fumaça do canal. " +
+	"Se você recebeu esta mensagem, o envio está funcionando. Não é preciso responder."
 
 var (
 	// ErrSmokeNoSlug: no instance was specified.
