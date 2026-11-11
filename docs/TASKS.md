@@ -544,3 +544,34 @@ Do:      🔴 Boa parte das ocorrencias e' LEGITIMA e tem de ficar: e' o NOME PO
          Confira que o cabecalho `Código:` de cada doc ainda aponta para arquivo que existe.
 Verify:  liste no relatorio, por arquivo, quantas ocorrencias voce traduziu e quantas deixou em (b)
          ou (c). `go test ./internal/config/ -run TestDoc` verde (os ponteiros dos docs).
+
+## [ ] T-265  API error responses still in Portuguese go to English
+Why:     T-264 traduziu `errors.New`/`Errorf`/`log.Printf`, mas as respostas de erro escritas direto
+         no handler ficaram em portugues (~240 chamadas em internal/outbound): a API hoje responde
+         erro em lingua misturada. Regra do projeto: tudo em ingles, exceto texto que chega ao
+         cliente final.
+Files:   internal/outbound/*.go (non-test) with `respondError`, `respondErrorWithDetail`,
+         `respondMetaError`, `logRejection` calls or `const Warning*/Message*/Instruction*/NextStep`
+         texts; internal/config/leadership.go:221,225 with deploy/check-leadership.sh (marker and grep
+         together); the `_test.go` files that assert on those strings; docs/CONTRATO-CONSUMIDOR.md,
+         docs/CONTRATO-CONSUMIDOR.pt-BR.md, docs/MANUAL-DO-INTEGRADOR.md,
+         docs/MANUAL-DO-INTEGRADOR.pt-BR.md and docs/INVENTARIO-STRINGS.md where they quote one of
+         those texts verbatim; docs/CHANGELOG.md
+Do:      1. Inventory: `grep -rn -E 'respondError(WithDetail)?\(|respondMetaError\(|logRejection\(' internal/outbound --include=*.go | grep -v _test`
+            plus the consts named above. Translate every Portuguese human-readable text to plain
+            English, keeping every format verb in place.
+         2. Keep as they are: wire field names quoted inside a message (`instancia`, `destino`...),
+            JSON keys and enum values (T-248), `SmokeText`, the `ALARME` and `PRECISA DE GENTE`
+            markers, and CLI flag names.
+         3. Leadership reasons: change `leadership.go:221,225` and the `# zapgw:log-coupling` marker
+            plus the `grep` in deploy/check-leadership.sh in the same commit; the coupling gate must
+            stay green.
+         4. Docs: every verbatim quote of a translated text is updated, EN and pt-BR (the pt-BR doc
+            quotes the English API text, since the API answers in English). Historical narratives
+            dated before 2026-11-11 stay as written. Update docs/INVENTARIO-STRINGS.md's
+            classification of these texts.
+         5. Changelog under `## Unreleased`, flagged: API error `message` text changed language;
+            `class` and status codes did not.
+Verify:  CGO_ENABLED=0 go build ./... && go test ./... && go vet ./... && test -z "$(gofmt -l cmd internal)"
+         Re-run the inventory grep of step 1 and list in the report every remaining Portuguese text
+         with the reason it stays.
