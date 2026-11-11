@@ -4883,8 +4883,15 @@ valid request and goes out exactly like that to Meta; the only thing this gatewa
 that swap on its own.
 
 The accepted fields: `about` (up to 139 characters, according to Meta), `description` (up to 512),
-`address`, `email`, `websites` (up to 2), `vertical`, and `profile_picture_handle` (the `media_id`
-that `POST /v1/media` returned, to change the profile picture to that upload's content).
+`address`, `email`, `websites` (up to 2), `vertical`, and `profile_picture_handle` (the `handle`
+that `POST /v1/uploads` returned — see *Template header example handle*, above — to change the
+profile picture to that upload's content).
+
+🔴 **The `media_id` from `POST /v1/media` does NOT work here**, the same as for a template header.
+Measured by a consumer on 2026-11-11: `media_id` -> `400`, `meta_code 131009`, `meta_subcode
+2494102`; the `handle` from `POST /v1/uploads` (PNG 640x640, raw bytes) -> `200`. This section said
+`media_id` until that day — it was never measured before. What was NOT measured: that the picture
+then shows up in the WhatsApp app (`GET /v1/perfil` does not return the picture).
 
 ⚠️ **This gateway does not check the character ceilings nor the number of sites.** The one who
 validates is Meta, and it **explains** what it refused — the same `meta_explanation`/`meta_trace` of

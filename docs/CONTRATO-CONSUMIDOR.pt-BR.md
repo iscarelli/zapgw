@@ -4828,8 +4828,15 @@ de não mandar `description`, que a preserva. Se você quer apagar um valor, man
 para a Meta; a única coisa que este gateway nunca faz é inventar essa troca sozinho.
 
 Os campos aceitos: `about` (até 139 caracteres, segundo a Meta), `description` (até 512), `address`,
-`email`, `websites` (até 2), `vertical`, e `profile_picture_handle` (o `media_id` que
-`POST /v1/media` devolveu, para trocar a foto do perfil pelo conteúdo daquele upload).
+`email`, `websites` (até 2), `vertical`, e `profile_picture_handle` (o `handle` que
+`POST /v1/uploads` devolveu — veja a seção do handle de exemplo de cabeçalho de template, acima —
+para trocar a foto do perfil pelo conteúdo daquele upload).
+
+🔴 **O `media_id` de `POST /v1/media` NÃO serve aqui**, igual ao cabeçalho de template. Medido por
+um consumidor em 11/11/2026: `media_id` -> `400`, `meta_code 131009`, `meta_subcode 2494102`; o
+`handle` de `POST /v1/uploads` (PNG 640x640, bytes crus) -> `200`. Esta seção dizia `media_id` até
+esse dia — nunca tinha sido medido. O que NÃO foi medido: a foto aparecer no app do WhatsApp (o
+`GET /v1/perfil` não devolve a foto).
 
 ⚠️ **Este gateway não confere os tetos de caracteres nem a quantidade de sites.** Quem valida é a
 Meta, e ela **explica** o que recusou — o mesmo `meta_explanation`/`meta_trace` da T-153, na
