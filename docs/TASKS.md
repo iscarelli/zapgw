@@ -492,6 +492,41 @@ instancias foram rotacionadas. Duas licoes que custaram na hora e valem alem des
 
 > A fila do periodo privado esta em `iscarelli/zapgw-dev`, congelada. Tarefa nova nasce aqui.
 
+## [ ] T-262  Registration requires callback_url and a formatted numero_exibido
+Why:     dono, 2026-11-11: "endurecer o contrato deixando claro que precisa de tudo isso". Um
+         consumidor cadastrou sem `callback_url` (o contrato dizia que vazio "e uma escolha") e com
+         `numero_exibido` so digitos; sem callback, um template `failed` (131026) nunca chega e o
+         consumidor acha que avisou o cliente.
+Files:   internal/config/store.go, internal/outbound/registration_handler.go, cmd/zapgw/provision.go,
+         their _test.go files, docs/CONTRATO-CONSUMIDOR.md, docs/CONTRATO-CONSUMIDOR.pt-BR.md,
+         docs/MANUAL-DO-INTEGRADOR.md, docs/MANUAL-DO-INTEGRADOR.pt-BR.md
+Do:      1. ONE validator in `internal/config` (e.g. `ValidateDisplayNumber`), used by BOTH
+            `RegisterMeta` (POST /v1/cadastro) and `ValidateInstanceType` (CLI
+            `zapgw provision instancia --numero-exibido`, only when non-empty there, since the CLI
+            field stays optional at creation). Accepted shape, Brazilian only:
+            `^\+55 \d{2} (\d{4}|9\d{4})-\d{4}$` — landline `+55 11 5555-5555`, mobile
+            `+55 11 99999-0000`. Anything else (digits only, no `+`, no space, 5-digit block not
+            starting with 9) is rejected. No normalization: reject, do not rewrite.
+         2. `POST /v1/cadastro` on a WhatsApp instance: `callback_url` becomes REQUIRED (empty or
+            missing -> 400). The existing `https://` rule stays. `bundle_ca` stays optional.
+         3. Both errors are 400 following the handler's existing field-error pattern, naming the
+            FIELD and, for the number, the expected shape with the two examples above. Never echo a
+            secret. Nothing already stored is touched or re-validated (existing rows keep their value).
+         4. Docs (all four, EN and pt-BR mirrors in step): `numero_exibido` example becomes
+            `"+55 11 99999-0000"` with the rule and the landline example; `callback_url` moves to
+            required; DELETE the "empty `callback_url` = outbound-only instance ... it is a choice"
+            bullet and say why it is required (a `failed` status — e.g. 131026, number without
+            WhatsApp — only reaches the consumer through the callback; without it a send that
+            failed looks delivered). Point at `file:line` of the new validation.
+         5. `docs/CHANGELOG.md` under `## Unreleased`, flagged as a contract change: a consumer whose
+            re-registration script sends digits only or no callback gets 400 on the next rotation.
+Verify:  CGO_ENABLED=0 go build ./... && go test ./... && go vet ./... && test -z "$(gofmt -l cmd internal)"
+         New tests, each must have FAILED before the change: cadastro with `numero_exibido`
+         "5511999990000" -> 400 naming `numero_exibido`; "+55 11 5555-5555" and "+55 11 99999-0000"
+         -> accepted; a 5-digit block not starting with 9 (build it from a number in the phone gate's synthetic allowlist) -> 400; empty `callback_url` -> 400 naming `callback_url`;
+         CLI provision with `--numero-exibido 551155555555` -> error. `grep -n "it is a choice"
+         docs/CONTRATO-CONSUMIDOR.md` prints nothing.
+
 ## [ ] T-248  Seven response keys and literals still Portuguese in code, among English siblings
 After:   DECIDIDO em 2026-09-19 — opcao (1): renomear TUDO de uma vez, bump MINOR, aviso aos dois
          consumidores ANTES do deploy (o dono manda o texto; sem canal). Segurada por ORCAMENTO
