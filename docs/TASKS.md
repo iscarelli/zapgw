@@ -579,3 +579,25 @@ Do:      🔴 Boa parte das ocorrencias e' LEGITIMA e tem de ficar: e' o NOME PO
          Confira que o cabecalho `Código:` de cada doc ainda aponta para arquivo que existe.
 Verify:  liste no relatorio, por arquivo, quantas ocorrencias voce traduziu e quantas deixou em (b)
          ou (c). `go test ./internal/config/ -run TestDoc` verde (os ponteiros dos docs).
+
+## [ ] T-264  Error and log messages still in Portuguese go to English
+Why:     dono, 2026-11-11: as mensagens de erro de API e de log em portugues "deveriam estar em
+         ingles" (regra do projeto: tudo em ingles, exceto texto que chega ao cliente final, como a
+         fumaca). Contagem de 2026-11-11: 43 `errors.New`/`fmt.Errorf` em 13 arquivos de producao.
+Files:   the production `.go` files under cmd/ and internal/ found by the grep below, the `_test.go`
+         files that assert on those strings, docs/CHANGELOG.md, docs/CONTRATO-CONSUMIDOR.md and
+         docs/CONTRATO-CONSUMIDOR.pt-BR.md only where they quote one of these messages verbatim
+Do:      1. Inventory: `grep -rn -E '(errors\.New|fmt\.Errorf|log\.Printf|log\.Print|log\.Fatalf)\("' cmd internal --include=*.go | grep -v _test`
+            and pick every message whose TEXT is Portuguese. Translate it to plain English, keeping
+            the meaning and every `%v`/`%w`/`%s` verb in place. Field NAMES quoted inside a message
+            (`instancia`, `destino`, `numero_exibido`...) are wire literals: keep them as they are.
+         2. Do NOT translate: `SmokeText` (it reaches a person's phone, in Portuguese on purpose),
+            JSON keys and enum values on the wire (that is T-248), and any literal a
+            `# zapgw:log-coupling` marker in deploy/*.sh greps — if one of those must change, change
+            the marker and the script in the same commit, and the coupling gate must stay green.
+         3. Changelog under `## Unreleased`, flagged: API error TEXT changed language; the error
+            `class`/status codes did not. Say whether any doc quoted a message verbatim.
+Verify:  CGO_ENABLED=0 go build ./... && go test ./... && go vet ./... && test -z "$(gofmt -l cmd internal)"
+         Re-run the inventory grep of step 1 and list in the report every remaining Portuguese
+         message with the reason it stays (only `SmokeText` and T-248 wire literals are expected).
+After:   T-262 (touches internal/outbound/registration_handler.go and internal/config/store.go)
