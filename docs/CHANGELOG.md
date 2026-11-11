@@ -4,6 +4,21 @@ One line per version shipped, in the same commit as the bump. The entry states t
 
 ## Unreleased
 
+- **API error responses still in Portuguese go to English** (T-265) — **CONTRACT CHANGE (error
+  `message` TEXT only; `class` and status codes did NOT change).** Every Portuguese `message` the
+  API answers with is now English: the `respondError` / `respondErrorWithDetail` /
+  `logRejection` texts in `internal/outbound` (`missing or invalid token`, `unavailable`,
+  `instance not authorized for this consumer`, `unknown instance`, `instance paused`, `body was not
+  read in full`, `body is not valid JSON`, the Meta-failure and "retry is safe" sentences...), the
+  `Warning*` / `Message*` / `Instruction*` / `NextStep` texts (template creation and deletion,
+  registration, Instagram token) and the leadership-guard refusal (`this gateway instance does not
+  hold the pair's leadership...`). The word a consumer could match in the template-outcome `502`
+  went from `INCONCLUSIVO` to `INCONCLUSIVE`. Unchanged: wire field names quoted in a message
+  (`instancia`, `destino`...), JSON keys and enum values, `SmokeText`, the `ALARME` / `PRECISA DE
+  GENTE` markers, and the inbound webhook answers (`internal/inbound`, read by the external
+  probes). The coupling markers in `deploy/check-leadership.sh` moved with the message
+  (`lideranca` -> `leadership`). Docs updated: `docs/CONTRATO-CONSUMIDOR.md` (+ pt-BR) and
+  `docs/INVENTARIO-STRINGS.md`. _Completed 2026-11-11 08:43._
 - **Error and log messages still in Portuguese go to English** (T-264) — **CONTRACT CHANGE (error
   TEXT only).** The text of the `errors.New` / `fmt.Errorf` / `log.Printf` messages that were still in
   Portuguese is now English: the `Err*` sentinels and `Request.Validate()` messages in

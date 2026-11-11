@@ -150,11 +150,11 @@ func instanceAuthorized(
 	consumer, err := auth.Authenticate(r.Header.Get("Authorization"))
 	if err != nil {
 		if errors.Is(err, ErrNoToken) || errors.Is(err, ErrInvalidToken) {
-			respondError(w, http.StatusUnauthorized, "config", "token ausente ou invalido", 0)
+			respondError(w, http.StatusUnauthorized, "config", "missing or invalid token", 0)
 			return config.Consumer{}, config.Instance{}, false, false
 		}
 		log.Printf("zapgw: store error while authenticating on %s: %v", route, err)
-		respondError(w, http.StatusServiceUnavailable, "retryable", "indisponivel", 0)
+		respondError(w, http.StatusServiceUnavailable, "retryable", "unavailable", 0)
 		return config.Consumer{}, config.Instance{}, false, false
 	}
 
@@ -165,25 +165,25 @@ func instanceAuthorized(
 	if !CanUse(consumer, slug) {
 		// 403 YES (T-037): whoever got here already authenticated, and this
 		// is someone's config error — which is worth investigating.
-		logRejection(throttleLog, route, slug, consumer.Name, "instancia nao autorizada para este consumidor")
+		logRejection(throttleLog, route, slug, consumer.Name, "instance not authorized for this consumer")
 		respondError(w, http.StatusForbidden, "config",
-			"instancia nao autorizada para este consumidor (mande ?instancia={slug})", 0)
+			"instance not authorized for this consumer (send ?instancia={slug})", 0)
 		return config.Consumer{}, config.Instance{}, false, false
 	}
 
 	inst, err := store.FindInstance(slug)
 	if err != nil {
 		if errors.Is(err, config.ErrInstanceNotFound) {
-			logRejection(throttleLog, route, slug, consumer.Name, "instancia desconhecida")
-			respondError(w, http.StatusNotFound, "config", "instancia desconhecida", 0)
+			logRejection(throttleLog, route, slug, consumer.Name, "unknown instance")
+			respondError(w, http.StatusNotFound, "config", "unknown instance", 0)
 			return config.Consumer{}, config.Instance{}, false, false
 		}
 		log.Printf("zapgw: store error while looking up instance %q on %s: %v", slug, route, err)
-		respondError(w, http.StatusServiceUnavailable, "retryable", "indisponivel", 0)
+		respondError(w, http.StatusServiceUnavailable, "retryable", "unavailable", 0)
 		return config.Consumer{}, config.Instance{}, false, false
 	}
 	if !inst.Active {
-		respondError(w, http.StatusServiceUnavailable, "retryable", "instancia pausada", 0)
+		respondError(w, http.StatusServiceUnavailable, "retryable", "instance paused", 0)
 		return config.Consumer{}, config.Instance{}, false, false
 	}
 	// T-111: AFTER the bond check (403) and existence (404) — NEVER before,
@@ -209,18 +209,18 @@ func (h *MediaHandler) upload(w http.ResponseWriter, r *http.Request) {
 	parts, err := r.MultipartReader()
 	if err != nil {
 		logRejection(h.throttleLog, "POST /v1/media", inst.Slug, consumer.Name,
-			"o corpo precisa ser multipart/form-data com uma parte chamada "+partName+" (ou "+partNameEnglish+")")
+			"the body must be multipart/form-data with a part named "+partName+" (or "+partNameEnglish+")")
 		respondError(w, http.StatusBadRequest, "permanent",
-			"o corpo precisa ser multipart/form-data com uma parte chamada "+partName+" (ou "+partNameEnglish+")", 0)
+			"the body must be multipart/form-data with a part named "+partName+" (or "+partNameEnglish+")", 0)
 		return
 	}
 
 	part, oldPartName, err := filePart(parts)
 	if err != nil {
 		logRejection(h.throttleLog, "POST /v1/media", inst.Slug, consumer.Name,
-			"nao veio a parte "+partName+" (ou "+partNameEnglish+") com os bytes")
+			"the part "+partName+" (or "+partNameEnglish+") with the bytes is missing")
 		respondError(w, http.StatusBadRequest, "permanent",
-			"nao veio a parte "+partName+" (ou "+partNameEnglish+") com os bytes", 0)
+			"the part "+partName+" (or "+partNameEnglish+") with the bytes is missing", 0)
 		return
 	}
 	defer part.Close()
@@ -247,10 +247,10 @@ func (h *MediaHandler) upload(w http.ResponseWriter, r *http.Request) {
 		// The log message does NOT carry the declared mimeType: it came
 		// from the consumer, and the package only names the known
 		// category, never the rejected value (T-037).
-		logRejection(h.throttleLog, "POST /v1/media", inst.Slug, consumer.Name, "mime nao aceito pelo gateway")
+		logRejection(h.throttleLog, "POST /v1/media", inst.Slug, consumer.Name, "mime not accepted by the gateway")
 		respondError(w, http.StatusUnsupportedMediaType, "permanent",
-			"mime nao aceito pelo gateway (declare o Content-Type da parte "+partName+
-				"; a lista e do gateway, nao da Meta)", 0)
+			"mime not accepted by the gateway (declare the Content-Type of the part "+partName+
+				"; the list is the gateway's, not Meta's)", 0)
 		return
 	}
 
@@ -261,7 +261,7 @@ func (h *MediaHandler) upload(w http.ResponseWriter, r *http.Request) {
 	// here.
 	if r.ContentLength > ceiling {
 		logRejection(h.throttleLog, "POST /v1/media", inst.Slug, consumer.Name,
-			"acima do teto do gateway para a categoria "+string(category))
+			"above the gateway ceiling for category "+string(category))
 		respondCapError(w, category, ceiling)
 		return
 	}
@@ -283,7 +283,7 @@ func (h *MediaHandler) upload(w http.ResponseWriter, r *http.Request) {
 		// itself is the one that knows what happened.
 		if limited.overflowed.Load() {
 			logRejection(h.throttleLog, "POST /v1/media", inst.Slug, consumer.Name,
-				"acima do teto do gateway para a categoria "+string(category)+" (estourou no meio do stream)")
+				"above the gateway ceiling for category "+string(category)+" (exceeded mid-stream)")
 			respondCapError(w, category, ceiling)
 			return
 		}
@@ -338,8 +338,8 @@ func filePart(parts *multipart.Reader) (part *multipart.Part, oldName bool, err 
 
 func respondCapError(w http.ResponseWriter, category meta.Category, ceiling int64) {
 	respondError(w, http.StatusRequestEntityTooLarge, "permanent",
-		"acima do teto do gateway para a categoria "+string(category)+
-			" ("+bytesAsText(ceiling)+"); o teto e NOSSO, nao da Meta", 0)
+		"above the gateway ceiling for category "+string(category)+
+			" ("+bytesAsText(ceiling)+"); the ceiling is OURS, not Meta's", 0)
 }
 
 func (h *MediaHandler) download(w http.ResponseWriter, r *http.Request) {
@@ -354,8 +354,8 @@ func (h *MediaHandler) download(w http.ResponseWriter, r *http.Request) {
 	payloadMime, oldMimeParam := queryAliasRaw(r.URL.Query(), "payload_mime", "mime_do_payload")
 	if payloadMime != "" && !wellFormedMime(payloadMime) {
 		respondError(w, http.StatusBadRequest, "permanent",
-			"mime_do_payload nao e um mime valido; mande o valor de midia_mime_payload "+
-				"exatamente como veio no evento", 0)
+			"mime_do_payload is not a valid mime; send the value of midia_mime_payload "+
+				"exactly as it came in the event", 0)
 		return
 	}
 
@@ -417,7 +417,7 @@ func (h *MediaHandler) download(w http.ResponseWriter, r *http.Request) {
 func respondMediaError(w http.ResponseWriter, err error) {
 	if errors.Is(err, meta.ErrInvalidPhoneNumberID) || errors.Is(err, meta.ErrInvalidMediaID) {
 		respondError(w, http.StatusBadRequest, string(meta.ClassPermanent),
-			"identificador com forma invalida; o pedido nem chegou a sair do gateway", 0)
+			"identifier with an invalid shape; the request never left the gateway", 0)
 		return
 	}
 	if errors.Is(err, meta.ErrBadMediaURL) {
@@ -425,7 +425,7 @@ func respondMediaError(w http.ResponseWriter, err error) {
 		// with no usable url (or with http://, which would deliver the
 		// token in the clear). There's nothing for the consumer to fix.
 		respondError(w, http.StatusBadGateway, string(meta.ClassUnknown),
-			"a Meta nao devolveu um endereco utilizavel para esta midia", 0)
+			"Meta did not return a usable address for this media", 0)
 		return
 	}
 	var me *meta.MetaError
@@ -442,11 +442,11 @@ func respondMediaError(w http.ResponseWriter, err error) {
 	}
 	if errors.Is(err, meta.ErrUploadWithoutID) {
 		respondError(w, http.StatusBadGateway, string(meta.ClassUnknown),
-			"a Meta respondeu sem media_id; a midia pode ter subido — confira antes de repetir", 0)
+			"Meta answered without a media_id; the media may have been uploaded — check before retrying", 0)
 		return
 	}
 	respondError(w, http.StatusBadGateway, string(meta.ClassUnknown),
-		"falha ao falar com a Meta", 0)
+		"failed to talk to Meta", 0)
 }
 
 // cappedReader cuts the stream off at the category cap.

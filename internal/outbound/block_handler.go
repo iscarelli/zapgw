@@ -207,25 +207,25 @@ func (h *BlockHandler) process(
 	consumer, err := h.auth.Authenticate(r.Header.Get("Authorization"))
 	if err != nil {
 		if errors.Is(err, ErrNoToken) || errors.Is(err, ErrInvalidToken) {
-			respondError(w, http.StatusUnauthorized, "config", "token ausente ou invalido", 0)
+			respondError(w, http.StatusUnauthorized, "config", "missing or invalid token", 0)
 			return
 		}
 		log.Printf("zapgw: store error while authenticating on %s: %v", route, err)
-		respondError(w, http.StatusServiceUnavailable, "retryable", "indisponivel", 0)
+		respondError(w, http.StatusServiceUnavailable, "retryable", "unavailable", 0)
 		return
 	}
 
 	raw, err := httpx.ReadRaw(r.Body, h.maxBytes)
 	if err != nil {
 		if errors.Is(err, httpx.ErrBodyTooLarge) {
-			logRejection(h.throttleLog, route, "", consumer.Name, "corpo grande demais")
-			respondError(w, http.StatusRequestEntityTooLarge, "permanent", "corpo grande demais", 0)
+			logRejection(h.throttleLog, route, "", consumer.Name, "body too large")
+			respondError(w, http.StatusRequestEntityTooLarge, "permanent", "body too large", 0)
 			return
 		}
 		// Same reading as the other routes: what arrived incomplete was the
 		// REQUEST, and it's retryable because repeating resolves it.
-		logRejection(h.throttleLog, route, "", consumer.Name, "corpo nao foi lido por inteiro")
-		respondError(w, http.StatusBadRequest, "retryable", "corpo nao foi lido por inteiro", 0)
+		logRejection(h.throttleLog, route, "", consumer.Name, "body was not read in full")
+		respondError(w, http.StatusBadRequest, "retryable", "body was not read in full", 0)
 		return
 	}
 
@@ -241,8 +241,8 @@ func (h *BlockHandler) process(
 
 	var p BlockRequest
 	if err := json.Unmarshal(translated, &p); err != nil {
-		logRejection(h.throttleLog, route, "", consumer.Name, "corpo nao e JSON valido")
-		respondError(w, http.StatusBadRequest, "permanent", "corpo nao e JSON valido", 0)
+		logRejection(h.throttleLog, route, "", consumer.Name, "body is not valid JSON")
+		respondError(w, http.StatusBadRequest, "permanent", "body is not valid JSON", 0)
 		return
 	}
 	if err := p.Validate(); err != nil {
@@ -262,23 +262,23 @@ func (h *BlockHandler) process(
 	if !CanUse(consumer, p.Instance) {
 		log.Printf("zapgw: consumer %q asked for %s on instance %q, which is not theirs",
 			consumer.Name, operation, p.Instance)
-		respondError(w, http.StatusForbidden, "config", "instancia nao autorizada para este consumidor", 0)
+		respondError(w, http.StatusForbidden, "config", "instance not authorized for this consumer", 0)
 		return
 	}
 
 	inst, err := h.store.FindInstance(p.Instance)
 	if err != nil {
 		if errors.Is(err, config.ErrInstanceNotFound) {
-			logRejection(h.throttleLog, route, p.Instance, consumer.Name, "instancia desconhecida")
-			respondError(w, http.StatusNotFound, "config", "instancia desconhecida", 0)
+			logRejection(h.throttleLog, route, p.Instance, consumer.Name, "unknown instance")
+			respondError(w, http.StatusNotFound, "config", "unknown instance", 0)
 			return
 		}
 		log.Printf("zapgw: store error while looking up instance %q on %s: %v", p.Instance, route, err)
-		respondError(w, http.StatusServiceUnavailable, "retryable", "indisponivel", 0)
+		respondError(w, http.StatusServiceUnavailable, "retryable", "unavailable", 0)
 		return
 	}
 	if !inst.Active {
-		respondError(w, http.StatusServiceUnavailable, "retryable", "instancia pausada", 0)
+		respondError(w, http.StatusServiceUnavailable, "retryable", "instance paused", 0)
 		return
 	}
 	// T-111: AFTER the link (403) and the existence (404) — NEVER before,
@@ -337,8 +337,8 @@ func (h *BlockHandler) respondBlockError(w http.ResponseWriter, instanceSlug str
 			"fix the phone_number_id in the store; no block on this instance works until then",
 			instanceSlug)
 		respondError(w, http.StatusBadGateway, string(meta.ClassConfig),
-			"a configuracao desta instancia no gateway esta invalida; "+
-				"o pedido nao foi enviado a Meta e nao adianta repetir ate isso ser corrigido", 0)
+			"this instance's configuration in the gateway is invalid; "+
+				"the request was not sent to Meta and retrying is pointless until this is fixed", 0)
 		return
 	}
 
@@ -356,8 +356,8 @@ func (h *BlockHandler) respondBlockError(w http.ResponseWriter, instanceSlug str
 	// Blocking/unblocking creates no message and generates no charge:
 	// repeating is safe, same reading as /v1/leituras.
 	respondError(w, http.StatusBadGateway, string(meta.ClassUnknown),
-		"falha ao falar com a Meta; a operacao pode nao ter acontecido para nenhum numero — "+
-			"repetir e seguro (bloquear/desbloquear nao tem efeito colateral por si so)", 0)
+		"failed to talk to Meta; the operation may not have happened for any number — "+
+			"retrying is safe (blocking/unblocking has no side effect by itself)", 0)
 }
 
 const listBlocksRoute = "GET " + blockRoute
@@ -366,11 +366,11 @@ func (h *BlockHandler) list(w http.ResponseWriter, r *http.Request) {
 	consumer, err := h.auth.Authenticate(r.Header.Get("Authorization"))
 	if err != nil {
 		if errors.Is(err, ErrNoToken) || errors.Is(err, ErrInvalidToken) {
-			respondError(w, http.StatusUnauthorized, "config", "token ausente ou invalido", 0)
+			respondError(w, http.StatusUnauthorized, "config", "missing or invalid token", 0)
 			return
 		}
 		log.Printf("zapgw: store error while authenticating on %s: %v", listBlocksRoute, err)
-		respondError(w, http.StatusServiceUnavailable, "retryable", "indisponivel", 0)
+		respondError(w, http.StatusServiceUnavailable, "retryable", "unavailable", 0)
 		return
 	}
 
@@ -379,31 +379,31 @@ func (h *BlockHandler) list(w http.ResponseWriter, r *http.Request) {
 	// applied at the point query strings are actually read.
 	slug, oldInstanceParam := queryAlias(r.URL.Query(), "instance", "instancia")
 	if slug == "" {
-		logRejection(h.throttleLog, listBlocksRoute, "", consumer.Name, "parametro instancia e obrigatorio")
-		respondError(w, http.StatusBadRequest, "permanent", "parametro instancia e obrigatorio", 0)
+		logRejection(h.throttleLog, listBlocksRoute, "", consumer.Name, "parameter instancia is required")
+		respondError(w, http.StatusBadRequest, "permanent", "parameter instancia is required", 0)
 		return
 	}
 
 	if !CanUse(consumer, slug) {
 		log.Printf("zapgw: consumer %q asked for the block list of instance %q, which is not theirs",
 			consumer.Name, slug)
-		respondError(w, http.StatusForbidden, "config", "instancia nao autorizada para este consumidor", 0)
+		respondError(w, http.StatusForbidden, "config", "instance not authorized for this consumer", 0)
 		return
 	}
 
 	inst, err := h.store.FindInstance(slug)
 	if err != nil {
 		if errors.Is(err, config.ErrInstanceNotFound) {
-			logRejection(h.throttleLog, listBlocksRoute, slug, consumer.Name, "instancia desconhecida")
-			respondError(w, http.StatusNotFound, "config", "instancia desconhecida", 0)
+			logRejection(h.throttleLog, listBlocksRoute, slug, consumer.Name, "unknown instance")
+			respondError(w, http.StatusNotFound, "config", "unknown instance", 0)
 			return
 		}
 		log.Printf("zapgw: store error while looking up instance %q on %s: %v", slug, listBlocksRoute, err)
-		respondError(w, http.StatusServiceUnavailable, "retryable", "indisponivel", 0)
+		respondError(w, http.StatusServiceUnavailable, "retryable", "unavailable", 0)
 		return
 	}
 	if !inst.Active {
-		respondError(w, http.StatusServiceUnavailable, "retryable", "instancia pausada", 0)
+		respondError(w, http.StatusServiceUnavailable, "retryable", "instance paused", 0)
 		return
 	}
 	if !checkType(w, h.types, inst, "") {
@@ -420,8 +420,8 @@ func (h *BlockHandler) list(w http.ResponseWriter, r *http.Request) {
 	if v := strings.TrimSpace(r.URL.Query().Get("limit")); v != "" {
 		n, errConv := strconv.Atoi(v)
 		if errConv != nil || n <= 0 {
-			logRejection(h.throttleLog, listBlocksRoute, slug, consumer.Name, "parametro limit invalido")
-			respondError(w, http.StatusBadRequest, "permanent", "parametro limit tem de ser um inteiro positivo", 0)
+			logRejection(h.throttleLog, listBlocksRoute, slug, consumer.Name, "invalid limit parameter")
+			respondError(w, http.StatusBadRequest, "permanent", "parameter limit must be a positive integer", 0)
 			return
 		}
 		limit = n

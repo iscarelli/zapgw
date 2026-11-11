@@ -371,11 +371,11 @@ func (h *Handler) send(w http.ResponseWriter, r *http.Request) {
 	consumer, err := h.auth.Authenticate(r.Header.Get("Authorization"))
 	if err != nil {
 		if errors.Is(err, ErrNoToken) || errors.Is(err, ErrInvalidToken) {
-			respondError(w, http.StatusUnauthorized, "config", "token ausente ou invalido", 0)
+			respondError(w, http.StatusUnauthorized, "config", "missing or invalid token", 0)
 			return
 		}
 		log.Printf("zapgw: store error while authenticating: %v", err)
-		respondError(w, http.StatusServiceUnavailable, "retryable", "indisponivel", 0)
+		respondError(w, http.StatusServiceUnavailable, "retryable", "unavailable", 0)
 		return
 	}
 
@@ -385,16 +385,16 @@ func (h *Handler) send(w http.ResponseWriter, r *http.Request) {
 		// messages on the customer's phone. Requiring it is cheaper than
 		// explaining the duplicate.
 		logRejection(h.throttleLog, "POST /v1/messages", "", consumer.Name,
-			"header Idempotency-Key e obrigatorio")
-		respondError(w, http.StatusBadRequest, "permanent", "header Idempotency-Key e obrigatorio", 0)
+			"Idempotency-Key header is required")
+		respondError(w, http.StatusBadRequest, "permanent", "Idempotency-Key header is required", 0)
 		return
 	}
 
 	raw, err := httpx.ReadRaw(r.Body, h.maxBytes)
 	if err != nil {
 		if errors.Is(err, httpx.ErrBodyTooLarge) {
-			logRejection(h.throttleLog, "POST /v1/messages", "", consumer.Name, "corpo grande demais")
-			respondError(w, http.StatusRequestEntityTooLarge, "permanent", "corpo grande demais", 0)
+			logRejection(h.throttleLog, "POST /v1/messages", "", consumer.Name, "body too large")
+			respondError(w, http.StatusRequestEntityTooLarge, "permanent", "body too large", 0)
 			return
 		}
 		// Any other error from ReadRaw is NOT "body too large" — it is the
@@ -403,8 +403,8 @@ func (h *Handler) send(w http.ResponseWriter, r *http.Request) {
 		// 503 would lie by saying the problem is ours), and retryable because
 		// repeating fixes it — saying "permanent" here would send the consumer
 		// to give up on something a new POST would fix.
-		logRejection(h.throttleLog, "POST /v1/messages", "", consumer.Name, "corpo nao foi lido por inteiro")
-		respondError(w, http.StatusBadRequest, "retryable", "corpo nao foi lido por inteiro", 0)
+		logRejection(h.throttleLog, "POST /v1/messages", "", consumer.Name, "body was not read in full")
+		respondError(w, http.StatusBadRequest, "retryable", "body was not read in full", 0)
 		return
 	}
 
@@ -425,8 +425,8 @@ func (h *Handler) send(w http.ResponseWriter, r *http.Request) {
 
 	var p Request
 	if err := json.Unmarshal(translated, &p); err != nil {
-		logRejection(h.throttleLog, "POST /v1/messages", "", consumer.Name, "corpo nao e JSON valido")
-		respondError(w, http.StatusBadRequest, "permanent", "corpo nao e JSON valido", 0)
+		logRejection(h.throttleLog, "POST /v1/messages", "", consumer.Name, "body is not valid JSON")
+		respondError(w, http.StatusBadRequest, "permanent", "body is not valid JSON", 0)
 		return
 	}
 	// T-097: captured BEFORE p.Validate() mutates p.To. For an Instagram
@@ -466,7 +466,7 @@ func (h *Handler) send(w http.ResponseWriter, r *http.Request) {
 	if !CanUse(consumer, p.Instance) {
 		log.Printf("zapgw: consumer %q asked for instance %q, which is not theirs",
 			consumer.Name, p.Instance)
-		respondError(w, http.StatusForbidden, "config", "instancia nao autorizada para este consumidor", 0)
+		respondError(w, http.StatusForbidden, "config", "instance not authorized for this consumer", 0)
 		return
 	}
 
@@ -476,17 +476,17 @@ func (h *Handler) send(w http.ResponseWriter, r *http.Request) {
 			// instance 404 YES (T-037): whoever got here already authenticated —
 			// it is someone's wrong config, which is worth investigating, unlike
 			// 401 (scan noise).
-			logRejection(h.throttleLog, "POST /v1/messages", p.Instance, consumer.Name, "instancia desconhecida")
-			respondError(w, http.StatusNotFound, "config", "instancia desconhecida", 0)
+			logRejection(h.throttleLog, "POST /v1/messages", p.Instance, consumer.Name, "unknown instance")
+			respondError(w, http.StatusNotFound, "config", "unknown instance", 0)
 			return
 		}
 		log.Printf("zapgw: store error while looking up instance %q: %v", p.Instance, err)
-		respondError(w, http.StatusServiceUnavailable, "retryable", "indisponivel", 0)
+		respondError(w, http.StatusServiceUnavailable, "retryable", "unavailable", 0)
 		return
 	}
 	if !inst.Active {
 		log.Printf("zapgw: instance %q is paused and received a send request", inst.Slug)
-		respondError(w, http.StatusServiceUnavailable, "retryable", "instancia pausada", 0)
+		respondError(w, http.StatusServiceUnavailable, "retryable", "instance paused", 0)
 		return
 	}
 	// T-097: first Instagram slice — ONLY tipo:"texto". No template (Instagram
@@ -499,10 +499,10 @@ func (h *Handler) send(w http.ResponseWriter, r *http.Request) {
 	// header).
 	if inst.Type == config.TypeInstagram && p.Type != "texto" {
 		logRejection(h.throttleLog, "POST /v1/messages", inst.Slug, consumer.Name,
-			"instancia Instagram so aceita tipo texto nesta fase")
+			"Instagram instance only accepts type texto in this phase")
 		respondError(w, http.StatusBadRequest, "permanent",
-			"esta instancia e Instagram; nesta fase o gateway so envia tipo \"texto\" — "+
-				"sem template, midia, botao, reacao ou localizacao", 0)
+			"this instance is Instagram; in this phase the gateway only sends type \"texto\" — "+
+				"no template, media, button, reaction or location", 0)
 		return
 	}
 	// counterpartyForLog is the value that goes to Meta (Instagram) and to the
@@ -524,11 +524,11 @@ func (h *Handler) send(w http.ResponseWriter, r *http.Request) {
 			// billing, apology): without this 422, the second one gets the
 			// FIRST one's id and never goes out — a silent and costly failure.
 			respondError(w, http.StatusUnprocessableEntity, "permanent",
-				"esta chave de idempotencia ja foi usada para outro pedido", 0)
+				"this idempotency key was already used for a different request", 0)
 			return
 		}
 		log.Printf("zapgw: store error on idempotency: %v", err)
-		respondError(w, http.StatusServiceUnavailable, "retryable", "indisponivel", 0)
+		respondError(w, http.StatusServiceUnavailable, "retryable", "unavailable", 0)
 		return
 	}
 	if alreadySent != "" {
@@ -541,7 +541,7 @@ func (h *Handler) send(w http.ResponseWriter, r *http.Request) {
 	if !reserved {
 		// Another send with this key is in progress. 409 is the honest response:
 		// we did not send, and there is no id to return yet.
-		respondError(w, http.StatusConflict, "retryable", "envio com esta chave em andamento", 0)
+		respondError(w, http.StatusConflict, "retryable", "a send with this key is in progress", 0)
 		return
 	}
 
@@ -699,8 +699,8 @@ func (h *Handler) respondSendError(w http.ResponseWriter, instanceSlug string, e
 			"fix the phone_number_id in the store; no send on this instance works until then",
 			instanceSlug)
 		respondError(w, http.StatusBadGateway, string(meta.ClassConfig),
-			"a configuracao desta instancia no gateway esta invalida; "+
-				"o pedido nao foi enviado a Meta e nao adianta reenviar ate isso ser corrigido", 0)
+			"this instance's configuration in the gateway is invalid; "+
+				"the request was not sent to Meta and resending is pointless until this is fixed", 0)
 		return
 	}
 
@@ -733,8 +733,8 @@ func (h *Handler) respondSendError(w http.ResponseWriter, instanceSlug string, e
 	// the truth: the upstream (Meta) did not give a usable response.
 	if errors.Is(err, meta.ErrResponseWithoutID) {
 		respondError(w, http.StatusBadGateway, string(meta.ClassUnknown),
-			"a Meta respondeu sem id de mensagem; nao reenvie com esta chave, "+
-				"confira se a mensagem chegou e so entao decida", 0)
+			"Meta answered without a message id; do not resend with this key, "+
+				"check whether the message arrived and only then decide", 0)
 		return
 	}
 	// default: transport failure, deadline exceeded, or error reading the
@@ -742,6 +742,6 @@ func (h *Handler) respondSendError(w http.ResponseWriter, instanceSlug string, e
 	// a response from Meta, so there is no way to know whether the message was
 	// created.
 	respondError(w, http.StatusBadGateway, string(meta.ClassUnknown),
-		"falha ao falar com a Meta; nao reenvie com esta chave, "+
-			"confira se a mensagem chegou e so entao decida", 0)
+		"failed to talk to Meta; do not resend with this key, "+
+			"check whether the message arrived and only then decide", 0)
 }

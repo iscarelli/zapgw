@@ -552,10 +552,10 @@ type InstagramTokenInState struct {
 // literals written twice (here and in the test that proves the field
 // carries the instruction), so the two ends never diverge.
 const (
-	InstructionIGTokenFailing = "a renovacao automatica esta falhando; a resolucao e MANUAL, do lado de quem " +
-		"opera o gateway ou e dono da conta Instagram na Meta — o token nao esta ao alcance deste consumidor"
-	InstructionIGTokenExpired = "o token venceu e nao ha renovacao automatica possivel; e preciso um login " +
-		"manual na Meta pelo dono da conta Instagram — o token nao esta ao alcance deste consumidor"
+	InstructionIGTokenFailing = "the automatic renewal is failing; the fix is MANUAL, on the side of whoever " +
+		"operates the gateway or owns the Instagram account at Meta — the token is out of this consumer's reach"
+	InstructionIGTokenExpired = "the token expired and no automatic renewal is possible; a manual " +
+		"login at Meta by the Instagram account owner is needed — the token is out of this consumer's reach"
 )
 
 // IGRenewalFailureReader is what BuildState needs from the

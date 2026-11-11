@@ -175,14 +175,14 @@ func (h *AccountHealthHandler) accountHealth(w http.ResponseWriter, r *http.Requ
 	consumer, err := h.auth.Authenticate(r.Header.Get("Authorization"))
 	if err != nil {
 		if errors.Is(err, ErrNoToken) || errors.Is(err, ErrInvalidToken) {
-			respondError(w, http.StatusUnauthorized, "config", "token ausente ou invalido", 0)
+			respondError(w, http.StatusUnauthorized, "config", "missing or invalid token", 0)
 			return
 		}
 		// The only log in this file: database down isn't probe noise, and
 		// without this line the gateway would go silent about its own
 		// failure — same reasoning as health_handler.go.
 		log.Printf("zapgw: store error while authenticating on the account-health probe: %v", err)
-		respondError(w, http.StatusServiceUnavailable, "retryable", "indisponivel", 0)
+		respondError(w, http.StatusServiceUnavailable, "retryable", "unavailable", 0)
 		return
 	}
 
@@ -191,25 +191,25 @@ func (h *AccountHealthHandler) accountHealth(w http.ResponseWriter, r *http.Requ
 	// account health is speaking about another system's business, and it
 	// runs BEFORE any call to Meta.
 	if !CanUse(consumer, slug) {
-		respondError(w, http.StatusForbidden, "config", "instancia nao autorizada para este consumidor", 0)
+		respondError(w, http.StatusForbidden, "config", "instance not authorized for this consumer", 0)
 		return
 	}
 
 	inst, err := h.store.FindInstance(slug)
 	if err != nil {
 		if errors.Is(err, config.ErrInstanceNotFound) {
-			respondError(w, http.StatusNotFound, "config", "instancia desconhecida", 0)
+			respondError(w, http.StatusNotFound, "config", "unknown instance", 0)
 			return
 		}
 		log.Printf("zapgw: store error while looking up instance %q on the account-health probe: %v", slug, err)
-		respondError(w, http.StatusServiceUnavailable, "retryable", "indisponivel", 0)
+		respondError(w, http.StatusServiceUnavailable, "retryable", "unavailable", 0)
 		return
 	}
 	if !inst.Active {
 		// 503 like health: a paused instance does not send, so it is not
 		// healthy — and we do not spend three calls to Meta for a channel
 		// that cannot send anyway.
-		respondError(w, http.StatusServiceUnavailable, "retryable", "instancia pausada", 0)
+		respondError(w, http.StatusServiceUnavailable, "retryable", "instance paused", 0)
 		return
 	}
 
@@ -388,7 +388,7 @@ func unavailableEntryFromError(query string, err error) accountHealthUnavailable
 // unrecognizedHealthStatusMessage is the text both
 // respondUnrecognizedAccountHealth and unavailableEntryUnrecognized use for
 // a 2xx response that came back WITHOUT a health_status this route trusts.
-const unrecognizedHealthStatusMessage = "resposta da Meta sem health_status reconhecivel"
+const unrecognizedHealthStatusMessage = "Meta response without a recognizable health_status"
 
 // unavailableEntryUnrecognized is unavailableEntryFromError's sibling for
 // the "Meta answered 200 but not with a health_status we recognize" case —

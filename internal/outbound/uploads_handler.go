@@ -104,9 +104,9 @@ func (h *UploadsHandler) upload(w http.ResponseWriter, r *http.Request) {
 	// two apart.
 	if r.Header.Get("Content-Length") == "" || r.ContentLength < 0 {
 		logRejection(h.throttleLog, "POST /v1/uploads", inst.Slug, consumer.Name,
-			"Content-Length obrigatorio (esta rota exige o tamanho declarado)")
+			"Content-Length required (this route requires the declared size)")
 		respondError(w, http.StatusLengthRequired, "permanent",
-			"Content-Length obrigatorio; a Resumable Upload API da Meta exige o tamanho declarado do arquivo", 0)
+			"Content-Length required; Meta's Resumable Upload API requires the declared file size", 0)
 		return
 	}
 
@@ -120,9 +120,9 @@ func (h *UploadsHandler) upload(w http.ResponseWriter, r *http.Request) {
 		extension, accepted = acceptedUploadMimes[base]
 	}
 	if !accepted {
-		logRejection(h.throttleLog, "POST /v1/uploads", inst.Slug, consumer.Name, "mime nao aceito pelo gateway")
+		logRejection(h.throttleLog, "POST /v1/uploads", inst.Slug, consumer.Name, "mime not accepted by the gateway")
 		respondError(w, http.StatusUnsupportedMediaType, "permanent",
-			"mime nao aceito pelo gateway (a lista e do gateway, nao da Meta: image/jpeg, image/png, video/mp4, application/pdf)", 0)
+			"mime not accepted by the gateway (the list is the gateway's, not Meta's: image/jpeg, image/png, video/mp4, application/pdf)", 0)
 		return
 	}
 
@@ -136,15 +136,15 @@ func (h *UploadsHandler) upload(w http.ResponseWriter, r *http.Request) {
 		// Unreachable in practice (see the comment above), but a route
 		// that trusted that silently would be exactly the kind of
 		// assumption this project's traps document — fail closed instead.
-		logRejection(h.throttleLog, "POST /v1/uploads", inst.Slug, consumer.Name, "mime nao aceito pelo gateway")
+		logRejection(h.throttleLog, "POST /v1/uploads", inst.Slug, consumer.Name, "mime not accepted by the gateway")
 		respondError(w, http.StatusUnsupportedMediaType, "permanent",
-			"mime nao aceito pelo gateway (a lista e do gateway, nao da Meta: image/jpeg, image/png, video/mp4, application/pdf)", 0)
+			"mime not accepted by the gateway (the list is the gateway's, not Meta's: image/jpeg, image/png, video/mp4, application/pdf)", 0)
 		return
 	}
 	ceiling := meta.CategoryCap(category)
 	if r.ContentLength > ceiling {
 		logRejection(h.throttleLog, "POST /v1/uploads", inst.Slug, consumer.Name,
-			"acima do teto do gateway para a categoria "+string(category))
+			"above the gateway ceiling for category "+string(category))
 		respondCapError(w, category, ceiling)
 		return
 	}
@@ -169,13 +169,13 @@ func (h *UploadsHandler) upload(w http.ResponseWriter, r *http.Request) {
 	// comment for why the instance doesn't store one.
 	appID, err := h.client.AppID(ctx, inst.SendToken)
 	if err != nil {
-		respondUploadStepError(w, "app_id", "descobrir o App ID (GET /app)", err)
+		respondUploadStepError(w, "app_id", "discover the App ID (GET /app)", err)
 		return
 	}
 
 	sessionID, err := h.client.CreateUploadSession(ctx, appID, inst.SendToken, mimeType, fileName, r.ContentLength)
 	if err != nil {
-		respondUploadStepError(w, "session", "criar a sessao de upload (POST /{app-id}/uploads)", err)
+		respondUploadStepError(w, "session", "create the upload session (POST /{app-id}/uploads)", err)
 		return
 	}
 
@@ -213,13 +213,13 @@ func respondUploadStepError(w http.ResponseWriter, step, label string, err error
 	switch {
 	case errors.Is(err, meta.ErrAppIDWithoutID):
 		resp.Error.Class = string(meta.ClassUnknown)
-		resp.Error.Message = label + ": a Meta respondeu com sucesso mas sem o app id"
+		resp.Error.Message = label + ": Meta answered successfully but without the app id"
 	case errors.Is(err, meta.ErrUploadSessionWithoutID):
 		resp.Error.Class = string(meta.ClassUnknown)
-		resp.Error.Message = label + ": a Meta respondeu com sucesso mas sem o id da sessao"
+		resp.Error.Message = label + ": Meta answered successfully but without the session id"
 	case errors.Is(err, meta.ErrUploadWithoutHandle):
 		resp.Error.Class = string(meta.ClassUnknown)
-		resp.Error.Message = label + ": a Meta respondeu com sucesso mas sem o handle"
+		resp.Error.Message = label + ": Meta answered successfully but without the handle"
 	case errors.Is(err, meta.ErrUploadSessionIDShape):
 		// T-242: this error surfaces from the THIRD call (CompleteUpload),
 		// so the call site above tagged it "upload" -- but the thing that
@@ -229,7 +229,7 @@ func respondUploadStepError(w http.ResponseWriter, step, label string, err error
 		// taxonomy already lives.
 		resp.Error.Step = "session"
 		resp.Error.Class = string(meta.ClassUnknown)
-		resp.Error.Message = "a Meta devolveu um id de sessao de upload em formato inesperado"
+		resp.Error.Message = "Meta returned an upload session id in an unexpected format"
 	default:
 		var me *meta.MetaError
 		if errors.As(err, &me) {
@@ -248,7 +248,7 @@ func respondUploadStepError(w http.ResponseWriter, step, label string, err error
 			resp.Error.MetaTrace = me.Trace
 		} else {
 			resp.Error.Class = string(meta.ClassUnknown)
-			resp.Error.Message = label + ": falha ao falar com a Meta"
+			resp.Error.Message = label + ": failed to talk to Meta"
 		}
 	}
 

@@ -515,7 +515,7 @@ func TestReadsTransportFailureGives502TellingToRetry(t *testing.T) {
 	if resp.Error.Class != "unknown" {
 		t.Errorf("class = %q, want unknown", resp.Error.Class)
 	}
-	if !strings.Contains(resp.Error.Message, "repetir e seguro") {
+	if !strings.Contains(resp.Error.Message, "retrying is safe") {
 		t.Errorf("mensagem = %q — ela precisa dizer que repetir e seguro, senao o consumidor "+
 			"aplica aqui a regra do ENVIO ('nao reenvie') e a conversa nunca e marcada", resp.Error.Message)
 	}

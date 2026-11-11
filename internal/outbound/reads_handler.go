@@ -147,26 +147,26 @@ func (h *ReadsHandler) mark(w http.ResponseWriter, r *http.Request) {
 	consumer, err := h.auth.Authenticate(r.Header.Get("Authorization"))
 	if err != nil {
 		if errors.Is(err, ErrNoToken) || errors.Is(err, ErrInvalidToken) {
-			respondError(w, http.StatusUnauthorized, "config", "token ausente ou invalido", 0)
+			respondError(w, http.StatusUnauthorized, "config", "missing or invalid token", 0)
 			return
 		}
 		log.Printf("zapgw: store error while authenticating on %s: %v", readsRoute, err)
-		respondError(w, http.StatusServiceUnavailable, "retryable", "indisponivel", 0)
+		respondError(w, http.StatusServiceUnavailable, "retryable", "unavailable", 0)
 		return
 	}
 
 	raw, err := httpx.ReadRaw(r.Body, h.maxBytes)
 	if err != nil {
 		if errors.Is(err, httpx.ErrBodyTooLarge) {
-			logRejection(h.throttleLog, readsRoute, "", consumer.Name, "corpo grande demais")
-			respondError(w, http.StatusRequestEntityTooLarge, "permanent", "corpo grande demais", 0)
+			logRejection(h.throttleLog, readsRoute, "", consumer.Name, "body too large")
+			respondError(w, http.StatusRequestEntityTooLarge, "permanent", "body too large", 0)
 			return
 		}
 		// Same reading as the send: the consumer's connection dropped midway. 400
 		// because what arrived incomplete was the REQUEST, and `retryable` because
 		// retrying resolves it.
-		logRejection(h.throttleLog, readsRoute, "", consumer.Name, "corpo nao foi lido por inteiro")
-		respondError(w, http.StatusBadRequest, "retryable", "corpo nao foi lido por inteiro", 0)
+		logRejection(h.throttleLog, readsRoute, "", consumer.Name, "body was not read in full")
+		respondError(w, http.StatusBadRequest, "retryable", "body was not read in full", 0)
 		return
 	}
 
@@ -181,8 +181,8 @@ func (h *ReadsHandler) mark(w http.ResponseWriter, r *http.Request) {
 
 	var p ReadRequest
 	if err := json.Unmarshal(translated, &p); err != nil {
-		logRejection(h.throttleLog, readsRoute, "", consumer.Name, "corpo nao e JSON valido")
-		respondError(w, http.StatusBadRequest, "permanent", "corpo nao e JSON valido", 0)
+		logRejection(h.throttleLog, readsRoute, "", consumer.Name, "body is not valid JSON")
+		respondError(w, http.StatusBadRequest, "permanent", "body is not valid JSON", 0)
 		return
 	}
 	if err := p.Validate(); err != nil {
@@ -201,23 +201,23 @@ func (h *ReadsHandler) mark(w http.ResponseWriter, r *http.Request) {
 	if !CanUse(consumer, p.Instance) {
 		log.Printf("zapgw: consumer %q asked to mark a read on instance %q, which is not theirs",
 			consumer.Name, p.Instance)
-		respondError(w, http.StatusForbidden, "config", "instancia nao autorizada para este consumidor", 0)
+		respondError(w, http.StatusForbidden, "config", "instance not authorized for this consumer", 0)
 		return
 	}
 
 	inst, err := h.store.FindInstance(p.Instance)
 	if err != nil {
 		if errors.Is(err, config.ErrInstanceNotFound) {
-			logRejection(h.throttleLog, readsRoute, p.Instance, consumer.Name, "instancia desconhecida")
-			respondError(w, http.StatusNotFound, "config", "instancia desconhecida", 0)
+			logRejection(h.throttleLog, readsRoute, p.Instance, consumer.Name, "unknown instance")
+			respondError(w, http.StatusNotFound, "config", "unknown instance", 0)
 			return
 		}
 		log.Printf("zapgw: store error while looking up instance %q on %s: %v", p.Instance, readsRoute, err)
-		respondError(w, http.StatusServiceUnavailable, "retryable", "indisponivel", 0)
+		respondError(w, http.StatusServiceUnavailable, "retryable", "unavailable", 0)
 		return
 	}
 	if !inst.Active {
-		respondError(w, http.StatusServiceUnavailable, "retryable", "instancia pausada", 0)
+		respondError(w, http.StatusServiceUnavailable, "retryable", "instance paused", 0)
 		return
 	}
 	// T-111: AFTER the link (403) and existence (404) — NEVER before,
@@ -268,8 +268,8 @@ func (h *ReadsHandler) respondReadError(w http.ResponseWriter, instanceSlug stri
 			"fix the phone_number_id in the store; no call to Meta on this instance works until then",
 			instanceSlug)
 		respondError(w, http.StatusBadGateway, string(meta.ClassConfig),
-			"a configuracao desta instancia no gateway esta invalida; "+
-				"o pedido nao foi enviado a Meta e nao adianta repetir ate isso ser corrigido", 0)
+			"this instance's configuration in the gateway is invalid; "+
+				"the request was not sent to Meta and retrying is pointless until this is fixed", 0)
 		return
 	}
 
@@ -286,6 +286,6 @@ func (h *ReadsHandler) respondReadError(w http.ResponseWriter, instanceSlug stri
 	// usable response. 502 `unknown` tells the truth about the upstream —
 	// but, unlike the send, retrying here is safe and is the fix.
 	respondError(w, http.StatusBadGateway, string(meta.ClassUnknown),
-		"falha ao falar com a Meta; a marcacao pode nao ter acontecido — "+
-			"repetir e seguro (marcar duas vezes nao tem efeito colateral)", 0)
+		"failed to talk to Meta; the marking may not have happened — "+
+			"retrying is safe (marking twice has no side effect)", 0)
 }

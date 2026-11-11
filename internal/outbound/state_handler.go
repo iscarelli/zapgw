@@ -191,11 +191,11 @@ func (h *StateHandler) state(w http.ResponseWriter, r *http.Request) {
 	consumer, err := h.auth.Authenticate(r.Header.Get("Authorization"))
 	if err != nil {
 		if errors.Is(err, ErrNoToken) || errors.Is(err, ErrInvalidToken) {
-			respondError(w, http.StatusUnauthorized, "config", "token ausente ou invalido", 0)
+			respondError(w, http.StatusUnauthorized, "config", "missing or invalid token", 0)
 			return
 		}
 		log.Printf("zapgw: store error while authenticating on GET /v1/estado: %v", err)
-		respondError(w, http.StatusServiceUnavailable, "retryable", "indisponivel", 0)
+		respondError(w, http.StatusServiceUnavailable, "retryable", "unavailable", 0)
 		return
 	}
 
@@ -208,7 +208,7 @@ func (h *StateHandler) state(w http.ResponseWriter, r *http.Request) {
 		// link, which is fine — the defect would stay hidden in the wrong
 		// place.
 		respondError(w, http.StatusBadRequest, "permanent",
-			"parametro de consulta `instancia` e obrigatorio", 0)
+			"query parameter `instancia` is required", 0)
 		return
 	}
 	// THE SAME guard as POST /v1/messages, and not a new model: the
@@ -220,7 +220,7 @@ func (h *StateHandler) state(w http.ResponseWriter, r *http.Request) {
 	if !CanUse(consumer, slug) {
 		log.Printf("zapgw: consumer %q asked for the state of instance %q, which is not theirs",
 			consumer.Name, slug)
-		respondError(w, http.StatusForbidden, "config", "instancia nao autorizada para este consumidor", 0)
+		respondError(w, http.StatusForbidden, "config", "instance not authorized for this consumer", 0)
 		return
 	}
 
@@ -262,14 +262,14 @@ func (h *StateHandler) state(w http.ResponseWriter, r *http.Request) {
 	e, err := BuildStateWithSeries(h.store, h.watchdog, renewer, h.ingress, h.reach, h.leadership, h.version, slug, time.Now(), days)
 	if err != nil {
 		if errors.Is(err, config.ErrInstanceNotFound) {
-			respondError(w, http.StatusNotFound, "config", "instancia desconhecida", 0)
+			respondError(w, http.StatusNotFound, "config", "unknown instance", 0)
 			return
 		}
 		// 503, and not 200 with the state half-built: a read failure returned
 		// as a zeroed state would be a lie wearing a fact's face, and it
 		// would land exactly on the value the consumer uses to NOT alarm.
 		log.Printf("zapgw: error assembling state on GET /v1/estado: %v", err)
-		respondError(w, http.StatusServiceUnavailable, "retryable", "indisponivel", 0)
+		respondError(w, http.StatusServiceUnavailable, "retryable", "unavailable", 0)
 		return
 	}
 

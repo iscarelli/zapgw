@@ -119,7 +119,7 @@ func checkType(w http.ResponseWriter, types AcceptedTypes, inst config.Instance,
 	if types.accepts(inst.Type) {
 		return true
 	}
-	msg := fmt.Sprintf("esta rota nao se aplica a instancias do tipo %q", knownType(inst.Type))
+	msg := fmt.Sprintf("this route does not apply to instances of type %q", knownType(inst.Type))
 	if guidance != "" {
 		msg += ". " + guidance
 	}

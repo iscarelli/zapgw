@@ -107,7 +107,7 @@ func translateSubObject(raw json.RawMessage, dict map[string]string) (json.RawMe
 // for the routes whose ENTRADA keys are all at the top level (no nested
 // object needs its own dictionary). Same fallback rule: a body that is not
 // a JSON object comes back unchanged, and the real json.Unmarshal into the
-// request struct is what reports "corpo nao e JSON valido" — this function
+// request struct is what reports "body is not valid JSON" — this function
 // never produces that message itself, so it never needs to quote (and
 // possibly leak) a fragment of a body that, on some of these routes,
 // carries secrets (app_secret, token_envio).
@@ -327,7 +327,7 @@ func translateRequestBody(raw []byte) ([]byte, []string, error) {
 	var m map[string]json.RawMessage
 	if err := json.Unmarshal(raw, &m); err != nil {
 		// Not a JSON object at all — the real json.Unmarshal into Request,
-		// right after this call, reports "corpo nao e JSON valido" itself.
+		// right after this call, reports "body is not valid JSON" itself.
 		return raw, nil, nil
 	}
 
@@ -628,7 +628,7 @@ func translateTemplateButtonItem(raw json.RawMessage) (json.RawMessage, []string
 // translateInputOrReject runs translateTopLevel(raw, dict) and, on a
 // conflicting alias, writes the 400 and logs it — the SAME boilerplate
 // every entrada-decoding handler in this package already repeats for
-// "corpo grande demais" and "corpo nao e JSON valido". ok is false only
+// "body too large" and "body is not valid JSON". ok is false only
 // when this function has already written the response; the caller must
 // return immediately without writing anything else.
 func translateInputOrReject(

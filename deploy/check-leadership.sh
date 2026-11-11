@@ -103,8 +103,8 @@ checar() { # $1 name  $2 expected  $3 got  $4 substring required in the body (""
 	printf '%-56s expected=%s got=%s  %s\n' "$1" "$2" "$3" "$veredito"
 	if [ "$veredito" = "FAILED" ]; then
 		echo "   body: $(cat "$RAIZ/corpo.json")"
-		# zapgw:log-coupling "lideranca"
-		echo "   log:  $(grep -i lideranca "$RAIZ/saida.log" | tail -1)"
+		# zapgw:log-coupling "leadership"
+		echo "   log:  $(grep -i leadership "$RAIZ/saida.log" | tail -1)"
 	fi
 }
 
@@ -114,8 +114,8 @@ subir "$CONCESSAO"
 # zapgw:log-coupling "leadership guard ARMED"
 grep -q "leadership guard ARMED" "$RAIZ/saida.log" \
 	|| { echo "FAILED: the startup did not announce ARMED"; falhou=1; }
-# zapgw:log-coupling "lideranca"
-checar "A) absent refuses" 503 "$(enviar)" "lideranca"
+# zapgw:log-coupling "leadership"
+checar "A) absent refuses" 503 "$(enviar)" "leadership"
 derrubar
 
 echo
@@ -138,8 +138,8 @@ if ! touch -d "@$(( $(date +%s) - 600 ))" "$CONCESSAO" 2>/dev/null; then
 	derrubar
 	inconclusivo "this machine's \`touch -d\` does not age a file; case C cannot be measured"
 fi
-# zapgw:log-coupling "lideranca"
-checar "C) expired refuses, without restarting" 503 "$(enviar)" "lideranca"
+# zapgw:log-coupling "leadership"
+checar "C) expired refuses, without restarting" 503 "$(enviar)" "leadership"
 derrubar
 
 echo

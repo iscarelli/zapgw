@@ -185,7 +185,7 @@ func TestTemplateCreateShowsThePendingWarning(t *testing.T) {
 		t.Fatalf("dispatch: %v\n%s", err, out.String())
 	}
 
-	if !strings.Contains(out.String(), "NAO pode ser usado na hora") {
+	if !strings.Contains(out.String(), "can NOT be used right away") {
 		t.Errorf("the output does not contain the pending warning:\n%s", out.String())
 	}
 }

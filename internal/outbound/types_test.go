@@ -151,7 +151,7 @@ func TestRegistrationRefusesInstagramInstanceWith400AndGuidance(t *testing.T) {
 	if errBody.Error.Class != "config" {
 		t.Errorf("class = %q, want \"config\"", errBody.Error.Class)
 	}
-	if !strings.Contains(errBody.Error.Message, "quem opera o gateway") {
+	if !strings.Contains(errBody.Error.Message, "whoever operates the gateway") {
 		t.Errorf("the message does not guide the consumer: %q", errBody.Error.Message)
 	}
 	// And NOTHING was written — the rejection happened BEFORE any write.
