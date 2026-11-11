@@ -316,7 +316,7 @@ func TestRegistrationDoesNOTActivateTheInstance(t *testing.T) {
 	if !resp.Paused || resp.State != "pausada" {
 		t.Errorf("the response says state=%q paused=%v for an instance that is still stopped", resp.State, resp.Paused)
 	}
-	if !strings.Contains(strings.ToLower(resp.NextStep), "pausada") {
+	if !strings.Contains(strings.ToLower(resp.NextStep), "paused") {
 		t.Errorf("proximo_passo does not warn that the instance is still paused: %q", resp.NextStep)
 	}
 }
@@ -390,7 +390,7 @@ func TestRegistrationAfterTheWindowIs409AndSaysWhatToDo(t *testing.T) {
 	body := strings.ToLower(rec.Body.String())
 	// WHY it closed, WHAT TO DO, and the NAME of the command that unlocks it.
 	// Without all three, the consumer is stuck in a dead end.
-	for _, required := range []string{"fechada", "primeira", "reopen-enrollment"} {
+	for _, required := range []string{"closed", "first", "reopen-enrollment"} {
 		if !strings.Contains(body, required) {
 			t.Errorf("the error message does not say %q — it is the only support this consumer has:\n%s", required, rec.Body.String())
 		}

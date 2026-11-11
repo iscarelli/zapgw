@@ -140,23 +140,23 @@ func (h *SmokeHandler) smoke(w http.ResponseWriter, r *http.Request) {
 	consumer, err := h.auth.Authenticate(r.Header.Get("Authorization"))
 	if err != nil {
 		if errors.Is(err, ErrNoToken) || errors.Is(err, ErrInvalidToken) {
-			respondError(w, http.StatusUnauthorized, "config", "token ausente ou invalido", 0)
+			respondError(w, http.StatusUnauthorized, "config", "missing or invalid token", 0)
 			return
 		}
 		log.Printf("zapgw: store error while authenticating on %s: %v", smokeRoute, err)
-		respondError(w, http.StatusServiceUnavailable, "retryable", "indisponivel", 0)
+		respondError(w, http.StatusServiceUnavailable, "retryable", "unavailable", 0)
 		return
 	}
 
 	raw, err := httpx.ReadRaw(r.Body, h.maxBytes)
 	if err != nil {
 		if errors.Is(err, httpx.ErrBodyTooLarge) {
-			logRejection(h.throttleLog, smokeRoute, "", consumer.Name, "corpo grande demais")
-			respondError(w, http.StatusRequestEntityTooLarge, "permanent", "corpo grande demais", 0)
+			logRejection(h.throttleLog, smokeRoute, "", consumer.Name, "body too large")
+			respondError(w, http.StatusRequestEntityTooLarge, "permanent", "body too large", 0)
 			return
 		}
-		logRejection(h.throttleLog, smokeRoute, "", consumer.Name, "corpo nao foi lido por inteiro")
-		respondError(w, http.StatusBadRequest, "retryable", "corpo nao foi lido por inteiro", 0)
+		logRejection(h.throttleLog, smokeRoute, "", consumer.Name, "body was not read in full")
+		respondError(w, http.StatusBadRequest, "retryable", "body was not read in full", 0)
 		return
 	}
 
@@ -171,8 +171,8 @@ func (h *SmokeHandler) smoke(w http.ResponseWriter, r *http.Request) {
 
 	var p SmokeRequest
 	if err := json.Unmarshal(translated, &p); err != nil {
-		logRejection(h.throttleLog, smokeRoute, "", consumer.Name, "corpo nao e JSON valido")
-		respondError(w, http.StatusBadRequest, "permanent", "corpo nao e JSON valido", 0)
+		logRejection(h.throttleLog, smokeRoute, "", consumer.Name, "body is not valid JSON")
+		respondError(w, http.StatusBadRequest, "permanent", "body is not valid JSON", 0)
 		return
 	}
 	if err := p.validate(); err != nil {
@@ -191,7 +191,7 @@ func (h *SmokeHandler) smoke(w http.ResponseWriter, r *http.Request) {
 	if !CanUse(consumer, p.Instance) {
 		log.Printf("zapgw: consumer %q asked for a smoke test on instance %q, which is not theirs",
 			consumer.Name, p.Instance)
-		respondError(w, http.StatusForbidden, "config", "instancia nao autorizada para este consumidor", 0)
+		respondError(w, http.StatusForbidden, "config", "instance not authorized for this consumer", 0)
 		return
 	}
 
@@ -251,7 +251,7 @@ func (h *SmokeHandler) smokeResponse(r SmokeResult) SmokeResponse {
 func (h *SmokeHandler) respondSmokeError(w http.ResponseWriter, slug, consumer string, err error) {
 	if errors.Is(err, config.ErrInstanceNotFound) {
 		log.Printf("zapgw: consumer %q has a link to instance %q, which NO LONGER exists in the database", consumer, slug)
-		respondError(w, http.StatusNotFound, "config", "esta instancia nao existe mais no gateway", 0)
+		respondError(w, http.StatusNotFound, "config", "this instance no longer exists in the gateway", 0)
 		return
 	}
 
@@ -261,8 +261,8 @@ func (h *SmokeHandler) respondSmokeError(w http.ResponseWriter, slug, consumer s
 		// why this is NOT the "retryable" class.
 		log.Printf("ALARME zapgw: smoke test of instance %q sent the test message but failed to activate: %v", slug, err)
 		respondError(w, http.StatusBadGateway, "config",
-			"a mensagem de teste foi enviada e aceita pela Meta, mas o gateway falhou ao marcar a instancia como ativa;"+
-				" NAO rode o fumaca de novo (isso mandaria outra mensagem real) — avise quem opera o gateway", 0)
+			"the test message was sent and accepted by Meta, but the gateway failed to mark the instance as active;"+
+				" do NOT run POST /v1/fumaca again (that would send another real message) — tell whoever operates the gateway", 0)
 		return
 	}
 
@@ -279,13 +279,13 @@ func (h *SmokeHandler) respondSmokeError(w http.ResponseWriter, slug, consumer s
 		log.Printf("ALARME zapgw: invalid phone_number_id for instance %q when running the smoke test — "+
 			"fix the phone_number_id in the store; the instance stays PAUSED", slug)
 		respondError(w, http.StatusBadGateway, string(meta.ClassConfig),
-			"a configuracao desta instancia no gateway esta invalida; a instancia continua PAUSADA", 0)
+			"this instance's configuration in the gateway is invalid; the instance stays PAUSED", 0)
 		return
 	}
 
 	if errors.Is(err, meta.ErrResponseWithoutID) {
 		respondError(w, http.StatusBadGateway, string(meta.ClassUnknown),
-			"a Meta respondeu sem id de mensagem; a instancia continua PAUSADA", 0)
+			"Meta answered without a message id; the instance stays PAUSED", 0)
 		return
 	}
 
@@ -295,7 +295,7 @@ func (h *SmokeHandler) respondSmokeError(w http.ResponseWriter, slug, consumer s
 			log.Printf("ALARME zapgw: Meta refused the credential of instance %q when running the smoke test; it stays PAUSED", slug)
 		}
 		respondError(w, statusForClass(me.Class), string(me.Class),
-			me.Message+"; a instancia continua PAUSADA", me.MetaCode)
+			me.Message+"; the instance stays PAUSED", me.MetaCode)
 		return
 	}
 
@@ -303,5 +303,5 @@ func (h *SmokeHandler) respondSmokeError(w http.ResponseWriter, slug, consumer s
 	// Meta gave no usable answer. The instance stays PAUSED because
 	// SmokeWithInstagramBase() only activates after a confirmed send.
 	respondError(w, http.StatusBadGateway, string(meta.ClassUnknown),
-		"falha ao falar com a Meta; a instancia continua PAUSADA", 0)
+		"failed to talk to Meta; the instance stays PAUSED", 0)
 }

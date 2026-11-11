@@ -224,7 +224,7 @@ A `callback_url` tem de ser `https://` pela razão da seção *A sua `callback_u
     { "campo": "segredo_entrega", "cadastrado": true  },
     { "campo": "bundle_ca",       "cadastrado": false }
   ],
-  "proximo_passo": "esta instancia continua PAUSADA…"
+  "proximo_passo": "this instance stays PAUSED…"
 }
 ```
 
@@ -1641,8 +1641,8 @@ diferente.
 > isso no corpo, e pôr o **seu** nome em `instancia` é o erro mais fácil de cometer aqui, porque os
 > dois são nomes de coisas nossas e parecem intercambiáveis.
 >
-> **O sintoma, se você errar, não aponta para o erro.** No envio é `404 instancia desconhecida` ou
-> `403 instancia nao autorizada para este consumidor` — esse ainda é legível. Na **entrega** é pior:
+> **O sintoma, se você errar, não aponta para o erro.** No envio é `404 unknown instance` ou
+> `403 instance not authorized for this consumer` — esse ainda é legível. Na **entrega** é pior:
 > um consumidor que confira `envelope["instancia"]` contra o valor configurado (comportamento
 > recomendado, ver *A instância errada*) responde `503` a toda entrega, a Meta reenfileira por 36 h,
 > e o `503` teimoso **parece problema de assinatura**. Três exemplos deste próprio documento já
@@ -3571,7 +3571,7 @@ criou**, não conveniência.
 ```jsonc
 // GET /v1/estado?instancia=lojinha&serie_dias=91   -> 400
 { "error": { "class": "permanent",
-            "message": "`serie_dias` = 91, mas este gateway guarda contador por 90 dias — a serie mais longa possivel tem 90 entradas, e as mais velhas de uma janela maior sairiam zeradas sem terem sido medidas" } }
+            "message": "`serie_dias` = 91, but this gateway keeps counters for 90 days — the longest possible series has 90 entries, and the oldest ones of a larger window would come out zeroed without ever having been measured" } }
 ```
 
 **O teto é a própria retenção**, e a mensagem cita o número **em vigor nesta instalação** (o operador
@@ -4050,7 +4050,7 @@ Exemplo de uma instância Instagram falhando (colado de uma execução do handle
   "days_left": 12,
   "renewed_at": null,
   "failing_since": "2026-08-01T09:00:00Z",
-  "instruction": "a renovacao automatica esta falhando; a resolucao e MANUAL, do lado de quem opera o gateway ou e dono da conta Instagram na Meta — o token nao esta ao alcance deste consumidor"
+  "instruction": "the automatic renewal is failing; the fix is MANUAL, on the side of whoever operates the gateway or owns the Instagram account at Meta — the token is out of this consumer's reach"
 }
 ```
 
@@ -4146,11 +4146,11 @@ seção, que não depende do gateway responder.
 
 | status | quando | corpo |
 |---|---|---|
-| `400` | falta o parâmetro `instancia` | `{"error":{"class":"permanent","message":"parametro de consulta \`instancia\` e obrigatorio"}}` |
+| `400` | falta o parâmetro `instancia` | `{"error":{"class":"permanent","message":"query parameter \`instancia\` is required"}}` |
 | `401` | sem token, ou token que ninguém reconhece | o corpo de erro padrão |
-| `403` | a instância não é sua | `{"error":{"class":"config","message":"instancia nao autorizada para este consumidor"}}` |
-| `404` | slug que não existe | `{"error":{"class":"config","message":"instancia desconhecida"}}` |
-| `503` | o gateway não conseguiu ler o próprio banco | `{"error":{"class":"retryable","message":"indisponivel"}}` |
+| `403` | a instância não é sua | `{"error":{"class":"config","message":"instance not authorized for this consumer"}}` |
+| `404` | slug que não existe | `{"error":{"class":"config","message":"unknown instance"}}` |
+| `503` | o gateway não conseguiu ler o próprio banco | `{"error":{"class":"retryable","message":"unavailable"}}` |
 
 Os corpos de `400` e `403` acima são **colados de uma execução**, não digitados.
 
@@ -4331,7 +4331,7 @@ Sucesso → **`201`**:
   "status": "PENDING",
   "categoria": "UTILITY",
   "categoria_pedida": "UTILITY",
-  "aviso": "template recem-criado NAO pode ser usado na hora: ele nasce PENDING e so vale depois de aprovado pela Meta. …" }
+  "aviso": "a newly created template can NOT be used right away: it is born PENDING and only counts once Meta approves it. …" }
 ```
 
 **Template criado NÃO pode ser usado na hora.** Ele nasce `PENDING` e só passa a valer quando a Meta
@@ -4366,7 +4366,7 @@ respostas possíveis, e cada uma quer uma reação diferente da sua:
 | O que o gateway achou na releitura | O que você recebe | O que fazer |
 |---|---|---|
 | **achou o template** | **`201`**, igual ao sucesso normal, com `id`, `status` e `categoria` vindos do catálogo. O `aviso` diz que a criação terminou sem resposta e que a releitura **confirmou** que o template existe | nada. **Ele foi criado.** Só a resposta se perdeu |
-| **não achou** | **`502`**, class `unknown`, e a mensagem contém a palavra **INCONCLUSIVO** | **não recrie às cegas.** Consulte `GET /v1/templates` daqui a alguns minutos e decida com o resultado |
+| **não achou** | **`502`**, class `unknown`, e a mensagem contém a palavra **INCONCLUSIVE** | **não recrie às cegas.** Consulte `GET /v1/templates` daqui a alguns minutos e decida com o resultado |
 | **a releitura também falhou** | **`502`**, class `unknown`, dizendo que a releitura também não funcionou | espere e consulte `GET /v1/templates` |
 
 > 🔴 **"Não achei" NÃO significa "não foi criado", e o gateway nunca vai dizer que significa.**
@@ -4391,7 +4391,7 @@ em nenhum dos três desfechos — quem decide repetir é você, com o fato na m�
 > primeira releitura (imediata, sem espera) não achar, o gateway tenta de novo depois de pausas de
 > **2 s, 5 s e 10 s** (até 4 tentativas no total) antes de desistir. Achou em qualquer uma delas →
 > o desfecho é o de sucesso da tabela acima, sem exceção. Não achou em nenhuma → o `502`
-> **INCONCLUSIVO** sai com o **mesmo texto de sempre** — o aviso não fica mais fraco, só mais raro.
+> **INCONCLUSIVE** sai com o **mesmo texto de sempre** — o aviso não fica mais fraco, só mais raro.
 >
 > O corpo da resposta (sucesso ou erro) traz `releituras` (quantas tentativas aconteceram) e
 > `espera_segundos` (quanto tempo o gateway ficou pausado entre elas), para você calibrar o timeout
@@ -4468,7 +4468,7 @@ não é o erro, é o "não sei". Por isso são três, e o campo `desfecho` os se
   "entradas": [
     {"id": "1563912508540305", "idioma": "pt_BR", "categoria": "UTILITY", "status": "APPROVED"}
   ],
-  "aviso": "a exclusao apaga o template em TODOS os idiomas, e a Meta NAO aceita criar um template com o MESMO nome por 30 dias. ..."
+  "aviso": "the deletion removes the template in ALL languages, and Meta does NOT accept creating a template with the SAME name for 30 days. ..."
 }
 ```
 
@@ -4768,7 +4768,7 @@ propósito: o campo só nomeia uma chamada à Meta que realmente foi tentada.
 // exemplo: a descoberta do App ID falhou
 { "error": {
     "class": "config",
-    "message": "descobrir o App ID (GET /app): Invalid OAuth access token",
+    "message": "discover the App ID (GET /app): Invalid OAuth access token",
     "meta_code": 190,
     "step": "app_id" } }
 ```

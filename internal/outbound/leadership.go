@@ -218,11 +218,11 @@ func (l *Leadership) Holder() (bool, string) {
 		// can't read it" doesn't change the decision — in both cases this
 		// machine did NOT PROVE it is the titular, and the only safe answer
 		// is not to act.
-		return false, fmt.Sprintf("nao consegui verificar a concessao de lideranca em %s: %v", l.file, err)
+		return false, fmt.Sprintf("could not verify the leadership lease at %s: %v", l.file, err)
 	}
 	age := time.Since(info.ModTime())
 	if age > l.validity {
-		return false, fmt.Sprintf("a concessao de lideranca em %s esta velha (%s, limite %s) — esta maquina nao e o titular",
+		return false, fmt.Sprintf("the leadership lease at %s is stale (%s, limit %s) — this machine is not the holder",
 			l.file, age.Truncate(time.Millisecond), l.validity)
 	}
 	return true, ""
@@ -292,8 +292,8 @@ func (l *Leadership) Require(next http.Handler) http.Handler {
 		if ok, reason := l.Holder(); !ok {
 			l.logLeadershipRefusal(reason)
 			respondError(w, http.StatusServiceUnavailable, "retryable",
-				"esta instancia do gateway nao detem a lideranca do par e por isso nao envia; "+
-					"repita — quem detem a concessao atende", 0)
+				"this gateway instance does not hold the pair's leadership and so does not send; "+
+					"retry — whoever holds the lease will serve it", 0)
 			return
 		}
 		next.ServeHTTP(w, r)
@@ -313,5 +313,5 @@ func (l *Leadership) logLeadershipRefusal(reason string) {
 	if write == nil {
 		write = log.Printf
 	}
-	write("zapgw: envio RECUSADO por lideranca: %s", reason)
+	write("zapgw: send REFUSED by leadership: %s", reason)
 }

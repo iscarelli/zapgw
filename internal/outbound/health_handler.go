@@ -98,13 +98,13 @@ func (h *HealthHandler) health(w http.ResponseWriter, r *http.Request) {
 	consumer, err := h.auth.Authenticate(r.Header.Get("Authorization"))
 	if err != nil {
 		if errors.Is(err, ErrNoToken) || errors.Is(err, ErrInvalidToken) {
-			respondError(w, http.StatusUnauthorized, "config", "token ausente ou invalido", 0)
+			respondError(w, http.StatusUnauthorized, "config", "missing or invalid token", 0)
 			return
 		}
 		// The only log in this file: database down isn't probe noise, and
 		// without this line the gateway would go silent about its own failure.
 		log.Printf("zapgw: store error while authenticating on the health probe: %v", err)
-		respondError(w, http.StatusServiceUnavailable, "retryable", "indisponivel", 0)
+		respondError(w, http.StatusServiceUnavailable, "retryable", "unavailable", 0)
 		return
 	}
 
@@ -114,18 +114,18 @@ func (h *HealthHandler) health(w http.ResponseWriter, r *http.Request) {
 	// without this, a leaked token from system A would spend system B's
 	// instance quota and discover which slugs exist from the response status.
 	if !CanUse(consumer, slug) {
-		respondError(w, http.StatusForbidden, "config", "instancia nao autorizada para este consumidor", 0)
+		respondError(w, http.StatusForbidden, "config", "instance not authorized for this consumer", 0)
 		return
 	}
 
 	inst, err := h.store.FindInstance(slug)
 	if err != nil {
 		if errors.Is(err, config.ErrInstanceNotFound) {
-			respondError(w, http.StatusNotFound, "config", "instancia desconhecida", 0)
+			respondError(w, http.StatusNotFound, "config", "unknown instance", 0)
 			return
 		}
 		log.Printf("zapgw: store error while looking up instance %q on the health probe: %v", slug, err)
-		respondError(w, http.StatusServiceUnavailable, "retryable", "indisponivel", 0)
+		respondError(w, http.StatusServiceUnavailable, "retryable", "unavailable", 0)
 		return
 	}
 	if !inst.Active {
@@ -134,7 +134,7 @@ func (h *HealthHandler) health(w http.ResponseWriter, r *http.Request) {
 		// valid" would be answering a different question. And we don't spend
 		// a call to Meta for a channel that can't send anyway. HOLDS FOR
 		// BOTH TYPES: pause is operational state, independent of type.
-		respondError(w, http.StatusServiceUnavailable, "retryable", "instancia pausada", 0)
+		respondError(w, http.StatusServiceUnavailable, "retryable", "instance paused", 0)
 		return
 	}
 
@@ -214,7 +214,7 @@ func classifyHealthProbeError(err error) (class meta.ErrorClass, message string,
 	// Default: the call didn't end in a response from Meta (transport,
 	// deadline exceeded, reading). We don't know whether the token is
 	// valid — and saying "retryable" would assert that we know.
-	message = "nao foi possivel falar com a Meta; a saude deste canal nao pode ser confirmada agora"
+	message = "could not talk to Meta; this channel's health cannot be confirmed right now"
 	code = 0
 
 	var me *meta.MetaError
@@ -224,8 +224,8 @@ func classifyHealthProbeError(err error) (class meta.ErrorClass, message string,
 		// doesn't safely become a URL segment. Only a human can fix it, and
 		// no sending from this instance works until then.
 		class = meta.ClassConfig
-		message = "o phone_number_id cadastrado para esta instancia tem forma invalida; " +
-			"o probe nem chegou a falar com a Meta"
+		message = "the phone_number_id registered for this instance has an invalid shape; " +
+			"the probe never got to talk to Meta"
 	case errors.As(err, &me):
 		class = me.Class
 		message = me.Message

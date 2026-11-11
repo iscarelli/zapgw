@@ -231,7 +231,7 @@ re-validated; the rule applies at the next registration.
     { "campo": "segredo_entrega", "cadastrado": true  },
     { "campo": "bundle_ca",       "cadastrado": false }
   ],
-  "proximo_passo": "esta instancia continua PAUSADA…"
+  "proximo_passo": "this instance stays PAUSED…"
 }
 ```
 
@@ -1657,7 +1657,7 @@ does not count as a different request.
 > mistake to make here, because both are names of things of ours and look interchangeable.
 >
 > **The symptom, if you get it wrong, does not point at the mistake.** On sending it is
-> `404 instancia desconhecida` or `403 instancia nao autorizada para este consumidor` — that one is
+> `404 unknown instance` or `403 instance not authorized for this consumer` — that one is
 > still readable. On **delivery** it is worse: a consumer who checks `envelope["instancia"]` against
 > the configured value (recommended behaviour, see *The wrong instance*) answers `503` to every
 > delivery, Meta re-queues for 36 h, and the stubborn `503` **looks like a signature problem**. Three
@@ -3600,7 +3600,7 @@ is **debt the rule created**, not convenience.
 ```jsonc
 // GET /v1/estado?instancia=lojinha&serie_dias=91   -> 400
 { "error": { "class": "permanent",
-            "message": "`serie_dias` = 91, mas este gateway guarda contador por 90 dias — a serie mais longa possivel tem 90 entradas, e as mais velhas de uma janela maior sairiam zeradas sem terem sido medidas" } }
+            "message": "`serie_dias` = 91, but this gateway keeps counters for 90 days — the longest possible series has 90 entries, and the oldest ones of a larger window would come out zeroed without ever having been measured" } }
 ```
 
 **The ceiling is the retention itself**, and the message quotes the number **in force on this
@@ -4093,7 +4093,7 @@ Example of an Instagram instance failing (pasted from a run of the real handler)
   "days_left": 12,
   "renewed_at": null,
   "failing_since": "2026-08-01T09:00:00Z",
-  "instruction": "a renovacao automatica esta falhando; a resolucao e MANUAL, do lado de quem opera o gateway ou e dono da conta Instagram na Meta — o token nao esta ao alcance deste consumidor"
+  "instruction": "the automatic renewal is failing; the fix is MANUAL, on the side of whoever operates the gateway or owns the Instagram account at Meta — the token is out of this consumer's reach"
 }
 ```
 
@@ -4191,11 +4191,11 @@ which does not depend on the gateway answering.
 
 | status | when | body |
 |---|---|---|
-| `400` | the `instancia` parameter is missing | `{"error":{"class":"permanent","message":"parametro de consulta \`instancia\` e obrigatorio"}}` |
+| `400` | the `instancia` parameter is missing | `{"error":{"class":"permanent","message":"query parameter \`instancia\` is required"}}` |
 | `401` | no token, or a token nobody recognizes | the standard error body |
-| `403` | the instance is not yours | `{"error":{"class":"config","message":"instancia nao autorizada para este consumidor"}}` |
-| `404` | a slug that does not exist | `{"error":{"class":"config","message":"instancia desconhecida"}}` |
-| `503` | the gateway could not read its own database | `{"error":{"class":"retryable","message":"indisponivel"}}` |
+| `403` | the instance is not yours | `{"error":{"class":"config","message":"instance not authorized for this consumer"}}` |
+| `404` | a slug that does not exist | `{"error":{"class":"config","message":"unknown instance"}}` |
+| `503` | the gateway could not read its own database | `{"error":{"class":"retryable","message":"unavailable"}}` |
 
 The `400` and `403` bodies above are **pasted from a run**, not typed.
 
@@ -4379,7 +4379,7 @@ Success → **`201`**:
   "status": "PENDING",
   "categoria": "UTILITY",
   "categoria_pedida": "UTILITY",
-  "aviso": "template recem-criado NAO pode ser usado na hora: ele nasce PENDING e so vale depois de aprovado pela Meta. …" }
+  "aviso": "a newly created template can NOT be used right away: it is born PENDING and only counts once Meta approves it. …" }
 ```
 
 **A created template CANNOT be used right away.** It is born `PENDING` and only becomes valid when
@@ -4415,7 +4415,7 @@ you:
 | What the gateway found on the reread | What you receive | What to do |
 |---|---|---|
 | **found the template** | **`201`**, just like a normal success, with `id`, `status` and `categoria` coming from the catalogue. The `aviso` says the creation ended without an answer and that the reread **confirmed** the template exists | nothing. **It was created.** Only the response was lost |
-| **did not find it** | **`502`**, class `unknown`, and the message contains the word **INCONCLUSIVO** | **do not recreate blindly.** Query `GET /v1/templates` in a few minutes and decide with the result |
+| **did not find it** | **`502`**, class `unknown`, and the message contains the word **INCONCLUSIVE** | **do not recreate blindly.** Query `GET /v1/templates` in a few minutes and decide with the result |
 | **the reread also failed** | **`502`**, class `unknown`, saying the reread did not work either | wait and query `GET /v1/templates` |
 
 > 🔴 **"I did not find it" does NOT mean "it was not created", and the gateway will never say it
@@ -4439,7 +4439,7 @@ any of the three outcomes — the one who decides to repeat is you, with the fac
 > the SAME FACE as the rare outcome ("it really was not created"). Now, if the first reread (immediate,
 > no wait) does not find it, the gateway tries again after pauses of **2 s, 5 s and 10 s** (up to 4
 > attempts in total) before giving up. Found on any of them → the outcome is the success one in the
-> table above, without exception. Not found on any → the **INCONCLUSIVO** `502` comes out with the
+> table above, without exception. Not found on any → the **INCONCLUSIVE** `502` comes out with the
 > **same text as always** — the warning does not get weaker, only rarer.
 >
 > The response body (success or error) carries `releituras` (how many attempts happened) and
@@ -4518,7 +4518,7 @@ field separates them:
   "entradas": [
     {"id": "1563912508540305", "idioma": "pt_BR", "categoria": "UTILITY", "status": "APPROVED"}
   ],
-  "aviso": "a exclusao apaga o template em TODOS os idiomas, e a Meta NAO aceita criar um template com o MESMO nome por 30 dias. ..."
+  "aviso": "the deletion removes the template in ALL languages, and Meta does NOT accept creating a template with the SAME name for 30 days. ..."
 }
 ```
 
@@ -4822,7 +4822,7 @@ Meta call that was actually attempted.
 // example: the app id discovery failed
 { "error": {
     "class": "config",
-    "message": "descobrir o App ID (GET /app): Invalid OAuth access token",
+    "message": "discover the App ID (GET /app): Invalid OAuth access token",
     "meta_code": 190,
     "step": "app_id" } }
 ```

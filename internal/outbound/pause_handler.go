@@ -76,23 +76,23 @@ func (h *PauseHandler) pause(w http.ResponseWriter, r *http.Request) {
 	consumer, err := h.auth.Authenticate(r.Header.Get("Authorization"))
 	if err != nil {
 		if errors.Is(err, ErrNoToken) || errors.Is(err, ErrInvalidToken) {
-			respondError(w, http.StatusUnauthorized, "config", "token ausente ou invalido", 0)
+			respondError(w, http.StatusUnauthorized, "config", "missing or invalid token", 0)
 			return
 		}
 		log.Printf("zapgw: store error while authenticating on %s: %v", pauseRoute, err)
-		respondError(w, http.StatusServiceUnavailable, "retryable", "indisponivel", 0)
+		respondError(w, http.StatusServiceUnavailable, "retryable", "unavailable", 0)
 		return
 	}
 
 	raw, err := httpx.ReadRaw(r.Body, h.maxBytes)
 	if err != nil {
 		if errors.Is(err, httpx.ErrBodyTooLarge) {
-			logRejection(h.throttleLog, pauseRoute, "", consumer.Name, "corpo grande demais")
-			respondError(w, http.StatusRequestEntityTooLarge, "permanent", "corpo grande demais", 0)
+			logRejection(h.throttleLog, pauseRoute, "", consumer.Name, "body too large")
+			respondError(w, http.StatusRequestEntityTooLarge, "permanent", "body too large", 0)
 			return
 		}
-		logRejection(h.throttleLog, pauseRoute, "", consumer.Name, "corpo nao foi lido por inteiro")
-		respondError(w, http.StatusBadRequest, "retryable", "corpo nao foi lido por inteiro", 0)
+		logRejection(h.throttleLog, pauseRoute, "", consumer.Name, "body was not read in full")
+		respondError(w, http.StatusBadRequest, "retryable", "body was not read in full", 0)
 		return
 	}
 
@@ -106,8 +106,8 @@ func (h *PauseHandler) pause(w http.ResponseWriter, r *http.Request) {
 
 	var p PauseRequest
 	if err := json.Unmarshal(translated, &p); err != nil {
-		logRejection(h.throttleLog, pauseRoute, "", consumer.Name, "corpo nao e JSON valido")
-		respondError(w, http.StatusBadRequest, "permanent", "corpo nao e JSON valido", 0)
+		logRejection(h.throttleLog, pauseRoute, "", consumer.Name, "body is not valid JSON")
+		respondError(w, http.StatusBadRequest, "permanent", "body is not valid JSON", 0)
 		return
 	}
 	p.Instance = strings.TrimSpace(p.Instance)
@@ -127,7 +127,7 @@ func (h *PauseHandler) pause(w http.ResponseWriter, r *http.Request) {
 	if !CanUse(consumer, p.Instance) {
 		log.Printf("zapgw: consumer %q asked to pause instance %q, which is not theirs",
 			consumer.Name, p.Instance)
-		respondError(w, http.StatusForbidden, "config", "instancia nao autorizada para este consumidor", 0)
+		respondError(w, http.StatusForbidden, "config", "instance not authorized for this consumer", 0)
 		return
 	}
 
@@ -135,11 +135,11 @@ func (h *PauseHandler) pause(w http.ResponseWriter, r *http.Request) {
 		if errors.Is(err, config.ErrInstanceNotFound) {
 			log.Printf("zapgw: consumer %q has a link to instance %q, which NO LONGER exists in the database",
 				consumer.Name, p.Instance)
-			respondError(w, http.StatusNotFound, "config", "esta instancia nao existe mais no gateway", 0)
+			respondError(w, http.StatusNotFound, "config", "this instance no longer exists in the gateway", 0)
 			return
 		}
 		log.Printf("zapgw: store error while pausing instance %q: %v", p.Instance, err)
-		respondError(w, http.StatusServiceUnavailable, "retryable", "indisponivel", 0)
+		respondError(w, http.StatusServiceUnavailable, "retryable", "unavailable", 0)
 		return
 	}
 

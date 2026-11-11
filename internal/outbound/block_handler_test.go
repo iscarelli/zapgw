@@ -415,7 +415,7 @@ func TestBlockTransportFailureGives502TellingToRetry(t *testing.T) {
 	if errBody.Error.Class != "unknown" {
 		t.Errorf("class = %q, want unknown", errBody.Error.Class)
 	}
-	if !strings.Contains(errBody.Error.Message, "repetir e seguro") {
+	if !strings.Contains(errBody.Error.Message, "retrying is safe") {
 		t.Errorf("message = %q, want it to say that retrying is safe", errBody.Error.Message)
 	}
 }

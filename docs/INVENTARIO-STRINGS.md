@@ -7,6 +7,22 @@ seguindo o caminho real do valor até um `w.Write`/`json.Encode` (SAIDA-CONSUMID
 `log.`/CLI stdout (LOG) — nunca por aparência da string. Onde o caminho não foi fechado, a linha
 diz `A MEDIR` e o que faltou, em vez de chutar.
 
+🟢 **Estado em 2026-11-11 (T-265): os textos das Tabelas 1 e 2 foram traduzidos para inglês.** As
+tabelas abaixo continuam sendo a medição de T-213, com os literais em português **como eram na
+época** — não os procure mais no código. Foram traduzidos todos os argumentos de `respondError`,
+`respondErrorWithDetail`, `logRejection` e as constantes `Warning*`/`Message*`/`Instruction*`/
+`NextStep` de `internal/outbound`; as linhas 🔴 AMBOS (resposta + log com o mesmo texto) mudaram
+juntas. **O `message` do erro mudou de idioma; `class` e o status HTTP não mudaram.**
+**Continuam em português, de propósito:** nomes de campo e de parâmetro do fio (`instancia`,
+`destino`, `serie_dias`...), chaves JSON e valores de enum (T-248, ex.: `ja_nao_existia`),
+`SmokeText` (chega ao cliente final), os marcadores `ALARME`/`PRECISA DE GENTE`, o relatório de
+passos do CLI `fumaca` (`internal/outbound/smoke.go`, saída de operador) e o texto de tela
+`sim`/`nao`/`ha`/`daqui a` de `state.go` (painel para gente, T-248). O webhook de entrada
+(`internal/inbound/handler.go`) segue com `instancia desconhecida`/`indisponivel`/`instancia
+pausada`/`corpo grande demais`: o texto é lido pelas sondas externas
+(as duas sondas públicas, mantidas fora deste repositório; o teste `TestHandlerRejectsUnknownSlugWith404` exige mudar os três
+juntos).
+
 ## Como este documento foi medido
 
 1. **Busca por strings acentuadas** (`á à â ã é ê í ó ô õ ú ç` e maiúsculas) em todo `.go` de

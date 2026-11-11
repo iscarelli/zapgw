@@ -170,23 +170,23 @@ func (h *RegistrationHandler) register(w http.ResponseWriter, r *http.Request) {
 	consumer, err := h.auth.Authenticate(r.Header.Get("Authorization"))
 	if err != nil {
 		if errors.Is(err, ErrNoToken) || errors.Is(err, ErrInvalidToken) {
-			respondError(w, http.StatusUnauthorized, "config", "token ausente ou invalido", 0)
+			respondError(w, http.StatusUnauthorized, "config", "missing or invalid token", 0)
 			return
 		}
 		log.Printf("zapgw: store error while authenticating on %s: %v", registrationRoute, err)
-		respondError(w, http.StatusServiceUnavailable, "retryable", "indisponivel", 0)
+		respondError(w, http.StatusServiceUnavailable, "retryable", "unavailable", 0)
 		return
 	}
 
 	raw, err := httpx.ReadRaw(r.Body, h.maxBytes)
 	if err != nil {
 		if errors.Is(err, httpx.ErrBodyTooLarge) {
-			logRejection(h.throttleLog, registrationRoute, "", consumer.Name, "corpo grande demais")
-			respondError(w, http.StatusRequestEntityTooLarge, "permanent", "corpo grande demais", 0)
+			logRejection(h.throttleLog, registrationRoute, "", consumer.Name, "body too large")
+			respondError(w, http.StatusRequestEntityTooLarge, "permanent", "body too large", 0)
 			return
 		}
-		logRejection(h.throttleLog, registrationRoute, "", consumer.Name, "corpo nao foi lido por inteiro")
-		respondError(w, http.StatusBadRequest, "retryable", "corpo nao foi lido por inteiro", 0)
+		logRejection(h.throttleLog, registrationRoute, "", consumer.Name, "body was not read in full")
+		respondError(w, http.StatusBadRequest, "retryable", "body was not read in full", 0)
 		return
 	}
 
@@ -207,8 +207,8 @@ func (h *RegistrationHandler) register(w http.ResponseWriter, r *http.Request) {
 	if err := json.Unmarshal(translated, &p); err != nil {
 		// THE json ERROR DOES NOT GO into the response or the log: it quotes the piece of
 		// the body that didn't match, and this body carries app_secret and token_envio.
-		logRejection(h.throttleLog, registrationRoute, "", consumer.Name, "corpo nao e JSON valido")
-		respondError(w, http.StatusBadRequest, "permanent", "corpo nao e JSON valido", 0)
+		logRejection(h.throttleLog, registrationRoute, "", consumer.Name, "body is not valid JSON")
+		respondError(w, http.StatusBadRequest, "permanent", "body is not valid JSON", 0)
 		return
 	}
 	if p.Instance == "" {
@@ -231,7 +231,7 @@ func (h *RegistrationHandler) register(w http.ResponseWriter, r *http.Request) {
 	if !CanUse(consumer, p.Instance) {
 		log.Printf("zapgw: consumer %q asked to register instance %q, which is not theirs",
 			consumer.Name, p.Instance)
-		respondError(w, http.StatusForbidden, "config", "instancia nao autorizada para este consumidor", 0)
+		respondError(w, http.StatusForbidden, "config", "instance not authorized for this consumer", 0)
 		return
 	}
 
@@ -246,14 +246,14 @@ func (h *RegistrationHandler) register(w http.ResponseWriter, r *http.Request) {
 			log.Printf("zapgw: consumer %q has a link to instance %q, which NO LONGER exists in the database",
 				consumer.Name, p.Instance)
 			respondError(w, http.StatusNotFound, "config",
-				"esta instancia nao existe mais no gateway; fale com quem te entregou o slug", 0)
+				"this instance no longer exists in the gateway; talk to whoever gave you the slug", 0)
 			return
 		}
 		log.Printf("zapgw: store error while looking up instance %q on %s: %v", p.Instance, registrationRoute, err)
-		respondError(w, http.StatusServiceUnavailable, "retryable", "indisponivel", 0)
+		respondError(w, http.StatusServiceUnavailable, "retryable", "unavailable", 0)
 		return
 	}
-	if !checkType(w, h.types, inst, "instancia de Instagram e configurada por quem opera o gateway") {
+	if !checkType(w, h.types, inst, "an Instagram instance is configured by whoever operates the gateway") {
 		return
 	}
 
@@ -279,8 +279,8 @@ func (h *RegistrationHandler) register(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Printf("zapgw: registration of instance %q WROTE but reading the summary failed: %v", p.Instance, err)
 		respondError(w, http.StatusServiceUnavailable, "retryable",
-			"o cadastro foi gravado, mas o gateway nao conseguiu ler o estado dela para te responder;"+
-				" repetir o cadastro e seguro (ele substitui pelo mesmo valor)", 0)
+			"the registration was saved, but the gateway could not read its state to answer you;"+
+				" repeating the registration is safe (it overwrites with the same value)", 0)
 		return
 	}
 
@@ -317,9 +317,9 @@ func registrationResponse(r config.InstanceSummary, j config.Window, now time.Ti
 		// there was no channel at all for that notice, and the consumer would stay
 		// stuck waiting for someone to act for them. Now there's a route: call it
 		// yourself.
-		NextStep: "esta instancia continua PAUSADA: enquanto isso, o webhook responde 503 e o envio tambem." +
-			" So um envio bem-sucedido a ativa: chame POST /v1/fumaca com esta instancia e o destino que deve" +
-			" RECEBER a mensagem de teste — se a Meta aceitar, a instancia ativa sozinha.",
+		NextStep: "this instance stays PAUSED: meanwhile, the webhook answers 503 and so does sending." +
+			" Only a successful send activates it: call POST /v1/fumaca with this instance and the destination that should" +
+			" RECEIVE the test message — if Meta accepts it, the instance activates by itself.",
 	}
 	for _, c := range r.Encrypted {
 		resp.Encrypted = append(resp.Encrypted, FieldInRegistration{Field: c.Name, Registered: c.Registered})
@@ -343,16 +343,16 @@ func (h *RegistrationHandler) respondRegistrationError(w http.ResponseWriter, sl
 		log.Printf("zapgw: consumer %q tried to register instance %q with the window CLOSED (opened at %s): %v",
 			consumer, slug, window.OpenedAt.UTC().Format(time.RFC3339), err)
 		respondError(w, http.StatusConflict, "config",
-			"a janela de cadastro desta instancia esta FECHADA e nada foi gravado."+
-				" Ela dura "+config.RegistrationWindow.String()+" contados da PRIMEIRA vez que voce cadastrou algo aqui"+
-				" (nao da criacao da instancia, e ela NAO reinicia a cada mudanca)."+
-				" O que fazer: peca a quem te entregou o slug para reabrir a janela —"+
-				" e o comando `zapgw instance reopen-enrollment`, do lado do gateway."+
-				" A configuracao que ja estava gravada continua valendo; nada foi perdido.", 0)
+			"this instance's registration window is CLOSED and nothing was saved."+
+				" Ela dura "+config.RegistrationWindow.String()+" counted from the FIRST time you registered anything here"+
+				" (not from the instance's creation, and it does NOT restart on each change)."+
+				" What to do: ask whoever gave you the slug to reopen the window —"+
+				" it is the command `zapgw instance reopen-enrollment`, on the gateway side."+
+				" The configuration that was already saved still holds; nothing was lost.", 0)
 	case errors.Is(err, config.ErrInstanceNotFound):
 		log.Printf("zapgw: consumer %q has a link to instance %q, which NO LONGER exists in the database", consumer, slug)
 		respondError(w, http.StatusNotFound, "config",
-			"esta instancia nao existe mais no gateway; fale com quem te entregou o slug", 0)
+			"this instance no longer exists in the gateway; talk to whoever gave you the slug", 0)
 	case errors.Is(err, config.ErrIncompleteIdentification),
 		errors.Is(err, config.ErrIncompleteRegistration),
 		errors.Is(err, config.ErrInvalidDisplayNumber),
@@ -365,6 +365,6 @@ func (h *RegistrationHandler) respondRegistrationError(w http.ResponseWriter, sl
 		respondError(w, http.StatusBadRequest, "permanent", err.Error(), 0)
 	default:
 		log.Printf("zapgw: store error while registering instance %q: %v", slug, err)
-		respondError(w, http.StatusServiceUnavailable, "retryable", "indisponivel", 0)
+		respondError(w, http.StatusServiceUnavailable, "retryable", "unavailable", 0)
 	}
 }

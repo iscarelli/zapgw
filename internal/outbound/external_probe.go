@@ -324,7 +324,7 @@ func (s *ExternalProbe) ask(ctx context.Context) (string, error) {
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, s.url, nil)
 	if err != nil {
-		return "", fmt.Errorf("montar o pedido a sonda externa (%s): %w", s.url, err)
+		return "", fmt.Errorf("build the request to the external probe (%s): %w", s.url, err)
 	}
 	resp, err := s.client.Do(req)
 	if err != nil {

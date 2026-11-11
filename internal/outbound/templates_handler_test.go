@@ -849,7 +849,7 @@ func TestCreateTemplateSaysItWasBornPending(t *testing.T) {
 	if resp.Status != "PENDING" {
 		t.Errorf("status = %q, want PENDING (what Meta answered)", resp.Status)
 	}
-	if !strings.Contains(resp.Warning, "PENDING") || !strings.Contains(strings.ToLower(resp.Warning), "aprovad") {
+	if !strings.Contains(resp.Warning, "PENDING") || !strings.Contains(strings.ToLower(resp.Warning), "approves") {
 		t.Errorf("the warning does not say the template is born pending approval: %q", resp.Warning)
 	}
 
@@ -1085,13 +1085,13 @@ func TestCreateTemplateAmbiguousNotFoundInTheCatalogIsINCONCLUSIVE(t *testing.T)
 	// The phrase that CANNOT exist. A "was not created" here is a claim the
 	// gateway has no way of backing up, and its price is the template's
 	// name.
-	for _, banned := range []string{"nao foi criado", "não foi criado", "nao existe", "não existe"} {
+	for _, banned := range []string{"nao foi criado", "não foi criado", "nao existe", "não existe", "was not created", "does not exist"} {
 		if strings.Contains(lower, banned) {
 			t.Errorf("the message claims %q about a catalog that may not be up to date: %q",
 				banned, errBody.Error.Message)
 		}
 	}
-	if !strings.Contains(lower, "nao repita") {
+	if !strings.Contains(lower, "do not blindly repeat") {
 		t.Errorf("the message does not warn to NOT retry blindly: %q", errBody.Error.Message)
 	}
 	if !strings.Contains(record, "INCONCLUSIVE") || !strings.Contains(record, "lembrete_consulta") {
@@ -1611,10 +1611,10 @@ func TestCreateTemplateChangedCategoryWarns(t *testing.T) {
 		t.Errorf("the warning does not cite both categories (requested and recorded): %q", resp.Warning)
 	}
 	lower := strings.ToLower(resp.Warning)
-	if !strings.Contains(lower, "nao e erro") {
+	if !strings.Contains(lower, "not an error") {
 		t.Errorf("the warning does not say the swap is NOT an error: %q", resp.Warning)
 	}
-	if !strings.Contains(lower, "nao desfaz") {
+	if !strings.Contains(lower, "not undo") {
 		t.Errorf("the warning does not say the gateway does NOT undo the swap: %q", resp.Warning)
 	}
 	if resp.Warning == WarningTemplatePending {
@@ -1823,7 +1823,7 @@ func TestDeleteTemplateThatExistsAnswersDeletedWithTheLanguages(t *testing.T) {
 	if !languages["pt_BR"] || !languages["en_US"] {
 		t.Errorf("languages returned = %v, want pt_BR and en_US", languages)
 	}
-	if !strings.Contains(r.Warning, "30 dias") {
+	if !strings.Contains(r.Warning, "30 days") {
 		t.Errorf("the warning does not mention the 30 days during which Meta does not reaccept the name: %q", r.Warning)
 	}
 	if strings.Contains(r.Warning, StatusPendingDeletion) {
@@ -1875,7 +1875,7 @@ func TestDeleteTemplateThatDoesNotExistAnswersDidNotExistWithoutCallingDelete(t 
 	// The 30-day warning does NOT travel here: the gateway deleted nothing
 	// and does not know whether the name ever existed. Saying it is burned
 	// would be inventing a restriction.
-	if strings.Contains(r.Warning, "30 dias") {
+	if strings.Contains(r.Warning, "30 days") {
 		t.Errorf("the burned-name warning traveled on a %s, where nothing was deleted: %q", OutcomeDidNotExist, r.Warning)
 	}
 
@@ -1914,7 +1914,7 @@ func TestDeleteTemplateWithoutVerdictAndTemplateStillAliveAnswers502Inconclusive
 	if errBody.Error.Class != string(meta.ClassUnknown) {
 		t.Errorf("class = %q, want %q", errBody.Error.Class, meta.ClassUnknown)
 	}
-	if !strings.Contains(errBody.Error.Message, "INCONCLUSIVO") {
+	if !strings.Contains(errBody.Error.Message, "INCONCLUSIVE") {
 		t.Errorf("the message does not use the word INCONCLUSIVO: %q", errBody.Error.Message)
 	}
 	if errBody.Error.Rereads != len(RereadWaits)+1 {

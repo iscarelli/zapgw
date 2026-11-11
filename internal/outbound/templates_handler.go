@@ -50,8 +50,8 @@ import (
 //
 // EXPORTED (T-036): `zapgw template criar` prints the SAME warning — two
 // surfaces with the same behavior, not two truths.
-const WarningTemplatePending = "template recem-criado NAO pode ser usado na hora: ele nasce PENDING e so " +
-	"vale depois de aprovado pela Meta. Confira o status em GET /v1/templates?instancia=<slug> antes de enviar."
+const WarningTemplatePending = "a newly created template can NOT be used right away: it is born PENDING and only " +
+	"counts once Meta approves it. Check the status at GET /v1/templates?instancia=<slug> before sending."
 
 // WarningCreationConfirmedByReread travels along with the success the
 // gateway RECONSTRUCTS after a creation that ended with no response from
@@ -61,8 +61,8 @@ const WarningTemplatePending = "template recem-criado NAO pode ser usado na hora
 // midway, because that's what explains the delay and what it will find in
 // its own log. Hiding the scare would deliver a clean `201` over a path that
 // was not clean.
-const WarningCreationConfirmedByReread = "a criacao terminou SEM resposta da Meta, mas o gateway releu o " +
-	"catalogo e ACHOU este template: ele FOI criado. NAO tente criar de novo com o mesmo nome."
+const WarningCreationConfirmedByReread = "the creation ended WITHOUT an answer from Meta, but the gateway re-read the " +
+	"catalog and FOUND this template: it WAS created. Do NOT try to create it again with the same name."
 
 // MessageInconclusiveOutcome is what the consumer reads when the creation
 // ended with no response AND the catalog re-read did NOT find the template.
@@ -93,15 +93,15 @@ const WarningCreationConfirmedByReread = "a criacao terminou SEM resposta da Met
 // `subcode 2388024`
 // (developers.facebook.com/documentation/business-messaging/whatsapp/templates/template-management),
 // meaning the name becomes unusable.
-const MessageInconclusiveOutcome = "a criacao do template terminou sem resposta da Meta; o gateway releu o " +
-	"catalogo e NAO o encontrou, mas o desfecho e INCONCLUSIVO — nao esta provado que ele deixou de ser criado. " +
-	"NAO repita a criacao com o mesmo nome as cegas: se ele existir, o nome fica queimado e a Meta nao o reaceita. " +
-	"Consulte GET /v1/templates?instancia=<slug> daqui a alguns minutos antes de decidir."
+const MessageInconclusiveOutcome = "the template creation ended without an answer from Meta; the gateway re-read the " +
+	"catalog and did NOT find it, but the outcome is INCONCLUSIVE — it is not proven that it failed to be created. " +
+	"Do NOT blindly repeat the creation with the same name: if it exists, the name is burned and Meta does not accept it again. " +
+	"Check GET /v1/templates?instancia=<slug> in a few minutes before deciding."
 
 // MessageUnknownOutcome is the outcome for when even the re-read
 // failed — the gateway could not reach Meta through any path.
-const MessageUnknownOutcome = "falha ao falar com a Meta; o template PODE ter sido criado e a releitura do " +
-	"catalogo feita pelo gateway TAMBEM falhou. Confira o catalogo antes de tentar de novo."
+const MessageUnknownOutcome = "failed to talk to Meta; the template MAY have been created and the gateway's re-read of the " +
+	"catalog ALSO failed. Check the catalog before trying again."
 
 // WarningCategoryChangedFormat travels APPENDED to the warning when the
 // category Meta RECORDED differs from the one the consumer REQUESTED
@@ -120,9 +120,9 @@ const MessageUnknownOutcome = "falha ao falar com a Meta; o template PODE ter si
 // fmt.Sprintf and concatenated to `aviso` the SAME way the code already
 // composes it today (WarningTemplatePending + " " + WarningCreationConfirmedByReread):
 // there is no second warning mechanism, just more text in the same field.
-const WarningCategoryChangedFormat = "a categoria PEDIDA foi %q, mas a Meta GRAVOU %q. Isso NAO e erro — a Meta " +
-	"pode recategorizar um template na propria criacao — e o gateway NAO desfaz a troca. Confira se o preco e a " +
-	"exigencia de opt-in da categoria gravada ainda valem antes de usar este template."
+const WarningCategoryChangedFormat = "the REQUESTED category was %q, but Meta RECORDED %q. This is NOT an error — Meta " +
+	"may recategorize a template at creation itself — and the gateway does NOT undo the change. Check whether the price and the " +
+	"opt-in requirement of the recorded category still suit you before using this template."
 
 // --- DELETION (T-173) ---
 
@@ -174,8 +174,8 @@ const StatusPendingDeletion = "PENDING_DELETION"
 // consumer that a name it never used is burned for 30 days would be the
 // gateway inventing a restriction — and this warning's whole value is that
 // it is a fact from the source.
-const WarningNameBurnedForThirtyDays = "a exclusao apaga o template em TODOS os idiomas, e a Meta NAO aceita " +
-	"criar um template com o MESMO nome por 30 dias. Se precisar recriar antes disso, escolha outro nome."
+const WarningNameBurnedForThirtyDays = "the deletion removes the template in ALL languages, and Meta does NOT accept " +
+	"creating a template with the SAME name for 30 days. If you need to recreate it sooner, choose another name."
 
 // WarningStillInCatalogPendingDelivery is APPENDED to the warning above
 // when the deleted template is STILL in the catalog with StatusPendingDeletion.
@@ -184,9 +184,9 @@ const WarningNameBurnedForThirtyDays = "a exclusao apaga o template em TODOS os 
 // just deleted. Without this line, the only reading available to it is "the
 // deletion did not work" — and it would redo work that was already done, or
 // open a ticket about a defect that does not exist.
-const WarningStillInCatalogPendingDelivery = "este template CONTINUA aparecendo no catalogo com status " +
-	StatusPendingDeletion + ": havia mensagem ja enviada e ainda nao entregue, e a Meta segue tentando " +
-	"entrega-la por ate 30 dias. A exclusao FOI aceita; ele sai do catalogo sozinho."
+const WarningStillInCatalogPendingDelivery = "this template STILL appears in the catalog with status " +
+	StatusPendingDeletion + ": there was an already-sent, not yet delivered message, and Meta keeps trying " +
+	"to deliver it for up to 30 days. The deletion WAS accepted; it leaves the catalog by itself."
 
 // MessageInconclusiveDeletion is what the consumer reads when the deletion
 // ended with NO response from Meta and the catalog re-read STILL shows the
@@ -196,15 +196,15 @@ const WarningStillInCatalogPendingDelivery = "este template CONTINUA aparecendo 
 // MessageInconclusiveOutcome): "I didn't see it happen" is not "it didn't
 // happen", and the error is asymmetric — saying "not deleted" makes the
 // consumer repeat a call that may have already worked.
-const MessageInconclusiveDeletion = "a exclusao do template terminou sem resposta da Meta; o gateway releu o " +
-	"catalogo e o template CONTINUA la, com um status que NAO e " + StatusPendingDeletion + ". O desfecho e " +
-	"INCONCLUSIVO — nao esta provado que a exclusao deixou de acontecer. Consulte " +
-	"GET /v1/templates?instancia=<slug> daqui a alguns minutos antes de decidir."
+const MessageInconclusiveDeletion = "the template deletion ended without an answer from Meta; the gateway re-read the " +
+	"catalog and the template is STILL there, with a status that is NOT " + StatusPendingDeletion + ". The outcome is " +
+	"INCONCLUSIVE — it is not proven that the deletion failed to happen. Check " +
+	"GET /v1/templates?instancia=<slug> in a few minutes before deciding."
 
 // MessageUnknownDeletion is the outcome for when even the re-read
 // failed — the gateway could not reach Meta through any path.
-const MessageUnknownDeletion = "falha ao falar com a Meta; o template PODE ter sido apagado e a releitura " +
-	"do catalogo feita pelo gateway TAMBEM falhou. Confira o catalogo antes de tentar de novo."
+const MessageUnknownDeletion = "failed to talk to Meta; the template MAY have been deleted and the gateway's re-read " +
+	"of the catalog ALSO failed. Check the catalog before trying again."
 
 // reTemplateName is the guard that makes a WILDCARD IMPOSSIBLE BY
 // CONSTRUCTION, and that is the only reason it is this strict.
@@ -418,9 +418,9 @@ func (h *TemplatesHandler) list(w http.ResponseWriter, r *http.Request) {
 	slug, oldInstanceParam := queryAlias(r.URL.Query(), "instance", "instancia")
 	if slug == "" {
 		logRejection(h.throttleLog, "GET /v1/templates", "", consumer.Name,
-			"parametro instancia e obrigatorio")
+			"parameter instancia is required")
 		respondError(w, http.StatusBadRequest, "permanent",
-			"parametro instancia e obrigatorio", 0)
+			"parameter instancia is required", 0)
 		return
 	}
 	inst, ok := h.instanceActive(w, consumer, slug, "GET /v1/templates")
@@ -469,16 +469,16 @@ func (h *TemplatesHandler) create(w http.ResponseWriter, r *http.Request) {
 	raw, err := httpx.ReadRaw(r.Body, h.maxBytes)
 	if err != nil {
 		if errors.Is(err, httpx.ErrBodyTooLarge) {
-			logRejection(h.throttleLog, "POST /v1/templates", "", consumer.Name, "corpo grande demais")
-			respondError(w, http.StatusRequestEntityTooLarge, "permanent", "corpo grande demais", 0)
+			logRejection(h.throttleLog, "POST /v1/templates", "", consumer.Name, "body too large")
+			respondError(w, http.StatusRequestEntityTooLarge, "permanent", "body too large", 0)
 			return
 		}
 		// Same reasoning as sending: it's not "body too large," it's the
 		// consumer's connection that dropped mid-upload. 400 because what
 		// arrived incomplete was the REQUEST, and retryable because retrying
 		// resolves it.
-		logRejection(h.throttleLog, "POST /v1/templates", "", consumer.Name, "corpo nao foi lido por inteiro")
-		respondError(w, http.StatusBadRequest, "retryable", "corpo nao foi lido por inteiro", 0)
+		logRejection(h.throttleLog, "POST /v1/templates", "", consumer.Name, "body was not read in full")
+		respondError(w, http.StatusBadRequest, "retryable", "body was not read in full", 0)
 		return
 	}
 
@@ -493,8 +493,8 @@ func (h *TemplatesHandler) create(w http.ResponseWriter, r *http.Request) {
 
 	var p CreateTemplateRequest
 	if err := json.Unmarshal(translated, &p); err != nil {
-		logRejection(h.throttleLog, "POST /v1/templates", "", consumer.Name, "corpo nao e JSON valido")
-		respondError(w, http.StatusBadRequest, "permanent", "corpo nao e JSON valido", 0)
+		logRejection(h.throttleLog, "POST /v1/templates", "", consumer.Name, "body is not valid JSON")
+		respondError(w, http.StatusBadRequest, "permanent", "body is not valid JSON", 0)
 		return
 	}
 	// Validate BEFORE talking to Meta: sending a request already known to be
@@ -606,17 +606,17 @@ func (h *TemplatesHandler) deleteTemplate(w http.ResponseWriter, r *http.Request
 	slug, oldInstanceParam := queryAlias(r.URL.Query(), "instance", "instancia")
 	if slug == "" {
 		logRejection(h.throttleLog, "DELETE /v1/templates", "", consumer.Name,
-			"parametro instancia e obrigatorio")
+			"parameter instancia is required")
 		respondError(w, http.StatusBadRequest, "permanent",
-			"parametro instancia e obrigatorio", 0)
+			"parameter instancia is required", 0)
 		return
 	}
 	name, oldNameParam := queryAlias(r.URL.Query(), "name", "nome")
 	if name == "" {
 		logRejection(h.throttleLog, "DELETE /v1/templates", slug, consumer.Name,
-			"parametro nome e obrigatorio")
+			"parameter nome is required")
 		respondError(w, http.StatusBadRequest, "permanent",
-			"parametro nome e obrigatorio", 0)
+			"parameter nome is required", 0)
 		return
 	}
 	if !reTemplateName.MatchString(name) {
@@ -625,11 +625,11 @@ func (h *TemplatesHandler) deleteTemplate(w http.ResponseWriter, r *http.Request
 		// See the comment on reTemplateName for why this is a guard and
 		// not a nicety.
 		logRejection(h.throttleLog, "DELETE /v1/templates", slug, consumer.Name,
-			"parametro nome invalido")
+			"invalid nome parameter")
 		respondError(w, http.StatusBadRequest, "permanent",
-			"parametro nome so aceita letras minusculas, digitos e _ (ate 512 caracteres); "+
-				"curinga e caractere especial sao recusados aqui, antes de qualquer chamada a Meta, "+
-				"porque a exclusao e por nome e nao tem desfazer", 0)
+			"parameter nome only accepts lowercase letters, digits and _ (up to 512 characters); "+
+				"wildcards and special characters are refused here, before any call to Meta, "+
+				"because the deletion is by name and cannot be undone", 0)
 		return
 	}
 
@@ -812,8 +812,8 @@ func (h *TemplatesHandler) respondDeletionError(
 		log.Printf("ALARME zapgw: invalid waba_id for instance %q — fix the waba_id in the store; "+
 			"no template deletion on this instance works until then", inst.Slug)
 		respondError(w, http.StatusBadGateway, string(meta.ClassConfig),
-			"a configuracao desta instancia no gateway esta invalida; "+
-				"o pedido nao chegou a Meta e nao adianta repetir ate isso ser corrigido", 0)
+			"this instance's configuration in the gateway is invalid; "+
+				"the request did not reach Meta and retrying is pointless until this is fixed", 0)
 	case errors.Is(err, meta.ErrDeletionNotConfirmed):
 		// A `2xx` without `success: true` is AMBIGUOUS for the same reason
 		// as transport, and falls into the SAME handling — exactly as
@@ -947,11 +947,11 @@ func (h *TemplatesHandler) authenticate(w http.ResponseWriter, r *http.Request) 
 		return consumer, true
 	}
 	if errors.Is(err, ErrNoToken) || errors.Is(err, ErrInvalidToken) {
-		respondError(w, http.StatusUnauthorized, "config", "token ausente ou invalido", 0)
+		respondError(w, http.StatusUnauthorized, "config", "missing or invalid token", 0)
 		return config.Consumer{}, false
 	}
 	log.Printf("zapgw: store error while authenticating on /v1/templates: %v", err)
-	respondError(w, http.StatusServiceUnavailable, "retryable", "indisponivel", 0)
+	respondError(w, http.StatusServiceUnavailable, "retryable", "unavailable", 0)
 	return config.Consumer{}, false
 }
 
@@ -972,7 +972,7 @@ func (h *TemplatesHandler) instanceActive(
 		log.Printf("zapgw: consumer %q asked for templates of instance %q, which is not theirs",
 			consumer.Name, slug)
 		respondError(w, http.StatusForbidden, "config",
-			"instancia nao autorizada para este consumidor", 0)
+			"instance not authorized for this consumer", 0)
 		return config.Instance{}, false
 	}
 
@@ -981,18 +981,18 @@ func (h *TemplatesHandler) instanceActive(
 		if errors.Is(err, config.ErrInstanceNotFound) {
 			// 404 for instance YES (T-037): whoever got here has already
 			// authenticated.
-			logRejection(h.throttleLog, route, slug, consumer.Name, "instancia desconhecida")
-			respondError(w, http.StatusNotFound, "config", "instancia desconhecida", 0)
+			logRejection(h.throttleLog, route, slug, consumer.Name, "unknown instance")
+			respondError(w, http.StatusNotFound, "config", "unknown instance", 0)
 			return config.Instance{}, false
 		}
 		log.Printf("zapgw: store error while looking up instance %q on /v1/templates: %v", slug, err)
-		respondError(w, http.StatusServiceUnavailable, "retryable", "indisponivel", 0)
+		respondError(w, http.StatusServiceUnavailable, "retryable", "unavailable", 0)
 		return config.Instance{}, false
 	}
 	if !inst.Active {
 		// 503 like the rest of the gateway, and without spending a call to
 		// Meta on a channel that cannot send anyway.
-		respondError(w, http.StatusServiceUnavailable, "retryable", "instancia pausada", 0)
+		respondError(w, http.StatusServiceUnavailable, "retryable", "instance paused", 0)
 		return config.Instance{}, false
 	}
 	// T-111: AFTER the binding check (403) and the existence check (404) —
@@ -1047,29 +1047,29 @@ func (h *TemplatesHandler) respondCatalogError(
 			"no list was served (a partial one would be worse); check Meta's pagination or raise the ceiling: %v",
 			inst.Slug, err)
 		respondError(w, http.StatusBadGateway, string(meta.ClassConfig),
-			"o catalogo desta instancia nao coube no limite de paginacao do gateway; "+
-				"nenhuma lista parcial e devolvida de proposito — avise quem opera o gateway", 0)
+			"this instance's catalog did not fit the gateway's pagination limit; "+
+				"no partial list is returned, on purpose — tell whoever operates the gateway", 0)
 	case errors.Is(err, meta.ErrInvalidWabaID):
 		// The request never even left here, and no read of this instance
 		// works until an admin fixes the registration.
 		log.Printf("ALARME zapgw: invalid waba_id for instance %q — fix the waba_id in the store; "+
 			"no template query on this instance works until then", inst.Slug)
 		respondError(w, http.StatusBadGateway, string(meta.ClassConfig),
-			"a configuracao desta instancia no gateway esta invalida; "+
-				"o pedido nao chegou a Meta e nao adianta repetir ate isso ser corrigido", 0)
+			"this instance's configuration in the gateway is invalid; "+
+				"the request did not reach Meta and retrying is pointless until this is fixed", 0)
 	case errors.Is(err, meta.ErrPageFromAnotherOrigin):
 		log.Printf("ALARME zapgw: template pagination of instance %q pointed outside the Graph API "+
 			"configured; the read was aborted and the token was NOT sent to the foreign destination", inst.Slug)
 		respondError(w, http.StatusBadGateway, string(meta.ClassConfig),
-			"a paginacao da Meta apontou para um destino inesperado e a leitura foi abortada; "+
-				"nenhuma lista parcial e devolvida — avise quem opera o gateway", 0)
+			"Meta's pagination pointed to an unexpected destination and the read was aborted; "+
+				"no partial list is returned — tell whoever operates the gateway", 0)
 	case errors.Is(err, meta.ErrCatalogNotUnderstood):
 		// T-250: this branch is the only one of the four that decides
 		// 503/retryable instead of 502/config, and it answered mute.
 		log.Printf("zapgw: catalog read on instance %q (%s): Meta answered a catalog the gateway could not "+
 			"parse: %v — answered 503 retryable", inst.Slug, route, redactCatalogReadErr(err))
 		respondError(w, http.StatusServiceUnavailable, string(meta.ClassRetryable),
-			"a Meta respondeu um catalogo que o gateway nao entendeu; nenhuma lista parcial e devolvida", 0)
+			"Meta answered with a catalog the gateway did not understand; no partial list is returned", 0)
 	default:
 		var me *meta.MetaError
 		if errors.As(err, &me) {
@@ -1095,7 +1095,7 @@ func (h *TemplatesHandler) respondCatalogError(
 			"(deadline %s): %v — answered 503 retryable",
 			inst.Slug, route, elapsed, InstanceDeadline(inst), redactCatalogReadErr(err))
 		respondError(w, http.StatusServiceUnavailable, string(meta.ClassRetryable),
-			"nao foi possivel falar com a Meta para ler o catalogo; tente de novo", 0)
+			"could not talk to Meta to read the catalog; try again", 0)
 	}
 }
 
@@ -1115,8 +1115,8 @@ func (h *TemplatesHandler) respondCreationError(
 		log.Printf("ALARME zapgw: invalid waba_id for instance %q — fix the waba_id in the store; "+
 			"no template creation on this instance works until then", inst.Slug)
 		respondError(w, http.StatusBadGateway, string(meta.ClassConfig),
-			"a configuracao desta instancia no gateway esta invalida; "+
-				"o pedido nao chegou a Meta e nao adianta repetir ate isso ser corrigido", 0)
+			"this instance's configuration in the gateway is invalid; "+
+				"the request did not reach Meta and retrying is pointless until this is fixed", 0)
 	case errors.Is(err, meta.ErrTemplateWithoutID):
 		// A `2xx` with no id is AMBIGUOUS for the same reason as transport,
 		// and that's why it falls into the SAME handling: Meta may have

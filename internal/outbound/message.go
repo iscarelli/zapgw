@@ -145,13 +145,13 @@ var (
 func safeRejectionMessage(err error) string {
 	switch {
 	case errors.Is(err, ErrUnknownType):
-		return "tipo de mensagem desconhecido"
+		return "unknown message type"
 	case errors.Is(err, ErrUnknownCategory):
-		return "categoria de midia desconhecida"
+		return "unknown media category"
 	case errors.Is(err, ErrUnknownHeaderType):
-		return "tipo de cabecalho de template desconhecido"
+		return "unknown template header type"
 	case errors.Is(err, ErrUnknownTemplateButtonType):
-		return "tipo de botao de template desconhecido"
+		return "unknown template button type"
 	default:
 		return err.Error()
 	}

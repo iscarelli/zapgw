@@ -132,8 +132,8 @@ func (h *ProfileHandler) read(w http.ResponseWriter, r *http.Request) {
 	// comment in input_aliases.go.
 	slug, oldInstanceParam := queryAlias(r.URL.Query(), "instance", "instancia")
 	if slug == "" {
-		logRejection(h.throttleLog, "GET /v1/perfil", "", consumer.Name, "parametro instancia e obrigatorio")
-		respondError(w, http.StatusBadRequest, "permanent", "parametro instancia e obrigatorio", 0)
+		logRejection(h.throttleLog, "GET /v1/perfil", "", consumer.Name, "parameter instancia is required")
+		respondError(w, http.StatusBadRequest, "permanent", "parameter instancia is required", 0)
 		return
 	}
 	inst, ok := h.instanceActive(w, consumer, slug, "GET /v1/perfil")
@@ -170,25 +170,25 @@ func (h *ProfileHandler) write(w http.ResponseWriter, r *http.Request) {
 	raw, err := httpx.ReadRaw(r.Body, h.maxBytes)
 	if err != nil {
 		if errors.Is(err, httpx.ErrBodyTooLarge) {
-			logRejection(h.throttleLog, "POST /v1/perfil", "", consumer.Name, "corpo grande demais")
-			respondError(w, http.StatusRequestEntityTooLarge, "permanent", "corpo grande demais", 0)
+			logRejection(h.throttleLog, "POST /v1/perfil", "", consumer.Name, "body too large")
+			respondError(w, http.StatusRequestEntityTooLarge, "permanent", "body too large", 0)
 			return
 		}
-		logRejection(h.throttleLog, "POST /v1/perfil", "", consumer.Name, "corpo nao foi lido por inteiro")
-		respondError(w, http.StatusBadRequest, "retryable", "corpo nao foi lido por inteiro", 0)
+		logRejection(h.throttleLog, "POST /v1/perfil", "", consumer.Name, "body was not read in full")
+		respondError(w, http.StatusBadRequest, "retryable", "body was not read in full", 0)
 		return
 	}
 
 	var p ProfileRequest
 	if err := json.Unmarshal(raw, &p); err != nil {
-		logRejection(h.throttleLog, "POST /v1/perfil", "", consumer.Name, "corpo nao e JSON valido")
-		respondError(w, http.StatusBadRequest, "permanent", "corpo nao e JSON valido", 0)
+		logRejection(h.throttleLog, "POST /v1/perfil", "", consumer.Name, "body is not valid JSON")
+		respondError(w, http.StatusBadRequest, "permanent", "body is not valid JSON", 0)
 		return
 	}
 	p.Instance = strings.TrimSpace(p.Instance)
 	if p.Instance == "" {
-		logRejection(h.throttleLog, "POST /v1/perfil", "", consumer.Name, "campo instancia e obrigatorio")
-		respondError(w, http.StatusBadRequest, "permanent", "campo instancia e obrigatorio", 0)
+		logRejection(h.throttleLog, "POST /v1/perfil", "", consumer.Name, "field instancia is required")
+		respondError(w, http.StatusBadRequest, "permanent", "field instancia is required", 0)
 		return
 	}
 
@@ -222,11 +222,11 @@ func (h *ProfileHandler) authenticate(w http.ResponseWriter, r *http.Request) (c
 		return consumer, true
 	}
 	if errors.Is(err, ErrNoToken) || errors.Is(err, ErrInvalidToken) {
-		respondError(w, http.StatusUnauthorized, "config", "token ausente ou invalido", 0)
+		respondError(w, http.StatusUnauthorized, "config", "missing or invalid token", 0)
 		return config.Consumer{}, false
 	}
 	log.Printf("zapgw: store error while authenticating on /v1/perfil: %v", err)
-	respondError(w, http.StatusServiceUnavailable, "retryable", "indisponivel", 0)
+	respondError(w, http.StatusServiceUnavailable, "retryable", "unavailable", 0)
 	return config.Consumer{}, false
 }
 
@@ -244,7 +244,7 @@ func (h *ProfileHandler) instanceActive(
 		log.Printf("zapgw: consumer %q asked for the profile of instance %q, which is not theirs",
 			consumer.Name, slug)
 		respondError(w, http.StatusForbidden, "config",
-			"instancia nao autorizada para este consumidor", 0)
+			"instance not authorized for this consumer", 0)
 		return config.Instance{}, false
 	}
 
@@ -252,16 +252,16 @@ func (h *ProfileHandler) instanceActive(
 	if err != nil {
 		if errors.Is(err, config.ErrInstanceNotFound) {
 			// 404 for instance, YES (T-037): whoever got here already authenticated.
-			logRejection(h.throttleLog, route, slug, consumer.Name, "instancia desconhecida")
-			respondError(w, http.StatusNotFound, "config", "instancia desconhecida", 0)
+			logRejection(h.throttleLog, route, slug, consumer.Name, "unknown instance")
+			respondError(w, http.StatusNotFound, "config", "unknown instance", 0)
 			return config.Instance{}, false
 		}
 		log.Printf("zapgw: store error while looking up instance %q on %s: %v", slug, route, err)
-		respondError(w, http.StatusServiceUnavailable, "retryable", "indisponivel", 0)
+		respondError(w, http.StatusServiceUnavailable, "retryable", "unavailable", 0)
 		return config.Instance{}, false
 	}
 	if !inst.Active {
-		respondError(w, http.StatusServiceUnavailable, "retryable", "instancia pausada", 0)
+		respondError(w, http.StatusServiceUnavailable, "retryable", "instance paused", 0)
 		return config.Instance{}, false
 	}
 	// T-111: AFTER the bond (403) and the existence (404) — NEVER before,
@@ -286,11 +286,11 @@ func (h *ProfileHandler) respondProfileError(w http.ResponseWriter, slug string,
 		log.Printf("ALARME zapgw: invalid profile identifier for instance %q — "+
 			"fix the registration; no profile read/write on this instance works until then", slug)
 		respondError(w, http.StatusBadGateway, string(meta.ClassConfig),
-			"a configuracao desta instancia no gateway esta invalida; "+
-				"o pedido nao chegou a Meta e nao adianta repetir ate isso ser corrigido", 0)
+			"this instance's configuration in the gateway is invalid; "+
+				"the request did not reach Meta and retrying is pointless until this is fixed", 0)
 	case errors.Is(err, meta.ErrProfileNotUnderstood):
 		respondError(w, http.StatusServiceUnavailable, string(meta.ClassRetryable),
-			"a Meta respondeu sobre o perfil algo que o gateway nao entendeu; tente de novo", 0)
+			"Meta answered about the profile with something the gateway did not understand; try again", 0)
 	default:
 		var me *meta.MetaError
 		if errors.As(err, &me) {
@@ -305,6 +305,6 @@ func (h *ProfileHandler) respondProfileError(w http.ResponseWriter, slug string,
 		}
 		// Transport, deadline exceeded, reading the response.
 		respondError(w, http.StatusServiceUnavailable, string(meta.ClassRetryable),
-			"nao foi possivel falar com a Meta sobre o perfil; tente de novo", 0)
+			"could not talk to Meta about the profile; try again", 0)
 	}
 }

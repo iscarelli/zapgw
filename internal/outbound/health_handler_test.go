@@ -209,7 +209,7 @@ func TestHealthWithPausedInstanceAnswers503WithoutCallingMeta(t *testing.T) {
 	if n := m.gets.Load(); n != 0 {
 		t.Errorf("the probe talked to Meta %d time(s) for a PAUSED instance", n)
 	}
-	if !strings.Contains(rec.Body.String(), "pausada") {
+	if !strings.Contains(rec.Body.String(), "paused") {
 		t.Errorf("the response does not say the instance is paused: %s", rec.Body.String())
 	}
 }
@@ -248,7 +248,7 @@ func TestHealthRefusesInstanceNotOwnedByConsumer(t *testing.T) {
 	// green with the bond guard removed — the refusal would come from the
 	// pause, and the 403 would never have been proven. Proven by mutation:
 	// with `CanUse` disabled and clinica paused, the response was 503
-	// "instancia pausada".
+	// "instance paused".
 	h := testHealthHandler(t, m, "lojinha", "clinica")
 
 	rec := askHealth(t, h, "token-do-a", "clinica")
