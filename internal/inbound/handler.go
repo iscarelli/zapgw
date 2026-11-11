@@ -648,7 +648,7 @@ func (h *Handler) receive(w http.ResponseWriter, r *http.Request) {
 		if v.Alarm {
 			prefix = "ALARME zapgw"
 		}
-		log.Printf("%s: instancia=%q correlacao=%s %s", prefix, slug, correlation, v.Reason)
+		log.Printf("%s: instance=%q correlation=%s %s", prefix, slug, correlation, v.Reason)
 	}
 
 	w.WriteHeader(v.StatusForMeta)

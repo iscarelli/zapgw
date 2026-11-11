@@ -176,12 +176,12 @@ func seriesWindow(raw string, retentionDays int) (int, error) {
 	}
 	days, err := strconv.Atoi(raw)
 	if err != nil || days < 1 {
-		return 0, fmt.Errorf("`serie_dias` = %q: tem de ser um inteiro de 1 a %d",
+		return 0, fmt.Errorf("`serie_dias` = %q: has to be an integer from 1 to %d",
 			raw, retentionDays)
 	}
 	if days > retentionDays {
 		return 0, fmt.Errorf(
-			"`serie_dias` = %d, mas este gateway guarda contador por %d dias — a serie mais longa possivel tem %d entradas, e as mais velhas de uma janela maior sairiam zeradas sem terem sido medidas",
+			"`serie_dias` = %d, but this gateway keeps counters for %d days — the longest possible series has %d entries, and the oldest ones of a larger window would come out zeroed without ever having been measured",
 			days, retentionDays, retentionDays)
 	}
 	return days, nil

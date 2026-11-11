@@ -809,8 +809,8 @@ func (h *TemplatesHandler) respondDeletionError(
 ) {
 	switch {
 	case errors.Is(err, meta.ErrInvalidWabaID):
-		log.Printf("ALARME zapgw: waba_id invalido para a instancia %q — corrija o waba_id no store; "+
-			"nenhuma exclusao de template desta instancia funciona ate la", inst.Slug)
+		log.Printf("ALARME zapgw: invalid waba_id for instance %q — fix the waba_id in the store; "+
+			"no template deletion on this instance works until then", inst.Slug)
 		respondError(w, http.StatusBadGateway, string(meta.ClassConfig),
 			"a configuracao desta instancia no gateway esta invalida; "+
 				"o pedido nao chegou a Meta e nao adianta repetir ate isso ser corrigido", 0)
@@ -834,7 +834,7 @@ func (h *TemplatesHandler) respondDeletionError(
 			// it: the consumer needs to read what Meta said, not our guess
 			// at what it would say.
 			if me.Class == meta.ClassConfig {
-				log.Printf("ALARME zapgw: credencial da instancia %q recusada pela Meta ao apagar template", inst.Slug)
+				log.Printf("ALARME zapgw: Meta refused the credential of instance %q when deleting a template", inst.Slug)
 			}
 			respondMetaError(w, statusForClass(me.Class), me)
 			return
@@ -920,13 +920,13 @@ func (p *CreateTemplateRequest) Validate() error {
 
 	switch {
 	case p.Instance == "":
-		return errors.New("campo instancia e obrigatorio")
+		return errors.New("field instancia is required")
 	case p.Name == "":
-		return errors.New("campo nome e obrigatorio")
+		return errors.New("field nome is required")
 	case p.Category == "":
-		return errors.New("campo categoria e obrigatorio")
+		return errors.New("field categoria is required")
 	case p.Language == "":
-		return errors.New("campo idioma e obrigatorio")
+		return errors.New("field idioma is required")
 	}
 
 	// `componentes` has to be an actual JSON LIST. `null` does NOT fail the
@@ -934,7 +934,7 @@ func (p *CreateTemplateRequest) Validate() error {
 	// a template with no body at all; `{}` the same, in a different shape.
 	components := bytes.TrimSpace(p.Components)
 	if len(components) == 0 || !bytes.HasPrefix(components, []byte("[")) {
-		return errors.New("campo componentes e obrigatorio e tem de ser uma lista JSON")
+		return errors.New("field componentes is required and has to be a JSON list")
 	}
 	p.Components = components
 	return nil
@@ -1043,8 +1043,8 @@ func (h *TemplatesHandler) respondCatalogError(
 		// or Meta's pagination is looping. What is NOT done is serving the
 		// partial list: that is how the old gateway got taken out of
 		// production.
-		log.Printf("ALARME zapgw: catalogo de templates da instancia %q nao coube no teto de paginas — "+
-			"nenhuma lista foi servida (parcial seria pior); confira a paginacao da Meta ou suba o teto: %v",
+		log.Printf("ALARME zapgw: the template catalog of instance %q did not fit within the page ceiling — "+
+			"no list was served (a partial one would be worse); check Meta's pagination or raise the ceiling: %v",
 			inst.Slug, err)
 		respondError(w, http.StatusBadGateway, string(meta.ClassConfig),
 			"o catalogo desta instancia nao coube no limite de paginacao do gateway; "+
@@ -1052,14 +1052,14 @@ func (h *TemplatesHandler) respondCatalogError(
 	case errors.Is(err, meta.ErrInvalidWabaID):
 		// The request never even left here, and no read of this instance
 		// works until an admin fixes the registration.
-		log.Printf("ALARME zapgw: waba_id invalido para a instancia %q — corrija o waba_id no store; "+
-			"nenhuma consulta de template desta instancia funciona ate la", inst.Slug)
+		log.Printf("ALARME zapgw: invalid waba_id for instance %q — fix the waba_id in the store; "+
+			"no template query on this instance works until then", inst.Slug)
 		respondError(w, http.StatusBadGateway, string(meta.ClassConfig),
 			"a configuracao desta instancia no gateway esta invalida; "+
 				"o pedido nao chegou a Meta e nao adianta repetir ate isso ser corrigido", 0)
 	case errors.Is(err, meta.ErrPageFromAnotherOrigin):
-		log.Printf("ALARME zapgw: paginacao de templates da instancia %q apontou para fora da Graph API "+
-			"configurada; a leitura foi abortada e o token NAO foi enviado ao destino estranho", inst.Slug)
+		log.Printf("ALARME zapgw: template pagination of instance %q pointed outside the Graph API "+
+			"configured; the read was aborted and the token was NOT sent to the foreign destination", inst.Slug)
 		respondError(w, http.StatusBadGateway, string(meta.ClassConfig),
 			"a paginacao da Meta apontou para um destino inesperado e a leitura foi abortada; "+
 				"nenhuma lista parcial e devolvida — avise quem opera o gateway", 0)
@@ -1074,7 +1074,7 @@ func (h *TemplatesHandler) respondCatalogError(
 		var me *meta.MetaError
 		if errors.As(err, &me) {
 			if me.Class == meta.ClassConfig {
-				log.Printf("ALARME zapgw: credencial da instancia %q recusada pela Meta ao ler templates", inst.Slug)
+				log.Printf("ALARME zapgw: Meta refused the credential of instance %q when reading templates", inst.Slug)
 			}
 			// T-153: respondMetaError (handler.go), not respondError —
 			// this route has its own error body and it was THROUGH IT that
@@ -1112,8 +1112,8 @@ func (h *TemplatesHandler) respondCreationError(
 ) {
 	switch {
 	case errors.Is(err, meta.ErrInvalidWabaID):
-		log.Printf("ALARME zapgw: waba_id invalido para a instancia %q — corrija o waba_id no store; "+
-			"nenhuma criacao de template desta instancia funciona ate la", inst.Slug)
+		log.Printf("ALARME zapgw: invalid waba_id for instance %q — fix the waba_id in the store; "+
+			"no template creation on this instance works until then", inst.Slug)
 		respondError(w, http.StatusBadGateway, string(meta.ClassConfig),
 			"a configuracao desta instancia no gateway esta invalida; "+
 				"o pedido nao chegou a Meta e nao adianta repetir ate isso ser corrigido", 0)
@@ -1132,7 +1132,7 @@ func (h *TemplatesHandler) respondCreationError(
 			// re-reading the catalog here would only spend the instance's
 			// quota.
 			if me.Class == meta.ClassConfig {
-				log.Printf("ALARME zapgw: credencial da instancia %q recusada pela Meta ao criar template", inst.Slug)
+				log.Printf("ALARME zapgw: Meta refused the credential of instance %q when creating a template", inst.Slug)
 			}
 			// T-153: this is EXACTLY the branch the consumer who triggered
 			// the task hit — a deterministic 503 (meta 2) on the CREATION of

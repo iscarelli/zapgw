@@ -63,7 +63,7 @@ type PauseRequest struct {
 	Instance string `json:"instancia"`
 }
 
-var ErrPauseNoInstance = errors.New("campo `instancia` e obrigatorio")
+var ErrPauseNoInstance = errors.New("field `instancia` is required")
 
 // PauseResponse is the body of the 200.
 type PauseResponse struct {

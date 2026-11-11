@@ -462,7 +462,7 @@ type cappedReader struct {
 	overflowed atomic.Bool
 }
 
-var errAboveCap = errors.New("outbound: midia acima do teto da categoria")
+var errAboveCap = errors.New("outbound: media above the category ceiling")
 
 func (l *cappedReader) Read(p []byte) (int, error) {
 	if l.remaining < 0 {

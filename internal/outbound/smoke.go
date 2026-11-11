@@ -59,17 +59,17 @@ const SmokeText = "zapgw: teste de fumaça do canal. " +
 
 var (
 	// ErrSmokeNoSlug: no instance was specified.
-	ErrSmokeNoSlug = errors.New("outbound: slug e obrigatorio")
+	ErrSmokeNoSlug = errors.New("outbound: slug is required")
 	// ErrSmokeNoDestination: NO DEFAULT, on purpose — a default here would
 	// send a message to the wrong number, and a sent message can't be undone.
-	ErrSmokeNoDestination = errors.New("outbound: destino e obrigatorio e nao tem default — o teste de fumaca manda uma mensagem DE VERDADE")
+	ErrSmokeNoDestination = errors.New("outbound: destino is required and has no default — the smoke test sends a REAL message")
 	// ErrSmokeActivationFailed: the test message WENT OUT (Meta accepted it,
 	// with an id) but the ActivateInstance that should have come right after
 	// failed. NEEDS A HUMAN: the instance stays PAUSED despite a real message
 	// having been delivered, and running the smoke test again would send
 	// ANOTHER real message — that's why the HTTP facade doesn't treat this as
 	// "just try again".
-	ErrSmokeActivationFailed = errors.New("outbound: a mensagem de teste foi enviada, mas o gateway falhou ao ativar a instancia")
+	ErrSmokeActivationFailed = errors.New("outbound: the test message was sent, but the gateway failed to activate the instance")
 )
 
 // SmokeResult is what both facades need to report the outcome —
@@ -123,7 +123,7 @@ func SmokeWithInstagramBase(ctx context.Context, store *config.Store, client *me
 	// --- step 1: the instance exists ----------------------------------------
 	inst, err := store.FindInstance(slug)
 	if err != nil {
-		return SmokeResult{}, fmt.Errorf("passo 1/4 (a instancia existe): %w", err)
+		return SmokeResult{}, fmt.Errorf("step 1/4 (the instance exists): %w", err)
 	}
 	// T-097: the identifier that shows up in the line changes with the
 	// TYPE — showing an empty phone_number_id on an Instagram instance (or
@@ -175,7 +175,7 @@ func SmokeWithInstagramBase(ctx context.Context, store *config.Store, client *me
 		ctxToken, cancelToken := context.WithTimeout(ctx, deadline)
 		defer cancelToken()
 		if err := client.CheckCredential(ctxToken, identifier, inst.SendToken); err != nil {
-			return SmokeResult{}, fmt.Errorf("passo 2/4 (a Graph API aceita o token de envio): %w", err)
+			return SmokeResult{}, fmt.Errorf("step 2/4 (the Graph API accepts the send token): %w", err)
 		}
 		report("passo 2/4 OK: a Graph API aceitou o token de envio.")
 	}
@@ -199,10 +199,10 @@ func SmokeWithInstagramBase(ctx context.Context, store *config.Store, client *me
 		resp, err = client.SendInstagramMessage(ctxSend, baseInstagram, inst.IgID, inst.SendToken, destination, SmokeText)
 		if err != nil {
 			counter.Record(inst.Slug, config.CounterSendFailures)
-			return SmokeResult{}, fmt.Errorf("passo 3/4 (enviar a mensagem de teste ao IGSID %s — "+
-				"no Instagram isto SO funciona se ele tiver mandado mensagem para esta conta nas ultimas 24h "+
-				"(7 dias com a tag human_agent); se a causa for essa, a Meta recusa e o erro abaixo vem dela, "+
-				"nao de credencial): %w", destination, err)
+			return SmokeResult{}, fmt.Errorf("step 3/4 (send the test message to IGSID %s — "+
+				"on Instagram this ONLY works if it has messaged this account in the last 24h "+
+				"(7 days with the human_agent tag); if that is the cause, Meta refuses and the error below comes from it, "+
+				"not from the credential): %w", destination, err)
 		}
 	} else {
 		// Builds the request through the SAME path as the production send
@@ -214,7 +214,7 @@ func SmokeWithInstagramBase(ctx context.Context, store *config.Store, client *me
 			// NO counter here, and that's what the production send also
 			// does: a validation refusal happens BEFORE any byte goes out to
 			// Meta, so there was no send and no SEND failure to count.
-			return SmokeResult{}, fmt.Errorf("passo 3/4 (mensagem de teste): %w", err)
+			return SmokeResult{}, fmt.Errorf("step 3/4 (test message): %w", err)
 		}
 
 		ctxSend, cancelSend := context.WithTimeout(ctx, deadline)
@@ -222,7 +222,7 @@ func SmokeWithInstagramBase(ctx context.Context, store *config.Store, client *me
 		resp, err = client.SendMessage(ctxSend, inst.PhoneNumberID, inst.SendToken, MetaBody(p))
 		if err != nil {
 			counter.Record(inst.Slug, config.CounterSendFailures)
-			return SmokeResult{}, fmt.Errorf("passo 3/4 (enviar a mensagem de teste): %w", err)
+			return SmokeResult{}, fmt.Errorf("step 3/4 (send the test message): %w", err)
 		}
 	}
 	// SendMessage already refuses an empty id (meta.ErrResponseWithoutID).
@@ -231,7 +231,7 @@ func SmokeWithInstagramBase(ctx context.Context, store *config.Store, client *me
 	// that never proved it delivers.
 	if strings.TrimSpace(resp.ID) == "" {
 		counter.Record(inst.Slug, config.CounterSendFailures)
-		return SmokeResult{}, fmt.Errorf("passo 3/4: %w", meta.ErrResponseWithoutID)
+		return SmokeResult{}, fmt.Errorf("step 3/4: %w", meta.ErrResponseWithoutID)
 	}
 	// BEFORE STEP 4, not after: `enviadas` is a fact of step 3. If the
 	// ActivateInstance below fails, the message went OUT all the same and
@@ -242,7 +242,7 @@ func SmokeWithInstagramBase(ctx context.Context, store *config.Store, client *me
 
 	// --- step 4: ONLY THEN, activate -------------------------------------------
 	if err := store.ActivateInstance(inst.Slug); err != nil {
-		return SmokeResult{}, fmt.Errorf("passo 4/4 (ativar a instancia): %w: %w", ErrSmokeActivationFailed, err)
+		return SmokeResult{}, fmt.Errorf("step 4/4 (activate the instance): %w: %w", ErrSmokeActivationFailed, err)
 	}
 	inst.Active = true
 	report(fmt.Sprintf("passo 4/4 OK: instancia %q ATIVADA.", inst.Slug))

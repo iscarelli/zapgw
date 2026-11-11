@@ -479,7 +479,7 @@ func TestInstagramHandlerUnmodeledItemLogsInformationalWithoutFailed(t *testing.
 	if !strings.Contains(logged, `instance "insta-loja"`) {
 		t.Fatalf("journal does not mention the instance: %q", logged)
 	}
-	if !strings.Contains(logged, "item legitimo que esta fatia do instagram nao modela") {
+	if !strings.Contains(logged, "legitimate item that this Instagram slice does not model") {
 		t.Fatalf("journal does not carry the ErrUnmodeledItems sentinel text: %q", logged)
 	}
 	if strings.Contains(logged, "falhou") {
@@ -494,7 +494,7 @@ func TestInstagramHandlerUnmodeledItemLogsInformationalWithoutFailed(t *testing.
 // falhou," checked against the exact text (a constant, not a visual
 // inspection).
 func TestInstagramHandlerUnreadableItemLogsParseFailedWithExactText(t *testing.T) {
-	const exactText = `zapgw: parse failed on instance "insta-loja": meta: parte do payload nao pode ser lida: 1 item(ns) ignorado(s)`
+	const exactText = `zapgw: parse failed on instance "insta-loja": meta: part of the payload could not be read: 1 item(s) ignored`
 
 	raw := testInstagramPayloadUnreadableItem("IGID1")
 
@@ -515,7 +515,7 @@ func TestInstagramHandlerUnreadableItemLogsParseFailedWithExactText(t *testing.T
 // mandatory mutation (reversing the order, with an else) has to make this
 // test go red.
 func TestInstagramHandlerMixedBatchLogsFailureNeverOnlyInformational(t *testing.T) {
-	const exactText = `zapgw: parse failed on instance "insta-loja": meta: parte do payload nao pode ser lida: 1 item(ns) ignorado(s)`
+	const exactText = `zapgw: parse failed on instance "insta-loja": meta: part of the payload could not be read: 1 item(s) ignored`
 
 	raw := testInstagramPayloadMixed("IGID1")
 
@@ -527,7 +527,7 @@ func TestInstagramHandlerMixedBatchLogsFailureNeverOnlyInformational(t *testing.
 	if !strings.Contains(logged, exactText) {
 		t.Fatalf("a mixed batch has to come out with the FAILURE line (the unreadable item cannot vanish).\nwant it to contain: %s\njournal: %q", exactText, logged)
 	}
-	if !strings.Contains(logged, "item legitimo que esta fatia do instagram nao modela") {
+	if !strings.Contains(logged, "legitimate item that this Instagram slice does not model") {
 		t.Fatalf("a mixed batch should also carry the information about the unmodeled item (errors.Join): %q", logged)
 	}
 }

@@ -25,15 +25,15 @@ import (
 )
 
 var (
-	ErrUnknownType    = errors.New("outbound: tipo de mensagem desconhecido")
-	ErrFieldRequired  = errors.New("outbound: campo obrigatorio ausente")
-	ErrFieldForbidden = errors.New("outbound: campo proibido para este tipo")
-	ErrMixedButtons   = errors.New("outbound: botao de resposta e botao de link nao convivem")
-	ErrBase64         = errors.New("outbound: base64 nao e aceito")
+	ErrUnknownType    = errors.New("outbound: unknown message type")
+	ErrFieldRequired  = errors.New("outbound: required field missing")
+	ErrFieldForbidden = errors.New("outbound: field forbidden for this type")
+	ErrMixedButtons   = errors.New("outbound: a reply button and a link button cannot coexist")
+	ErrBase64         = errors.New("outbound: base64 is not accepted")
 
 	// ErrUnknownCategory: `tipo: "midia"` without a category that exists
 	// in the meta/media.go table.
-	ErrUnknownCategory = errors.New("outbound: categoria de midia desconhecida")
+	ErrUnknownCategory = errors.New("outbound: unknown media category")
 
 	// ErrMediaBase64 is a sibling of ErrBase64 and is NOT the same: here the
 	// fix is different. In text, base64 is content in the wrong place; in
@@ -41,12 +41,12 @@ var (
 	// know a route exists that returns that id. Both use the SAME detector
 	// (containsBase64) — two detections would diverge on the first change —,
 	// and separating the sentinel lets the consumer tell the two cases apart.
-	ErrMediaBase64 = errors.New("outbound: base64 nao e aceito em campo de midia")
+	ErrMediaBase64 = errors.New("outbound: base64 is not accepted in a media field")
 
 	// ErrRawComponents: the consumer sent `components` in the Graph API
 	// format for the gateway to pass through. See the comment on the
 	// Request.Components field for why this is REFUSED and not ignored.
-	ErrRawComponents = errors.New("outbound: components cru da Graph API nao e aceito")
+	ErrRawComponents = errors.New("outbound: raw Graph API components are not accepted")
 
 	// ErrRemovedURLButtons: the consumer sent `botoes_url`, a field REMOVED
 	// on 2026-07-28 (T-045). See the comment on the Request.RemovedURLButtons
@@ -54,20 +54,20 @@ var (
 	// that ignoring it would send the template WITHOUT THE BUTTON with a 200
 	// in the response, and the consumer would find out on the customer's
 	// phone.
-	ErrRemovedURLButtons = errors.New("outbound: botoes_url foi removido; use botoes_template")
+	ErrRemovedURLButtons = errors.New("outbound: botoes_url was removed; use botoes_template")
 
 	// ErrUnknownHeaderType: `cabecalho.tipo` outside the list this
 	// gateway knows how to assemble.
-	ErrUnknownHeaderType = errors.New("outbound: tipo de cabecalho de template desconhecido")
+	ErrUnknownHeaderType = errors.New("outbound: unknown template header type")
 
 	// ErrInvalidCoordinate: a `localizacao` latitude/longitude outside
 	// -90..90 / -180..180 (T-261). Meta would refuse it; refusing here
 	// names the field.
-	ErrInvalidCoordinate = errors.New("outbound: coordenada fora da faixa valida")
+	ErrInvalidCoordinate = errors.New("outbound: coordinate outside the valid range")
 
 	// ErrInvalidMediaID: the value in place of a media_id does not have the
 	// shape of a media_id — typically a raw URL. See validateHeader.
-	ErrInvalidMediaID = errors.New("outbound: media_id com forma invalida")
+	ErrInvalidMediaID = errors.New("outbound: media_id with an invalid shape")
 
 	// ErrButtonIndex: negative or repeated template button index.
 	//
@@ -76,11 +76,11 @@ var (
 	// the SAME template. With `botoes_url` removed, the index space went
 	// back to being STRUCTURAL — one list, one space — and the guard no
 	// longer depends on anyone remembering to check the two together.
-	ErrButtonIndex = errors.New("outbound: indice de botao de template invalido")
+	ErrButtonIndex = errors.New("outbound: invalid template button index")
 
 	// ErrUnknownTemplateButtonType: `botoes_template[i].tipo` outside
 	// "url" | "resposta_rapida" (T-044).
-	ErrUnknownTemplateButtonType = errors.New("outbound: tipo de botao de template desconhecido")
+	ErrUnknownTemplateButtonType = errors.New("outbound: unknown template button type")
 
 	// ErrFieldTooLong: `cabecalho_texto` or `rodape` above the character limit
 	// the Cloud API accepts in those blocks (T-137), or `botao_titulo` of
@@ -98,28 +98,28 @@ var (
 	// sentinel has to complete the sentence with it ("... (N runes, maximum
 	// M)" or "... (N items, maximum M)") — never leave just "above the
 	// limit" without saying what was exceeded.
-	ErrFieldTooLong = errors.New("outbound: campo acima do limite")
+	ErrFieldTooLong = errors.New("outbound: field above the limit")
 
 	// ErrCardsMismatch (T-257): the cards of a carousel do not all have the
 	// same components. Meta refuses it; the gateway refuses it first.
-	ErrCardsMismatch = errors.New("outbound: cartoes do carrossel com componentes diferentes")
+	ErrCardsMismatch = errors.New("outbound: carousel cards with different components")
 
 	// ErrInvalidContactDate: `contatos[i].birthday` filled in but outside
 	// the `YYYY-MM-DD` shape — the ONLY `contatos` field with a format
 	// declared in Meta's doc (T-146). See validateContacts.
-	ErrInvalidContactDate = errors.New("outbound: data de nascimento do contato com formato invalido")
+	ErrInvalidContactDate = errors.New("outbound: contact birth date in an invalid format")
 
 	// ErrInvalidFlowIDName: `fluxo.id` and `fluxo.nome` of `tipo:"flow"`
 	// (T-154) are MUTUALLY EXCLUSIVE and at least one is required — the
 	// third-party source (see the comment on FlowRequest) says "one or the
 	// other, never both". Sending both together or neither of the two falls
 	// here. See validateFlow.
-	ErrInvalidFlowIDName = errors.New("outbound: fluxo.id e fluxo.nome sao mutuamente exclusivos, um dos dois e obrigatorio")
+	ErrInvalidFlowIDName = errors.New("outbound: fluxo.id and fluxo.nome are mutually exclusive, and one of the two is required")
 
 	// ErrUnknownFlowAction: `fluxo.acao` of `tipo:"flow"` (T-154) outside
 	// "navigate" | "data_exchange" — the ONLY TWO values the third-party
 	// source describes. See validateFlow.
-	ErrUnknownFlowAction = errors.New("outbound: fluxo.acao desconhecida")
+	ErrUnknownFlowAction = errors.New("outbound: unknown fluxo.acao")
 )
 
 // safeRejectionMessage returns the text of a Validate() error READY FOR
@@ -760,7 +760,7 @@ func (p *Request) Validate() error {
 	// stays correct.
 	p.To = meta.Canonicalize(p.To)
 	if p.To == "" {
-		return fmt.Errorf("%w: para (nao sobrou nenhum digito)", ErrFieldRequired)
+		return fmt.Errorf("%w: para (no digit left)", ErrFieldRequired)
 	}
 
 	// The refusal of raw `components` comes BEFORE the switch because it
@@ -768,8 +768,8 @@ func (p *Request) Validate() error {
 	// isn't valid in any of them. And it's a REFUSAL and not silence on
 	// purpose — see the comment on the field.
 	if len(p.Components) > 0 {
-		return fmt.Errorf("%w: monte o header em `cabecalho` e os parametros de botao em "+
-			"`botoes_template`, que este gateway traduz", ErrRawComponents)
+		return fmt.Errorf("%w: build the header in `cabecalho` and the button parameters in "+
+			"`botoes_template`, which this gateway translates", ErrRawComponents)
 	}
 
 	// `botoes_url` WAS REMOVED (T-045), and the refusal lives here — next
@@ -795,8 +795,8 @@ func (p *Request) Validate() error {
 	// middle of an incident. The translation is mechanical and fits in one
 	// line, so it goes in the line.
 	if len(p.RemovedURLButtons) > 0 {
-		return fmt.Errorf(`%w: traduza cada item {"indice":N,"texto":X} para `+
-			`{"indice":N,"tipo":"url","texto":X} em `+"`botoes_template`", ErrRemovedURLButtons)
+		return fmt.Errorf(`%w: translate each item {"indice":N,"texto":X} into `+
+			`{"indice":N,"tipo":"url","texto":X} in `+"`botoes_template`", ErrRemovedURLButtons)
 	}
 
 	switch p.Type {
@@ -817,7 +817,7 @@ func (p *Request) Validate() error {
 		// webhook. We refuse here because no later layer would be able to
 		// detect it.
 		if p.ReplyTo != "" {
-			return fmt.Errorf("%w: responder_a em template (a Meta aceita e a citacao nunca aparece)", ErrFieldForbidden)
+			return fmt.Errorf("%w: responder_a in a template (Meta accepts it and the quote never appears)", ErrFieldForbidden)
 		}
 		if err := p.validateHeader(); err != nil {
 			return err
@@ -850,7 +850,7 @@ func (p *Request) Validate() error {
 			return fmt.Errorf("%w: botoes", ErrFieldRequired)
 		}
 		if n := len(p.Buttons); n > quickReplyButtonCountLimit {
-			return fmt.Errorf("%w: botoes (%d itens, maximo %d)",
+			return fmt.Errorf("%w: botoes (%d items, maximum %d)",
 				ErrFieldTooLong, n, quickReplyButtonCountLimit)
 		}
 		for i := range p.Buttons {
@@ -863,7 +863,7 @@ func (p *Request) Validate() error {
 				return fmt.Errorf("%w: botoes[%d].titulo", ErrFieldRequired, i)
 			}
 			if n := utf8.RuneCountInString(p.Buttons[i].Title); n > quickReplyButtonTitleLimit {
-				return fmt.Errorf("%w: botoes[%d].titulo (%d runas, maximo %d)",
+				return fmt.Errorf("%w: botoes[%d].titulo (%d runes, maximum %d)",
 					ErrFieldTooLong, i, n, quickReplyButtonTitleLimit)
 			}
 		}
@@ -937,7 +937,7 @@ func (p *Request) Validate() error {
 		// into ErrFieldForbidden.
 	case "midia":
 		if p.MediaID == "" {
-			return fmt.Errorf("%w: media_id (obtenha um em POST /v1/media)", ErrFieldRequired)
+			return fmt.Errorf("%w: media_id (get one from POST /v1/media)", ErrFieldRequired)
 		}
 		if p.Category == "" {
 			return fmt.Errorf("%w: categoria", ErrFieldRequired)
@@ -957,12 +957,12 @@ func (p *Request) Validate() error {
 		// the SAME table the assembler consults — two rules would diverge,
 		// and the divergence would be invisible.
 		if p.Caption != "" && !meta.AcceptsCaption(cat) {
-			return fmt.Errorf("%w: legenda em %s (o corpo desta categoria nao a carrega, "+
-				"e ela sumiria sem erro)", ErrFieldForbidden, cat)
+			return fmt.Errorf("%w: legenda in %s (the body of this category does not carry it, "+
+				"and it would vanish without an error)", ErrFieldForbidden, cat)
 		}
 		if p.Filename != "" && !meta.AcceptsFilename(cat) {
-			return fmt.Errorf("%w: nome_arquivo em %s (so documento tem nome de arquivo, "+
-				"e ele sumiria sem erro)", ErrFieldForbidden, cat)
+			return fmt.Errorf("%w: nome_arquivo in %s (only a document has a file name, "+
+				"and it would vanish without an error)", ErrFieldForbidden, cat)
 		}
 	case "reacao":
 		if err := p.validateReaction(); err != nil {
@@ -1019,16 +1019,16 @@ func (p *Request) Validate() error {
 	// `texto` would be discarded with no error at all.
 	if p.Type != "template" {
 		if p.Header != nil {
-			return fmt.Errorf("%w: cabecalho em %s (so template tem components, "+
-				"e ele sumiria sem erro)", ErrFieldForbidden, p.Type)
+			return fmt.Errorf("%w: cabecalho in %s (only a template has components, "+
+				"and it would vanish without an error)", ErrFieldForbidden, p.Type)
 		}
 		if len(p.TemplateButtons) > 0 {
-			return fmt.Errorf("%w: botoes_template em %s (so template tem components, "+
-				"e eles sumiriam sem erro)", ErrFieldForbidden, p.Type)
+			return fmt.Errorf("%w: botoes_template in %s (only a template has components, "+
+				"and they would vanish without an error)", ErrFieldForbidden, p.Type)
 		}
 		if len(p.Cards) > 0 && p.Type != "carrossel" {
-			return fmt.Errorf("%w: cartoes em %s (so template e carrossel tem cartoes, "+
-				"e eles sumiriam sem erro)", ErrFieldForbidden, p.Type)
+			return fmt.Errorf("%w: cartoes in %s (only a template and a carousel have cards, "+
+				"and they would vanish without an error)", ErrFieldForbidden, p.Type)
 		}
 	}
 
@@ -1044,19 +1044,19 @@ func (p *Request) Validate() error {
 	if p.Type != "botoes" && p.Type != "cta_url" && p.Type != "lista" {
 		if p.HeaderText != "" {
 			if p.Type == "template" {
-				return fmt.Errorf("%w: cabecalho_texto em template (o header de template "+
-					"e `cabecalho`, com outra forma; use-o no lugar)", ErrFieldForbidden)
+				return fmt.Errorf("%w: cabecalho_texto in a template (the template header "+
+					"is `cabecalho`, with another shape; use that instead)", ErrFieldForbidden)
 			}
-			return fmt.Errorf("%w: cabecalho_texto em %s (so botoes, cta_url e lista tem "+
-				"header de texto livre, e ele sumiria sem erro)", ErrFieldForbidden, p.Type)
+			return fmt.Errorf("%w: cabecalho_texto in %s (only botoes, cta_url and lista have a "+
+				"free-text header, and it would vanish without an error)", ErrFieldForbidden, p.Type)
 		}
 		if p.Footer != "" {
 			if p.Type == "template" {
-				return fmt.Errorf("%w: rodape em template (o rodape de template e fixo no "+
-					"cadastro e nao aceita parametro nenhum)", ErrFieldForbidden)
+				return fmt.Errorf("%w: rodape in a template (the template footer is fixed in the "+
+					"registration and accepts no parameter at all)", ErrFieldForbidden)
 			}
-			return fmt.Errorf("%w: rodape em %s (so botoes, cta_url e lista tem footer "+
-				"de texto livre, e ele sumiria sem erro)", ErrFieldForbidden, p.Type)
+			return fmt.Errorf("%w: rodape in %s (only botoes, cta_url and lista have a free-text "+
+				"footer, and it would vanish without an error)", ErrFieldForbidden, p.Type)
 		}
 	}
 
@@ -1065,11 +1065,11 @@ func (p *Request) Validate() error {
 	// validateHeaderMedia), so the field would vanish there without error.
 	if p.Type != "botoes" && p.Type != "cta_url" && p.HeaderMedia != nil {
 		if p.Type == "template" {
-			return fmt.Errorf("%w: cabecalho_midia em template (o header de template "+
-				"e `cabecalho`, com outra forma; use-o no lugar)", ErrFieldForbidden)
+			return fmt.Errorf("%w: cabecalho_midia in a template (the template header "+
+				"is `cabecalho`, with another shape; use that instead)", ErrFieldForbidden)
 		}
-		return fmt.Errorf("%w: cabecalho_midia em %s (so botoes e cta_url tem header "+
-			"de midia, e ele sumiria sem erro)", ErrFieldForbidden, p.Type)
+		return fmt.Errorf("%w: cabecalho_midia in %s (only botoes and cta_url have a media "+
+			"header, and it would vanish without an error)", ErrFieldForbidden, p.Type)
 	}
 
 	// `botao_titulo` (the action button's label) only has a shape in
@@ -1080,16 +1080,16 @@ func (p *Request) Validate() error {
 	// (ErrMixedButtons) — this guard only reaches the types that get
 	// this far without having blocked the field before.
 	if p.Type != "cta_url" && p.Type != "lista" && p.Type != "flow" && p.ButtonTitle != "" {
-		return fmt.Errorf("%w: botao_titulo em %s (so cta_url, lista e flow tem botao de acao, "+
-			"e ele sumiria sem erro)", ErrFieldForbidden, p.Type)
+		return fmt.Errorf("%w: botao_titulo in %s (only cta_url, lista and flow have an action button, "+
+			"and it would vanish without an error)", ErrFieldForbidden, p.Type)
 	}
 
 	// `secoes` only has a shape in MetaBody in the "lista" branch
 	// (T-145). Accepting it in another type would silently discard it
 	// during assembly.
 	if p.Type != "lista" && len(p.Sections) > 0 {
-		return fmt.Errorf("%w: secoes em %s (so lista tem secoes, "+
-			"e elas sumiriam sem erro)", ErrFieldForbidden, p.Type)
+		return fmt.Errorf("%w: secoes in %s (only lista has sections, "+
+			"and they would vanish without an error)", ErrFieldForbidden, p.Type)
 	}
 
 	// `botoes` (Request.Buttons, {id,titulo}) and `botoes_template` (T-044,
@@ -1105,8 +1105,8 @@ func (p *Request) Validate() error {
 	// already has its OWN, more specific guard (ErrMixedButtons, in
 	// the switch above).
 	if p.Type != "botoes" && p.Type != "cta_url" && len(p.Buttons) > 0 {
-		return fmt.Errorf("%w: botoes em %s (use botoes_template para botao de "+
-			"TEMPLATE, ou tipo:\"botoes\" para mensagem interativa comum)", ErrFieldForbidden, p.Type)
+		return fmt.Errorf("%w: botoes in %s (use botoes_template for a "+
+			"TEMPLATE button, or tipo:\"botoes\" for a plain interactive message)", ErrFieldForbidden, p.Type)
 	}
 
 	// Same guard family: `reacao` and `localizacao` only have a shape in
@@ -1114,24 +1114,24 @@ func (p *Request) Validate() error {
 	// type would silently discard it during assembly — this project's
 	// most expensive failure shape.
 	if p.Type != "reacao" && p.Reaction != nil {
-		return fmt.Errorf("%w: reacao em %s (so reacao usa esse campo, "+
-			"e ele sumiria sem erro)", ErrFieldForbidden, p.Type)
+		return fmt.Errorf("%w: reacao in %s (only reacao uses this field, "+
+			"and it would vanish without an error)", ErrFieldForbidden, p.Type)
 	}
 	if p.Type != "localizacao" && p.Location != nil {
-		return fmt.Errorf("%w: localizacao em %s (so localizacao usa esse campo, "+
-			"e ele sumiria sem erro)", ErrFieldForbidden, p.Type)
+		return fmt.Errorf("%w: localizacao in %s (only localizacao uses this field, "+
+			"and it would vanish without an error)", ErrFieldForbidden, p.Type)
 	}
 	// `contatos` only has a shape in its own type's MetaBody (T-146).
 	// Same guard family as reacao/localizacao right above.
 	if p.Type != "contatos" && len(p.Contacts) > 0 {
-		return fmt.Errorf("%w: contatos em %s (so contatos usa esse campo, "+
-			"e ele sumiria sem erro)", ErrFieldForbidden, p.Type)
+		return fmt.Errorf("%w: contatos in %s (only contatos uses this field, "+
+			"and it would vanish without an error)", ErrFieldForbidden, p.Type)
 	}
 	// `fluxo` only has a shape in its own type's MetaBody (T-154). Same
 	// guard family as reacao/localizacao/contatos right above.
 	if p.Type != "flow" && p.Flow != nil {
-		return fmt.Errorf("%w: fluxo em %s (so flow usa esse campo, "+
-			"e ele sumiria sem erro)", ErrFieldForbidden, p.Type)
+		return fmt.Errorf("%w: fluxo in %s (only flow uses this field, "+
+			"and it would vanish without an error)", ErrFieldForbidden, p.Type)
 	}
 
 	return p.refuseBase64()
@@ -1179,29 +1179,29 @@ func validateHeaderValue(c *TemplateHeader, path string) error {
 	// `localizacao` is only meaningful in the ONE type that carries it:
 	// anywhere else the field would vanish from the body without an error.
 	if c.Location != nil && c.Type != "localizacao" {
-		return fmt.Errorf("%w: %s.localizacao em cabecalho de %s (so o cabecalho de "+
-			"localizacao a carrega, e ela sumiria sem erro)", ErrFieldForbidden, path, c.Type)
+		return fmt.Errorf("%w: %s.localizacao in a %s header (only the "+
+			"localizacao header carries it, and it would vanish without an error)", ErrFieldForbidden, path, c.Type)
 	}
 
 	if c.Type == "localizacao" {
 		if c.Text != "" {
-			return fmt.Errorf("%w: %s.texto em cabecalho de localizacao", ErrFieldForbidden, path)
+			return fmt.Errorf("%w: %s.texto in a localizacao header", ErrFieldForbidden, path)
 		}
 		if c.MediaID != "" {
-			return fmt.Errorf("%w: %s.media_id em cabecalho de localizacao", ErrFieldForbidden, path)
+			return fmt.Errorf("%w: %s.media_id in a localizacao header", ErrFieldForbidden, path)
 		}
 		if c.Filename != "" {
-			return fmt.Errorf("%w: %s.nome_arquivo em cabecalho de localizacao", ErrFieldForbidden, path)
+			return fmt.Errorf("%w: %s.nome_arquivo in a localizacao header", ErrFieldForbidden, path)
 		}
 		return validateLocationValue(c.Location, path+".localizacao")
 	}
 
 	if c.Type == "texto" {
 		if c.MediaID != "" {
-			return fmt.Errorf("%w: %s.media_id em cabecalho de texto", ErrFieldForbidden, path)
+			return fmt.Errorf("%w: %s.media_id in a texto header", ErrFieldForbidden, path)
 		}
 		if c.Filename != "" {
-			return fmt.Errorf("%w: %s.nome_arquivo em cabecalho de texto", ErrFieldForbidden, path)
+			return fmt.Errorf("%w: %s.nome_arquivo in a texto header", ErrFieldForbidden, path)
 		}
 		if c.Text == "" {
 			return fmt.Errorf("%w: %s.texto", ErrFieldRequired, path)
@@ -1213,22 +1213,22 @@ func validateHeaderValue(c *TemplateHeader, path string) error {
 	// a second name list would diverge from it on the first change.
 	cat, known := meta.KnownCategory(c.Type)
 	if !known || !mediaHeaders[cat] {
-		return fmt.Errorf("%w: %q (use texto, imagem, video, documento ou localizacao)",
+		return fmt.Errorf("%w: %q (use texto, imagem, video, documento or localizacao)",
 			ErrUnknownHeaderType, c.Type)
 	}
 	if c.Text != "" {
-		return fmt.Errorf("%w: %s.texto em cabecalho de %s (so o cabecalho de "+
-			"texto o carrega, e ele sumiria sem erro)", ErrFieldForbidden, path, cat)
+		return fmt.Errorf("%w: %s.texto in a %s header (only the "+
+			"texto header carries it, and it would vanish without an error)", ErrFieldForbidden, path, cat)
 	}
 	if c.MediaID == "" {
-		return fmt.Errorf("%w: %s.media_id (obtenha um em POST /v1/media)", ErrFieldRequired, path)
+		return fmt.Errorf("%w: %s.media_id (get one from POST /v1/media)", ErrFieldRequired, path)
 	}
 	// Order matters: base64 has its OWN fix, more informative than "invalid
 	// shape", and the two cases would fall into the same refusal if the
 	// shape were checked first.
 	if containsBase64(c.MediaID) {
-		return fmt.Errorf("%w: %s.media_id; suba os bytes em POST /v1/media e "+
-			"mande o media_id que ele devolve", ErrMediaBase64, path)
+		return fmt.Errorf("%w: %s.media_id; upload the bytes to POST /v1/media and "+
+			"send the media_id it returns", ErrMediaBase64, path)
 	}
 	// THE MEDIA HEADER IS BY media_id, NEVER BY RAW URL — and this line is
 	// the guard. A raw URL makes META GO FETCH the file, and when it
@@ -1238,16 +1238,16 @@ func validateHeaderValue(c *TemplateHeader, path string) error {
 	// from meta.MediaIDValid, which is the SAME rule used to assemble a
 	// URL with the id — not a copy of it.
 	if !meta.MediaIDValid(c.MediaID) {
-		return fmt.Errorf("%w: %s.media_id (URL crua nao serve: a Meta iria BUSCAR o "+
-			"arquivo e falha calado quando nao busca; suba os bytes em POST /v1/media)",
+		return fmt.Errorf("%w: %s.media_id (a raw URL will not do: Meta would FETCH the "+
+			"file and fails silently when it does not; upload the bytes to POST /v1/media)",
 			ErrInvalidMediaID, path)
 	}
 	// THE SAME table the assembler consults (meta/media.go): only document
 	// has a filename, so accepting it in the others would silently discard
 	// it.
 	if c.Filename != "" && !meta.AcceptsFilename(cat) {
-		return fmt.Errorf("%w: %s.nome_arquivo em %s (so documento tem nome de "+
-			"arquivo, e ele sumiria sem erro)", ErrFieldForbidden, path, cat)
+		return fmt.Errorf("%w: %s.nome_arquivo in %s (only a document has a "+
+			"file name, and it would vanish without an error)", ErrFieldForbidden, path, cat)
 	}
 	return nil
 }
@@ -1271,20 +1271,20 @@ func (p *Request) validateCards() error {
 	}
 	n := len(p.Cards)
 	if n < carouselMinCards {
-		return fmt.Errorf("%w: cartoes (%d itens, minimo %d)", ErrFieldRequired, n, carouselMinCards)
+		return fmt.Errorf("%w: cartoes (%d items, minimum %d)", ErrFieldRequired, n, carouselMinCards)
 	}
 	if n > carouselMaxCards {
-		return fmt.Errorf("%w: cartoes (%d itens, maximo %d)", ErrFieldTooLong, n, carouselMaxCards)
+		return fmt.Errorf("%w: cartoes (%d items, maximum %d)", ErrFieldTooLong, n, carouselMaxCards)
 	}
 	// In a carousel the header and the buttons live inside each card: a
 	// top-level one would be discarded by assembly with no error.
 	if p.Header != nil {
-		return fmt.Errorf("%w: cabecalho junto com cartoes (no carrossel o cabecalho vai "+
-			"DENTRO de cada cartao, em cartoes[i].cabecalho)", ErrFieldForbidden)
+		return fmt.Errorf("%w: cabecalho together with cartoes (in a carousel the header goes "+
+			"INSIDE each card, in cartoes[i].cabecalho)", ErrFieldForbidden)
 	}
 	if len(p.TemplateButtons) > 0 {
-		return fmt.Errorf("%w: botoes_template junto com cartoes (no carrossel os botoes vao "+
-			"DENTRO de cada cartao, em cartoes[i].botoes_template)", ErrFieldForbidden)
+		return fmt.Errorf("%w: botoes_template together with cartoes (in a carousel the buttons go "+
+			"INSIDE each card, in cartoes[i].botoes_template)", ErrFieldForbidden)
 	}
 
 	for i := range p.Cards {
@@ -1295,7 +1295,7 @@ func (p *Request) validateCards() error {
 		}
 		c.Header.Type = strings.TrimSpace(c.Header.Type)
 		if c.Header.Type != "imagem" && c.Header.Type != "video" {
-			return fmt.Errorf("%w: %s.cabecalho.tipo %q (o cabecalho de cartao e imagem ou video)",
+			return fmt.Errorf("%w: %s.cabecalho.tipo %q (a card header is imagem or video)",
 				ErrUnknownHeaderType, path, c.Header.Type)
 		}
 		if err := validateHeaderValue(c.Header, path+".cabecalho"); err != nil {
@@ -1318,16 +1318,16 @@ func (p *Request) validateCards() error {
 	for i := 1; i < len(p.Cards); i++ {
 		c := &p.Cards[i]
 		if c.Header.Type != first.Header.Type {
-			return fmt.Errorf("%w: cartoes[%d].cabecalho.tipo %q difere do cartoes[0] (%q); "+
-				"todos os cartoes tem os mesmos componentes", ErrCardsMismatch, i, c.Header.Type, first.Header.Type)
+			return fmt.Errorf("%w: cartoes[%d].cabecalho.tipo %q differs from cartoes[0] (%q); "+
+				"all cards have the same components", ErrCardsMismatch, i, c.Header.Type, first.Header.Type)
 		}
 		if len(c.Variables) != len(first.Variables) {
-			return fmt.Errorf("%w: cartoes[%d].variaveis tem %d itens e cartoes[0] tem %d; "+
-				"todos os cartoes tem os mesmos componentes", ErrCardsMismatch, i, len(c.Variables), len(first.Variables))
+			return fmt.Errorf("%w: cartoes[%d].variaveis has %d items and cartoes[0] has %d; "+
+				"all cards have the same components", ErrCardsMismatch, i, len(c.Variables), len(first.Variables))
 		}
 		if buttonSignature(c.TemplateButtons) != want {
-			return fmt.Errorf("%w: cartoes[%d].botoes_template difere do cartoes[0] "+
-				"(mesmo conjunto de indice e tipo); todos os cartoes tem os mesmos componentes",
+			return fmt.Errorf("%w: cartoes[%d].botoes_template differs from cartoes[0] "+
+				"(same set of indice and tipo); all cards have the same components",
 				ErrCardsMismatch, i)
 		}
 	}
@@ -1348,9 +1348,9 @@ func refuseCarouselCardFields(c *TemplateCard, path string) error {
 		{"botao_url", c.ButtonURL != ""},
 	} {
 		if f.set {
-			return fmt.Errorf("%w: %s.%s em template (so o carrossel interativo, tipo:\"carrossel\", "+
-				"tem esse campo; num template o cartao usa variaveis e botoes_template, "+
-				"e ele sumiria sem erro)", ErrFieldForbidden, path, f.name)
+			return fmt.Errorf("%w: %s.%s in a template (only the interactive carousel, tipo:\"carrossel\", "+
+				"has this field; in a template the card uses variaveis and botoes_template, "+
+				"and it would vanish without an error)", ErrFieldForbidden, path, f.name)
 		}
 	}
 	return nil
@@ -1370,14 +1370,14 @@ func (p *Request) validateCarousel() error {
 	}
 	n := len(p.Cards)
 	if n < carouselMinCards {
-		return fmt.Errorf("%w: cartoes (%d itens, minimo %d)", ErrFieldRequired, n, carouselMinCards)
+		return fmt.Errorf("%w: cartoes (%d items, minimum %d)", ErrFieldRequired, n, carouselMinCards)
 	}
 	if n > carouselMaxCards {
-		return fmt.Errorf("%w: cartoes (%d itens, maximo %d)", ErrFieldTooLong, n, carouselMaxCards)
+		return fmt.Errorf("%w: cartoes (%d items, maximum %d)", ErrFieldTooLong, n, carouselMaxCards)
 	}
 	if p.ButtonURL != "" {
-		return fmt.Errorf("%w: botao_url em carrossel (o botao vai DENTRO de cada "+
-			"cartao, em cartoes[i].botao_url)", ErrFieldForbidden)
+		return fmt.Errorf("%w: botao_url in a carousel (the button goes INSIDE each "+
+			"card, in cartoes[i].botao_url)", ErrFieldForbidden)
 	}
 	for i := range p.Cards {
 		c := &p.Cards[i]
@@ -1387,19 +1387,19 @@ func (p *Request) validateCarousel() error {
 		}
 		c.Header.Type = strings.TrimSpace(c.Header.Type)
 		if c.Header.Type != "imagem" && c.Header.Type != "video" {
-			return fmt.Errorf("%w: %s.cabecalho.tipo %q (o cabecalho de cartao e imagem ou video)",
+			return fmt.Errorf("%w: %s.cabecalho.tipo %q (a card header is imagem or video)",
 				ErrUnknownHeaderType, path, c.Header.Type)
 		}
 		if err := validateHeaderValue(c.Header, path+".cabecalho"); err != nil {
 			return err
 		}
 		if len(c.Variables) > 0 {
-			return fmt.Errorf("%w: %s.variaveis em carrossel (o carrossel interativo nao tem "+
-				"template; o corpo do cartao e `texto`, e elas sumiriam sem erro)", ErrFieldForbidden, path)
+			return fmt.Errorf("%w: %s.variaveis in a carousel (the interactive carousel has no "+
+				"template; the card body is `texto`, and they would vanish without an error)", ErrFieldForbidden, path)
 		}
 		if len(c.TemplateButtons) > 0 {
-			return fmt.Errorf("%w: %s.botoes_template em carrossel (o carrossel interativo nao "+
-				"tem template; use `botoes` ou botao_titulo+botao_url, e eles sumiriam sem erro)",
+			return fmt.Errorf("%w: %s.botoes_template in a carousel (the interactive carousel has no "+
+				"template; use `botoes` or botao_titulo+botao_url, and they would vanish without an error)",
 				ErrFieldForbidden, path)
 		}
 		// Required although Meta's page says "Card body text is optional":
@@ -1409,14 +1409,14 @@ func (p *Request) validateCarousel() error {
 		// is fixed at registration.
 		c.Text = strings.TrimSpace(c.Text)
 		if c.Text == "" {
-			return fmt.Errorf("%w: %s.texto (a Meta aceita o cartao sem corpo e nunca o entrega)",
+			return fmt.Errorf("%w: %s.texto (Meta accepts a card without a body and never delivers it)",
 				ErrFieldRequired, path)
 		}
 		c.ButtonTitle = strings.TrimSpace(c.ButtonTitle)
 		c.ButtonURL = strings.TrimSpace(c.ButtonURL)
 		hasURL := c.ButtonTitle != "" || c.ButtonURL != ""
 		if hasURL && len(c.Buttons) > 0 {
-			return fmt.Errorf("%w: %s (um cartao tem resposta rapida OU botao de url, nao os dois)",
+			return fmt.Errorf("%w: %s (a card has a quick reply OR a url button, not both)",
 				ErrMixedButtons, path)
 		}
 		switch {
@@ -1428,12 +1428,12 @@ func (p *Request) validateCarousel() error {
 				return fmt.Errorf("%w: %s.botao_url", ErrFieldRequired, path)
 			}
 			if n := utf8.RuneCountInString(c.ButtonTitle); n > ctaURLDisplayTextLimit {
-				return fmt.Errorf("%w: %s.botao_titulo (%d runas, maximo %d)",
+				return fmt.Errorf("%w: %s.botao_titulo (%d runes, maximum %d)",
 					ErrFieldTooLong, path, n, ctaURLDisplayTextLimit)
 			}
 		case len(c.Buttons) > 0:
 			if n := len(c.Buttons); n > quickReplyButtonCountLimit {
-				return fmt.Errorf("%w: %s.botoes (%d itens, maximo %d)",
+				return fmt.Errorf("%w: %s.botoes (%d items, maximum %d)",
 					ErrFieldTooLong, path, n, quickReplyButtonCountLimit)
 			}
 			for j := range c.Buttons {
@@ -1447,12 +1447,12 @@ func (p *Request) validateCarousel() error {
 					return fmt.Errorf("%w: %s.botoes[%d].titulo", ErrFieldRequired, path, j)
 				}
 				if n := utf8.RuneCountInString(b.Title); n > quickReplyButtonTitleLimit {
-					return fmt.Errorf("%w: %s.botoes[%d].titulo (%d runas, maximo %d)",
+					return fmt.Errorf("%w: %s.botoes[%d].titulo (%d runes, maximum %d)",
 						ErrFieldTooLong, path, j, n, quickReplyButtonTitleLimit)
 				}
 			}
 		default:
-			return fmt.Errorf("%w: %s.botoes ou %s.botao_titulo+botao_url", ErrFieldRequired, path, path)
+			return fmt.Errorf("%w: %s.botoes or %s.botao_titulo+botao_url", ErrFieldRequired, path, path)
 		}
 	}
 	// Meta: button type and count identical across all cards.
@@ -1460,12 +1460,12 @@ func (p *Request) validateCarousel() error {
 	for i := 1; i < len(p.Cards); i++ {
 		c := &p.Cards[i]
 		if c.Header.Type != first.Header.Type {
-			return fmt.Errorf("%w: cartoes[%d].cabecalho.tipo %q difere do cartoes[0] (%q); "+
-				"todos os cartoes tem o mesmo tipo de cabecalho", ErrCardsMismatch, i, c.Header.Type, first.Header.Type)
+			return fmt.Errorf("%w: cartoes[%d].cabecalho.tipo %q differs from cartoes[0] (%q); "+
+				"all cards have the same header type", ErrCardsMismatch, i, c.Header.Type, first.Header.Type)
 		}
 		if (c.ButtonURL != "") != (first.ButtonURL != "") || len(c.Buttons) != len(first.Buttons) {
-			return fmt.Errorf("%w: cartoes[%d] tem botoes de outro tipo ou quantidade que cartoes[0]; "+
-				"todos os cartoes tem o mesmo tipo e numero de botoes", ErrCardsMismatch, i)
+			return fmt.Errorf("%w: cartoes[%d] has buttons of another type or count than cartoes[0]; "+
+				"all cards have the same type and number of buttons", ErrCardsMismatch, i)
 		}
 	}
 	return nil
@@ -1518,15 +1518,15 @@ func validateTemplateButtonList(list []TemplateButtonUnion, path string) error {
 		b.Payload = strings.TrimSpace(b.Payload)
 
 		if b.Index < 0 {
-			return fmt.Errorf("%w: %s[%d].indice = %d (o indice e a posicao do botao "+
-				"no template, comecando em 0)", ErrButtonIndex, path, i, b.Index)
+			return fmt.Errorf("%w: %s[%d].indice = %d (the index is the position of the button "+
+				"in the template, starting at 0)", ErrButtonIndex, path, i, b.Index)
 		}
 		// TWO PARAMETERS FOR THE SAME BUTTON has no defined outcome: one of
 		// the two gets discarded, and it's not us who chooses which.
 		// Refusing is the only way for the consumer to know which token
 		// they would lose.
 		if seen[b.Index] {
-			return fmt.Errorf("%w: dois parametros para o botao de indice %d", ErrButtonIndex, b.Index)
+			return fmt.Errorf("%w: two parameters for the button at index %d", ErrButtonIndex, b.Index)
 		}
 		seen[b.Index] = true
 
@@ -1535,8 +1535,8 @@ func validateTemplateButtonList(list []TemplateButtonUnion, path string) error {
 			// `payload` would silently vanish during assembly: only
 			// resposta_rapida carries it (templateComponents).
 			if b.Payload != "" {
-				return fmt.Errorf("%w: %s[%d].payload em tipo url (so resposta_rapida "+
-					"o carrega, e ele sumiria sem erro)", ErrFieldForbidden, path, i)
+				return fmt.Errorf("%w: %s[%d].payload in tipo url (only resposta_rapida "+
+					"carries it, and it would vanish without an error)", ErrFieldForbidden, path, i)
 			}
 			if b.Text == "" {
 				return fmt.Errorf("%w: %s[%d].texto", ErrFieldRequired, path, i)
@@ -1545,8 +1545,8 @@ func validateTemplateButtonList(list []TemplateButtonUnion, path string) error {
 			// `texto` would silently vanish during assembly: only url
 			// carries it.
 			if b.Text != "" {
-				return fmt.Errorf("%w: %s[%d].texto em tipo resposta_rapida (so url "+
-					"o carrega, e ele sumiria sem erro)", ErrFieldForbidden, path, i)
+				return fmt.Errorf("%w: %s[%d].texto in tipo resposta_rapida (only url "+
+					"carries it, and it would vanish without an error)", ErrFieldForbidden, path, i)
 			}
 			// EMPTY `payload` is a named error, not a parameter-less block:
 			// Meta would accept a quick_reply block without `payload` and
@@ -1557,7 +1557,7 @@ func validateTemplateButtonList(list []TemplateButtonUnion, path string) error {
 				return fmt.Errorf("%w: %s[%d].payload", ErrFieldRequired, path, i)
 			}
 		default:
-			return fmt.Errorf("%w: %q (use url ou resposta_rapida)", ErrUnknownTemplateButtonType, b.Type)
+			return fmt.Errorf("%w: %q (use url or resposta_rapida)", ErrUnknownTemplateButtonType, b.Type)
 		}
 	}
 
@@ -1579,8 +1579,8 @@ func (p *Request) validateReaction() error {
 		return fmt.Errorf("%w: reacao.alvo", ErrFieldRequired)
 	}
 	if p.Reaction.Emoji == nil {
-		return fmt.Errorf("%w: reacao.emoji (mande \"\" para remover a reacao, "+
-			"nao omita a chave)", ErrFieldRequired)
+		return fmt.Errorf("%w: reacao.emoji (send \"\" to remove the reaction, "+
+			"do not omit the key)", ErrFieldRequired)
 	}
 	// The pointer is reassigned to the TRIMMED value — not merely checked —
 	// for the same reason as the rest of this file: the body assembled
@@ -1619,10 +1619,10 @@ func validateLocationValue(l *LocationRequest, path string) error {
 		return fmt.Errorf("%w: %s.longitude", ErrFieldRequired, path)
 	}
 	if *l.Latitude < -90 || *l.Latitude > 90 {
-		return fmt.Errorf("%w: %s.latitude (use -90 a 90)", ErrInvalidCoordinate, path)
+		return fmt.Errorf("%w: %s.latitude (use -90 to 90)", ErrInvalidCoordinate, path)
 	}
 	if *l.Longitude < -180 || *l.Longitude > 180 {
-		return fmt.Errorf("%w: %s.longitude (use -180 a 180)", ErrInvalidCoordinate, path)
+		return fmt.Errorf("%w: %s.longitude (use -180 to 180)", ErrInvalidCoordinate, path)
 	}
 	return nil
 }
@@ -1833,13 +1833,13 @@ func (p *Request) validateHeaderTextAndFooter() error {
 
 	if p.HeaderText != "" {
 		if n := utf8.RuneCountInString(p.HeaderText); n > headerTextAndFooterLimit {
-			return fmt.Errorf("%w: cabecalho_texto (%d runas, maximo %d)",
+			return fmt.Errorf("%w: cabecalho_texto (%d runes, maximum %d)",
 				ErrFieldTooLong, n, headerTextAndFooterLimit)
 		}
 	}
 	if p.Footer != "" {
 		if n := utf8.RuneCountInString(p.Footer); n > headerTextAndFooterLimit {
-			return fmt.Errorf("%w: rodape (%d runas, maximo %d)",
+			return fmt.Errorf("%w: rodape (%d runes, maximum %d)",
 				ErrFieldTooLong, n, headerTextAndFooterLimit)
 		}
 	}
@@ -1861,17 +1861,17 @@ func (p *Request) validateHeaderMedia() error {
 		return nil
 	}
 	if strings.TrimSpace(p.HeaderMedia.Type) == "texto" {
-		return fmt.Errorf("%w: cabecalho_midia.tipo texto (o header de texto e "+
+		return fmt.Errorf("%w: cabecalho_midia.tipo texto (the text header is "+
 			"`cabecalho_texto`)", ErrFieldForbidden)
 	}
 	// The location header exists only in a template (T-261).
 	if strings.TrimSpace(p.HeaderMedia.Type) == "localizacao" {
-		return fmt.Errorf("%w: cabecalho_midia.tipo localizacao (so o cabecalho de "+
-			"template carrega localizacao)", ErrUnknownHeaderType)
+		return fmt.Errorf("%w: cabecalho_midia.tipo localizacao (only a "+
+			"template header carries localizacao)", ErrUnknownHeaderType)
 	}
 	if strings.TrimSpace(p.HeaderText) != "" {
-		return fmt.Errorf("%w: cabecalho_midia junto com cabecalho_texto (a mensagem "+
-			"tem UM header so)", ErrFieldForbidden)
+		return fmt.Errorf("%w: cabecalho_midia together with cabecalho_texto (the message "+
+			"has ONE header only)", ErrFieldForbidden)
 	}
 	return validateHeaderValue(p.HeaderMedia, "cabecalho_midia")
 }
@@ -1905,7 +1905,7 @@ func (p *Request) validateButtonTitle() error {
 		limit = flowCtaLimit
 	}
 	if n := utf8.RuneCountInString(p.ButtonTitle); n > limit {
-		return fmt.Errorf("%w: botao_titulo (%d runas, maximo %d)",
+		return fmt.Errorf("%w: botao_titulo (%d runes, maximum %d)",
 			ErrFieldTooLong, n, limit)
 	}
 	return nil
@@ -1933,10 +1933,10 @@ func (p *Request) validateFlow() error {
 	// naming both fields in both messages: whoever reads it knows which of
 	// the two cases hit.
 	if f.ID != "" && f.Name != "" {
-		return fmt.Errorf("%w: fluxo.id e fluxo.nome juntos (mande so um dos dois)", ErrInvalidFlowIDName)
+		return fmt.Errorf("%w: fluxo.id and fluxo.nome together (send only one of the two)", ErrInvalidFlowIDName)
 	}
 	if f.ID == "" && f.Name == "" {
-		return fmt.Errorf("%w: fluxo.id ou fluxo.nome (um dos dois e obrigatorio)", ErrInvalidFlowIDName)
+		return fmt.Errorf("%w: fluxo.id or fluxo.nome (one of the two is required)", ErrInvalidFlowIDName)
 	}
 
 	// `token` is the identifier that matches the Flow's response with what
@@ -1959,13 +1959,13 @@ func (p *Request) validateFlow() error {
 		// case — refuse here instead of letting Meta refuse without
 		// naming the field.
 		if f.Screen == "" {
-			return fmt.Errorf("%w: fluxo.tela (obrigatoria quando fluxo.acao e \"navigate\")",
+			return fmt.Errorf("%w: fluxo.tela (required when fluxo.acao is \"navigate\")",
 				ErrFieldRequired)
 		}
 	case "data_exchange":
 		// `tela` is OPTIONAL in this branch — there's no requiredness guard.
 	default:
-		return fmt.Errorf("%w: %q (use navigate ou data_exchange)", ErrUnknownFlowAction, f.Action)
+		return fmt.Errorf("%w: %q (use navigate or data_exchange)", ErrUnknownFlowAction, f.Action)
 	}
 
 	return p.validateButtonTitle()
@@ -2008,7 +2008,7 @@ func (p *Request) validateList() error {
 		return fmt.Errorf("%w: secoes", ErrFieldRequired)
 	}
 	if n := len(p.Sections); n > listSectionsLimit {
-		return fmt.Errorf("%w: secoes (%d secoes, maximo %d)", ErrFieldTooLong, n, listSectionsLimit)
+		return fmt.Errorf("%w: secoes (%d sections, maximum %d)", ErrFieldTooLong, n, listSectionsLimit)
 	}
 
 	// THE SUMMED TOTAL, NOT PER SECTION — see the comment on
@@ -2024,7 +2024,7 @@ func (p *Request) validateList() error {
 			return fmt.Errorf("%w: secoes[%d].titulo", ErrFieldRequired, i)
 		}
 		if n := utf8.RuneCountInString(s.Title); n > listSectionTitleLimit {
-			return fmt.Errorf("%w: secoes[%d].titulo (%d runas, maximo %d)",
+			return fmt.Errorf("%w: secoes[%d].titulo (%d runes, maximum %d)",
 				ErrFieldTooLong, i, n, listSectionTitleLimit)
 		}
 		// A section without an item has no shape in Meta (`rows` would be
@@ -2045,19 +2045,19 @@ func (p *Request) validateList() error {
 				return fmt.Errorf("%w: secoes[%d].itens[%d].id", ErrFieldRequired, i, j)
 			}
 			if n := utf8.RuneCountInString(it.ID); n > listItemIDLimit {
-				return fmt.Errorf("%w: secoes[%d].itens[%d].id (%d runas, maximo %d)",
+				return fmt.Errorf("%w: secoes[%d].itens[%d].id (%d runes, maximum %d)",
 					ErrFieldTooLong, i, j, n, listItemIDLimit)
 			}
 			if it.Title == "" {
 				return fmt.Errorf("%w: secoes[%d].itens[%d].titulo", ErrFieldRequired, i, j)
 			}
 			if n := utf8.RuneCountInString(it.Title); n > listItemTitleLimit {
-				return fmt.Errorf("%w: secoes[%d].itens[%d].titulo (%d runas, maximo %d)",
+				return fmt.Errorf("%w: secoes[%d].itens[%d].titulo (%d runes, maximum %d)",
 					ErrFieldTooLong, i, j, n, listItemTitleLimit)
 			}
 			if it.Description != "" {
 				if n := utf8.RuneCountInString(it.Description); n > listItemDescriptionLimit {
-					return fmt.Errorf("%w: secoes[%d].itens[%d].descricao (%d runas, maximo %d)",
+					return fmt.Errorf("%w: secoes[%d].itens[%d].descricao (%d runes, maximum %d)",
 						ErrFieldTooLong, i, j, n, listItemDescriptionLimit)
 				}
 			}
@@ -2066,7 +2066,7 @@ func (p *Request) validateList() error {
 	}
 
 	if totalItems > totalListItemsLimit {
-		return fmt.Errorf("%w: secoes[*].itens (%d itens somados, maximo %d)",
+		return fmt.Errorf("%w: secoes[*].itens (%d items in total, maximum %d)",
 			ErrFieldTooLong, totalItems, totalListItemsLimit)
 	}
 
@@ -2127,7 +2127,7 @@ func RequestHash(p Request) string {
 // customer.
 func (p *Request) refuseBase64() error {
 	if containsBase64(p.Text) {
-		return fmt.Errorf("%w: use POST /v1/media para obter um media_id, ou uma URL publica", ErrBase64)
+		return fmt.Errorf("%w: use POST /v1/media to get a media_id, or a public URL", ErrBase64)
 	}
 	// The media fields use the SAME detector, not a copy of it: the guard
 	// has already been fixed three times (docs/ARMADILHAS.md, "Validation"),
@@ -2147,7 +2147,7 @@ func (p *Request) refuseBase64() error {
 		{"nome_arquivo", p.Filename},
 	} {
 		if containsBase64(field.value) {
-			return fmt.Errorf("%w: %s; suba os bytes em POST /v1/media e mande o media_id que ele devolve",
+			return fmt.Errorf("%w: %s; upload the bytes to POST /v1/media and send the media_id it returns",
 				ErrMediaBase64, field.name)
 		}
 	}

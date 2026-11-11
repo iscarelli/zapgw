@@ -444,11 +444,11 @@ func (s *ConnectorProbe) ask(ctx context.Context) (int, error) {
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, s.url, nil)
 	if err != nil {
-		return 0, fmt.Errorf("montar o pedido ao /ready do conector (%s): %w", s.url, err)
+		return 0, fmt.Errorf("build the request to the connector /ready (%s): %w", s.url, err)
 	}
 	resp, err := s.client.Do(req)
 	if err != nil {
-		return 0, fmt.Errorf("perguntar ao /ready do conector (%s): %w", s.url, err)
+		return 0, fmt.Errorf("query the connector /ready (%s): %w", s.url, err)
 	}
 	defer func() {
 		_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, readyBodyCap))
@@ -464,10 +464,10 @@ func (s *ConnectorProbe) ask(ctx context.Context) (int, error) {
 		ReadyConnections *int `json:"readyConnections"`
 	}
 	if err := json.NewDecoder(io.LimitReader(resp.Body, readyBodyCap)).Decode(&body); err != nil {
-		return 0, fmt.Errorf("ler o /ready do conector (%s, HTTP %d): %w", s.url, resp.StatusCode, err)
+		return 0, fmt.Errorf("read the connector /ready (%s, HTTP %d): %w", s.url, resp.StatusCode, err)
 	}
 	if body.ReadyConnections == nil {
-		return 0, fmt.Errorf("o /ready do conector (%s) respondeu HTTP %d sem o campo readyConnections",
+		return 0, fmt.Errorf("the connector /ready (%s) answered HTTP %d without the readyConnections field",
 			s.url, resp.StatusCode)
 	}
 	return *body.ReadyConnections, nil

@@ -158,8 +158,8 @@ export ZAPGW_LEADERSHIP_VALIDITY="quinze"
 if "$BIN" > "$RAIZ/saida2.log" 2>&1; then
 	echo "E) FAILED: came up with an unreadable validity"
 	falhou=1
-# zapgw:log-coupling "nao e uma duracao valida"
-elif grep -qi "nao e uma duracao valida" "$RAIZ/saida2.log"; then
+# zapgw:log-coupling "is not a valid duration"
+elif grep -qi "is not a valid duration" "$RAIZ/saida2.log"; then
 	echo "E) OK     refused to come up: $(tail -1 "$RAIZ/saida2.log")"
 else
 	echo "E) FAILED: exited with an error, but not because of the validity — $(tail -1 "$RAIZ/saida2.log")"

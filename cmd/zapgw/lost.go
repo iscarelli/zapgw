@@ -97,6 +97,6 @@ func lostCommand(args []string, out io.Writer, env environment) error {
 	// was a loss" to be a status != 0. `PRECISA DE GENTE` ("NEEDS A HUMAN")
 	// is the SAME marker the handler's alarms use, so whoever operates it
 	// does not have to learn a second vocabulary.
-	return fmt.Errorf("PRECISA DE GENTE: %d confirmada(s) perdida(s) e %d em aberto",
+	return fmt.Errorf("PRECISA DE GENTE: %d confirmed lost and %d still open",
 		len(c.Confirmed), len(c.Open))
 }

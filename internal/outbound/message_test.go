@@ -2627,17 +2627,17 @@ func TestValidateCarouselRefusals(t *testing.T) {
 		want error
 		sub  string
 	}{
-		{"one card", carouselRequest(carouselCard("A")), ErrFieldRequired, "cartoes (1 itens"},
-		{"eleven cards", carouselRequest(eleven...), ErrFieldTooLong, "cartoes (11 itens"},
+		{"one card", carouselRequest(carouselCard("A")), ErrFieldRequired, "cartoes (1 items"},
+		{"eleven cards", carouselRequest(eleven...), ErrFieldTooLong, "cartoes (11 items"},
 		{"card without header", carouselRequest(carouselCard("A"), noHeader), ErrFieldRequired, "cartoes[1].cabecalho"},
 		{"text header in card", carouselRequest(carouselCard("A"), textCard), ErrUnknownHeaderType, "cartoes[1].cabecalho.tipo"},
-		{"top header with cards", withTopHeader, ErrFieldForbidden, "cabecalho junto com cartoes"},
-		{"top buttons with cards", withTopButtons, ErrFieldForbidden, "botoes_template junto com cartoes"},
+		{"top header with cards", withTopHeader, ErrFieldForbidden, "cabecalho together with cartoes"},
+		{"top buttons with cards", withTopButtons, ErrFieldForbidden, "botoes_template together with cartoes"},
 		{"different header type", carouselRequest(carouselCard("A"), video), ErrCardsMismatch, "cartoes[1].cabecalho.tipo"},
 		{"different variable count", carouselRequest(carouselCard("A"), twoVars), ErrCardsMismatch, "cartoes[1].variaveis"},
 		{"different button count", carouselRequest(carouselCard("A"), oneButton), ErrCardsMismatch, "cartoes[1].botoes_template"},
 		{"different button types", carouselRequest(carouselCard("A"), otherType), ErrCardsMismatch, "cartoes[1].botoes_template"},
-		{"cards in texto", inText, ErrFieldForbidden, "cartoes em texto"},
+		{"cards in texto", inText, ErrFieldForbidden, "cartoes in texto"},
 	}
 	for _, c := range cases {
 		c := c

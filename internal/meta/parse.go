@@ -30,7 +30,7 @@ var ErrBodyNotObject = errors.New("meta: body is not a JSON object")
 // that something was left behind. Discarding the whole batch because of a
 // malformed item would erase an unrelated account's message: Meta batches
 // `entry` from different accounts in the same call.
-var ErrPartialParse = errors.New("meta: parte do payload nao pode ser lida")
+var ErrPartialParse = errors.New("meta: part of the payload could not be read")
 
 // THE BOUNDARY STRUCTS (T-068). envelopeMeta, entryMeta, changeMeta,
 // valueMeta, statusFromMeta, templateStatusMeta, templateCategoryMeta,
@@ -793,7 +793,7 @@ func ParseWebhook(payload []byte) ([]Event, error) {
 	ignored += duringWalk
 
 	if ignored > 0 {
-		return evs, fmt.Errorf("%w: %d item(ns) ignorado(s)", ErrPartialParse, ignored)
+		return evs, fmt.Errorf("%w: %d item(s) ignored", ErrPartialParse, ignored)
 	}
 	return evs, nil
 }

@@ -613,19 +613,19 @@ func BuildStateWithSeries(store *config.Store, watchdog VerdictReader, renewer I
 	// memory of a read that has no use for them.
 	inst, err := store.SummarizeInstance(slug)
 	if err != nil {
-		return State{}, fmt.Errorf("resumir a instancia %q: %w", slug, err)
+		return State{}, fmt.Errorf("summarize instance %q: %w", slug, err)
 	}
 	summary, err := store.SummarizeCountersWithSeries(slug, now, days)
 	if err != nil {
-		return State{}, fmt.Errorf("ler os contadores da instancia %q: %w", slug, err)
+		return State{}, fmt.Errorf("read the counters of instance %q: %w", slug, err)
 	}
 	cert, err := store.CallbackCertificate(slug)
 	if err != nil {
-		return State{}, fmt.Errorf("ler o certificado do callback da instancia %q: %w", slug, err)
+		return State{}, fmt.Errorf("read the callback certificate of instance %q: %w", slug, err)
 	}
 	number, err := store.NumberAtMeta(slug)
 	if err != nil {
-		return State{}, fmt.Errorf("ler o numero na meta da instancia %q: %w", slug, err)
+		return State{}, fmt.Errorf("read the number at meta of instance %q: %w", slug, err)
 	}
 
 	// failingSince ONLY exists when `renewer` is available (see the comment

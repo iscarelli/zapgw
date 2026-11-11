@@ -188,7 +188,7 @@ func TestNewLeadershipRefusesToStartArmedWithoutValidity(t *testing.T) {
 	if err == nil {
 		t.Fatal("an ARMED guard without ZAPGW_LEADERSHIP_VALIDITY had to BRING DOWN startup: any default is a guess about someone else's TTL, and the wrong guess overlaps two holders")
 	}
-	for _, required := range []string{"V + A < T", "duplicada"} {
+	for _, required := range []string{"V + A < T", "duplicate"} {
 		if !strings.Contains(err.Error(), required) {
 			t.Errorf("the message has to carry %q — whoever arms it needs the formula, not a \"missing variable\"; got: %v", required, err)
 		}

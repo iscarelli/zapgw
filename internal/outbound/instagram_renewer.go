@@ -278,8 +278,8 @@ func (rv *InstagramRenewer) checkOne(ctx context.Context, slug string) {
 		// token_definido_em in the SAME move (T-098). Without it there's no
 		// way to compute the token's age, so the loop can't decide
 		// anything — it records and waits for a person.
-		log.Printf("ALARME zapgw: a instancia instagram %q nao tem token_definido_em legivel (%q) — "+
-			"o gateway nao sabe a idade do token e nao pode decidir se e hora de renovar; confira manualmente",
+		log.Printf("ALARME zapgw: instagram instance %q has no readable token_definido_em (%q) — "+
+			"the gateway does not know the token's age and cannot decide whether it is time to renew; check by hand",
 			slug, inst.TokenSetAt)
 		return
 	}
@@ -297,9 +297,9 @@ func (rv *InstagramRenewer) checkOne(ctx context.Context, slug string) {
 		// inventing an attempt here would just spend a call on the SAME
 		// predictable refusal, and T-098 Do(6) forbids inventing
 		// re-authentication.
-		log.Printf("ALARME zapgw: o token do instagram da instancia %q EXPIROU ha %d dia(s) "+
-			"(definido em %s) — passou de %s sem renovar, e a Meta NAO permite mais renovar; "+
-			"e preciso um login manual na Meta, pelo dono da conta Instagram",
+		log.Printf("ALARME zapgw: the instagram token of instance %q EXPIRED %d day(s) ago "+
+			"(set at %s) — it went past %s without renewing, and Meta no longer allows renewal; "+
+			"a manual login at Meta, by the owner of the Instagram account, is needed",
 			slug, -daysLeft, setAt.UTC().Format(time.RFC3339), InstagramTokenValidity)
 		return
 	}
@@ -308,8 +308,8 @@ func (rv *InstagramRenewer) checkOne(ctx context.Context, slug string) {
 	newToken, err := rv.client.RenewInstagramToken(ctx, rv.renewalBase, inst.SendToken)
 	if err != nil {
 		rv.markFailure(slug, now)
-		log.Printf("ALARME zapgw: a Meta recusou renovar o token do instagram da instancia %q "+
-			"(faltam %d dia(s) para expirar) — %v", slug, daysLeft, err)
+		log.Printf("ALARME zapgw: Meta refused to renew the instagram token of instance %q "+
+			"(%d day(s) left before it expires) — %v", slug, daysLeft, err)
 		return
 	}
 
@@ -320,8 +320,8 @@ func (rv *InstagramRenewer) checkOne(ctx context.Context, slug string) {
 	// SAME old token, because nothing in this branch overwrote it.
 	if err := rv.persist(slug, newToken, now); err != nil {
 		rv.markFailure(slug, now)
-		log.Printf("ALARME zapgw: a Meta devolveu um token NOVO para a instancia %q mas a GRAVACAO falhou (%v) "+
-			"— o gateway continua com o token antigo, que ainda vale por %d dia(s); tentara renovar de novo no proximo ciclo",
+		log.Printf("ALARME zapgw: Meta returned a NEW token for instance %q but WRITING it failed (%v) "+
+			"— the gateway keeps the old token, which is still valid for %d day(s); it will try to renew again on the next cycle",
 			slug, err, daysLeft)
 		return
 	}

@@ -782,7 +782,7 @@ func TestHandlerLogsWithoutALARMEWhenConsumerFailsTransiently(t *testing.T) {
 	if rec.Code != http.StatusBadGateway {
 		t.Fatalf("status = %d, want 502 (Meta redelivers on its own)", rec.Code)
 	}
-	if !strings.Contains(buf.String(), "correlacao=") {
+	if !strings.Contains(buf.String(), "correlation=") {
 		t.Fatalf("transient failure logged nothing, and tracing matters here. log:\n%s", buf.String())
 	}
 	if strings.Contains(buf.String(), "ALARME") {

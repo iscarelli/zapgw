@@ -282,10 +282,10 @@ func PhoneNumberIDValid(id string) bool {
 func errWithoutDetail(err error) error {
 	switch {
 	case errors.Is(err, context.DeadlineExceeded):
-		return errors.New("prazo esgotado")
+		return errors.New("deadline exceeded")
 	case errors.Is(err, context.Canceled):
-		return errors.New("cancelado")
+		return errors.New("canceled")
 	default:
-		return errors.New("inalcancavel")
+		return errors.New("unreachable")
 	}
 }
