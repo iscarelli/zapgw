@@ -155,7 +155,7 @@ func TestValidateInstanceType(t *testing.T) {
 		want                                     string // expected normalized type, "" if an error is expected
 	}{
 		{"empty normalizes to whatsapp", "", "", "", "", "", TypeWhatsApp},
-		{"explicit whatsapp passes", TypeWhatsApp, "W1", "P1", "5532999990000", "", TypeWhatsApp},
+		{"explicit whatsapp passes", TypeWhatsApp, "W1", "P1", "+55 11 99999-0000", "", TypeWhatsApp},
 		{"whatsapp with ig_id is rejected", TypeWhatsApp, "", "", "", "IG1", ""},
 		{"valid instagram passes", TypeInstagram, "", "", "", "IG1", TypeInstagram},
 		{"instagram without ig_id is rejected", TypeInstagram, "", "", "", "", ""},

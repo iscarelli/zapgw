@@ -73,7 +73,7 @@ func instanceArgs(slug string) []string {
 		"--slug", slug,
 		"--waba-id", "WABA1",
 		"--phone-number-id", "PNID1",
-		"--numero-exibido", "5532999990000",
+		"--numero-exibido", "+55 11 99999-0000",
 		"--callback-url", "https://consumidor.interno/webhooks/zapgw",
 	}
 }
@@ -117,7 +117,7 @@ func TestProvisionInstanceWritesEncryptedAndReturnsInTheClear(t *testing.T) {
 		"CallbackURL":    "https://consumidor.interno/webhooks/zapgw",
 		"WabaID":         "WABA1",
 		"PhoneNumberID":  "PNID1",
-		"DisplayNumber":  "5532999990000",
+		"DisplayNumber":  "+55 11 99999-0000",
 	}
 	for field, expected := range want {
 		if plaintexts[field] != expected {
@@ -171,7 +171,7 @@ func instanceArgsWith(slug, callback string) []string {
 		"--slug", slug,
 		"--waba-id", "WABA1",
 		"--phone-number-id", "PNID1",
-		"--numero-exibido", "5532999990000",
+		"--numero-exibido", "+55 11 99999-0000",
 		"--callback-url", callback,
 	}
 }
@@ -1480,9 +1480,9 @@ func TestListInstancesPrintsOneRowPerInstanceWithTheSTATE(t *testing.T) {
 	cases := []struct {
 		slug, pnid, waba, number, state string
 	}{
-		{"tenant-one", "PNID-LOJA", "WABA-LOJA", "5532999990001", "ativa"},
-		{"clinica", "PNID-CLIN", "WABA-CLIN", "5532999990002", "pausada"},
-		{"padaria", "PNID-PADA", "WABA-PADA", "5532999990003", "pausada"},
+		{"tenant-one", "PNID-LOJA", "WABA-LOJA", "+55 11 99999-0001", "ativa"},
+		{"clinica", "PNID-CLIN", "WABA-CLIN", "+55 11 99999-0002", "pausada"},
+		{"padaria", "PNID-PADA", "WABA-PADA", "+55 11 99999-0003", "pausada"},
 	}
 	for _, c := range cases {
 		var creation bytes.Buffer
@@ -1526,7 +1526,7 @@ func TestListInstancesPrintsOneRowPerInstanceWithTheSTATE(t *testing.T) {
 func TestListInstancesShowsTheTYPEOfBoth(t *testing.T) {
 	vars := testEnvironment(t)
 	var creation bytes.Buffer
-	if err := dispatch(fullInstanceArgs("tenant-one", "PNID1", "WABA1", "5532999990000", ""),
+	if err := dispatch(fullInstanceArgs("tenant-one", "PNID1", "WABA1", "+55 11 99999-0000", ""),
 		&creation, fakeEnvironment(vars)); err != nil {
 		t.Fatalf("provisionar whatsapp: %v", err)
 	}
@@ -1587,7 +1587,7 @@ func TestListInstancesSaysWhenThereIsNONE(t *testing.T) {
 func TestShowInstanceSaysWhichFieldsAreRegistered(t *testing.T) {
 	vars := testEnvironment(t)
 	var creation bytes.Buffer
-	if err := dispatch(fullInstanceArgs("tenant-one", "PNID1", "WABA1", "5532999990000", ""),
+	if err := dispatch(fullInstanceArgs("tenant-one", "PNID1", "WABA1", "+55 11 99999-0000", ""),
 		&creation, fakeEnvironment(vars)); err != nil {
 		t.Fatalf("provisionar: %v", err)
 	}
@@ -1600,7 +1600,7 @@ func TestShowInstanceSaysWhichFieldsAreRegistered(t *testing.T) {
 
 	text := out.String()
 	for _, want := range []string{
-		"tenant-one", "PNID1", "WABA1", "5532999990000", "pausada",
+		"tenant-one", "PNID1", "WABA1", "+55 11 99999-0000", "pausada",
 		"app_secret=sim", "verify_token=sim", "token_envio=sim", "segredo_entrega=sim",
 		"callback_url=nao", "bundle_ca=nao",
 	} {
@@ -1635,7 +1635,7 @@ func labelLine(t *testing.T, out, label string) string {
 func TestShowInstanceWhatsAppStaysWithoutANewTypeLine(t *testing.T) {
 	vars := testEnvironment(t)
 	var creation bytes.Buffer
-	if err := dispatch(fullInstanceArgs("tenant-one", "PNID1", "WABA1", "5532999990000", ""),
+	if err := dispatch(fullInstanceArgs("tenant-one", "PNID1", "WABA1", "+55 11 99999-0000", ""),
 		&creation, fakeEnvironment(vars)); err != nil {
 		t.Fatalf("provisionar: %v", err)
 	}
@@ -1738,7 +1738,7 @@ func TestListInstancesPrintsNoSECRETAtAll(t *testing.T) {
 		vars[k] = v
 	}
 	var creation bytes.Buffer
-	args := append(fullInstanceArgs("tenant-one", "PNID1", "WABA1", "5532999990000",
+	args := append(fullInstanceArgs("tenant-one", "PNID1", "WABA1", "+55 11 99999-0000",
 		"https://consumidor.interno/webhooks/zapgw"),
 		"--bundle-ca", caFile(t, testCAPEM(t)))
 	if err := dispatch(args, &creation, fakeEnvironment(vars)); err != nil {
@@ -1808,7 +1808,7 @@ func TestListInstancesPrintsNoSECRETAtAll(t *testing.T) {
 func TestListInstancesWorksWithTheWRONGCIPHERKEY(t *testing.T) {
 	vars := testEnvironment(t)
 	var creation bytes.Buffer
-	if err := dispatch(fullInstanceArgs("tenant-one", "PNID1", "WABA1", "5532999990000", ""),
+	if err := dispatch(fullInstanceArgs("tenant-one", "PNID1", "WABA1", "+55 11 99999-0000", ""),
 		&creation, fakeEnvironment(vars)); err != nil {
 		t.Fatalf("provisionar: %v", err)
 	}
@@ -1855,7 +1855,7 @@ func TestInstanceRemoveDELETESEVERYTHINGANDDOESNOTTOUCHTheNEIGHBOR(t *testing.T)
 	if err := dispatch(instanceArgs("lojinha"), &out, fakeEnvironment(vars)); err != nil {
 		t.Fatalf("provisionar lojinha: %v", err)
 	}
-	if err := dispatch(fullInstanceArgs("clinica", "PNID2", "WABA2", "5532999990001", ""),
+	if err := dispatch(fullInstanceArgs("clinica", "PNID2", "WABA2", "+55 11 99999-0001", ""),
 		&out, fakeEnvironment(vars)); err != nil {
 		t.Fatalf("provisionar clinica: %v", err)
 	}
@@ -2660,9 +2660,10 @@ func registeredAt(t *testing.T, vars map[string]string, slug string, when time.T
 	if _, err := store.RegisterMeta(slug, config.MetaRegistration{
 		WabaID:        "WABA-DO-CONSUMIDOR",
 		PhoneNumberID: "PNID-DO-CONSUMIDOR",
-		DisplayNumber: "5511999990000",
+		DisplayNumber: "+55 11 99999-0000",
 		AppSecret:     "app-secret-do-consumidor",
 		SendToken:     "token-envio-do-consumidor",
+		CallbackURL:   "https://consumidor.interno/hook",
 	}, when); err != nil {
 		t.Fatalf("RegisterMeta: %v", err)
 	}
@@ -2687,8 +2688,8 @@ func TestInstanceReopenEnrollmentUNBLOCKSTheConsumerWithoutTouchingTheConfigurat
 	// THE WINDOW CAME BACK: registering now goes through.
 	store := storeFromEnvironment(t, vars)
 	if _, err := store.RegisterMeta("terceiro", config.MetaRegistration{
-		WabaID: "W2", PhoneNumberID: "P2", DisplayNumber: "N2",
-		AppSecret: "a2", SendToken: "t2",
+		WabaID: "W2", PhoneNumberID: "P2", DisplayNumber: "+55 11 99999-0000",
+		AppSecret: "a2", SendToken: "t2", CallbackURL: "https://consumidor.interno/hook",
 	}, time.Now()); err != nil {
 		t.Fatalf("registration after reopening: %v — the window did not reopen", err)
 	}
@@ -2733,7 +2734,7 @@ func TestInstanceReopenEnrollmentWITHOUTCONFIRMATIONDoesNothing(t *testing.T) {
 	// And the window stays CLOSED.
 	store := storeFromEnvironment(t, vars)
 	if _, err := store.RegisterMeta("terceiro", config.MetaRegistration{
-		WabaID: "W2", PhoneNumberID: "P2", DisplayNumber: "N2", AppSecret: "a2", SendToken: "t2",
+		WabaID: "W2", PhoneNumberID: "P2", DisplayNumber: "+55 11 99999-0000", CallbackURL: "https://consumidor.interno/hook", AppSecret: "a2", SendToken: "t2",
 	}, time.Now()); !errors.Is(err, config.ErrRegistrationWindowClosed) {
 		t.Fatalf("error = %v, want ErrRegistrationWindowClosed — the window reopened with no confirmation", err)
 	}

@@ -194,10 +194,10 @@ Content-Type: application/json
   "instancia":       "<your slug>",
   "waba_id":         "…",
   "phone_number_id": "…",
-  "numero_exibido":  "…",           // the phone number as the customer sees it
+  "numero_exibido":  "+55 11 99999-0000", // the phone number as the customer sees it, in THIS shape
   "app_secret":      "…",
   "token_envio":     "…",
-  "callback_url":    "https://…",   // where we deliver what Meta sends
+  "callback_url":    "https://…",   // REQUIRED: where we deliver what Meta sends
   "bundle_ca":       ""             // optional: PEM of YOUR CA, if you do not use a public CA
 }
 ```
@@ -211,9 +211,15 @@ Three things that decide whether this works the first time:
 - **The `callback_url` must be `https://`, and its certificate is verified.** There is no
   no-verification mode, on any path of this gateway. If your endpoint uses **its own CA**, send its
   PEM in `bundle_ca` — that swaps the trust anchor, it does not turn verification off.
-- **An empty `callback_url` is a legitimate choice**: it means "outbound-only instance", and nothing
-  is delivered to you. Just do not leave it empty by accident — check in the `200`, which says
-  `cifrados: [{campo: "callback_url", cadastrado: true|false}]`.
+- **The `callback_url` is required; an empty or missing one is refused with `400`**
+  (`internal/config/store.go:1077`). A `failed` status — e.g. `131026`, a number without WhatsApp —
+  only reaches you through the callback; without it a send that failed looks delivered. The `200`
+  confirms it: `cifrados: [{campo: "callback_url", cadastrado: true}]`.
+- **`numero_exibido` has one accepted shape, Brazilian numbers only:** `+55 11 5555-5555` (landline)
+  or `+55 11 99999-0000` (mobile). Digits only, no `+`, no spaces, or a 5-digit block not starting
+  with `9` is refused with `400` (`internal/config/store.go:99`) — it is never rewritten for you.
+  **Contract change (2026-11-11):** a re-registration script that sends digits only, or no callback,
+  gets `400` on its next run.
 
 **The response returns nothing of what you sent** — only *whether* each field is registered. A secret
 goes in and does not come back, and this route makes no exception.

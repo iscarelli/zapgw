@@ -175,10 +175,10 @@ Content-Type: application/json
   "instancia":       "lojinha",          // the slug you received
   "waba_id":         "…",                // Business Settings → WhatsApp accounts
   "phone_number_id": "…",                // the id of the NUMBER in the Graph API (not the phone)
-  "numero_exibido":  "5511999990000",    // the phone as it appears to the customer
+  "numero_exibido":  "+55 11 99999-0000", // the phone as it appears to the customer, in THIS shape
   "app_secret":      "…",                // App → Settings → Basic → App Secret
   "token_envio":     "…",                // PERMANENT System User token
-  "callback_url":    "https://…",        // where we deliver whatever Meta sends
+  "callback_url":    "https://…",        // REQUIRED: where we deliver whatever Meta sends
   "bundle_ca":       ""                  // optional: PEM of YOUR CA, if you don't use a public CA
 }
 ```
@@ -188,13 +188,25 @@ Content-Type: application/json
 already stored, and that is exactly what the gateway never returns. Re-registering is your
 **rotation** path: changed the `app_secret` in Meta's panel, send the whole set again.
 
-Two fields may be sent **empty**, and empty is a legitimate state:
+**`numero_exibido` has exactly one accepted shape, Brazilian numbers only:** `+55`, a space, the
+2-digit area code, a space, then `NNNN-NNNN` (landline, e.g. `+55 11 5555-5555`) or `9NNNN-NNNN`
+(mobile, e.g. `+55 11 99999-0000`). Digits only, no `+`, no spaces, or a 5-digit block that does not
+start with `9` is refused with `400` naming `numero_exibido` — the gateway never rewrites it for you
+(`internal/config/store.go:99`, `ValidateDisplayNumber`).
 
-- empty `callback_url` = **outbound-only instance**: the gateway delivers whatever Meta sends to
-  nobody. This is not an error, it is a choice;
-- empty `bundle_ca` = delivery uses the system CA store (the normal case). Fill it in only if your
-  endpoint uses its **own CA** — that swaps the trust anchor, and does **not** turn off any
-  verification. There is no mode for not verifying a certificate in this gateway, on any path.
+**`callback_url` is required.** An empty or missing one is refused with `400` naming `callback_url`
+(`internal/config/store.go:1077`). Why: a `failed` status — e.g. `131026`, the number has no
+WhatsApp — only reaches you through the callback. Without it a send that failed looks delivered, and
+you believe you told the customer.
+
+Only `bundle_ca` may be sent **empty**: delivery then uses the system CA store (the normal case).
+Fill it in only if your endpoint uses its **own CA** — that swaps the trust anchor, and does **not**
+turn off any verification. There is no mode for not verifying a certificate in this gateway, on any
+path.
+
+**Contract change (2026-11-11):** a re-registration script that sends digits only in
+`numero_exibido`, or no `callback_url`, gets `400` on its next run. Instances already stored are not
+re-validated; the rule applies at the next registration.
 
 `callback_url` must be `https://` for the reason in the section *Your `callback_url` must be
 `https://`*, further below.
@@ -1504,10 +1516,8 @@ is not a preference: the `POST` above carries the message's **raw body** — wha
 their phone number, their name. Over `http://` that crosses the network readable by anyone on the
 path, and `X-Zapgw-Signature` does not help: **a signature proves integrity, not confidentiality.**
 
-Two exceptions, and only two:
+One exception, and only one:
 
-- **An empty `callback_url` is valid** — that is the outbound-only instance, which sends and does not
-  receive. No delivery is not delivery in the clear.
 - **`http://127.0.0.1` and `http://localhost`** (with any port and path), for development on your own
   machine. The check is about the **host** the URL resolves to, so `http://127.0.0.1.exemplo.com` and
   `http://127.0.0.1@exemplo.com` are refused — they start with the permitted text and deliver
@@ -2707,10 +2717,10 @@ yours and depends on what costs more in your business: **a duplicated message** 
 did not go out**. If you choose to resend, do it with a new key and **know that you are accepting the
 risk of a duplicate** — it is not the gateway unsticking things for you.
 
-> ⚠️ **Step 1 requires a registered `callback_url`.** On an **outbound-only** instance (empty
-> callback) there is no signal at all to observe, and you land straight on step 2. If that ambiguity
-> is expensive for you, register a `callback_url` — even if it only records the `status` events and
-> discards the rest: it is what turns "I don't know" into "I know".
+> ⚠️ **Step 1 requires the `callback_url`, which registration now makes mandatory.** An instance
+> that was registered before that rule may still have an empty one: there is no signal at all to
+> observe, and you land straight on step 2. Re-register with a `callback_url` — even if it only
+> records the `status` events and discards the rest: it is what turns "I don't know" into "I know".
 
 > ℹ️ **`GET /v1/estado` does NOT answer this question, and it is worth saying so you do not waste time
 > there.** The `enviadas` counter only goes up on a successful send; a `unknown` outcome counts
@@ -3014,7 +3024,7 @@ Fit to send → `200`:
 
 ```jsonc
 { "ok": true,
-  "numero_exibido": "5511999990000",   // comes from the gateway's registration, not from Meta's response
+  "numero_exibido": "+55 11 99999-0000",   // comes from the gateway's registration, not from Meta's response
   "verificado_em": "2026-07-25T12:00:00Z" }
 ```
 

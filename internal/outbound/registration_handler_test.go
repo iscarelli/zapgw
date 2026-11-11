@@ -122,7 +122,7 @@ func registrationBody(slug string, fields map[string]string) string {
 		"instancia":       slug,
 		"waba_id":         "WABA-DO-CONSUMIDOR",
 		"phone_number_id": "PNID-DO-CONSUMIDOR",
-		"numero_exibido":  "5511999990000",
+		"numero_exibido":  "+55 11 99999-0000",
 		"app_secret":      testEncryptedValue["app_secret"],
 		"token_envio":     testEncryptedValue["token_envio"],
 		"callback_url":    testEncryptedValue["callback_url"],

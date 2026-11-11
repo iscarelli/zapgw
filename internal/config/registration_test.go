@@ -26,7 +26,7 @@ func testRegistration() MetaRegistration {
 	return MetaRegistration{
 		WabaID:        "WABA-DO-CONSUMIDOR",
 		PhoneNumberID: "PNID-DO-CONSUMIDOR",
-		DisplayNumber: "5511999990000",
+		DisplayNumber: "+55 11 99999-0000",
 		AppSecret:     "app-secret-do-consumidor",
 		SendToken:     "token-envio-do-consumidor",
 		CallbackURL:   "https://painel.do-consumidor.example/webhooks/zapgw",
@@ -106,7 +106,7 @@ func TestRegisterMetaWritesENCRYPTEDAndReturnsInTheClear(t *testing.T) {
 	want := map[string]string{
 		"WabaID":        "WABA-DO-CONSUMIDOR",
 		"PhoneNumberID": "PNID-DO-CONSUMIDOR",
-		"DisplayNumber": "5511999990000",
+		"DisplayNumber": "+55 11 99999-0000",
 		"AppSecret":     "app-secret-do-consumidor",
 		"SendToken":     "token-envio-do-consumidor",
 		"CallbackURL":   "https://painel.do-consumidor.example/webhooks/zapgw",
@@ -230,7 +230,7 @@ func TestTheWindowDoesNotRESTARTOnEveryRegistration(t *testing.T) {
 	// 23h later: inside the window, and it's THIS ONE that would make the
 	// clock restart if someone swapped `janela.OpenedAt` for `agora` in the UPDATE.
 	secondOne := testRegistration()
-	secondOne.DisplayNumber = "5511888880000"
+	secondOne.DisplayNumber = "+55 11 99999-0001"
 	window, err := s.RegisterMeta("terceiro", secondOne, t0.Add(23*time.Hour))
 	if err != nil {
 		t.Fatalf("registration 23h later: %v — the window closed before 24h", err)
@@ -242,7 +242,7 @@ func TestTheWindowDoesNotRESTARTOnEveryRegistration(t *testing.T) {
 	// 25h after the FIRST insert: closed. If the window had restarted on
 	// the 23h registration, this one would pass.
 	third := testRegistration()
-	third.DisplayNumber = "5511777770000"
+	third.DisplayNumber = "+55 11 99999-0002"
 	if _, err := s.RegisterMeta("terceiro", third, t0.Add(25*time.Hour)); !errors.Is(err, ErrRegistrationWindowClosed) {
 		t.Fatalf("registration 25h after the first insert = %v, want ErrRegistrationWindowClosed — the window RESTARTED on the change", err)
 	}
@@ -348,9 +348,9 @@ func TestRegisterMetaAcceptsReRegistrationByOverwriting(t *testing.T) {
 	newValue := testRegistration()
 	newValue.AppSecret = "app-secret-ROTACIONADO"
 	newValue.SendToken = "token-envio-ROTACIONADO"
-	// AN EMPTY CALLBACK on re-registration means an OUTBOUND-ONLY instance
-	// — registration replaces, and an omitted field counts as empty.
-	newValue.CallbackURL = ""
+	// Registration REPLACES; the callback is mandatory (T-262), so it is
+	// swapped for another one, never emptied.
+	newValue.CallbackURL = "https://novo.do-consumidor.example/hook"
 	if _, err := s.RegisterMeta("terceiro", newValue, t0.Add(time.Hour)); err != nil {
 		t.Fatalf("re-registration: %v", err)
 	}
@@ -362,8 +362,8 @@ func TestRegisterMetaAcceptsReRegistrationByOverwriting(t *testing.T) {
 	if i.AppSecret != "app-secret-ROTACIONADO" || i.SendToken != "token-envio-ROTACIONADO" {
 		t.Errorf("the re-registration did not overwrite the secrets: app_secret=%q token_envio=%q", i.AppSecret, i.SendToken)
 	}
-	if i.CallbackURL != "" {
-		t.Errorf("callback_url = %q, want empty — registration REPLACES", i.CallbackURL)
+	if i.CallbackURL != "https://novo.do-consumidor.example/hook" {
+		t.Errorf("callback_url = %q, want the new one — registration REPLACES", i.CallbackURL)
 	}
 }
 

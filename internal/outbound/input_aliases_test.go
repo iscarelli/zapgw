@@ -523,7 +523,7 @@ func TestInputOldNameCounterOnRegistration(t *testing.T) {
 	// The SAME re-registration, fully in English (T-079: re-registering
 	// REPLACES, it does not conflict with the first call).
 	enBody := `{"instance":"terceiro","waba_id":"WABA-DO-CONSUMIDOR","phone_number_id":"PNID-DO-CONSUMIDOR",` +
-		`"display_number":"5511999990000","app_secret":"` + testEncryptedValue["app_secret"] + `",` +
+		`"display_number":"+55 11 99999-0000","app_secret":"` + testEncryptedValue["app_secret"] + `",` +
 		`"send_token":"` + testEncryptedValue["token_envio"] + `","callback_url":"` + testEncryptedValue["callback_url"] + `"}`
 	en := register(t, h, "token-do-a", enBody)
 	if en.Code != http.StatusOK {

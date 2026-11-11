@@ -190,10 +190,10 @@ Content-Type: application/json
   "instancia":       "<o seu slug>",
   "waba_id":         "…",
   "phone_number_id": "…",
-  "numero_exibido":  "…",           // o telefone como o cliente o vê
+  "numero_exibido":  "+55 11 99999-0000", // o telefone como o cliente o vê, NESTE formato
   "app_secret":      "…",
   "token_envio":     "…",
-  "callback_url":    "https://…",   // para onde entregamos o que a Meta mandar
+  "callback_url":    "https://…",   // OBRIGATÓRIA: para onde entregamos o que a Meta mandar
   "bundle_ca":       ""             // opcional: PEM da SUA CA, se você não usa CA pública
 }
 ```
@@ -207,9 +207,15 @@ Três coisas que decidem se isso dá certo na primeira vez:
 - **A `callback_url` tem de ser `https://`, e o certificado dela é verificado.** Não existe modo de
   não verificar, em caminho nenhum deste gateway. Se o seu endpoint usa **CA própria**, mande o PEM
   dela em `bundle_ca` — isso troca a âncora de confiança, não desliga a verificação.
-- **`callback_url` vazia é escolha legítima**: significa "instância só de saída", e nada é entregue a
-  você. Só não a deixe vazia por descuido — confira no `200`, que diz `cifrados: [{campo:
-  "callback_url", cadastrado: true|false}]`.
+- **A `callback_url` é obrigatória; vazia ou ausente é recusada com `400`**
+  (`internal/config/store.go:1077`). Um status `failed` — por exemplo `131026`, número sem WhatsApp —
+  só chega até você pela callback; sem ela, um envio que falhou parece entregue. O `200` confirma:
+  `cifrados: [{campo: "callback_url", cadastrado: true}]`.
+- **`numero_exibido` tem um formato aceito, só números brasileiros:** `+55 11 5555-5555` (fixo) ou
+  `+55 11 99999-0000` (celular). Só dígitos, sem `+`, sem espaços, ou bloco de 5 dígitos que não
+  começa com `9` é recusado com `400` (`internal/config/store.go:99`) — nunca é reescrito por você.
+  **Mudança de contrato (2026-11-11):** um script de recadastro que manda só dígitos, ou nenhuma
+  callback, recebe `400` na próxima execução.
 
 **A resposta não devolve nada do que você mandou** — só *se* cada campo está cadastrado. Segredo
 entra e não volta, e esta rota não abre exceção.

@@ -2,6 +2,15 @@
 
 One line per version shipped, in the same commit as the bump. The entry states the **effect**, not the diff.
 
+## Unreleased
+
+- **Registration requires callback_url and a formatted numero_exibido** (T-262) — **CONTRACT CHANGE.**
+  `POST /v1/cadastro` now refuses (`400`, naming the field) an empty or missing `callback_url` and a
+  `numero_exibido` that is not `+55 DD NNNN-NNNN` / `+55 DD 9NNNN-NNNN`; the same shape rule applies
+  to `zapgw provision instancia --numero-exibido` when given. A consumer whose re-registration script
+  sends digits only or no callback gets `400` on its next rotation. Rows already stored are not
+  re-validated. _Completed 2026-11-11 08:15._
+
 ## v0.74.0 — 2026-10-23
 
 - **Location header in template send (`cabecalho.tipo: "localizacao"`)** (T-261) — a template

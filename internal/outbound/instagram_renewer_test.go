@@ -346,7 +346,7 @@ func TestRenewerNeverRunsForAWhatsappInstance(t *testing.T) {
 	// called for real. A 90-day age (which would only alarm) would let
 	// this specific mutation go unnoticed.
 	if err := store.CreateInstanceAt(config.Instance{
-		Slug: "lojinha", WabaID: "W1", PhoneNumberID: "P1", DisplayNumber: "5532999990000",
+		Slug: "lojinha", WabaID: "W1", PhoneNumberID: "P1", DisplayNumber: "+55 11 99999-0000",
 		AppSecret: "a", VerifyToken: "v", SendToken: "token-whatsapp",
 		CallbackURL: "http://127.0.0.1:1", DeliverySecret: "s", TimeoutMs: 2000,
 	}, now.Add(-31*24*time.Hour)); err != nil {
@@ -398,7 +398,7 @@ func TestRenewerCheckOneRefusesWhatsappInstanceOutright(t *testing.T) {
 	// inside the "renew" window, so that the removed guard turns into a
 	// real call to Meta, not just an alarm.
 	if err := store.CreateInstanceAt(config.Instance{
-		Slug: "lojinha", WabaID: "W1", PhoneNumberID: "P1", DisplayNumber: "5532999990000",
+		Slug: "lojinha", WabaID: "W1", PhoneNumberID: "P1", DisplayNumber: "+55 11 99999-0000",
 		AppSecret: "a", VerifyToken: "v", SendToken: "token-whatsapp",
 		CallbackURL: "http://127.0.0.1:1", DeliverySecret: "s", TimeoutMs: 2000,
 	}, now.Add(-31*24*time.Hour)); err != nil {

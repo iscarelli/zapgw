@@ -85,11 +85,11 @@ func TestMenuBUILDSTheSubcommandArgs(t *testing.T) {
 		},
 		{
 			name: "provision instancia: what's left blank does not become a flag",
-			in: []string{"5", "lojinha", "WABA1", "PNID1", "5532999990000",
+			in: []string{"5", "lojinha", "WABA1", "PNID1", "+55 11 99999-0000",
 				"", "https://consumidor.interno/hook", ""},
 			expected: []string{"provision", "instancia",
 				"--slug", "lojinha", "--waba-id", "WABA1", "--phone-number-id", "PNID1",
-				"--numero-exibido", "5532999990000", "--callback-url", "https://consumidor.interno/hook"},
+				"--numero-exibido", "+55 11 99999-0000", "--callback-url", "https://consumidor.interno/hook"},
 		},
 		{
 			name:     "provision consumidor",
@@ -292,7 +292,7 @@ func TestMenuDoesEXACTLYWhatTheCommandLineDoes(t *testing.T) {
 
 	args := []string{"provision", "instancia",
 		"--slug", "lojinha", "--waba-id", "WABA1", "--phone-number-id", "PNID1",
-		"--numero-exibido", "5532999990000", "--callback-url", "https://consumidor.interno/hook"}
+		"--numero-exibido", "+55 11 99999-0000", "--callback-url", "https://consumidor.interno/hook"}
 
 	var commandLineOut bytes.Buffer
 	if err := dispatch(args, &commandLineOut, fakeEnvironment(viaCommandLine)); err != nil {
@@ -300,7 +300,7 @@ func TestMenuDoesEXACTLYWhatTheCommandLineDoes(t *testing.T) {
 	}
 
 	var menuOut bytes.Buffer
-	in := answers("5", "lojinha", "WABA1", "PNID1", "5532999990000", "",
+	in := answers("5", "lojinha", "WABA1", "PNID1", "+55 11 99999-0000", "",
 		"https://consumidor.interno/hook", "", "0")
 	if err := menu(in, &menuOut, fakeEnvironment(viaMenu)); err != nil {
 		t.Fatalf("menu: %v", err)
@@ -496,7 +496,7 @@ func TestMenuDoesNotPrintASecretTheCommandDoesNotPrint(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	in := answers("5", "lojinha", "WABA1", "PNID1", "5532999990000", "", "", "", "0")
+	in := answers("5", "lojinha", "WABA1", "PNID1", "+55 11 99999-0000", "", "", "", "0")
 	if err := menu(in, &out, fakeEnvironment(vars)); err != nil {
 		t.Fatalf("menu: %v", err)
 	}
