@@ -2,7 +2,7 @@
 
 One line per version shipped, in the same commit as the bump. The entry states the **effect**, not the diff.
 
-## Unreleased
+## v0.75.1 — 2026-11-12
 
 - **Delivery package printed the registration URL on the public host, where it is 404** (T-267) — `zapgw provision instancia` item 2 now reads its own variable, `ZAPGW_ENROLLMENT_URL` (the internal base, scheme and port included, for example `https://gateway.example:8443`), and no longer falls back to `ZAPGW_PUBLIC_URL`. Without it, item 2 prints the visible placeholder `https://<set ZAPGW_ENROLLMENT_URL>/v1/cadastro`. The webhook URL (item 3) is unchanged. **Deploy note:** the CT does not define the variable yet, so until it is added to the CT environment, item 2 prints the placeholder (better than a wrong URL). _Completed 2026-11-12 22:31._
 
