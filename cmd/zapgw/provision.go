@@ -1467,25 +1467,25 @@ func printDeliveryPackage(out io.Writer, env environment, slug string) error {
 	return nil
 }
 
-// enrollmentURL assembles the POST /v1/cadastro URL through the SAME
-// path as webhookURL — and with the same honesty: without ZAPGW_PUBLIC_URL
-// it prints a VISIBLE placeholder, never a guessed domain. The OLD name
-// (ZAPGW_URL_PUBLICA) is no longer read (T-244): setting it REFUSES the
-// command.
+// enrollmentURL assembles the POST /v1/cadastro URL from its OWN variable,
+// ZAPGW_ENROLLMENT_URL, and never from ZAPGW_PUBLIC_URL. With the same
+// honesty as webhookURL: without it, it prints a VISIBLE placeholder,
+// never a guessed host or port.
 //
-// ⚠️ THIS URL IS ON THE LAN TODAY (docs/IMPLANTACAO.md: :8443 matches by
-// EXCLUDING /v1/inbound). A real third party cannot reach it from the
-// internet, and that is an owner decision still OPEN
-// (docs/MODELO-DE-USO.md). Until it's decided, whoever registers is
-// whoever has access to the gateway's network.
+// WHY A VARIABLE OF ITS OWN: THIS URL IS ON THE LAN (docs/IMPLANTACAO.md:
+// the internal port matches by EXCLUDING /v1/inbound), while the public
+// host only serves /v1/inbound. Building it from ZAPGW_PUBLIC_URL printed
+// an address that answers 404 (measured 2026-11-10 and 2026-11-12), and a
+// consumer copying the package literally registered in the wrong place.
+// The value is the internal base, scheme and port included (for example
+// https://gateway.example:8443). Whether a real third party should reach
+// it from the internet is an owner decision still OPEN
+// (docs/MODELO-DE-USO.md): until then, whoever registers is whoever has
+// access to the gateway's network.
 func enrollmentURL(env environment) (string, error) {
-	raw, err := config.EnvRefusingOld(env, envPublicURLNew, envPublicURLOld)
-	if err != nil {
-		return "", err
-	}
-	base := strings.TrimRight(strings.TrimSpace(raw), "/")
+	base := strings.TrimRight(strings.TrimSpace(env(envEnrollmentURL)), "/")
 	if base == "" {
-		base = "https://<set " + envPublicURLNew + ">"
+		base = "https://<set " + envEnrollmentURL + ">"
 	}
 	return base + "/v1/cadastro", nil
 }
