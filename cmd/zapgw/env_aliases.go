@@ -57,6 +57,11 @@ const (
 
 	envPublicURLNew = "ZAPGW_PUBLIC_URL"
 	envPublicURLOld = "ZAPGW_URL_PUBLICA"
+
+	// envEnrollmentURL is the INTERNAL base of POST /v1/cadastro (scheme and
+	// port included). New, so it has no old name; and deliberately NOT a
+	// fallback to envPublicURLNew, because the public host does not serve it.
+	envEnrollmentURL = "ZAPGW_ENROLLMENT_URL"
 )
 
 // databasePath resolves the database file path — ZAPGW_DATABASE, with the

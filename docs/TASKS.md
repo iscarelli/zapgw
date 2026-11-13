@@ -544,28 +544,3 @@ Do:      🔴 Boa parte das ocorrencias e' LEGITIMA e tem de ficar: e' o NOME PO
          Confira que o cabecalho `Código:` de cada doc ainda aponta para arquivo que existe.
 Verify:  liste no relatorio, por arquivo, quantas ocorrencias voce traduziu e quantas deixou em (b)
          ou (c). `go test ./internal/config/ -run TestDoc` verde (os ponteiros dos docs).
-
-## [ ] T-267  Delivery package prints the registration URL on the public host, where it is 404
-Vikunja: 3345
-Why:     `zapgw provision instancia` imprime no item 2 do pacote de entrega
-         `https://<host publico>/v1/cadastro`, mas o host publico so serve `/v1/inbound` — o cadastro
-         responde na porta interna (`:8443`). Medido de novo em 2026-11-12 ao provisionar uma instancia:
-         a saida trazia a URL sem a porta; a mesma URL na porta publica deu `404` em 2026-11-10. O
-         consumidor que copiar o pacote ao pe da letra cadastra no lugar errado.
-Files:   cmd/zapgw/provision.go (`enrollmentURL`, ~linha 1482), cmd/zapgw/env_aliases.go,
-         o `_test.go` que cobre o pacote de entrega, docs/MANUAL-DO-INTEGRADOR.md (+pt-BR) so se
-         citarem a origem da URL, docs/CHANGELOG.md
-Do:      `enrollmentURL` passa a ler uma variavel PROPRIA para a base interna, `ZAPGW_ENROLLMENT_URL`
-         (declarada em `env_aliases.go` ao lado de `envPublicURLNew`), e NAO cai mais em
-         `ZAPGW_PUBLIC_URL`. Sem ela, o mesmo placeholder visivel de hoje
-         (`https://<set ZAPGW_ENROLLMENT_URL>/v1/cadastro`) — nunca adivinhar host nem porta.
-         `webhookURL` nao muda. Atualize o comentario de `enrollmentURL` (o "THIS URL IS ON THE LAN"
-         passa a ser o motivo da variavel propria). NAO escreva host nem porta reais em codigo, teste
-         ou doc: exemplos com `gateway.example`.
-Verify:  `go test ./cmd/zapgw/` com teste novo: (a) com `ZAPGW_PUBLIC_URL=https://pub.example` e
-         `ZAPGW_ENROLLMENT_URL=https://lan.example:8443`, o item 2 sai `https://lan.example:8443/v1/cadastro`
-         e o item 3 sai `https://pub.example/v1/inbound/<slug>`; (b) so com `ZAPGW_PUBLIC_URL`, o item 2
-         sai com o placeholder `<set ZAPGW_ENROLLMENT_URL>`. Mutacao: volte `enrollmentURL` a ler
-         `ZAPGW_PUBLIC_URL` e mostre (a) falhando. Mais os quatro comandos do Verify do `CLAUDE.md`.
-         ⚠️ O deploy NAO define a variavel no CT: anote no relatorio que, ate o dono acrescentar
-         `ZAPGW_ENROLLMENT_URL` no ambiente do CT, o item 2 sai com placeholder (melhor que URL errada).

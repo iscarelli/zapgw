@@ -2,6 +2,10 @@
 
 One line per version shipped, in the same commit as the bump. The entry states the **effect**, not the diff.
 
+## Unreleased
+
+- **Delivery package printed the registration URL on the public host, where it is 404** (T-267) — `zapgw provision instancia` item 2 now reads its own variable, `ZAPGW_ENROLLMENT_URL` (the internal base, scheme and port included, for example `https://gateway.example:8443`), and no longer falls back to `ZAPGW_PUBLIC_URL`. Without it, item 2 prints the visible placeholder `https://<set ZAPGW_ENROLLMENT_URL>/v1/cadastro`. The webhook URL (item 3) is unchanged. **Deploy note:** the CT does not define the variable yet, so until it is added to the CT environment, item 2 prints the placeholder (better than a wrong URL). _Completed 2026-11-12 22:31._
+
 ## v0.75.0 — 2026-11-12
 
 - **Consumer docs show the old Portuguese OUTPUT keys; the wire is English** (T-266) — docs-only, no wire change. The six consumer docs now show the keys the code emits today (checked against the `json` tags in `internal/inbound/deliver.go`, `internal/meta/types.go` and `internal/outbound/*.go`): envelope `instance`/`received_at`/`raw`/`events`, event keys (`sub_kind`, `from_raw`, `from_canonical`, `to_raw`, `to_canonical`, `text`, `reply_to`, `reaction`/`target`, `location`/`name`/`address`, `voice`, `forwarded`, `pricing`/`category`, `template.name`/`language`/`state`/`reason`, `number_quality`, ...) and response keys (`GET /v1/templates`, `POST /v1/templates`, `DELETE /v1/templates`, `GET /v1/perfil`, `POST /v1/perfil`, `GET /v1/instances/{slug}/health`). A note at the top of "What you receive" (EN and pt-BR) says the envelope keys are English and that docs before 2026-11-11 showed the old ones; "Breaking changes" carries an old -> new note for its dated entries. INPUT keys, enum values, the frozen signature test vector and the event `id` prefixes (still `template_categoria:` etc. in `internal/meta/parse.go`) were left alone. _Completed 2026-11-11 19:20._

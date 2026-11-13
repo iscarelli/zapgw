@@ -311,22 +311,41 @@ func TestWebhookURLRefusesOldName(t *testing.T) {
 	}
 }
 
-func TestEnrollmentURLRefusesOldName(t *testing.T) {
-	got, err := enrollmentURL(fakeEnvironment(map[string]string{envPublicURLNew: "https://novo.example"}))
-	if err != nil {
-		t.Fatalf("enrollmentURL: %v", err)
-	}
-	if want := "https://novo.example/v1/cadastro"; got != want {
-		t.Errorf("enrollmentURL = %q, want %q", got, want)
-	}
-
-	_, err = enrollmentURL(fakeEnvironment(map[string]string{envPublicURLOld: "https://velho.example"}))
-	if err == nil {
-		t.Fatal("enrollmentURL accepted the old name")
-	}
-	if !strings.Contains(err.Error(), envPublicURLNew) {
-		t.Errorf("the refusal does not name %s: %v", envPublicURLNew, err)
-	}
+// TestDeliveryPackageRegistrationURLHasItsOwnVariable is T-267's Verify: the
+// registration URL (item 2) comes from ZAPGW_ENROLLMENT_URL (internal base),
+// the webhook URL (item 3) from ZAPGW_PUBLIC_URL, and ZAPGW_PUBLIC_URL alone
+// never becomes the registration URL.
+func TestDeliveryPackageRegistrationURLHasItsOwnVariable(t *testing.T) {
+	t.Run("(a) both set -> each item reads its own", func(t *testing.T) {
+		var out strings.Builder
+		env := fakeEnvironment(map[string]string{
+			envPublicURLNew:  "https://pub.example",
+			envEnrollmentURL: "https://lan.example:8443",
+		})
+		if err := printDeliveryPackage(&out, env, "slug"); err != nil {
+			t.Fatalf("printDeliveryPackage: %v", err)
+		}
+		for _, want := range []string{
+			"https://lan.example:8443/v1/cadastro",
+			"https://pub.example/v1/inbound/slug",
+		} {
+			if !strings.Contains(out.String(), want) {
+				t.Errorf("package lacks %q:\n%s", want, out.String())
+			}
+		}
+		if strings.Contains(out.String(), "https://pub.example/v1/cadastro") {
+			t.Errorf("registration URL was built on the public host:\n%s", out.String())
+		}
+	})
+	t.Run("(b) only the public URL -> placeholder, never the public host", func(t *testing.T) {
+		got, err := enrollmentURL(fakeEnvironment(map[string]string{envPublicURLNew: "https://pub.example"}))
+		if err != nil {
+			t.Fatalf("enrollmentURL: %v", err)
+		}
+		if want := "https://<set ZAPGW_ENROLLMENT_URL>/v1/cadastro"; got != want {
+			t.Errorf("enrollmentURL = %q, want %q", got, want)
+		}
+	})
 }
 
 // --- ZAPGW_DIAGNOSTIC_PROBE_FOLDER/ZAPGW_DIAGNOSTICO_SONDAR_FOLDER ---------

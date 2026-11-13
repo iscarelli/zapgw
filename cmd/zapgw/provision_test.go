@@ -458,7 +458,7 @@ func TestProvisionInstanceONLYWithTheSlugPrintsTheDeliveryPackage(t *testing.T) 
 	for _, required := range []string{
 		"DELIVERY PACKAGE",
 		"terceiro",                                       // the slug
-		"https://zapgw.exemplo.test/v1/cadastro",         // where it writes to
+		"<set ZAPGW_ENROLLMENT_URL>/v1/cadastro",         // where it writes to (placeholder: the test env does not set it)
 		"https://zapgw.exemplo.test/v1/inbound/terceiro", // what it pastes into ITS OWN Meta
 		"verify_token",                                   // generated and printed (T-052)
 		"segredo_entrega",                                //          same
