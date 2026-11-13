@@ -546,6 +546,7 @@ Verify:  liste no relatorio, por arquivo, quantas ocorrencias voce traduziu e qu
          ou (c). `go test ./internal/config/ -run TestDoc` verde (os ponteiros dos docs).
 
 ## [ ] T-267  Delivery package prints the registration URL on the public host, where it is 404
+Vikunja: 3345
 Why:     `zapgw provision instancia` imprime no item 2 do pacote de entrega
          `https://<host publico>/v1/cadastro`, mas o host publico so serve `/v1/inbound` — o cadastro
          responde na porta interna (`:8443`). Medido de novo em 2026-11-12 ao provisionar uma instancia:
