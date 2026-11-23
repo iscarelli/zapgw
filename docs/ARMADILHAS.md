@@ -2232,6 +2232,16 @@ verified from here.
 through `Canonicalize` before Meta. **Sending does not have the measured problem** (sending with 13 digits
 works in production), so it stays out. Another trap in the retry itself: Meta echoes the 12-digit `input`,
 and canonicalizing that echo to look it up reinserts the 9 and matches nothing (caught by the T-268 test).
+**Measured after v0.75.2 (2026-11-23 15:51 UTC, same contact, three attempts): still `131047`, and the
+retry did NOT fire** — the journal has the three refusal lines and no retry line. Correctly so: the
+subscriber part after the 9 starts with `3`, outside `WithoutNinthDigit`'s 6-9 range. And that also kills
+the hypothesis for this contact: the consumer stores `from_canonical` with 13 digits, and `Canonicalize`
+never turns a 12-digit number whose fifth digit is `3` into 13 (`internal/meta/phone.go:30-32`) — so Meta's
+own `from` already had 13 digits, and the block sent exactly Meta's `wa_id`. **The ninth digit does not
+explain this refusal.** Still open: Meta's text here is "Re-engagement check failed", while its block-users
+page (read 2026-11-23) lists `131047` as "Re-engagement required" and says it "also occurs if the number is
+an invalid WhatsApp user"; the same page accepts a `user_id` (BSUID) in place of `user`, which this gateway
+neither reads from the webhook nor sends.
 
 ---
 
