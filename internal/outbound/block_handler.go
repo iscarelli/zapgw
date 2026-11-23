@@ -114,8 +114,14 @@ var (
 // Validate trims and requires `instancia`, requires at least one
 // `telefones[]`, refuses above the ceiling (ErrFieldTooLong, T-148 item 4), and
 // CANONICALIZES each phone with meta.Canonicalize — the SAME rule as sending
-// (message.go): sending without the ninth digit would silently block
-// ANOTHER number.
+// (message.go), so the FIRST call to Meta always carries the 13-digit form.
+// The spelling without the ninth digit (the one the Brazilian `wa_id` uses)
+// is only tried afterwards, by retryWithoutNinthDigit, and only for a number
+// Meta JUST refused with 131047 (re-engagement check failed): Meta accepts
+// blocking only someone who wrote in the last 24 h, so a number it refused
+// for that reason is not one the variant could silently block by mistake.
+// The variant is never sent up front, so the path that works today is
+// unchanged.
 func (p *BlockRequest) Validate() error {
 	p.Instance = strings.TrimSpace(p.Instance)
 	if p.Instance == "" {
@@ -185,11 +191,11 @@ type blockListResponse struct {
 }
 
 func (h *BlockHandler) block(w http.ResponseWriter, r *http.Request) {
-	h.process(w, r, "POST "+blockRoute, "bloquear", h.client.BlockUsers)
+	h.process(w, r, "POST "+blockRoute, "bloquear", h.client.BlockUsers, true)
 }
 
 func (h *BlockHandler) unblock(w http.ResponseWriter, r *http.Request) {
-	h.process(w, r, "DELETE "+blockRoute, "desbloquear", h.client.UnblockUsers)
+	h.process(w, r, "DELETE "+blockRoute, "desbloquear", h.client.UnblockUsers, false)
 }
 
 // process is the SHARED BODY of block and unblock — the ONLY
@@ -203,6 +209,7 @@ func (h *BlockHandler) unblock(w http.ResponseWriter, r *http.Request) {
 func (h *BlockHandler) process(
 	w http.ResponseWriter, r *http.Request, route, operation string,
 	call func(ctx context.Context, phoneNumberID, token string, phones []string) (meta.BlockResult, error),
+	retry bool,
 ) {
 	consumer, err := h.auth.Authenticate(r.Header.Get("Authorization"))
 	if err != nil {
@@ -301,7 +308,94 @@ func (h *BlockHandler) process(
 		return
 	}
 
+	logBlockFailures(inst.Slug, operation, result.Failed)
+	if retry {
+		result = retryWithoutNinthDigit(ctx, inst, result, call)
+	}
+
 	respondBlockResult(w, inst.Slug, operation, result)
+}
+
+// metaCodeReengagement is the code Meta gives a number it refuses to block
+// because the contact has not written to the business in the last 24 h
+// ("Re-engagement check failed").
+const metaCodeReengagement = 131047
+
+// logBlockFailures writes ONE line per refused number, with only the last
+// eight digits (never the whole number). A per-number failure comes back as
+// `200`, so without this line the journal had nothing.
+func logBlockFailures(slug, operation string, failed []meta.BlockFailure) {
+	for _, f := range failed {
+		log.Printf("zapgw: block_users %s on instance %q: meta_code %d for ...%s",
+			operation, slug, f.MetaCode, meta.LastEightDigits(f.Phone))
+	}
+}
+
+// retryWithoutNinthDigit makes AT MOST ONE extra call, in a single batch, for
+// the numbers Meta refused with 131047 whose Brazilian cell spelling has a
+// variant without the ninth digit. A success moves the number from Failed to
+// Succeeded (keeping the consumer's 13-digit Phone, with the wa_id Meta
+// returned); a failure keeps the ORIGINAL failure. An error of the whole retry
+// call never becomes an HTTP error: the first result is returned as is.
+// With no 131047 in the first result there is no extra call.
+func retryWithoutNinthDigit(
+	ctx context.Context, inst config.Instance, first meta.BlockResult,
+	call func(ctx context.Context, phoneNumberID, token string, phones []string) (meta.BlockResult, error),
+) meta.BlockResult {
+	variantOf := map[string]string{} // variant -> canonical
+	var variants []string
+	for _, f := range first.Failed {
+		if f.MetaCode != metaCodeReengagement {
+			continue
+		}
+		c := meta.Canonicalize(f.Phone)
+		v := meta.WithoutNinthDigit(c)
+		if v == "" {
+			continue
+		}
+		if _, dup := variantOf[v]; !dup {
+			variantOf[v] = c
+			variants = append(variants, v)
+		}
+	}
+	if len(variants) == 0 {
+		return first
+	}
+
+	second, err := call(ctx, inst.PhoneNumberID, inst.SendToken, variants)
+	if err != nil {
+		log.Printf("zapgw: block_users retry without the ninth digit on instance %q failed as a whole call, keeping the first result: %v",
+			inst.Slug, err)
+		return first
+	}
+
+	// Meta echoes the 12-digit `input` we sent. NEVER Canonicalize it to look
+	// it up: that would reinsert the ninth digit and match nothing.
+	passed := map[string]string{} // canonical -> wa_id
+	for _, s := range second.Succeeded {
+		if c, ok := variantOf[s.Phone]; ok {
+			passed[c] = s.WaID
+			log.Printf("zapgw: block_users retry without the ninth digit on instance %q: accepted for ...%s",
+				inst.Slug, meta.LastEightDigits(c))
+		}
+	}
+	for _, f := range second.Failed {
+		if c, ok := variantOf[f.Phone]; ok {
+			log.Printf("zapgw: block_users retry without the ninth digit on instance %q: refused with meta_code %d for ...%s",
+				inst.Slug, f.MetaCode, meta.LastEightDigits(c))
+		}
+	}
+
+	out := meta.BlockResult{Succeeded: append([]meta.BlockedUser(nil), first.Succeeded...)}
+	for _, f := range first.Failed {
+		c := meta.Canonicalize(f.Phone)
+		if wa, ok := passed[c]; ok && f.MetaCode == metaCodeReengagement {
+			out.Succeeded = append(out.Succeeded, meta.BlockedUser{Phone: c, WaID: wa})
+			continue
+		}
+		out.Failed = append(out.Failed, f)
+	}
+	return out
 }
 
 // respondBlockResult is the `200` PER NUMBER — never a plain

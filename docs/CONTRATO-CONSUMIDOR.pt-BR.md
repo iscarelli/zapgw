@@ -2918,6 +2918,14 @@ toda chamada volta com `processed` **e** `failures` juntos, mesmo quando um dos 
 **Confira `failures` em toda chamada** — o status `200` sozinho não prova que todos os números foram
 processados.
 
+🔴 **Retentativa sem o nono dígito (T-268), só no `POST`.** O gateway sempre manda primeiro a grafia de 13
+dígitos. Se a Meta recusa um celular brasileiro com `131047` ("Re-engagement check failed"), o gateway faz
+**uma** chamada extra, em lote único, com a grafia **sem** o nono dígito (a do `wa_id` brasileiro). Se a
+Meta aceita, o número passa para `processed` com `telefone` = o número de 13 dígitos **que você mandou**
+(para você correlacionar) e o `wa_id` que a Meta devolveu; se recusa de novo, `failures` mantém o `131047`
+ORIGINAL. Não há retentativa para outros códigos, fixos nem `DELETE`, e falha da própria retentativa nunca
+vira erro HTTP. Nenhuma chave nova no JSON.
+
 ### Desbloquear — `DELETE /v1/bloqueios`
 
 **MESMO corpo** do `POST`, **MESMO formato** de resposta — só o método muda, e `"operacao"` vem

@@ -35,6 +35,23 @@ func Canonicalize(number string) string {
 	return d[:4] + "9" + d[4:]
 }
 
+// WithoutNinthDigit is the inverse of Canonicalize for a Brazilian cell
+// phone: given the canonical 13-digit form (55 + area code + 9 + 8 digits)
+// it returns the 12-digit spelling without the ninth digit, the one the
+// Brazilian `wa_id` uses. For ANY other input (landline, 12 digits, another
+// country, fifth digit outside 6-9) it returns "" — meaning "there is no
+// variant to try". Pure; the caller decides when a variant is worth a call.
+func WithoutNinthDigit(canonical string) string {
+	d := canonical
+	if len(d) != 13 || !strings.HasPrefix(d, "55") || d[4] != '9' {
+		return ""
+	}
+	if c := d[5]; c < '6' || c > '9' {
+		return ""
+	}
+	return d[:4] + d[5:]
+}
+
 // LastEightDigits extracts the LAST EIGHT digits of a number, in ANY
 // spelling — owner's decision, 2026-07-30 ("you can put the number in, it's
 // not a secret"), which switched the transit-log search index from an HMAC of

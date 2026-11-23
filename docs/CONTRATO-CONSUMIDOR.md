@@ -2935,6 +2935,14 @@ every call comes back with `processed` **and** `failures` together, even when on
 **Check `failures` on every call** — the `200` status alone does not prove all the numbers were
 processed.
 
+🔴 **Retry without the ninth digit (T-268), `POST` only.** The gateway always sends the 13-digit
+spelling first. If Meta refuses a Brazilian cell number with `131047` ("Re-engagement check failed"),
+the gateway makes **one** extra call, in a single batch, with the spelling **without** the ninth digit
+(the one the Brazilian `wa_id` uses). If Meta accepts it, the number moves to `processed` with `telefone`
+= the 13-digit number **you sent** (so you can correlate) and the `wa_id` Meta returned; if Meta refuses it
+again, `failures` keeps the ORIGINAL `131047`. There is no retry for other codes, landlines, or `DELETE`,
+and a failure of the retry call itself never becomes an HTTP error. No new JSON key.
+
 ### Unblock — `DELETE /v1/bloqueios`
 
 **SAME body** as the `POST`, **SAME response format** — only the method changes, and `"operacao"`

@@ -492,69 +492,6 @@ instancias foram rotacionadas. Duas licoes que custaram na hora e valem alem des
 
 > A fila do periodo privado esta em `iscarelli/zapgw-dev`, congelada. Tarefa nova nasce aqui.
 
-## [ ] T-268  Block: retry without the ninth digit on 131047, and log per-number failures
-Why:     Primeiro bloqueio real (consumidor controleescolar, 2026-11-23, instancia de producao): o
-         contato escreveu as 11:38 (-03), o `POST /v1/bloqueios` das ~12:00 voltou `200` com
-         `processed: []` e `failures[0] = {meta_code: 131047, "Re-engagement check failed"}`, SEM
-         `wa_id`. O consumidor tentou tambem com 12 digitos, mas `Validate` passa cada item por
-         `meta.Canonicalize` (`internal/outbound/block_handler.go:131-137`), que REINSERE o nono
-         digito (`internal/meta/phone.go:20-37`) — as duas tentativas foram a MESMA chamada; a grafia
-         sem o nono digito (a do `wa_id` brasileiro, `docs/ARMADILHAS.md:723`) nunca chegou a Meta.
-         Hipotese NAO medida: a checagem de reengajamento casa pelo `wa_id` de 12 digitos. E o
-         journal nao tinha linha nenhuma: falha por numero volta `200` sem log
-         (`respondBlockResult`, `block_handler.go:309-330`).
-         🔴 **Restricao do dono (2026-11-23): "o bloqueio funciona com alguns numeros".** O caminho
-         que funciona hoje NAO pode mudar: primeira chamada identica a de hoje; a retentativa so
-         existe para quem a Meta RECUSOU com 131047.
-Vikunja: 4013
-Files:   internal/outbound/block_handler.go, internal/outbound/block_handler_test.go,
-         internal/meta/phone.go (+ seu _test.go, se a funcao nova morar la), docs/CONTRATO-CONSUMIDOR.md,
-         docs/CONTRATO-CONSUMIDOR.pt-BR.md, docs/ARMADILHAS.md, docs/CHANGELOG.md
-Do:      (1) **Variante sem o nono digito:** funcao pura (ex. `meta.WithoutNinthDigit(canonical) string`)
-         que, para 13 digitos com prefixo `55`, `d[4] == '9'` e `d[5]` em `6..9`, devolve
-         `d[:4] + d[5:]`; para qualquer outra entrada devolve `""` (sem retentativa). Teste de tabela:
-         celular BR 13 -> 12; fixo, 12 digitos, nao-55, `d[5]` fora de 6-9 -> `""`. Use numeros
-         SINTETICOS (o portao de telefone do CLAUDE.md barra numero real).
-         (2) **Retentativa, SO na rota de bloqueio (POST), nunca no DELETE:** depois da primeira
-         chamada, junte os `Failed` com `MetaCode == 131047` cuja variante (1) nao e vazia e faca UMA
-         segunda chamada `BlockUsers` com essas variantes (lote unico). Para cada item:
-         - sucesso na retentativa -> sai de `failures`, entra em `processed` com `telefone` = o
-           canonico de 13 digitos que o consumidor mandou (para ele correlacionar) e o `wa_id` que a
-           Meta devolveu;
-         - falha na retentativa -> fica em `failures` a falha ORIGINAL (131047 da primeira chamada).
-         Erro da chamada inteira na retentativa (rede, credencial): NAO vira erro HTTP — devolva o
-         resultado da primeira chamada como esta e logue. Sem 131047 na primeira resposta -> zero
-         chamadas extras (o caminho de hoje fica byte a byte igual).
-         Para o DELETE, `process` continua como hoje; o jeito de so o POST ter retentativa e' decisao
-         sua (ex. parametro `retry bool` em `process`), mas sem duplicar o corpo de `process`.
-         (3) **Log por numero recusado**, nos dois sentidos (POST e DELETE): uma linha
-         `zapgw: block_users <operacao> on instance %q: meta_code %d for ...%s` com
-         `meta.LastEightDigits(phone)` — NUNCA o numero inteiro. Na retentativa, uma linha dizendo se
-         a variante sem o nono digito passou ou falhou (com o meta_code).
-         (4) Docstring de `Validate` (`block_handler.go:115-118`) diz "sending without the ninth digit
-         would silently block ANOTHER number": reescreva para o comportamento novo e o porque (a
-         variante so e' tentada para um numero que a Meta ACABOU de recusar por reengajamento, ou seja,
-         a Meta so aceita bloquear quem escreveu nas ultimas 24 h).
-         (5) Contrato (EN + pt-BR, secao `POST /v1/bloqueios`, ~linha 2907): um paragrafo sobre a
-         retentativa e o `telefone` devolvido. Sem chave nova no JSON.
-         (6) `docs/ARMADILHAS.md`: entrada 🔥 com o custo real (primeiro bloqueio real recusado em
-         23/11; o teste "com 12 digitos" do consumidor foi silenciosamente a mesma chamada; sem log), e
-         a busca por irmaos: quem mais passa numero por `Canonicalize` antes da Meta (`body.go:23`,
-         `message.go:761`) — diga em uma linha que o envio NAO tem o problema medido (envio com 13
-         digitos funciona em producao) e por isso fica fora.
-         (7) Nao mexa em `VERSION` nem crie tag: o release e' do planner.
-Verify:  `CGO_ENABLED=0 go build ./...` · `go test ./...` · `go vet ./...` · `gofmt -l cmd internal`
-         (vazio). E, em `block_handler_test.go`, com servidor Meta falso contando chamadas:
-         (a) primeira resposta sem falha -> exatamente 1 chamada a Meta;
-         (b) 131047 para o de 13 digitos e sucesso para o de 12 -> 2 chamadas, item em `processed` com
-             `telefone` de 13 digitos e o `wa_id` da Meta, `failures` vazio;
-         (c) 131047 nas duas -> 2 chamadas, `failures` com o 131047 original;
-         (d) falha com outro codigo (ex. 131026) ou numero fixo -> 1 chamada;
-         (e) DELETE com 131047 -> 1 chamada.
-         Prove que (b) falha sem a retentativa (desligue-a, rode, cite a saida, religue).
-         ⚠️ NAO verificavel aqui: se a Meta aceita a grafia de 12. A prova e' o dono tentar de novo pelo
-         Atendimento do consumidor, com contato que escreveu nas ultimas 24 h, depois do deploy.
-
 ## [ ] T-248  Seven response keys and literals still Portuguese in code, among English siblings
 After:   DECIDIDO em 2026-09-19 — opcao (1): renomear TUDO de uma vez, bump MINOR, aviso aos dois
          consumidores ANTES do deploy (o dono manda o texto; sem canal). Segurada por ORCAMENTO

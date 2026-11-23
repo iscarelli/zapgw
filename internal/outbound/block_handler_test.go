@@ -419,3 +419,137 @@ func TestBlockTransportFailureGives502TellingToRetry(t *testing.T) {
 		t.Errorf("message = %q, want it to say that retrying is safe", errBody.Error.Message)
 	}
 }
+
+// --- T-268: retry without the ninth digit on 131047 --------------------------
+
+// sequencedBlockGraph answers each call with the next canned body and records
+// the `user` list of every call, so a test can assert HOW MANY calls reached
+// Meta and with which spellings.
+type sequencedBlockGraph struct {
+	srv   *httptest.Server
+	calls atomic.Int64
+	users [][]string
+}
+
+func newSequencedBlockGraph(t *testing.T, bodies ...string) *sequencedBlockGraph {
+	t.Helper()
+	g := &sequencedBlockGraph{}
+	g.srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		i := int(g.calls.Add(1)) - 1
+		var read struct {
+			BlockUsers []struct {
+				User string `json:"user"`
+			} `json:"block_users"`
+		}
+		_ = json.NewDecoder(r.Body).Decode(&read)
+		var us []string
+		for _, u := range read.BlockUsers {
+			us = append(us, u.User)
+		}
+		g.users = append(g.users, us)
+		body := bodies[len(bodies)-1]
+		if i < len(bodies) {
+			body = bodies[i]
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(body))
+	}))
+	t.Cleanup(g.srv.Close)
+	return g
+}
+
+func (g *sequencedBlockGraph) handler(t *testing.T) http.Handler {
+	t.Helper()
+	store, path := storeWithConsumer(t)
+	activateInstance(t, path, "lojinha")
+	return NewBlockHandler(store, NewAuthenticator(store),
+		meta.NewClient(g.srv.Client(), g.srv.URL), 1<<20, config.NewCounter(store), WhatsAppOnly)
+}
+
+const (
+	retryAdded13  = `{"messaging_product":"whatsapp","block_users":{"added_users":[{"input":"5511999990000","wa_id":"5511999990000"}]}}`
+	retryFailed13 = `{"messaging_product":"whatsapp","block_users":{"failed_users":[{"input":"5511999990000","errors":[{"message":"Re-engagement check failed","code":131047}]}]}}`
+	retryAdded12  = `{"messaging_product":"whatsapp","block_users":{"added_users":[{"input":"551199990000","wa_id":"551199990000"}]}}`
+	retryFailed12 = `{"messaging_product":"whatsapp","block_users":{"failed_users":[{"input":"551199990000","errors":[{"message":"Re-engagement check failed","code":131047}]}]}}`
+)
+
+func runRetryCase(t *testing.T, method, phone string, bodies ...string) (*sequencedBlockGraph, blockOperationResponse) {
+	t.Helper()
+	g := newSequencedBlockGraph(t, bodies...)
+	rec := askBlock(t, g.handler(t), method, "token-do-a", `{"instancia":"lojinha","telefones":["`+phone+`"]}`)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
+	}
+	var resp blockOperationResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("body does not deserialize: %v", err)
+	}
+	return g, resp
+}
+
+// (a) first answer without failure: exactly ONE call; today's path untouched.
+func TestBlockRetryNotMadeWhenFirstCallSucceeds(t *testing.T) {
+	g, resp := runRetryCase(t, http.MethodPost, "5511999990000", retryAdded13)
+	if n := g.calls.Load(); n != 1 {
+		t.Fatalf("calls to Meta = %d, want 1", n)
+	}
+	if len(resp.Processed) != 1 || len(resp.Failures) != 0 {
+		t.Errorf("processed=%+v failures=%+v", resp.Processed, resp.Failures)
+	}
+}
+
+// (b) 131047 for the 13-digit form, success for the 12-digit one.
+func TestBlockRetryWithoutNinthDigitRescuesA131047(t *testing.T) {
+	g, resp := runRetryCase(t, http.MethodPost, "5511999990000", retryFailed13, retryAdded12)
+	if n := g.calls.Load(); n != 2 {
+		t.Fatalf("calls to Meta = %d, want 2", n)
+	}
+	if got := g.users[1]; len(got) != 1 || got[0] != "551199990000" {
+		t.Errorf("second call users = %v, want [551199990000]", got)
+	}
+	if len(resp.Failures) != 0 {
+		t.Fatalf("failures = %+v, want none", resp.Failures)
+	}
+	if len(resp.Processed) != 1 || resp.Processed[0].Phone != "5511999990000" || resp.Processed[0].WaID != "551199990000" {
+		t.Errorf("processed = %+v, want telefone 13 digits and the wa_id Meta returned", resp.Processed)
+	}
+}
+
+// (c) 131047 on both: two calls, the ORIGINAL failure stays.
+func TestBlockRetryRefusedTwiceKeepsTheOriginalFailure(t *testing.T) {
+	g, resp := runRetryCase(t, http.MethodPost, "5511999990000", retryFailed13, retryFailed12)
+	if n := g.calls.Load(); n != 2 {
+		t.Fatalf("calls to Meta = %d, want 2", n)
+	}
+	if len(resp.Processed) != 0 || len(resp.Failures) != 1 {
+		t.Fatalf("processed=%+v failures=%+v", resp.Processed, resp.Failures)
+	}
+	if f := resp.Failures[0]; f.Phone != "5511999990000" || f.MetaCode != 131047 {
+		t.Errorf("failure = %+v, want the original 131047 on the 13-digit number", f)
+	}
+}
+
+// (d) another code, or a landline: no retry.
+func TestBlockNoRetryForOtherCodesOrLandline(t *testing.T) {
+	other := `{"messaging_product":"whatsapp","block_users":{"failed_users":[{"input":"5511999990000","errors":[{"message":"x","code":131026}]}]}}`
+	g, _ := runRetryCase(t, http.MethodPost, "5511999990000", other)
+	if n := g.calls.Load(); n != 1 {
+		t.Errorf("other code: calls = %d, want 1", n)
+	}
+	landline := `{"messaging_product":"whatsapp","block_users":{"failed_users":[{"input":"553234567890","errors":[{"message":"x","code":131047}]}]}}`
+	g, _ = runRetryCase(t, http.MethodPost, "553234567890", landline)
+	if n := g.calls.Load(); n != 1 {
+		t.Errorf("landline: calls = %d, want 1", n)
+	}
+}
+
+// (e) DELETE never retries.
+func TestBlockDeleteNeverRetries(t *testing.T) {
+	g, resp := runRetryCase(t, http.MethodDelete, "5511999990000", retryFailed13, retryAdded12)
+	if n := g.calls.Load(); n != 1 {
+		t.Fatalf("calls to Meta = %d, want 1", n)
+	}
+	if len(resp.Failures) != 1 {
+		t.Errorf("failures = %+v, want the 131047 untouched", resp.Failures)
+	}
+}
