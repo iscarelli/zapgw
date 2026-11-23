@@ -2217,6 +2217,22 @@ backup safe to exist). With a key, whoever steals the database cannot enumerate 
 gateway; without a key, the "anonymized" data opens with a script.* See `internal/config/crypto.go`
 (`Cofre.DeterministicHMAC`) and `internal/config/transit.go`.
 
+### 🔥 Blocking: the "13 vs 12 digits" test the consumer ran was the SAME call twice (2026-11-23)
+
+**`POST /v1/bloqueios` canonicalizes every number (`Validate`, `internal/outbound/block_handler.go`),
+which reinserts the ninth digit — so sending 12 digits from outside changes nothing.**
+*Cost: the first real block, on production, came back `200` with `processed: []` and `failures[0]` =
+`131047` "Re-engagement check failed", no `wa_id`. The consumer retried with 12 digits to test the
+spelling; both attempts were the same 13-digit call, so the test proved nothing. And the journal had no
+line at all: a per-number failure is a `200`, which logged nothing.* Fix (T-268): on `POST` only, a number
+refused with `131047` is retried once without the ninth digit (`meta.WithoutNinthDigit`), and every refused
+number now logs one line with the last eight digits. Whether Meta accepts the 12-digit spelling is NOT
+verified from here.
+*Siblings:* `internal/outbound/body.go:23` and `internal/outbound/message.go:761` also pass the number
+through `Canonicalize` before Meta. **Sending does not have the measured problem** (sending with 13 digits
+works in production), so it stays out. Another trap in the retry itself: Meta echoes the 12-digit `input`,
+and canonicalizing that echo to look it up reinserts the 9 and matches nothing (caught by the T-268 test).
+
 ---
 
 ## Tests

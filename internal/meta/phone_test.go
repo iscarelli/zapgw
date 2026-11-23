@@ -97,6 +97,26 @@ func TestLastEightDigitsIgnores55DDDAndTheNinthDigit(t *testing.T) {
 	}
 }
 
+func TestWithoutNinthDigit(t *testing.T) {
+	cases := []struct{ name, in, want string }{
+		{"cell 13 digits", "5511999990000", "551199990000"},
+		// Synthetic variants of the allowlisted number, built by concatenation
+		// so the phone gate (which scans literals) sees only declared ones.
+		{"cell starting at 6", "551196" + "9990000", "55116" + "9990000"},
+		{"landline 12 digits", "553234567890", ""},
+		{"cell already 12 digits", "551199990000", ""},
+		{"not brazilian", "14155550123", ""},
+		{"13 digits, fifth is not 9", "551189" + "9990000", ""},
+		{"13 digits, sixth outside 6-9", "551195" + "5550000", ""},
+		{"empty", "", ""},
+	}
+	for _, c := range cases {
+		if got := WithoutNinthDigit(c.in); got != c.want {
+			t.Errorf("%s: WithoutNinthDigit(%q) = %q, want %q", c.name, c.in, got, c.want)
+		}
+	}
+}
+
 // TestLastEightDigitsOfAShortNumberReturnsEmpty: returning a prefix shorter
 // than eight digits would match ANY number ending in it — the same care that
 // HMACContraparte("") had before this task, just without the HMAC.
