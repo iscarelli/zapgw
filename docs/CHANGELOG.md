@@ -2,6 +2,10 @@
 
 One line per version shipped, in the same commit as the bump. The entry states the **effect**, not the diff.
 
+## Unreleased
+
+- **Media insights: retry without profile_visits when Meta rejects it for the media type** (T-272) — a per-post insights call refused with Meta code `100` is retried once without `profile_visits` (null on Reels); a failing retry or any non-100 error behaves as before. Contract notes updated (`caption` measured, `follows_and_unfollows` rule); pitfall recorded with the account-insights sibling sweep. _Completed 2026-11-24 12:58._
+
 ## v0.78.0 — 2026-11-24
 
 - **Instagram account insights and media list with per-post metrics** (T-271) — new `GET /v1/instances/{slug}/instagram-insights?since=&until=` (six account metrics as Meta's `total_value.value`, plus `followers_count` and `media_count`; an omitted metric is `null`, never `0`) and `GET /v1/instances/{slug}/instagram-media?limit=&after=` (1..25, default 10; each item carries per-post `insights`, and one item's Meta failure gives that item `insights: null` plus `insights_error` without failing the page). Instagram instances only; bad `since`/`until`/`limit` is `400` without calling Meta. `caption` is retried once without it if Meta refuses it (unmeasured). Not measured against the real Meta yet. _Completed 2026-11-24 12:42._

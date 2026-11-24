@@ -4552,3 +4552,26 @@ practically everywhere, for exactly that failure mode: `404`, "there is no route
 (T-252) special-cases `404` in `ConsumerVerdict` to answer `502` with `Alarm: false`, the same treatment as a
 transient `5xx`, before the general `status >= 400` branch runs — the other 4xx codes (`400`/`401`/`403`/`409`/
 `413`/`422`) still mean the consumer read the event and refused it on purpose, and stay definitive.
+
+### 🔥 Meta rejects a WHOLE insights request for one metric the media type does not support (2026-11-24)
+
+**Cost: every Reels of every consumer came back with `insights: null` from v0.78.0 until the fix (T-272).** A
+consumer measured it in production on 2026-11-24: `GET /<media_id>/insights` with six metrics failed with
+`code 100`, "The Media Insights API does not support the profile_visits metric for this media product type."
+Meta does not drop the unsupported metric and answer the rest; it refuses the whole request, so one metric that
+fits IMAGE but not VIDEO took five valid ones down with it. T-271's fake Graph answered every item the same way,
+so no test could have seen it.
+
+**The rule:** a multi-metric insights request is all-or-nothing per media product type. `InstagramMediaInsights`
+(`internal/meta/instagram_insights.go`) now retries ONCE without `profile_visits` on a code-`100` refusal and
+returns the retry's error if that fails too; it does not branch on `media_type`, because Meta's message names the
+product type, not the rule.
+
+**Siblings swept (same file):**
+- **Account insights (`GET /<ig_id>/insights`) has the same hole.** It sends six metrics in one request
+  (`AccountInsightMetrics`), so it also fails WHOLE if Meta refuses any one of them. Today it does NOT retry: a
+  refusal passes through as Meta's error (`respondInstagramInsightsError`) and the consumer gets no account
+  numbers at all. It has not charged yet: the account call returned all six on 2026-11-24 (`follows_and_unfollows`
+  came `null`, not an error). If it ever charges, the same one-retry shape applies, but which metric to drop is
+  not known.
+- **The media list** already retries once without `caption` (a field list, same all-or-nothing shape).

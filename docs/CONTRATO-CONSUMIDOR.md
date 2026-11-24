@@ -3377,11 +3377,18 @@ opaque `next_cursor` of the previous page.
 - **Per post, the metrics asked** are `reach`, `saved`, `shares`, `views`, `total_interactions` and
   `profile_visits`; a metric Meta omits is `null`. Nothing equivalent to "profile views" per post is asked.
   Same 48-hour delay as above.
+- **`profile_visits` is `null` on media types Meta does not support it for** (measured 2026-11-24: Reels,
+  `media_type: VIDEO`). Meta refuses the WHOLE per-post request (code `100`) when one metric does not fit the
+  product type, so on a code-`100` refusal the gateway retries that item **once** without `profile_visits`;
+  the other five metrics come back and the item has no `insights_error`. If the retry fails too, the item
+  carries the retry's error. Any other error is not retried.
+- `follows_and_unfollows` (account insights) came `null` in the same measured reading. Meta documents that it
+  does not return it under 100 followers; that is Meta's rule, not something measured here as the cause.
 - `like_count`, `comments_count` and `caption` are `null` when Meta does not send them.
-- ⚠️ **`caption` is unmeasured.** Meta's documentation flags it as Facebook-Login-only. If Meta refuses the
-  list for asking it, the gateway retries **once** without `caption` and every `caption` comes back `null`
-  (it does not fail the call for it). Whether the real Meta refuses it for an Instagram-Login token has not
-  been observed.
+- `caption` was measured non-null on 2026-11-24 on Instagram Login (one account, three items). Meta's
+  documentation flags it as Facebook-Login-only, so the guard stays: if Meta refuses the list for asking it,
+  the gateway retries **once** without `caption` and every `caption` comes back `null` (it does not fail the
+  call for it).
 - `next_cursor` is `null` when Meta gives no next page.
 
 Not measured against the real Meta yet: this suite only proves the gateway against a fake Graph.
