@@ -492,6 +492,37 @@ instancias foram rotacionadas. Duas licoes que custaram na hora e valem alem des
 
 > A fila do periodo privado esta em `iscarelli/zapgw-dev`, congelada. Tarefa nova nasce aqui.
 
+## [ ] T-272  Media insights: retry without profile_visits when Meta rejects it for the media type
+Why:     Measured by a consumer in production on 2026-11-24 12:48: for a Reels item (`media_type: VIDEO`)
+         `GET /<media_id>/insights` with T-271's metric list fails WHOLE with meta_code 100, "The Media
+         Insights API does not support the profile_visits metric for this media product type." — so every
+         Reels comes with `insights: null`. IMAGE items work. Same consumer measured `caption` non-null on
+         Instagram Login (3 items), so the contract's "caption is unmeasured" note is now stale.
+Vikunja: 4105
+Files:   internal/meta/instagram_insights.go (+ _test), internal/outbound/instagram_insights_handler_test.go,
+         docs/CONTRATO-CONSUMIDOR.md + .pt-BR.md, docs/ARMADILHAS.md, docs/CHANGELOG.md
+Do:      1. Per-item media insights: when the call fails with a Meta error whose code is 100 AND the request
+            included `profile_visits`, retry ONCE for that item with the same metric list minus
+            `profile_visits`; on success that item's `profile_visits` is `null` and no `insights_error`.
+            If the retry also fails, the item gets the RETRY's error as today. Any other error: no retry.
+            Do not branch on media_type (Meta's message names the product type, not the rule; a retry is
+            robust to whatever other types it also rejects).
+         2. Contract (EN + pt-BR), media-list section: `profile_visits` is `null` on media types Meta does not
+            support it for (measured: Reels/VIDEO); replace the "caption is unmeasured" note with "measured
+            non-null on 2026-11-24 on Instagram Login (one account, three items); the no-caption retry stays as
+            a guard". Also note `follows_and_unfollows` came `null` in the same measured reading (Meta does
+            not return it under 100 followers — say it is Meta's documented rule, not measured as the cause).
+         3. docs/ARMADILHAS.md, new entry (🔥, it charged): Meta rejects a whole insights request for one
+            metric unsupported by the media product type; cost = every Reels without metrics from v0.78.0 to
+            the fix. Sweep the siblings and say so in the entry: the account-insights call
+            (`GET /<ig_id>/insights`, same file) sends six metrics in one request too — state whether it has
+            the same hole (it fails whole too) and what it does today.
+Verify:  Four CLAUDE.md commands green. Fake-Graph tests: first insights call with profile_visits -> code 100 ->
+         second call WITHOUT profile_visits -> item has metrics + profile_visits null + no insights_error;
+         a non-100 error -> exactly one call, insights_error as before; retry also failing -> two calls, item
+         carries the retry's error; IMAGE path unchanged (one call). Assert the exact `metric=` query of each
+         call.
+
 ## [ ] T-248  Seven response keys and literals still Portuguese in code, among English siblings
 After:   DECIDIDO em 2026-09-19 — opcao (1): renomear TUDO de uma vez, bump MINOR, aviso aos dois
          consumidores ANTES do deploy (o dono manda o texto; sem canal). Segurada por ORCAMENTO
