@@ -492,6 +492,53 @@ instancias foram rotacionadas. Duas licoes que custaram na hora e valem alem des
 
 > A fila do periodo privado esta em `iscarelli/zapgw-dev`, congelada. Tarefa nova nasce aqui.
 
+## [ ] T-269  Instagram user profile lookup by IGSID (username and name)
+Why:     The DM webhook carries only `sender.id` (IGSID), never the @; a consumer needs the @ of whoever
+         wrote by DM to fill its customer record. Owner decided on 2026-11-24 ("Criamos").
+Vikunja: 4101
+Files:   internal/meta/instagram_profile.go (new) + _test, internal/outbound/instagram_user_handler.go
+         (new) + _test, cmd/zapgw/main.go, internal/outbound/isolamento_test.go (only if the table needs
+         the new route declared), docs/CONTRATO-CONSUMIDOR.md + docs/CONTRATO-CONSUMIDOR.pt-BR.md,
+         docs/CHANGELOG.md (`## Unreleased`)
+Do:      Meta side (read on 2026-11-24, https://developers.facebook.com/docs/instagram-platform/instagram-api-with-instagram-login/messaging-api/user-profile):
+         `GET https://graph.instagram.com/<version>/<IGSID>?fields=name,username&access_token=<IG user token>`.
+         Works only after user consent, which Meta sets when the user SENDS A MESSAGE to the account (or
+         taps an icebreaker / persistent menu); a comment does not grant it; a user who blocked the
+         business is not readable. Missing consent -> error text "User consent is required to access
+         user profile." (Meta's page gives no code/subcode). `name` can be null.
+         1. `internal/meta/instagram_profile.go`: `func (c *Client) InstagramUserProfile(ctx, base, igsid,
+            token string) (InstagramUserProfile, error)` returning `{Username, Name string}`. Reject an
+            igsid that is not all digits BEFORE building the URL (same reason as PhoneNumberIDValid in
+            SendInstagramMessage, internal/meta/instagram.go:443). Use the same host root and version the
+            Instagram send uses (`baseInstagram`, DefaultInstagramRenewalBase), and the SAME Meta-error
+            parsing the Instagram send uses, so code/subcode/fbtrace reach the consumer the usual way.
+            Never log the token.
+         2. `internal/outbound/instagram_user_handler.go`: route
+            `GET /v1/instances/{slug}/instagram-users/{igsid}`, registered as a string LITERAL (isolation
+            table reads it by text — see block_handler.go:86-95). Model it on
+            internal/outbound/account_health_handler.go (GET with {slug}): authenticate, require the
+            instance to belong to the consumer (403 otherwise, 404 unknown instance), paused instance
+            behaves as the other read routes do. Constructor takes `AcceptedTypes` positionally and
+            main.go passes `outbound.InstagramOnly` (first use of it; update the "STILL UNUSED" comment in
+            internal/outbound/types.go:44-46). Token: `inst.SendToken`, as handler.go:574 does.
+            Response 200: `{"igsid": "...", "username": "...", "name": "..." | null}` — username lowercased
+            and without a leading `@`. Meta error -> the same error shape/status mapping POST /v1/messages
+            uses for a Meta refusal; the consent case must be distinguishable by the consumer (meta_code
+            and the Meta message passed through).
+         3. Contract: new section in docs/CONTRATO-CONSUMIDOR.md AND its pt-BR mirror: route, response,
+            the consent condition (only people who have messaged), `name` nullable, a WhatsApp instance
+            gets 400 class `config`, low volume expected (Meta's page states no rate limit — say so, do
+            not invent one). Examples from a test capture, not typed from memory.
+         Synthetic values only (no real IGSID/username) — the phone/name gates run on every file.
+Verify:  The four commands of CLAUDE.md green. Tests (httptest fake Graph) prove: 200 with username
+         lowercased and `@` stripped; `name` null passes through as null; consent error from Meta ->
+         error response carrying Meta's code and message; non-digit igsid -> 400 WITHOUT calling the
+         fake (assert zero hits); WhatsApp instance -> 400 class `config`; other consumer's instance ->
+         403; request URL seen by the fake has path `/<igsid>` and `fields` containing username and name,
+         and the token never appears in any log line captured during the test.
+         Real-Meta proof is NOT reachable by this suite: it is measured after deploy with an IGSID that
+         has written to the account.
+
 ## [ ] T-248  Seven response keys and literals still Portuguese in code, among English siblings
 After:   DECIDIDO em 2026-09-19 — opcao (1): renomear TUDO de uma vez, bump MINOR, aviso aos dois
          consumidores ANTES do deploy (o dono manda o texto; sem canal). Segurada por ORCAMENTO
