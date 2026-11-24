@@ -182,6 +182,18 @@ func outboundRoutes() []outboundRoute {
 			},
 		},
 		{
+			route: "GET /v1/instances/{slug}/instagram-insights",
+			build: func(slug string) *http.Request {
+				return newRequest(http.MethodGet, "/v1/instances/"+slug+"/instagram-insights?since=1700000000&until=1700086400", "")
+			},
+		},
+		{
+			route: "GET /v1/instances/{slug}/instagram-media",
+			build: func(slug string) *http.Request {
+				return newRequest(http.MethodGet, "/v1/instances/"+slug+"/instagram-media", "")
+			},
+		},
+		{
 			route: "GET /v1/estado",
 			build: func(slug string) *http.Request {
 				return newRequest(http.MethodGet, "/v1/estado?instancia="+slug, "")
@@ -292,6 +304,9 @@ func allOutboundRoutes(t *testing.T, srv *httptest.Server) http.Handler {
 	publish := NewInstagramPublishHandler(store, auth, client, maxBytes, InstagramOnly)
 	mux.Handle("POST /v1/instances/{slug}/instagram-posts", publish)
 	mux.Handle("GET /v1/instances/{slug}/instagram-publishing-limit", publish)
+	insights := NewInstagramInsightsHandler(store, auth, client, InstagramOnly)
+	mux.Handle("GET /v1/instances/{slug}/instagram-insights", insights)
+	mux.Handle("GET /v1/instances/{slug}/instagram-media", insights)
 	mux.Handle("/v1/estado", NewStateHandler(store, auth, NewWatchdog(store, client), nil,
 		IngressSource{}, nil, nil, testVersion, config.DefaultRetentionDays, counter, AllTypes))
 	mux.Handle("/v1/cadastro", NewRegistrationHandler(store, auth, maxBytes, counter, WhatsAppOnly))

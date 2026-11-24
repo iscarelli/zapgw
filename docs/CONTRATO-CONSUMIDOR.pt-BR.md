@@ -3294,6 +3294,78 @@ Os três números são **da Meta, repassados**. 🔴 As próprias páginas da Me
 (**50** num lugar, **100** em outro), então o gateway não fixa nenhum dos dois: leia `quota_total` desta
 resposta em vez de presumir. Mesmas guardas e o corpo de erro habitual da Meta, como acima.
 
+## Insights da conta — `GET /v1/instances/{slug}/instagram-insights` (2026-11-24)
+
+**`GET /v1/instances/{slug}/instagram-insights?since=<unix>&until=<unix>`** ·
+`Authorization: Bearer <seu token>` · Só instâncias Instagram (uma instância WhatsApp dá `400`, classe `config`).
+
+`since` e `until` são **obrigatórios**, só dígitos (segundos unix), e `since` tem de ser anterior a `until`;
+qualquer outra coisa é `400` e a Meta não é chamada.
+
+```jsonc
+// 200 — valores sintéticos
+{
+  "since": 1700000000, "until": 1700086400,
+  "followers_count": 4321, "media_count": 98,
+  "metrics": {
+    "reach": 1200, "accounts_engaged": 80, "views": 5000,
+    "total_interactions": 310, "follows_and_unfollows": -3, "profile_links_taps": null
+  }
+}
+```
+
+- **As seis métricas estão sempre presentes.** A que a Meta omite ou devolve vazia vem **`null`, nunca `0`**
+  (Meta: dado ausente é conjunto vazio) — `0` é uma medição, `null` é a ausência de uma. Vale também para
+  `followers_count` e `media_count`.
+- **Todo número é o `total_value.value` da Meta, repassado.** O gateway não soma, não tira média e não
+  compara nada. Ele pede à Meta `period=day` e `metric_type=total_value` sobre a janela que você deu.
+- **O dado pode chegar até 48 horas atrasado** (afirmação da Meta), então uma janela que termina hoje é
+  incompleta.
+- **Não existe métrica de "visualizações do perfil" no nível da conta** na tabela atual da Meta; a mais
+  próxima é `profile_links_taps`. `impressions` está obsoleta na Meta e não é pedida.
+
+## Lista de mídia com métricas por post — `GET /v1/instances/{slug}/instagram-media` (2026-11-24)
+
+**`GET /v1/instances/{slug}/instagram-media?limit=<1..25>&after=<cursor>`** ·
+`Authorization: Bearer <seu token>` · Só instâncias Instagram.
+
+`limit` tem padrão **10**; `0`, acima de `25` ou não inteiro é `400` e a Meta não é chamada. `after` é o
+`next_cursor` opaco da página anterior.
+
+```jsonc
+// 200 — valores sintéticos
+{
+  "items": [
+    { "id": "17900000000000001", "media_type": "IMAGE", "timestamp": "2026-11-20T10:00:00+0000",
+      "permalink": "https://www.example.invalid/p/AAAA/", "caption": "primeiro post",
+      "like_count": 5, "comments_count": 1,
+      "insights": { "reach": 100, "saved": 4, "shares": 2, "views": 150,
+                    "total_interactions": 20, "profile_visits": null } },
+    { "id": "17900000000000002", "media_type": "CAROUSEL_ALBUM", "timestamp": "2026-11-19T10:00:00+0000",
+      "permalink": "https://www.example.invalid/p/BBBB/", "caption": null,
+      "like_count": null, "comments_count": null,
+      "insights": null,
+      "insights_error": { "class": "permanent", "meta_code": 100, "message": "…mensagem da Meta…" } }
+  ],
+  "next_cursor": "QVFIUjAw…"   // null na última página
+}
+```
+
+- **Um item que falha não derruba a página.** Se a Meta recusa os insights de um post, aquele item vem com
+  `insights: null` mais `insights_error` (`class`, `meta_code`, `meta_subcode` quando a Meta manda, e a
+  `message` da Meta); os outros voltam intactos com `200`. Item sem erro não tem a chave `insights_error`.
+- **Por post, as métricas pedidas** são `reach`, `saved`, `shares`, `views`, `total_interactions` e
+  `profile_visits`; a que a Meta omite é `null`. Nada equivalente a "visualizações do perfil" é pedido por
+  post. Mesmo atraso de 48 horas acima.
+- `like_count`, `comments_count` e `caption` são `null` quando a Meta não os envia.
+- ⚠️ **`caption` não foi medido.** A documentação da Meta o marca como exclusivo do Facebook Login. Se a Meta
+  recusa a lista por causa dele, o gateway tenta **uma vez** sem `caption` e todo `caption` volta `null` (não
+  falha a chamada por isso). Se a Meta real o recusa para um token do Instagram Login, ainda não foi
+  observado.
+- `next_cursor` é `null` quando a Meta não dá próxima página.
+
+Ainda não medido contra a Meta real: esta suíte só prova o gateway contra um Graph falso.
+
 ---
 
 ## Duas perguntas diferentes — e a segunda tem fonte PRÓPRIA, que sobrevive à sua queda (2026-08-06, atualizado 2026-08-07)
