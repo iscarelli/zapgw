@@ -33,6 +33,8 @@ type fakeInsightsGraph struct {
 	meBody         string
 	mediaFn        func(fields string) (int, string)
 	mediaInsightFn func(id string) (int, string)
+	// mediaInsightQFn, when set, sees the metric list of each call too.
+	mediaInsightQFn func(id, metric string) (int, string)
 }
 
 func (f *fakeInsightsGraph) server(t *testing.T) *httptest.Server {
@@ -78,6 +80,11 @@ func (f *fakeInsightsGraph) server(t *testing.T) *httptest.Server {
 				"paging":{"cursors":{"before":"B","after":"CUR2"},"next":"https://graph.example.invalid/next"}}`)
 		case strings.HasSuffix(r.URL.Path, "/insights"):
 			id := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/"), "/insights")
+			if f.mediaInsightQFn != nil {
+				st, b := f.mediaInsightQFn(id, r.URL.Query().Get("metric"))
+				write(st, b)
+				return
+			}
 			if f.mediaInsightFn != nil {
 				st, b := f.mediaInsightFn(id)
 				write(st, b)
@@ -339,6 +346,99 @@ func TestInstagramMediaOneItemInsightsFailureDoesNotFailThePage(t *testing.T) {
 	if e == nil || e["meta_code"] != float64(100) || e["meta_subcode"] != float64(2108006) ||
 		!strings.Contains(e["message"].(string), "business account conversion") {
 		t.Errorf("insights_error = %v", second["insights_error"])
+	}
+}
+
+const (
+	withVisits     = "reach,saved,shares,views,total_interactions,profile_visits"
+	withoutVisits  = "reach,saved,shares,views,total_interactions"
+	rejectedVisits = `{"error":{"message":"The Media Insights API does not support the profile_visits metric for this media product type.","code":100,"fbtrace_id":"TRACE-SYNTH-5"}}`
+)
+
+func metricQueries(calls []insightsCall, id string) []string {
+	var out []string
+	for _, c := range calls {
+		if c.path == "/"+id+"/insights" {
+			out = append(out, c.rawQuery)
+		}
+	}
+	return out
+}
+
+// Meta rejects the whole request for one unsupported metric (Reels): the item
+// retries once without profile_visits and keeps the rest.
+func TestInstagramMediaInsightsCode100RetriesWithoutProfileVisits(t *testing.T) {
+	fake := &fakeInsightsGraph{mediaInsightQFn: func(id, metric string) (int, string) {
+		if id == "m2" && metric == withVisits {
+			return 400, rejectedVisits
+		}
+		return 200, `{"data":[{"name":"reach","values":[{"value":100}]},{"name":"saved","values":[{"value":4}]}]}`
+	}}
+	h := insightsRoute(t, fake.server(t))
+	rec := getInsights(t, h, "insta-loja", "instagram-media", "")
+	if rec.Code != 200 {
+		t.Fatalf("status = %d; body = %s", rec.Code, rec.Body.String())
+	}
+	second := decodeMap(t, rec)["items"].([]any)[1].(map[string]any)
+	ins, _ := second["insights"].(map[string]any)
+	if ins == nil || ins["reach"] != float64(100) || ins["saved"] != float64(4) {
+		t.Fatalf("insights = %v", second["insights"])
+	}
+	if v, present := ins["profile_visits"]; !present || v != nil {
+		t.Errorf("profile_visits = %v (present=%v), want null", v, present)
+	}
+	if second["insights_error"] != nil {
+		t.Errorf("insights_error = %v, want none", second["insights_error"])
+	}
+	enc := func(s string) string { return "metric=" + strings.ReplaceAll(s, ",", "%2C") }
+	got := metricQueries(fake.snapshot(), "m2")
+	if len(got) != 2 || got[0] != enc(withVisits) || got[1] != enc(withoutVisits) {
+		t.Errorf("m2 queries = %v", got)
+	}
+	if g := metricQueries(fake.snapshot(), "m1"); len(g) != 1 || g[0] != enc(withVisits) {
+		t.Errorf("m1 (IMAGE path) queries = %v, want exactly one with profile_visits", g)
+	}
+}
+
+// A non-100 error is not retried.
+func TestInstagramMediaInsightsNon100IsNotRetried(t *testing.T) {
+	fake := &fakeInsightsGraph{mediaInsightQFn: func(id, metric string) (int, string) {
+		if id == "m2" {
+			return 500, `{"error":{"message":"transient","code":2,"fbtrace_id":"TRACE-SYNTH-6"}}`
+		}
+		return 200, `{"data":[{"name":"reach","values":[{"value":100}]}]}`
+	}}
+	h := insightsRoute(t, fake.server(t))
+	rec := getInsights(t, h, "insta-loja", "instagram-media", "")
+	second := decodeMap(t, rec)["items"].([]any)[1].(map[string]any)
+	if second["insights_error"] == nil || second["insights"] != nil {
+		t.Errorf("second = %v", second)
+	}
+	if got := metricQueries(fake.snapshot(), "m2"); len(got) != 1 {
+		t.Errorf("m2 calls = %v, want exactly one", got)
+	}
+}
+
+// If the retry fails too, the item carries the RETRY's error.
+func TestInstagramMediaInsightsRetryFailingCarriesTheRetrysError(t *testing.T) {
+	fake := &fakeInsightsGraph{mediaInsightQFn: func(id, metric string) (int, string) {
+		if id == "m2" && metric == withVisits {
+			return 400, rejectedVisits
+		}
+		if id == "m2" {
+			return 400, `{"error":{"message":"second refusal","code":100,"error_subcode":2108006,"fbtrace_id":"TRACE-SYNTH-7"}}`
+		}
+		return 200, `{"data":[{"name":"reach","values":[{"value":100}]}]}`
+	}}
+	h := insightsRoute(t, fake.server(t))
+	rec := getInsights(t, h, "insta-loja", "instagram-media", "")
+	second := decodeMap(t, rec)["items"].([]any)[1].(map[string]any)
+	e, _ := second["insights_error"].(map[string]any)
+	if e == nil || !strings.Contains(e["message"].(string), "second refusal") || second["insights"] != nil {
+		t.Errorf("second = %v", second)
+	}
+	if got := metricQueries(fake.snapshot(), "m2"); len(got) != 2 {
+		t.Errorf("m2 calls = %v, want exactly two", got)
 	}
 }
 

@@ -3359,11 +3359,17 @@ qualquer outra coisa é `400` e a Meta não é chamada.
 - **Por post, as métricas pedidas** são `reach`, `saved`, `shares`, `views`, `total_interactions` e
   `profile_visits`; a que a Meta omite é `null`. Nada equivalente a "visualizações do perfil" é pedido por
   post. Mesmo atraso de 48 horas acima.
+- **`profile_visits` é `null` nos tipos de mídia para os quais a Meta não o suporta** (medido em 2026-11-24:
+  Reels, `media_type: VIDEO`). A Meta recusa a requisição INTEIRA do post (código `100`) quando uma métrica não
+  serve ao tipo de produto; por isso, numa recusa com código `100` o gateway tenta aquele item **uma vez** sem
+  `profile_visits`; as outras cinco métricas voltam e o item não tem `insights_error`. Se a nova tentativa
+  também falha, o item leva o erro dela. Qualquer outro erro não é repetido.
+- `follows_and_unfollows` (insights da conta) veio `null` na mesma leitura medida. A Meta documenta que não o
+  devolve com menos de 100 seguidores; essa é a regra da Meta, não algo medido aqui como causa.
 - `like_count`, `comments_count` e `caption` são `null` quando a Meta não os envia.
-- ⚠️ **`caption` não foi medido.** A documentação da Meta o marca como exclusivo do Facebook Login. Se a Meta
-  recusa a lista por causa dele, o gateway tenta **uma vez** sem `caption` e todo `caption` volta `null` (não
-  falha a chamada por isso). Se a Meta real o recusa para um token do Instagram Login, ainda não foi
-  observado.
+- `caption` foi medido não nulo em 2026-11-24 no Instagram Login (uma conta, três itens). A documentação da Meta
+  o marca como exclusivo do Facebook Login, então a guarda continua: se a Meta recusa a lista por causa dele, o
+  gateway tenta **uma vez** sem `caption` e todo `caption` volta `null` (não falha a chamada por isso).
 - `next_cursor` é `null` quando a Meta não dá próxima página.
 
 Ainda não medido contra a Meta real: esta suíte só prova o gateway contra um Graph falso.

@@ -207,13 +207,31 @@ func (c *Client) InstagramMediaList(ctx context.Context, base, igID, token strin
 	return page, nil
 }
 
-// InstagramMediaInsights reads the per-post metrics of one media id.
+// InstagramMediaInsights reads the per-post metrics of one media id. Meta
+// rejects the WHOLE request (code 100) when one metric is unsupported by the
+// media product type (measured 2026-11-24: profile_visits on Reels), so on a
+// code-100 refusal it retries ONCE without profile_visits; that metric is then
+// nil. If the retry fails too, the retry's error is returned. Any other error
+// is not retried.
 func (c *Client) InstagramMediaInsights(ctx context.Context, base, mediaID, token string) (map[string]*int64, error) {
 	if !PhoneNumberIDValid(mediaID) {
 		return nil, ErrInvalidPhoneNumberID
 	}
-	raw, err := c.instagramGet(ctx, base, token, []string{mediaID, "insights"},
-		url.Values{"metric": {strings.Join(MediaInsightMetrics, ",")}})
+	get := func(metrics []string) ([]byte, error) {
+		return c.instagramGet(ctx, base, token, []string{mediaID, "insights"},
+			url.Values{"metric": {strings.Join(metrics, ",")}})
+	}
+	raw, err := get(MediaInsightMetrics)
+	var me *MetaError
+	if errors.As(err, &me) && me.MetaCode == 100 {
+		without := make([]string, 0, len(MediaInsightMetrics))
+		for _, m := range MediaInsightMetrics {
+			if m != "profile_visits" {
+				without = append(without, m)
+			}
+		}
+		raw, err = get(without)
+	}
 	if err != nil {
 		return nil, err
 	}
