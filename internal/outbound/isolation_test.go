@@ -176,6 +176,15 @@ func outboundRoutes() []outboundRoute {
 			},
 		},
 		{
+			route: "POST /v1/instances/{slug}/instagram-reels",
+			build: func(slug string) *http.Request {
+				r := newRequest(http.MethodPost, "/v1/instances/"+slug+"/instagram-reels",
+					`{"video_url":"https://vid.example.invalid/a.mp4"}`)
+				r.Header.Set("Idempotency-Key", "k-isolamento-reels-"+slug)
+				return r
+			},
+		},
+		{
 			route: "GET /v1/instances/{slug}/instagram-publishing-limit",
 			build: func(slug string) *http.Request {
 				return newRequest(http.MethodGet, "/v1/instances/"+slug+"/instagram-publishing-limit", "")
@@ -303,6 +312,7 @@ func allOutboundRoutes(t *testing.T, srv *httptest.Server) http.Handler {
 	mux.Handle("/v1/instances/{slug}/instagram-users/{igsid}", NewInstagramUserHandler(store, auth, client, InstagramOnly))
 	publish := NewInstagramPublishHandler(store, auth, client, maxBytes, InstagramOnly)
 	mux.Handle("POST /v1/instances/{slug}/instagram-posts", publish)
+	mux.Handle("POST /v1/instances/{slug}/instagram-reels", publish)
 	mux.Handle("GET /v1/instances/{slug}/instagram-publishing-limit", publish)
 	insights := NewInstagramInsightsHandler(store, auth, client, InstagramOnly)
 	mux.Handle("GET /v1/instances/{slug}/instagram-insights", insights)

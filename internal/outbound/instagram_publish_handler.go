@@ -75,6 +75,7 @@ func NewInstagramPublishHandlerWithBase(store *config.Store, auth *Authenticator
 	// String LITERALS: the isolation table reads these registrations by text.
 	mux.HandleFunc("POST /v1/instances/{slug}/instagram-posts", h.publish)
 	mux.HandleFunc("GET /v1/instances/{slug}/instagram-publishing-limit", h.limit)
+	mux.HandleFunc("POST /v1/instances/{slug}/instagram-reels", h.reels)
 	return mux
 }
 

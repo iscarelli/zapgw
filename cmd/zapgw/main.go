@@ -203,6 +203,7 @@ func routes(inboundHandler, outboundHandler, healthHandler, templatesHandler, me
 		// reasoning as account-health above.
 		mux.Handle("POST /v1/instances/{slug}/instagram-posts", instagramPublishHandler)
 		mux.Handle("GET /v1/instances/{slug}/instagram-publishing-limit", instagramPublishHandler)
+		mux.Handle("POST /v1/instances/{slug}/instagram-reels", instagramPublishHandler) // T-273
 	}
 	if instagramInsightsHandler != nil {
 		// LAN routes (T-271): they read the tenant's Instagram data with its
