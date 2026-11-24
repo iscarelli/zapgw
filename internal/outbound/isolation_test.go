@@ -167,6 +167,21 @@ func outboundRoutes() []outboundRoute {
 			},
 		},
 		{
+			route: "POST /v1/instances/{slug}/instagram-posts",
+			build: func(slug string) *http.Request {
+				r := newRequest(http.MethodPost, "/v1/instances/"+slug+"/instagram-posts",
+					`{"images":[{"url":"https://img.example.invalid/a.jpg"}]}`)
+				r.Header.Set("Idempotency-Key", "k-isolamento-posts-"+slug)
+				return r
+			},
+		},
+		{
+			route: "GET /v1/instances/{slug}/instagram-publishing-limit",
+			build: func(slug string) *http.Request {
+				return newRequest(http.MethodGet, "/v1/instances/"+slug+"/instagram-publishing-limit", "")
+			},
+		},
+		{
 			route: "GET /v1/estado",
 			build: func(slug string) *http.Request {
 				return newRequest(http.MethodGet, "/v1/estado?instancia="+slug, "")
@@ -274,6 +289,9 @@ func allOutboundRoutes(t *testing.T, srv *httptest.Server) http.Handler {
 	mux.Handle("/v1/instances/", NewHealthHandler(store, auth, client, AllTypes))
 	mux.Handle("/v1/instances/{slug}/account-health", NewAccountHealthHandler(store, auth, client, AllTypes))
 	mux.Handle("/v1/instances/{slug}/instagram-users/{igsid}", NewInstagramUserHandler(store, auth, client, InstagramOnly))
+	publish := NewInstagramPublishHandler(store, auth, client, maxBytes, InstagramOnly)
+	mux.Handle("POST /v1/instances/{slug}/instagram-posts", publish)
+	mux.Handle("GET /v1/instances/{slug}/instagram-publishing-limit", publish)
 	mux.Handle("/v1/estado", NewStateHandler(store, auth, NewWatchdog(store, client), nil,
 		IngressSource{}, nil, nil, testVersion, config.DefaultRetentionDays, counter, AllTypes))
 	mux.Handle("/v1/cadastro", NewRegistrationHandler(store, auth, maxBytes, counter, WhatsAppOnly))

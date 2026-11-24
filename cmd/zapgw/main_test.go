@@ -20,7 +20,7 @@ func TestHealthAnswersOK(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/v1/health", nil)
 	rec := httptest.NewRecorder()
 
-	routes(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil).ServeHTTP(rec, req)
+	routes(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil).ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200", rec.Code)
@@ -37,7 +37,7 @@ func TestRoutesRegistersThePerInstanceProbe(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodGet, "/v1/instances/lojinha/health", nil)
 	rec := httptest.NewRecorder()
-	routes(nil, nil, health, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil).ServeHTTP(rec, req)
+	routes(nil, nil, health, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil).ServeHTTP(rec, req)
 
 	if !arrived {
 		t.Fatalf("the request did not reach the health handler (status = %d)", rec.Code)
@@ -52,10 +52,31 @@ func TestRoutesRegistersTheAccountHealthProbe(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodGet, "/v1/instances/lojinha/account-health", nil)
 	rec := httptest.NewRecorder()
-	routes(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, accountHealth, nil).ServeHTTP(rec, req)
+	routes(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, accountHealth, nil, nil).ServeHTTP(rec, req)
 
 	if !arrived {
 		t.Fatalf("the request did not reach the account-health handler (status = %d)", rec.Code)
+	}
+}
+
+// The Instagram publishing routes (T-270) have to be REGISTERED here, with
+// their methods: a route that exists in the handler but not in routes() is a
+// 404 in production.
+func TestRoutesRegistersTheInstagramPublishingRoutes(t *testing.T) {
+	for _, c := range []struct{ method, path string }{
+		{http.MethodPost, "/v1/instances/lojinha/instagram-posts"},
+		{http.MethodGet, "/v1/instances/lojinha/instagram-publishing-limit"},
+	} {
+		var arrived bool
+		publish := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { arrived = true })
+
+		req := httptest.NewRequest(c.method, c.path, nil)
+		rec := httptest.NewRecorder()
+		routes(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, publish).ServeHTTP(rec, req)
+
+		if !arrived {
+			t.Errorf("%s %s did not reach the publish handler (status = %d)", c.method, c.path, rec.Code)
+		}
 	}
 }
 
@@ -72,7 +93,7 @@ func TestRoutesDoesNotConfuseHealthAndAccountHealth(t *testing.T) {
 	var healthArrived, accountHealthArrived bool
 	health := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { healthArrived = true })
 	accountHealth := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { accountHealthArrived = true })
-	mux := routes(nil, nil, health, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, accountHealth, nil)
+	mux := routes(nil, nil, health, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, accountHealth, nil, nil)
 
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/instances/lojinha/health", nil))
@@ -102,7 +123,7 @@ func TestRoutesRegistersTheTemplateCatalog(t *testing.T) {
 	for _, method := range []string{http.MethodGet, http.MethodPost} {
 		req := httptest.NewRequest(method, "/v1/templates?instancia=lojinha", nil)
 		rec := httptest.NewRecorder()
-		routes(nil, nil, nil, templates, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil).ServeHTTP(rec, req)
+		routes(nil, nil, nil, templates, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil).ServeHTTP(rec, req)
 		if len(methods) == 0 || methods[len(methods)-1] != method {
 			t.Fatalf("%s /v1/templates did not reach the handler (status = %d)", method, rec.Code)
 		}
@@ -129,7 +150,7 @@ func TestRoutesRegistersTheMediaRoutes(t *testing.T) {
 	for _, path := range []string{"/v1/media", "/v1/media/abc123"} {
 		req := httptest.NewRequest(http.MethodPost, path, nil)
 		rec := httptest.NewRecorder()
-		routes(nil, nil, nil, nil, media, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil).ServeHTTP(rec, req)
+		routes(nil, nil, nil, nil, media, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil).ServeHTTP(rec, req)
 		if len(paths) == 0 || paths[len(paths)-1] != path {
 			t.Fatalf("%s did not reach the media handler (status = %d)", path, rec.Code)
 		}
@@ -149,7 +170,7 @@ func TestRoutesRegistersThePerInstanceState(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodGet, "/v1/estado?instancia=lojinha", nil)
 	rec := httptest.NewRecorder()
-	routes(nil, nil, nil, nil, nil, nil, state, nil, nil, nil, nil, nil, nil, nil, nil).ServeHTTP(rec, req)
+	routes(nil, nil, nil, nil, nil, nil, state, nil, nil, nil, nil, nil, nil, nil, nil, nil).ServeHTTP(rec, req)
 
 	if !arrived {
 		t.Fatalf("the request did not reach the state handler (status = %d)", rec.Code)
@@ -168,7 +189,7 @@ func TestRoutesRegistersTheReads(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/leituras", strings.NewReader(`{}`))
 	rec := httptest.NewRecorder()
-	routes(nil, nil, nil, nil, nil, nil, nil, reads, nil, nil, nil, nil, nil, nil, nil).ServeHTTP(rec, req)
+	routes(nil, nil, nil, nil, nil, nil, nil, reads, nil, nil, nil, nil, nil, nil, nil, nil).ServeHTTP(rec, req)
 
 	if !arrived {
 		t.Fatalf("the request did not reach the reads handler (status = %d)", rec.Code)
@@ -186,7 +207,7 @@ func TestRoutesRegistersTheEnrollment(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/cadastro", strings.NewReader(`{}`))
 	rec := httptest.NewRecorder()
-	routes(nil, nil, nil, nil, nil, nil, nil, nil, enrollment, nil, nil, nil, nil, nil, nil).ServeHTTP(rec, req)
+	routes(nil, nil, nil, nil, nil, nil, nil, nil, enrollment, nil, nil, nil, nil, nil, nil, nil).ServeHTTP(rec, req)
 
 	if !arrived {
 		t.Fatalf("the request did not reach the enrollment handler (status = %d)", rec.Code)
@@ -204,7 +225,7 @@ func TestRoutesRegistersTheSmokeTest(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/fumaca", strings.NewReader(`{}`))
 	rec := httptest.NewRecorder()
-	routes(nil, nil, nil, nil, nil, nil, nil, nil, nil, smoke, nil, nil, nil, nil, nil).ServeHTTP(rec, req)
+	routes(nil, nil, nil, nil, nil, nil, nil, nil, nil, smoke, nil, nil, nil, nil, nil, nil).ServeHTTP(rec, req)
 
 	if !arrived {
 		t.Fatalf("the request did not reach the smoke handler (status = %d)", rec.Code)
@@ -217,7 +238,7 @@ func TestRoutesRegistersThePause(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/pausa", strings.NewReader(`{}`))
 	rec := httptest.NewRecorder()
-	routes(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, pause, nil, nil, nil, nil).ServeHTTP(rec, req)
+	routes(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, pause, nil, nil, nil, nil, nil).ServeHTTP(rec, req)
 
 	if !arrived {
 		t.Fatalf("the request did not reach the pause handler (status = %d)", rec.Code)
@@ -236,7 +257,7 @@ func TestRoutesRegistersTheBlock(t *testing.T) {
 	for _, method := range []string{http.MethodPost, http.MethodDelete, http.MethodGet} {
 		req := httptest.NewRequest(method, "/v1/bloqueios", strings.NewReader(`{}`))
 		rec := httptest.NewRecorder()
-		routes(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, blocking, nil, nil, nil).ServeHTTP(rec, req)
+		routes(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, blocking, nil, nil, nil, nil).ServeHTTP(rec, req)
 		if len(methods) == 0 || methods[len(methods)-1] != method {
 			t.Fatalf("%s /v1/bloqueios did not reach the handler (status = %d)", method, rec.Code)
 		}
@@ -255,7 +276,7 @@ func TestRoutesRegistersTheProfile(t *testing.T) {
 	for _, method := range []string{http.MethodGet, http.MethodPost} {
 		req := httptest.NewRequest(method, "/v1/perfil?instancia=lojinha", strings.NewReader(`{}`))
 		rec := httptest.NewRecorder()
-		routes(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, profile, nil, nil).ServeHTTP(rec, req)
+		routes(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, profile, nil, nil, nil).ServeHTTP(rec, req)
 		if len(methods) == 0 || methods[len(methods)-1] != method {
 			t.Fatalf("%s /v1/perfil did not reach the handler (status = %d)", method, rec.Code)
 		}
@@ -269,7 +290,7 @@ func TestHealthReturnsJSON(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/v1/health", nil)
 	rec := httptest.NewRecorder()
 
-	routes(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil).ServeHTTP(rec, req)
+	routes(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil).ServeHTTP(rec, req)
 
 	if ct := rec.Header().Get("Content-Type"); ct != "application/json" {
 		t.Fatalf("Content-Type = %q, want application/json", ct)
@@ -296,7 +317,7 @@ func TestHealthWithoutInjectionReturnsDevelopmentVersion(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/v1/health", nil)
 	rec := httptest.NewRecorder()
 
-	routes(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil).ServeHTTP(rec, req)
+	routes(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil).ServeHTTP(rec, req)
 
 	var body healthResponse
 	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {

@@ -3233,6 +3233,88 @@ first lookup with an IGSID that has written to the account is the proof.
 
 ---
 
+## Publish to the Instagram feed — `POST /v1/instances/{slug}/instagram-posts` (2026-11-24)
+
+**`POST /v1/instances/{slug}/instagram-posts`** · `Authorization: Bearer <your token>` ·
+`Idempotency-Key: <your key>` (**required**)
+
+Publishes a single image or a carousel to the account's feed. A **LAN** route, **Instagram instances
+only** (a WhatsApp instance gets `400` class `config`, and Meta is not called). Same guards as the other
+instance routes: `403` for an instance that is not yours, `404` unknown, `503` paused.
+
+```jsonc
+// request — synthetic values
+{ "images": [ { "url": "https://img.example.invalid/a.jpg", "alt_text": "a red mug" } ],
+  "caption": "Hello" }
+```
+
+- **1 image = a single post; 2 to 20 = a carousel.** `0` or more than `20` images is `400` class
+  `permanent`, before Meta.
+- Every `images[].url` must be an absolute `https://` URL; anything else is `400` before Meta.
+- `caption` is at most **2200 characters** (`400` otherwise). It goes on the **post only**, never on the
+  items of a carousel. `alt_text` is optional, per image.
+- **Meta downloads the image itself from your URL**, so it has to be publicly reachable for the whole
+  call (about a minute — a signed URL must not expire sooner). Meta's constraints: **JPEG only**, at most
+  8 MB, aspect ratio between 4:5 and 1.91:1.
+
+```jsonc
+// 200 — values from a test capture against a fake Graph, synthetic
+{ "media_id": "17900000000000001", "container_id": "17900000000000002", "kind": "image" }
+```
+
+`kind` is `"image"` or `"carousel"`. The call is **synchronous**: the gateway creates the container(s),
+waits for Meta to finish processing (polling every 3 s, giving up after 60 s) and then publishes. Expect
+it to take seconds.
+
+### `Idempotency-Key` — a publish is not retry-safe at Meta
+
+A second publish is a **duplicate post on a public feed**, so the key is required (`400` without it) and
+uses the same reservation as `POST /v1/messages`:
+
+- **same key + same body, after a success** — `200` with the **same** `media_id`/`container_id`, and Meta
+  is **not** called;
+- **same key + a different body** — `422` class `permanent` ("this idempotency key was already used for a
+  different request"): change the key;
+- **same key while the first call is still running** — `409` class `retryable`;
+- **a failure that is known to have published nothing** (everything before the publish call, or Meta
+  refusing it) releases the key, so you can retry with the same key;
+- 🔴 **an unknown outcome at the publish call** (connection dropped, deadline) **holds the key**: the post
+  may be live, a retry answers `409` until the key expires (72 h) — check the account before resending.
+
+### Errors — and `step`
+
+Any failure carries the usual error body (`class`, `meta_code`, `message`, and `meta_subcode`/`meta_trace`
+when Meta sent them, same status mapping as `POST /v1/messages`) **plus `error.step`**, so you know
+whether anything may be live:
+
+| `step` | meaning | can a post exist? |
+|---|---|---|
+| `"container"` | creating a container failed (bad URL, bad image, ...) | no |
+| `"status"` | the container ended `ERROR`/`EXPIRED`, or did not finish in 60 s — `502`, with `error.status_code` holding the last status seen | no (`media_publish` was never called) |
+| `"publish"` | the publish call itself failed | **only here**, and only if the outcome is unknown: `502` class `unknown` ("the post may be live") |
+
+A Meta refusal at `"publish"` (a Meta error body) means Meta said no: nothing was published.
+
+Not measured against the real Meta yet: this suite only proves the gateway against a fake Graph. The first
+real post is the proof, and Meta's image rules above are quoted from its documentation, not enforced by the
+gateway (it checks only the URL scheme, the image count and the caption length).
+
+## Publishing quota — `GET /v1/instances/{slug}/instagram-publishing-limit` (2026-11-24)
+
+**`GET /v1/instances/{slug}/instagram-publishing-limit`** · `Authorization: Bearer <your token>`
+
+```jsonc
+// 200 — synthetic values
+{ "quota_usage": 7, "quota_total": 40, "quota_duration_s": 86400 }
+```
+
+`quota_usage` posts used inside the window of `quota_duration_s` seconds, out of `quota_total`. All three
+numbers are **Meta's, passed through**. 🔴 Meta's own pages disagree about the total (**50** in one place,
+**100** in another), so the gateway hard-codes neither: read `quota_total` from this response instead of
+assuming it. Same guards and the usual Meta error body as above.
+
+---
+
 ## Two different questions — and the second one has its OWN source, which survives your outage (2026-08-06, updated 2026-08-07)
 
 When a consumer wants to "know the status", it is almost always **two** questions, and they have

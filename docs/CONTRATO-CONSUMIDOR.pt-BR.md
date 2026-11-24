@@ -3211,6 +3211,91 @@ consulta com um IGSID que já escreveu para a conta é a prova.
 
 ---
 
+## Publicar no feed do Instagram — `POST /v1/instances/{slug}/instagram-posts` (2026-11-24)
+
+**`POST /v1/instances/{slug}/instagram-posts`** · `Authorization: Bearer <seu token>` ·
+`Idempotency-Key: <sua chave>` (**obrigatório**)
+
+Publica uma imagem única ou um carrossel no feed da conta. Rota de **LAN**, **só para instâncias
+Instagram** (uma instância WhatsApp recebe `400` classe `config`, e a Meta não é chamada). Mesmas
+guardas das outras rotas de instância: `403` para instância que não é sua, `404` desconhecida, `503`
+pausada.
+
+```jsonc
+// requisição — valores sintéticos
+{ "images": [ { "url": "https://img.example.invalid/a.jpg", "alt_text": "uma caneca vermelha" } ],
+  "caption": "Olá" }
+```
+
+- **1 imagem = post único; 2 a 20 = carrossel.** `0` ou mais de `20` imagens é `400` classe
+  `permanent`, antes da Meta.
+- Todo `images[].url` tem de ser uma URL absoluta `https://`; qualquer outra coisa é `400` antes da Meta.
+- `caption` tem no máximo **2200 caracteres** (`400` se passar). Vai **só no post**, nunca nos itens de
+  um carrossel. `alt_text` é opcional, por imagem.
+- **A Meta baixa a imagem sozinha, a partir da sua URL**, então ela precisa estar acessível publicamente
+  durante a chamada inteira (cerca de um minuto — uma URL assinada não pode expirar antes). Limites da
+  Meta: **só JPEG**, no máximo 8 MB, proporção entre 4:5 e 1,91:1.
+
+```jsonc
+// 200 — valores de uma captura de teste contra um Graph falso, sintéticos
+{ "media_id": "17900000000000001", "container_id": "17900000000000002", "kind": "image" }
+```
+
+`kind` é `"image"` ou `"carousel"`. A chamada é **síncrona**: o gateway cria o(s) container(s), espera a
+Meta terminar o processamento (consulta a cada 3 s e desiste em 60 s) e só então publica. Conte com
+alguns segundos.
+
+### `Idempotency-Key` — publicar não é seguro para repetir na Meta
+
+Uma segunda publicação é um **post duplicado num feed público**, por isso a chave é obrigatória (`400`
+sem ela) e usa a mesma reserva do `POST /v1/messages`:
+
+- **mesma chave + mesmo corpo, depois de um sucesso** — `200` com o **mesmo** `media_id`/`container_id`,
+  e a Meta **não** é chamada;
+- **mesma chave + corpo diferente** — `422` classe `permanent` ("this idempotency key was already used
+  for a different request"): troque a chave;
+- **mesma chave enquanto a primeira chamada ainda roda** — `409` classe `retryable`;
+- **falha que sabidamente não publicou nada** (tudo antes da chamada de publicar, ou a Meta recusando-a)
+  libera a chave, e você pode tentar de novo com a mesma;
+- 🔴 **resultado desconhecido na chamada de publicar** (conexão caiu, prazo estourou) **segura a chave**:
+  o post pode estar no ar, e uma nova tentativa responde `409` até a chave expirar (72 h) — confira a
+  conta antes de reenviar.
+
+### Erros — e `step`
+
+Toda falha traz o corpo de erro habitual (`class`, `meta_code`, `message`, e `meta_subcode`/`meta_trace`
+quando a Meta mandar, mesmo mapeamento de status do `POST /v1/messages`) **mais `error.step`**, para você
+saber se algo pode estar no ar:
+
+| `step` | significado | pode existir post? |
+|---|---|---|
+| `"container"` | criar um container falhou (URL ruim, imagem ruim, ...) | não |
+| `"status"` | o container terminou em `ERROR`/`EXPIRED`, ou não terminou em 60 s — `502`, com `error.status_code` trazendo o último status visto | não (`media_publish` nunca foi chamado) |
+| `"publish"` | a própria chamada de publicar falhou | **só aqui**, e só se o resultado for desconhecido: `502` classe `unknown` ("the post may be live") |
+
+Uma recusa da Meta em `"publish"` (corpo de erro da Meta) significa que a Meta disse não: nada foi
+publicado.
+
+Ainda não medido contra a Meta real: esta suíte só prova o gateway contra um Graph falso. O primeiro post
+real é a prova, e as regras de imagem da Meta acima estão citadas da documentação dela, não impostas pelo
+gateway (ele só confere o esquema da URL, a quantidade de imagens e o tamanho da legenda).
+
+## Cota de publicação — `GET /v1/instances/{slug}/instagram-publishing-limit` (2026-11-24)
+
+**`GET /v1/instances/{slug}/instagram-publishing-limit`** · `Authorization: Bearer <seu token>`
+
+```jsonc
+// 200 — valores sintéticos
+{ "quota_usage": 7, "quota_total": 40, "quota_duration_s": 86400 }
+```
+
+`quota_usage` posts usados dentro da janela de `quota_duration_s` segundos, de um total de `quota_total`.
+Os três números são **da Meta, repassados**. 🔴 As próprias páginas da Meta discordam sobre o total
+(**50** num lugar, **100** em outro), então o gateway não fixa nenhum dos dois: leia `quota_total` desta
+resposta em vez de presumir. Mesmas guardas e o corpo de erro habitual da Meta, como acima.
+
+---
+
 ## Duas perguntas diferentes — e a segunda tem fonte PRÓPRIA, que sobrevive à sua queda (2026-08-06, atualizado 2026-08-07)
 
 Quando um consumidor quer "saber o status", quase sempre são **duas** perguntas, e elas têm fontes

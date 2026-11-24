@@ -2,6 +2,10 @@
 
 One line per version shipped, in the same commit as the bump. The entry states the **effect**, not the diff.
 
+## Unreleased
+
+- **Instagram feed publishing (single image and carousel) and publishing quota** (T-270) — new `POST /v1/instances/{slug}/instagram-posts` (Instagram instances only; `Idempotency-Key` required) publishes 1 image or a 2..20 image carousel through container, status poll (3 s / 60 s) and `media_publish`, and returns `{media_id, container_id, kind}`; failures carry `error.step` (`container`/`status`/`publish`) and an unknown outcome at publish holds the key. New `GET /v1/instances/{slug}/instagram-publishing-limit` passes Meta's `quota_usage`, `quota_total` and `quota_duration_s` through. The result is stored in the existing idempotency record as `"<media_id>|<container_id>"` (no schema change). Not measured against the real Meta yet. _Completed 2026-11-24 12:32._
+
 ## v0.76.0 — 2026-11-24
 
 - **Instagram user profile lookup by IGSID (username and name)** (T-269) — new `GET /v1/instances/{slug}/instagram-users/{igsid}` (Instagram instances only) returns `{igsid, username, name}` from `graph.instagram.com`, with `username` lowercased and without `@` and `name` nullable. A non-digit IGSID is `400` without calling Meta; a WhatsApp instance is `400` class `config`; a Meta refusal (including missing user consent) passes through with its code and message. First route to use `InstagramOnly`. Not measured against the real Meta yet. _Completed 2026-11-24 11:10._
