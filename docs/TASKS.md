@@ -492,42 +492,6 @@ instancias foram rotacionadas. Duas licoes que custaram na hora e valem alem des
 
 > A fila do periodo privado esta em `iscarelli/zapgw-dev`, congelada. Tarefa nova nasce aqui.
 
-## [ ] T-271  Instagram account insights and media list with per-post metrics
-Why:     Same consumer agent needs numbers ("sem fonte" until then). Same owner authorization as T-270.
-Vikunja: 4104
-After:   T-270 (both edit main.go routes() and the contract; run after it is merged)
-Files:   internal/meta/instagram_insights.go (new) + _test, internal/outbound/instagram_insights_handler.go
-         (new) + _test, cmd/zapgw/main.go (+ main_test.go), internal/outbound/isolation_test.go,
-         docs/CONTRATO-CONSUMIDOR.md + .pt-BR.md, docs/CHANGELOG.md
-Do:      Meta (read 2026-11-24: .../api-reference/instagram-user/insights.md, .../reference/instagram-media.md,
-         .../reference/instagram-media/insights.md). Same host/token/error rules as T-270.
-         1. `GET /v1/instances/{slug}/instagram-insights?since=<unix>&until=<unix>`: calls
-            `GET /<ig_id>/insights?metric=reach,accounts_engaged,views,total_interactions,follows_and_unfollows,profile_links_taps&period=day&metric_type=total_value&since=..&until=..`
-            and `GET /me?fields=followers_count,media_count`. since/until required, digits, since<until
-            (400 otherwise, no Meta call). Response:
-            `{"since":..,"until":..,"followers_count":N,"media_count":N,"metrics":{"reach":N|null,...}}`
-            — a metric Meta omits or returns empty is `null`, never 0 (Meta: missing data = empty set).
-            Pass the raw `total_value.value`; do not compute anything.
-         2. `GET /v1/instances/{slug}/instagram-media?limit=<1..25, default 10>&after=<cursor>`: calls
-            `GET /<ig_id>/media?fields=id,media_type,timestamp,permalink,caption,like_count,comments_count&limit=..&after=..`
-            then, per item, `GET /<media_id>/insights?metric=reach,saved,shares,views,total_interactions,profile_visits`.
-            Response `{"items":[{"id","media_type","timestamp","permalink","caption"|null,"like_count"|null,
-            "comments_count"|null,"insights":{"reach":N|null,...}|null,"insights_error":{...}|absent}],
-            "next_cursor":"..."|null}`. A per-item insights failure does NOT fail the page: that item
-            gets `insights:null` + `insights_error` with Meta's code/message. If Meta rejects `caption`
-            (the docs flag it Facebook-Login-only), the media call must not fail for it: test the case
-            where the fake returns an error for the fields list including caption, and retry once
-            without caption (caption then null). Say in the contract that this is unmeasured.
-         Contract (EN + pt-BR): both routes, the metric list, nulls, data delayed up to 48 h (Meta),
-         no account-level "profile views" metric in Meta's current table (closest: profile_links_taps;
-         per post nothing equivalent requested), `impressions` deprecated by Meta. Synthetic values only.
-Verify:  The four CLAUDE.md commands green. Fake-Graph tests prove: the exact metric/period/metric_type/
-         since/until query sent; missing metric -> null; followers_count mapped; bad/missing since/until
-         -> 400 zero hits; media paging passes limit/after and returns next_cursor; limit 0 or 26 -> 400;
-         one item's insights error -> that item insights null + insights_error, others intact, 200;
-         caption-rejected retry path; WhatsApp instance -> 400 config; other consumer -> 403; token never
-         in URL/log. Real-Meta proof NOT reachable here.
-
 ## [ ] T-248  Seven response keys and literals still Portuguese in code, among English siblings
 After:   DECIDIDO em 2026-09-19 — opcao (1): renomear TUDO de uma vez, bump MINOR, aviso aos dois
          consumidores ANTES do deploy (o dono manda o texto; sem canal). Segurada por ORCAMENTO

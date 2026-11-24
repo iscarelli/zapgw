@@ -3313,6 +3313,77 @@ numbers are **Meta's, passed through**. 🔴 Meta's own pages disagree about the
 **100** in another), so the gateway hard-codes neither: read `quota_total` from this response instead of
 assuming it. Same guards and the usual Meta error body as above.
 
+## Account insights — `GET /v1/instances/{slug}/instagram-insights` (2026-11-24)
+
+**`GET /v1/instances/{slug}/instagram-insights?since=<unix>&until=<unix>`** ·
+`Authorization: Bearer <your token>` · Instagram instances only (a WhatsApp instance is `400`, class `config`).
+
+`since` and `until` are **required**, digits only (unix seconds), and `since` must be earlier than `until`;
+anything else is `400` and Meta is not called.
+
+```jsonc
+// 200 — synthetic values
+{
+  "since": 1700000000, "until": 1700086400,
+  "followers_count": 4321, "media_count": 98,
+  "metrics": {
+    "reach": 1200, "accounts_engaged": 80, "views": 5000,
+    "total_interactions": 310, "follows_and_unfollows": -3, "profile_links_taps": null
+  }
+}
+```
+
+- **The six metrics are always present.** One that Meta omits or returns empty is **`null`, never `0`**
+  (Meta: missing data is an empty set) — a `0` is a measurement, a `null` is the absence of one. The same
+  holds for `followers_count` and `media_count`.
+- **Every number is Meta's `total_value.value`, passed through.** The gateway sums, averages and compares
+  nothing. It asks Meta for `period=day` and `metric_type=total_value` over the window you gave.
+- **Data can be up to 48 hours late** (Meta's statement), so a window ending today is incomplete.
+- **There is no account-level "profile views" metric** in Meta's current table; the closest is
+  `profile_links_taps`. `impressions` is deprecated by Meta and is not asked.
+
+## Media list with per-post metrics — `GET /v1/instances/{slug}/instagram-media` (2026-11-24)
+
+**`GET /v1/instances/{slug}/instagram-media?limit=<1..25>&after=<cursor>`** ·
+`Authorization: Bearer <your token>` · Instagram instances only.
+
+`limit` defaults to **10**; `0`, above `25` or not an integer is `400` and Meta is not called. `after` is the
+opaque `next_cursor` of the previous page.
+
+```jsonc
+// 200 — synthetic values
+{
+  "items": [
+    { "id": "17900000000000001", "media_type": "IMAGE", "timestamp": "2026-11-20T10:00:00+0000",
+      "permalink": "https://www.example.invalid/p/AAAA/", "caption": "first post",
+      "like_count": 5, "comments_count": 1,
+      "insights": { "reach": 100, "saved": 4, "shares": 2, "views": 150,
+                    "total_interactions": 20, "profile_visits": null } },
+    { "id": "17900000000000002", "media_type": "CAROUSEL_ALBUM", "timestamp": "2026-11-19T10:00:00+0000",
+      "permalink": "https://www.example.invalid/p/BBBB/", "caption": null,
+      "like_count": null, "comments_count": null,
+      "insights": null,
+      "insights_error": { "class": "permanent", "meta_code": 100, "message": "…Meta's message…" } }
+  ],
+  "next_cursor": "QVFIUjAw…"   // null on the last page
+}
+```
+
+- **A failing item does not fail the page.** If Meta refuses the insights of one post, that item has
+  `insights: null` plus `insights_error` (`class`, `meta_code`, `meta_subcode` when Meta sends them, and
+  Meta's `message`); the others come back intact with `200`. Items with no error have no `insights_error` key.
+- **Per post, the metrics asked** are `reach`, `saved`, `shares`, `views`, `total_interactions` and
+  `profile_visits`; a metric Meta omits is `null`. Nothing equivalent to "profile views" per post is asked.
+  Same 48-hour delay as above.
+- `like_count`, `comments_count` and `caption` are `null` when Meta does not send them.
+- ⚠️ **`caption` is unmeasured.** Meta's documentation flags it as Facebook-Login-only. If Meta refuses the
+  list for asking it, the gateway retries **once** without `caption` and every `caption` comes back `null`
+  (it does not fail the call for it). Whether the real Meta refuses it for an Instagram-Login token has not
+  been observed.
+- `next_cursor` is `null` when Meta gives no next page.
+
+Not measured against the real Meta yet: this suite only proves the gateway against a fake Graph.
+
 ---
 
 ## Two different questions — and the second one has its OWN source, which survives your outage (2026-08-06, updated 2026-08-07)

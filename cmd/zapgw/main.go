@@ -62,7 +62,7 @@ type healthResponse struct {
 	Version string `json:"versao"`
 }
 
-func routes(inboundHandler, outboundHandler, healthHandler, templatesHandler, mediaHandler, uploadsHandler, stateHandler, readsHandler, enrollmentHandler, smokeHandler, pauseHandler, blockingHandler, profileHandler, accountHealthHandler, instagramUserHandler, instagramPublishHandler http.Handler) http.Handler {
+func routes(inboundHandler, outboundHandler, healthHandler, templatesHandler, mediaHandler, uploadsHandler, stateHandler, readsHandler, enrollmentHandler, smokeHandler, pauseHandler, blockingHandler, profileHandler, accountHealthHandler, instagramUserHandler, instagramPublishHandler, instagramInsightsHandler http.Handler) http.Handler {
 	mux := http.NewServeMux()
 
 	// NOT INFORMATIVE ABOUT THE CHANNEL, on purpose: this `200` says the
@@ -203,6 +203,13 @@ func routes(inboundHandler, outboundHandler, healthHandler, templatesHandler, me
 		// reasoning as account-health above.
 		mux.Handle("POST /v1/instances/{slug}/instagram-posts", instagramPublishHandler)
 		mux.Handle("GET /v1/instances/{slug}/instagram-publishing-limit", instagramPublishHandler)
+	}
+	if instagramInsightsHandler != nil {
+		// LAN routes (T-271): they read the tenant's Instagram data with its
+		// credential - not for the public port. Two OWN patterns, same
+		// reasoning as the publishing routes above.
+		mux.Handle("GET /v1/instances/{slug}/instagram-insights", instagramInsightsHandler)
+		mux.Handle("GET /v1/instances/{slug}/instagram-media", instagramInsightsHandler)
 	}
 	return mux
 }
@@ -547,6 +554,10 @@ func main() {
 	// poll timings take the production defaults (3 s / 60 s).
 	instagramPublish := outbound.NewInstagramPublishHandlerWithBase(store, authenticator, metaClient,
 		instagramRenewalBase(os.Getenv), maxBytes, meta.InstagramPublishTimings{}, outbound.InstagramOnly)
+	// T-271: InstagramOnly - account insights and the media list exist on
+	// graph.instagram.com only. Same host root as the Instagram send.
+	instagramInsights := outbound.NewInstagramInsightsHandlerWithBase(store, authenticator, metaClient,
+		instagramRenewalBase(os.Getenv), outbound.InstagramOnly)
 	// T-111: WhatsAppOnly — the catalog uses inst.WabaID, a field exclusive
 	// to WhatsApp; Instagram has no template in this slice (the same
 	// restriction as sending, which only accepts "texto" for Instagram).
@@ -668,7 +679,7 @@ func main() {
 		version, counterDays, counter, outbound.AllTypes)
 
 	log.Printf("zapgw listening on %s", address)
-	if err := http.ListenAndServe(address, routes(h, leadership.Require(out), health, templates, media, uploads, state, reads, enrollment, smokeRoute, pauseRoute, blockingRoute, profileRoute, accountHealth, instagramUser, instagramPublish)); err != nil {
+	if err := http.ListenAndServe(address, routes(h, leadership.Require(out), health, templates, media, uploads, state, reads, enrollment, smokeRoute, pauseRoute, blockingRoute, profileRoute, accountHealth, instagramUser, instagramPublish, instagramInsights)); err != nil {
 		log.Fatalf("zapgw: server crashed: %v", err)
 	}
 }

@@ -2,6 +2,10 @@
 
 One line per version shipped, in the same commit as the bump. The entry states the **effect**, not the diff.
 
+## Unreleased
+
+- **Instagram account insights and media list with per-post metrics** (T-271) — new `GET /v1/instances/{slug}/instagram-insights?since=&until=` (six account metrics as Meta's `total_value.value`, plus `followers_count` and `media_count`; an omitted metric is `null`, never `0`) and `GET /v1/instances/{slug}/instagram-media?limit=&after=` (1..25, default 10; each item carries per-post `insights`, and one item's Meta failure gives that item `insights: null` plus `insights_error` without failing the page). Instagram instances only; bad `since`/`until`/`limit` is `400` without calling Meta. `caption` is retried once without it if Meta refuses it (unmeasured). Not measured against the real Meta yet. _Completed 2026-11-24 12:42._
+
 ## v0.77.0 — 2026-11-24
 
 - **Instagram feed publishing (single image and carousel) and publishing quota** (T-270) — new `POST /v1/instances/{slug}/instagram-posts` (Instagram instances only; `Idempotency-Key` required) publishes 1 image or a 2..20 image carousel through container, status poll (3 s / 60 s) and `media_publish`, and returns `{media_id, container_id, kind}`; failures carry `error.step` (`container`/`status`/`publish`) and an unknown outcome at publish holds the key. New `GET /v1/instances/{slug}/instagram-publishing-limit` passes Meta's `quota_usage`, `quota_total` and `quota_duration_s` through. The result is stored in the existing idempotency record as `"<media_id>|<container_id>"` (no schema change). Not measured against the real Meta yet. _Completed 2026-11-24 12:32._

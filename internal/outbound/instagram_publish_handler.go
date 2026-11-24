@@ -140,7 +140,14 @@ func (p *instagramPostRequest) validate() string {
 // authorize runs the guards common to both routes and returns the instance,
 // or writes the response and returns ok=false.
 func (h *InstagramPublishHandler) authorize(w http.ResponseWriter, r *http.Request, route string) (config.Consumer, config.Instance, bool) {
-	consumer, err := h.auth.Authenticate(r.Header.Get("Authorization"))
+	return authorizeInstagramRoute(h.store, h.auth, h.types, w, r, route)
+}
+
+// authorizeInstagramRoute is the shared guard chain of the Instagram instance
+// routes (T-270, T-271): authenticate, bond (403), exists (404), active
+// (503), type (400).
+func authorizeInstagramRoute(store *config.Store, auth *Authenticator, types AcceptedTypes, w http.ResponseWriter, r *http.Request, route string) (config.Consumer, config.Instance, bool) {
+	consumer, err := auth.Authenticate(r.Header.Get("Authorization"))
 	if err != nil {
 		if errors.Is(err, ErrNoToken) || errors.Is(err, ErrInvalidToken) {
 			respondError(w, http.StatusUnauthorized, "config", "missing or invalid token", 0)
@@ -155,7 +162,7 @@ func (h *InstagramPublishHandler) authorize(w http.ResponseWriter, r *http.Reque
 		respondError(w, http.StatusForbidden, "config", "instance not authorized for this consumer", 0)
 		return config.Consumer{}, config.Instance{}, false
 	}
-	inst, err := h.store.FindInstance(slug)
+	inst, err := store.FindInstance(slug)
 	if err != nil {
 		if errors.Is(err, config.ErrInstanceNotFound) {
 			respondError(w, http.StatusNotFound, "config", "unknown instance", 0)
@@ -171,7 +178,7 @@ func (h *InstagramPublishHandler) authorize(w http.ResponseWriter, r *http.Reque
 	}
 	// AFTER the bond and the existence check, never before — otherwise this
 	// route becomes an oracle of "what type is this slug".
-	if !checkType(w, h.types, inst, "") {
+	if !checkType(w, types, inst, "") {
 		return config.Consumer{}, config.Instance{}, false
 	}
 	return consumer, inst, true
