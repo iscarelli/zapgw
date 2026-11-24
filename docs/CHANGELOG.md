@@ -2,6 +2,10 @@
 
 One line per version shipped, in the same commit as the bump. The entry states the **effect**, not the diff.
 
+## Unreleased
+
+- **Instagram user profile lookup by IGSID (username and name)** (T-269) — new `GET /v1/instances/{slug}/instagram-users/{igsid}` (Instagram instances only) returns `{igsid, username, name}` from `graph.instagram.com`, with `username` lowercased and without `@` and `name` nullable. A non-digit IGSID is `400` without calling Meta; a WhatsApp instance is `400` class `config`; a Meta refusal (including missing user consent) passes through with its code and message. First route to use `InstagramOnly`. Not measured against the real Meta yet. _Completed 2026-11-24 11:10._
+
 ## v0.75.2 — 2026-11-23
 
 - **Block: retry without the ninth digit on 131047, and log per-number failures** (T-268) — `POST /v1/bloqueios` still sends the 13-digit spelling first; a Brazilian cell number Meta refuses with `131047` is retried once, in a single batch, without the ninth digit. On success the number moves to `processed` (`telefone` = the 13-digit number sent, `wa_id` from Meta); otherwise `failures` keeps the original `131047`. No retry for other codes, landlines or `DELETE`; a failed retry call never becomes an HTTP error. Every refused number now logs one line with the last eight digits. No new JSON key. Whether Meta accepts the 12-digit spelling is not verifiable here. _Completed 2026-11-23 12:40._
