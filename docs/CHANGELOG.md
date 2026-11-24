@@ -2,7 +2,7 @@
 
 One line per version shipped, in the same commit as the bump. The entry states the **effect**, not the diff.
 
-## Unreleased
+## v0.78.1 — 2026-11-24
 
 - **Media insights: retry without profile_visits when Meta rejects it for the media type** (T-272) — a per-post insights call refused with Meta code `100` is retried once without `profile_visits` (null on Reels); a failing retry or any non-100 error behaves as before. Contract notes updated (`caption` measured, `follows_and_unfollows` rule); pitfall recorded with the account-insights sibling sweep. _Completed 2026-11-24 12:58._
 
