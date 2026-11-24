@@ -2,7 +2,7 @@
 
 One line per version shipped, in the same commit as the bump. The entry states the **effect**, not the diff.
 
-## Unreleased
+## v0.79.0 — 2026-11-24
 
 - **Publish Instagram Reels by video URL (async, resumed by re-POST with the same Idempotency-Key)** (T-273) — new `POST /v1/instances/{slug}/instagram-reels` (`video_url`, optional `caption`, `cover_url` xor `thumb_offset_ms`, `share_to_feed`). The first POST creates the Meta container and checks its status once; `202` + `Retry-After: 60` while processing, `200 {media_id, container_id}` when published; the consumer re-POSTs the same body and key. State lives in the idempotency row (`reel-container:` / `reel-publishing:` / `<media_id>|<cid>`) and the new `Store.SwapIdempotencyResult` compare-and-swap lets only one concurrent re-POST call `media_publish`; an unknown publish outcome answers `409` forever for that key. Error `step` is `container` / `status` / `publish`. Contract (EN and PT-BR) carries Meta's Reels specs as Meta's. Not measured against the real Meta yet. _Completed 2026-11-24 15:07._
 
