@@ -2,7 +2,7 @@
 
 One line per version shipped, in the same commit as the bump. The entry states the **effect**, not the diff.
 
-## Unreleased
+## v0.76.0 — 2026-11-24
 
 - **Instagram user profile lookup by IGSID (username and name)** (T-269) — new `GET /v1/instances/{slug}/instagram-users/{igsid}` (Instagram instances only) returns `{igsid, username, name}` from `graph.instagram.com`, with `username` lowercased and without `@` and `name` nullable. A non-digit IGSID is `400` without calling Meta; a WhatsApp instance is `400` class `config`; a Meta refusal (including missing user consent) passes through with its code and message. First route to use `InstagramOnly`. Not measured against the real Meta yet. _Completed 2026-11-24 11:10._
 
