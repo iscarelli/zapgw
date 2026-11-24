@@ -3294,6 +3294,8 @@ Os três números são **da Meta, repassados**. 🔴 As próprias páginas da Me
 (**50** num lugar, **100** em outro), então o gateway não fixa nenhum dos dois: leia `quota_total` desta
 resposta em vez de presumir. Mesmas guardas e o corpo de erro habitual da Meta, como acima.
 
+**Medido em 2026-11-24 12:39 (-03)**, por um consumidor, numa instância Instagram de produção: `200` `{"quota_usage":0,"quota_total":50,"quota_duration_s":86400}` — 50 posts em 24 h para aquela conta. Uma conta, uma leitura: continue lendo o campo.
+
 ## Insights da conta — `GET /v1/instances/{slug}/instagram-insights` (2026-11-24)
 
 **`GET /v1/instances/{slug}/instagram-insights?since=<unix>&until=<unix>`** ·

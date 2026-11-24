@@ -3313,6 +3313,8 @@ numbers are **Meta's, passed through**. 🔴 Meta's own pages disagree about the
 **100** in another), so the gateway hard-codes neither: read `quota_total` from this response instead of
 assuming it. Same guards and the usual Meta error body as above.
 
+**Measured on 2026-11-24 12:39 (-03)**, by a consumer, on a production Instagram instance: `200` `{"quota_usage":0,"quota_total":50,"quota_duration_s":86400}` — 50 posts per 24 h for that account. One account, one reading: keep reading the field.
+
 ## Account insights — `GET /v1/instances/{slug}/instagram-insights` (2026-11-24)
 
 **`GET /v1/instances/{slug}/instagram-insights?since=<unix>&until=<unix>`** ·
