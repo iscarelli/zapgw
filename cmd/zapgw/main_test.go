@@ -66,6 +66,7 @@ func TestRoutesRegistersTheInstagramPublishingRoutes(t *testing.T) {
 	for _, c := range []struct{ method, path string }{
 		{http.MethodPost, "/v1/instances/lojinha/instagram-posts"},
 		{http.MethodGet, "/v1/instances/lojinha/instagram-publishing-limit"},
+		{http.MethodPost, "/v1/instances/lojinha/instagram-reels"},
 	} {
 		var arrived bool
 		publish := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { arrived = true })

@@ -3299,6 +3299,91 @@ Not measured against the real Meta yet: this suite only proves the gateway again
 real post is the proof, and Meta's image rules above are quoted from its documentation, not enforced by the
 gateway (it checks only the URL scheme, the image count and the caption length).
 
+## Publish a Reel — `POST /v1/instances/{slug}/instagram-reels` (2026-11-24)
+
+**`POST /v1/instances/{slug}/instagram-reels`** · `Authorization: Bearer <your token>` ·
+`Idempotency-Key: <your key>` (**required**, `400` without it)
+
+Publishes a Reel from a video URL. A **LAN** route, **Instagram instances only**, with the same guards as
+`instagram-posts` (`403` not yours, `404` unknown, `503` paused, `400` class `config` for a WhatsApp
+instance). Unlike `instagram-posts` it is **asynchronous**: Meta takes minutes to process a video, so you
+**re-POST the same request until it is published**.
+
+```jsonc
+// request — synthetic values
+{ "video_url": "https://vid.example.invalid/a.mp4", "caption": "Hello",
+  "cover_url": "https://img.example.invalid/c.jpg", "share_to_feed": true }
+```
+
+- `video_url` is **required** and an absolute `https://` URL. `cover_url`, if sent, too.
+- `caption` is optional, at most **2200 characters**.
+- `thumb_offset_ms` is optional, an integer `>= 0` (the frame used as the cover). **Send `cover_url` or
+  `thumb_offset_ms`, not both** — `400` class `permanent`: Meta would silently ignore the offset, so the
+  gateway refuses instead.
+- `share_to_feed` is optional; **omitted, the field is not sent** and Meta's default applies.
+- Any `400` happens before Meta is called. Unknown fields are ignored, as in `instagram-posts`.
+
+### The loop — re-POST the SAME request with the SAME key
+
+1. The first POST creates the Meta container and checks its status **once**. If Meta is already done it
+   publishes and answers `200`; otherwise:
+
+```jsonc
+// 202 — header `Retry-After: 60`; synthetic values
+{ "container_id": "17900000000000002", "status": "IN_PROGRESS", "retry_after_s": 60 }
+```
+
+2. **Re-POST the same body with the same `Idempotency-Key` every ~60 s** (Meta recommends one status check
+   per minute; the gateway never polls in a loop inside a request — each request makes at most one status
+   call). Each answer is one of:
+
+| answer | meaning |
+|---|---|
+| `202` | still processing — wait `retry_after_s` and re-POST |
+| `200` `{"media_id","container_id"}` | **published**. Replaying this key later returns the same `200` and does not call Meta |
+| error with `error.step` | see below |
+
+3. **It never publishes twice.** A new key means a new Reel (a new container).
+
+### Errors — and `step`
+
+Same error body as `instagram-posts` (`class`, `meta_code`, `message`, ...) plus `error.step`:
+
+| `step` | meaning | key | a Reel can be live? |
+|---|---|---|---|
+| `"container"` | creating the container failed (bad URL, ...) | released: fix and retry | no |
+| `"status"` | the container ended `ERROR` or `EXPIRED` — `502`, with `error.status_code` | released: a new POST (same key) makes a new container | no |
+| `"status"` | the status call itself failed (network / Meta error) | **kept**: re-POST later | no |
+| `"publish"`, Meta refused | `media_publish` was refused | **kept** on the same container: re-POST retries the publish | no |
+| `"publish"`, `502` class `unknown` | the outcome is unknown (connection dropped, deadline) | **held** | **maybe** |
+
+- 🔴 **After an unknown outcome, every re-POST of that key answers `409` class `permanent`** ("the publish
+  outcome is unknown: the reel may be live; check the account before using a new key"), and Meta is **not**
+  called: the gateway will never call `media_publish` again for that key, because a second one is a
+  duplicate on a public feed. Check the account, then decide whether to send a new key.
+- `409` class `retryable` means another request with the same key is running right now: wait and re-POST.
+- The key lives **72 h** by default; Meta's container expires after **24 h** (`EXPIRED` then). Do not
+  resume a Reel a day later — send it again with a new key.
+- Publishing counts against the quota of `instagram-publishing-limit` (Meta's page states the limit as both
+  100 and 50 per 24 h and never names Reels, so read the route, not the page).
+
+### Meta's Reels specifications — Meta's, not ours
+
+Read from Meta's Content Publishing page on 2026-11-24. **The gateway does not download or validate the
+video**: a file outside these limits fails at Meta (typically `status` `ERROR`).
+
+- Container: MOV or MP4, `moov` atom at the front, no edit lists. Video: H264 or HEVC, progressive scan,
+  closed GOP, 4:2:0. Audio: AAC, up to 48 kHz, mono or stereo, 128 kbps.
+- 23–60 fps; width up to 1920 px; aspect ratio 0.01:1 to 10:1 (9:16 recommended); video bitrate VBR up to
+  25 Mbps; duration 3 s to 15 min; file up to 300 MB.
+- Cover (`cover_url`): JPEG, up to 8 MB, sRGB; center-cropped to 9:16 (1:1 on the feed grid).
+- Caption: up to 2200 characters, 30 hashtags, 20 `@` tags.
+- Meta downloads the video from your URL itself, so it must stay publicly reachable until the status is
+  `FINISHED`.
+
+Not measured against the real Meta yet: this suite proves the gateway against a fake Graph only. The first
+real Reel is the proof.
+
 ## Publishing quota — `GET /v1/instances/{slug}/instagram-publishing-limit` (2026-11-24)
 
 **`GET /v1/instances/{slug}/instagram-publishing-limit`** · `Authorization: Bearer <your token>`

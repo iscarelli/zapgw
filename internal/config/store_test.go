@@ -1779,6 +1779,34 @@ func TestIdempotencyBlocksASecondSend(t *testing.T) {
 	}
 }
 
+// T-273: the compare-and-swap that guards a Reel's media_publish.
+func TestSwapIdempotencyResultOnlyChangesWhenTheOldValueMatches(t *testing.T) {
+	s := testStore(t)
+	if _, _, err := s.ReserveIdempotency("sistema-a", "k", "h"); err != nil {
+		t.Fatalf("ReserveIdempotency: %v", err)
+	}
+	if err := s.ConfirmIdempotency("sistema-a", "k", "reel-container:c-1"); err != nil {
+		t.Fatalf("ConfirmIdempotency: %v", err)
+	}
+
+	won, err := s.SwapIdempotencyResult("sistema-a", "k", "reel-container:c-1", "reel-publishing:c-1")
+	if err != nil || !won {
+		t.Fatalf("matching swap = %v, %v; want true, nil", won, err)
+	}
+	won, err = s.SwapIdempotencyResult("sistema-a", "k", "reel-container:c-1", "reel-publishing:c-1")
+	if err != nil || won {
+		t.Fatalf("mismatching swap = %v, %v; want false, nil", won, err)
+	}
+	stored, _, err := s.ReserveIdempotency("sistema-a", "k", "h")
+	if err != nil || stored != "reel-publishing:c-1" {
+		t.Fatalf("stored = %q, %v; a mismatching swap must leave the row unchanged", stored, err)
+	}
+	won, err = s.SwapIdempotencyResult("sistema-a", "other", "x", "y")
+	if err != nil || won {
+		t.Fatalf("swap on a missing row = %v, %v; want false, nil", won, err)
+	}
+}
+
 func TestIdempotencyDoesNotConfuseConsumers(t *testing.T) {
 	// The key is CHOSEN by the consumer. Two systems can choose the same
 	// one without knowing it; if the key were global, one's send would

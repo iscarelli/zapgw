@@ -2225,6 +2225,24 @@ func (s *Store) ConfirmIdempotency(consumer, key, waMessageID string) error {
 	return nil
 }
 
+// SwapIdempotencyResult is a compare-and-swap on the value stored under a
+// key (T-273): it changes `wa_message_id` from `old` to `new` only if it is
+// still `old`, and reports whether this call did it. It is the only guard
+// against two concurrent re-POSTs of a Reel both reaching media_publish.
+func (s *Store) SwapIdempotencyResult(consumer, key, old, new string) (bool, error) {
+	res, err := s.db.Exec(
+		`UPDATE idempotencia SET wa_message_id = ? WHERE consumidor = ? AND chave = ? AND wa_message_id = ?`,
+		new, consumer, key, old)
+	if err != nil {
+		return false, fmt.Errorf("config: swap idempotencia: %w", err)
+	}
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return false, fmt.Errorf("config: rows affected: %w", err)
+	}
+	return rows == 1, nil
+}
+
 // ReleaseIdempotency returns the key to the consumer when the send FAILED.
 //
 // Without this, an attempt Meta refused would burn the key forever — and
