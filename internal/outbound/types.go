@@ -42,9 +42,10 @@ const (
 	// WhatsAppOnly rejects an Instagram instance (400, class "config") — see
 	// checkType, below.
 	WhatsAppOnly AcceptedTypes = iota
-	// InstagramOnly is the mirror of WhatsAppOnly — STILL UNUSED: no route today
-	// serves ONLY Instagram. It exists for the day one does, so that handler
-	// also has to DECLARE instead of inheriting by omission.
+	// InstagramOnly is the mirror of WhatsAppOnly. First used by the user
+	// profile lookup (T-269, instagram_user_handler.go), which has no WhatsApp
+	// counterpart; every Instagram-only handler has to DECLARE it instead of
+	// inheriting by omission.
 	InstagramOnly
 	// AllTypes declares that the handler serves BOTH known types and
 	// handles the difference INTERNALLY. IT IS NOT AN ESCAPE HATCH: it is an

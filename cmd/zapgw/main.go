@@ -62,7 +62,7 @@ type healthResponse struct {
 	Version string `json:"versao"`
 }
 
-func routes(inboundHandler, outboundHandler, healthHandler, templatesHandler, mediaHandler, uploadsHandler, stateHandler, readsHandler, enrollmentHandler, smokeHandler, pauseHandler, blockingHandler, profileHandler, accountHealthHandler http.Handler) http.Handler {
+func routes(inboundHandler, outboundHandler, healthHandler, templatesHandler, mediaHandler, uploadsHandler, stateHandler, readsHandler, enrollmentHandler, smokeHandler, pauseHandler, blockingHandler, profileHandler, accountHealthHandler, instagramUserHandler http.Handler) http.Handler {
 	mux := http.NewServeMux()
 
 	// NOT INFORMATIVE ABOUT THE CHANNEL, on purpose: this `200` says the
@@ -186,6 +186,15 @@ func routes(inboundHandler, outboundHandler, healthHandler, templatesHandler, me
 		// ".../account-health" matches THIS pattern, everything else under
 		// "/v1/instances/" still falls through to healthHandler.
 		mux.Handle("/v1/instances/{slug}/account-health", accountHealthHandler)
+	}
+	if instagramUserHandler != nil {
+		// A LAN route, like the other instance routes (T-269): it spends a
+		// call on the tenant's Instagram credential per request and returns
+		// a person's @ — not something to send over the public port.
+		// Registered as its OWN, more specific pattern, for the same reason
+		// as account-health above: "/v1/instances/" still falls through to
+		// healthHandler for everything else.
+		mux.Handle("/v1/instances/{slug}/instagram-users/{igsid}", instagramUserHandler)
 	}
 	return mux
 }
@@ -520,6 +529,11 @@ func main() {
 	// one that has no equivalent (health_status has no documented
 	// equivalent on graph.instagram.com either).
 	accountHealth := outbound.NewAccountHealthHandler(store, authenticator, metaClient, outbound.AllTypes)
+	// T-269: InstagramOnly — first route that serves ONLY Instagram: the
+	// user profile lookup exists on graph.instagram.com and has no WhatsApp
+	// counterpart. Same host root as the Instagram send.
+	instagramUser := outbound.NewInstagramUserHandlerWithBase(store, authenticator, metaClient,
+		instagramRenewalBase(os.Getenv), outbound.InstagramOnly)
 	// T-111: WhatsAppOnly — the catalog uses inst.WabaID, a field exclusive
 	// to WhatsApp; Instagram has no template in this slice (the same
 	// restriction as sending, which only accepts "texto" for Instagram).
@@ -641,7 +655,7 @@ func main() {
 		version, counterDays, counter, outbound.AllTypes)
 
 	log.Printf("zapgw listening on %s", address)
-	if err := http.ListenAndServe(address, routes(h, leadership.Require(out), health, templates, media, uploads, state, reads, enrollment, smokeRoute, pauseRoute, blockingRoute, profileRoute, accountHealth)); err != nil {
+	if err := http.ListenAndServe(address, routes(h, leadership.Require(out), health, templates, media, uploads, state, reads, enrollment, smokeRoute, pauseRoute, blockingRoute, profileRoute, accountHealth, instagramUser)); err != nil {
 		log.Fatalf("zapgw: server crashed: %v", err)
 	}
 }

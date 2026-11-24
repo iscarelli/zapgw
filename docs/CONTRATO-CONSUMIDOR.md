@@ -3195,6 +3195,44 @@ instead of wait.
 
 ---
 
+## Who is this IGSID? — `GET /v1/instances/{slug}/instagram-users/{igsid}` (2026-11-24)
+
+**`GET /v1/instances/{slug}/instagram-users/{igsid}`** · `Authorization: Bearer <your token>`
+
+The Instagram DM webhook carries only `sender.id` (the IGSID), never the @. This route asks Meta for
+the **username** and the display **name** of that IGSID, with the instance's Instagram token, so you
+can fill your customer record. A **LAN** route like the other instance routes: only the instances
+linked to you answer (`403` for the others, `404` unknown instance, `503` paused instance), and the
+gateway adds no cache and no per-call log.
+
+```jsonc
+// 200 — values from a test capture against a fake Graph, synthetic
+{ "igsid": "17841400000000001", "username": "synthetic.user", "name": "Synthetic Person" }
+```
+
+- `username` is lowercased and has no leading `@`.
+- `name` is **nullable**: Meta can send it as `null`, and then the key is present with `null`.
+- `igsid` must be digits only; anything else is `400` (class `permanent`) and Meta is **not** called.
+- A **WhatsApp** instance gets `400` class `config` ("this route does not apply to instances of type
+  ..."), and Meta is not called.
+
+🔴 **It only works for people who consented, and Meta records consent when the person SENDS A MESSAGE
+to the account** (or taps an icebreaker / persistent-menu item). A comment does not grant it, and a
+person who blocked the business is not readable. Without consent Meta refuses with the text *"User
+consent is required to access user profile."*; the gateway passes the refusal through in the usual
+error body (`class`, `meta_code`, `message`, and `meta_subcode`/`meta_trace` when Meta sent them), with
+the same status mapping `POST /v1/messages` uses for a Meta refusal. Meta's page documents no code for
+this case, so **do not hard-code one**: match the message text or treat any refusal as "profile not
+available yet".
+
+Volume: expect it to be low — one lookup per new conversation, not per message. Meta's page states
+**no rate limit** for this call, and the gateway does not invent one.
+
+Not measured against the real Meta yet: this suite only proves the gateway against a fake Graph. The
+first lookup with an IGSID that has written to the account is the proof.
+
+---
+
 ## Two different questions — and the second one has its OWN source, which survives your outage (2026-08-06, updated 2026-08-07)
 
 When a consumer wants to "know the status", it is almost always **two** questions, and they have

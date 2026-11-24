@@ -3173,6 +3173,44 @@ em vez de esperar.
 
 ---
 
+## Quem é este IGSID? — `GET /v1/instances/{slug}/instagram-users/{igsid}` (2026-11-24)
+
+**`GET /v1/instances/{slug}/instagram-users/{igsid}`** · `Authorization: Bearer <seu token>`
+
+O webhook de DM do Instagram traz só o `sender.id` (o IGSID), nunca o @. Esta rota pergunta à Meta o
+**username** e o **nome** de exibição desse IGSID, com o token do Instagram da instância, para você
+preencher o cadastro do seu cliente. É uma rota de **LAN** como as outras de instância: só respondem as
+instâncias ligadas a você (`403` para as outras, `404` instância desconhecida, `503` instância
+pausada), e o gateway não faz cache nem log por chamada.
+
+```jsonc
+// 200 — valores de uma captura de teste contra um Graph falso, sintéticos
+{ "igsid": "17841400000000001", "username": "synthetic.user", "name": "Synthetic Person" }
+```
+
+- `username` vem em minúsculas e sem `@` na frente.
+- `name` é **anulável**: a Meta pode mandar `null`, e então a chave vem presente com `null`.
+- `igsid` só pode ter dígitos; qualquer outra coisa é `400` (classe `permanent`) e a Meta **não** é chamada.
+- Uma instância **WhatsApp** recebe `400` classe `config` ("this route does not apply to instances of
+  type ..."), e a Meta não é chamada.
+
+🔴 **Só funciona para quem deu consentimento, e a Meta registra o consentimento quando a pessoa ENVIA UMA
+MENSAGEM para a conta** (ou toca num ice breaker / item do menu persistente). Comentário não dá
+consentimento, e quem bloqueou o negócio não é legível. Sem consentimento a Meta recusa com o texto
+*"User consent is required to access user profile."*; o gateway repassa a recusa no corpo de erro
+habitual (`class`, `meta_code`, `message`, e `meta_subcode`/`meta_trace` quando a Meta mandar), com o
+mesmo mapeamento de status que o `POST /v1/messages` usa para recusa da Meta. A página da Meta não
+documenta código para esse caso, então **não fixe um no seu código**: compare o texto da mensagem ou
+trate qualquer recusa como "perfil ainda não disponível".
+
+Volume: espere que seja baixo — uma consulta por conversa nova, não por mensagem. A página da Meta
+**não declara limite de taxa** para esta chamada, e o gateway não inventa um.
+
+Ainda não medido contra a Meta real: esta suíte só prova o gateway contra um Graph falso. A primeira
+consulta com um IGSID que já escreveu para a conta é a prova.
+
+---
+
 ## Duas perguntas diferentes — e a segunda tem fonte PRÓPRIA, que sobrevive à sua queda (2026-08-06, atualizado 2026-08-07)
 
 Quando um consumidor quer "saber o status", quase sempre são **duas** perguntas, e elas têm fontes
